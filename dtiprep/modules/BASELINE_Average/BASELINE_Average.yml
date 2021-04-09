@@ -1,0 +1,57 @@
+name: BASELINE_Average
+description: Averaging baselines of the DTI
+version: "0.1"
+dependency: []
+protocol:
+      process: 
+        type: boolean 
+        caption: Run
+        default_value: true
+        description: To process this job (true to perform the process)
+      averageMethod: 
+        type: list 
+        caption: Average Method
+        candidates:
+          - value: DirectAverage
+            caption: Direct Averaging
+            description: Direct Averaging over baseline images 
+          - value: BSplineOptimized
+            caption: B-Spline Optimized Averaging
+            description: TBD
+          - value: BaselineOptimized
+            caption: Baseline Optimized Averaging
+            description: TBD
+          # ...
+        default_value: BaselineOptimized # from dtiprep v1
+        description: Averaging method for the baselines
+      averageInterpolationMethod: 
+        &interpolation_methods
+        type: list 
+        caption: Interpolation Method
+        candidates:
+          - value: &ba_linear_interpolation linear-interpolation
+            caption:  Linear Interpolation
+            description: Linear Interpolation will be used in averaging
+          - value: &ba_bspline_interpolation bspline-interpolation
+            caption: B Spline Interpolation
+            description: B Spline Interpolation will be used in averaging
+          - value: &ba_windowedsinc_interpolation ba_windowedsinc_interpolation
+            caption: Windowed Sinc Interpolation
+            description: Windowed sinc interpolation will be used in averaging
+        default_value: *ba_linear_interpolation  #shd change
+        description: Interpolation method for the Averaging
+      stopThreshold: 
+        type: float
+        caption: Stop Threshold
+        default_value: 0.0200
+        description: stopping threshold for the averaging process 
+      b0Threshold: 
+        type: float
+        caption: B-value Threshold
+        default_value: 10.0
+        description: Baseline filtering threshold (only average images with b value less than the threshold)
+      outputDWIFileNameSuffix: 
+        type: string 
+        caption: Suffix for the Output DWI Filename
+        default_value: null
+        description: Output DWI file suffix to the original image filename    

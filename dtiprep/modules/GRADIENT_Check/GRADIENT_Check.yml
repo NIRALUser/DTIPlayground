@@ -1,0 +1,35 @@
+name: GRADIENT_Check
+description: Gradient wise check (to be obsolete)
+version: "0.1"
+dependency: []
+protocol:
+      process: 
+        type: boolean 
+        caption: Run
+        default_value: true
+        description: To process this job (true to perform the process)
+      translationThreshold: 
+        type: float
+        caption: Translation Threshold
+        default_value: 1.50
+        description: TBD        
+      rotationThreshold: 
+        type: float
+        caption: Rotation Threshold
+        default_value: 0.50
+        description: TBD
+      outputDWIFileNameSuffix: 
+        type: string
+        caption: Suffix for the Output DWI Filename
+        default_value: null
+        description: TBD
+      excludedDWINrrdFileNameSuffix: 
+        type: string
+        caption: Suffix for the excluded DWI Nrrd Filename
+        default_value: null
+        description: TBD
+      bQuitOnCheckFailure: 
+        type: boolean
+        caption: Quit the pipeline when failed
+        default_value: false
+        description: TBD

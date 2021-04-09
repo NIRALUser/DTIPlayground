@@ -1,0 +1,54 @@
+name: DIFFUSION_Check
+description: Check Diffusion parameters
+version: "0.1"
+dependency: []
+protocol:
+      process: 
+        type: boolean 
+        caption: Run
+        default_value: true
+        description: To process this job (true to perform the process.
+      measurementFrame:
+        type: matrix
+        caption: Mesurement Frame
+        shape: [3,3]
+        default_value:
+          - [1.0,0.0,0.0]
+          - [0.0,1.0,0.0]
+          - [0.0,0.0,1.0]
+        description: Mesaurement frame system.
+      DWMRI_bValue:  ## populated by image information
+        type: float
+        caption: DWMRI b-value
+        default_value: 3009.00
+        description: Representing B Value for Nrrd format with L2 normalized gradients
+      DWMRI_gradients: ## populated by image information
+        type: object-array
+        caption: DWMRI Gradients
+        keys: [index,gradient]
+        description: auto generated list (gradient index and gradient vector)
+      bUseDiffusionProtocol: 
+        type: boolean
+        caption: Use Diffusion Protocol
+        default_value: false
+        description: True to use diffusion protocol 
+      bValueAcceptablePercentageTolerance: 
+        type: float 
+        caption: Acceptable Tolerance in Percentage
+        default_value: 0.0050
+        description: Percentage tolerance for b value 
+      gradientToleranceForSameness_degree: 
+        type: float
+        caption: Gradient Tolerance for the Sameness Degree
+        default_value: 1.0000
+        description: Gradient tolerance level for sameness degree 
+      diffusionReplacedDWIFileNameSuffix: 
+        type: string 
+        caption: Suffix for the replaced DWI Filename
+        default_value: _DiffusionReplaced.nrrd
+        description: File suffix for the replaced DWI File.
+      bQuitOnCheckFailure: 
+        type: boolean 
+        caption: Quit the pipeline when failed
+        default_value: false 
+        description: True to quit execution from the process 

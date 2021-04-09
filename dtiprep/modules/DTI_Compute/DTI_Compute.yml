@@ -1,0 +1,88 @@
+name: DTI_Compute
+description: Compute DTI analytics
+version: "0.1"
+dependency: []
+protocol:
+      process: 
+        type: boolean 
+        caption: Run
+        default_value: true
+        description: To process this job (true to perform the process)
+      dtiestimCommand: 
+        type: file
+        caption: dtiestim Location
+        default_value: /BAND/USERS/skp78-dti/dtiprep-build/DTIPrepTools-install/bin/dtiestim
+        description: TBD
+      dtiprocessCommand: 
+        type: file
+        caption: dtiprocess Location
+        default_value: /BAND/USERS/skp78-dti/dtiprep-build/DTIPrepTools-install/bin/dtiprocess
+        description: TBD
+      method: 
+        type: list
+        caption: Method
+        candidates:
+          &dtiestim_methods
+          - value: &wls wls
+            caption: Weighted Least Squares
+            description: *wls
+          - value: &lls lls
+            caption: Linear Least Squares
+            description: *lls
+          - value: &ml ml
+            caption: Maximum Likelihood
+            description: *ml
+          - value: &nls nls
+            caption: Non-linear Least Squares
+            description: *nls
+        default_value: wls
+        description: Method for DTIEstim (WLS/LLS/ML/NLS)
+      baselineThreshold: 
+        type: float 
+        caption: Baseline Threshold
+        default_value: 50
+        description: TBD
+      tensor: 
+        type: string
+        caption: Tensor
+        default_value: _DTI.nrrd 
+        description: TBD
+      baseline: 
+        type: object-array
+        keys: [0,1]
+        caption: Baseline
+        default_value: [true, _Baseline.nrrd]
+        description: TBD
+      idwi: 
+        type: object-array
+        keys: [0,1]
+        caption: IDWI
+        default_value: [true, _IDWI.nrrd]
+        description: TBD
+      fa: 
+        type: object-array
+        keys: [0,1]
+        caption: FA
+        default_value: [true, _FA.nrrd]
+        description: TBD
+      md: 
+        type: object-array
+        keys: [0,1]
+        caption: MD
+        default_value: [true, _MD.nrrd]
+        description: TBD
+      colorfa: 
+        type: object-array
+        keys: [0,1]
+        caption: ColorFA
+        default_value: [true, _colorFA.nrrd]
+        description: TBD
+      frobeniusnorm: 
+        type: object-array
+        keys: [0,1]
+        caption: Frobenius Norm
+        default_value: [true, _frobeniusnorm.nrrd]
+        description: TBD
+
+
+

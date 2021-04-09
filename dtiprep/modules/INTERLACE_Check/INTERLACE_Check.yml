@@ -1,0 +1,55 @@
+name: INTERLACE_Check
+description: Interlaced correlation check
+version: "0.1"
+dependency: []
+protocol:
+      process: 
+        type: boolean 
+        caption: Run
+        default_value: true
+        description: To process this job (true to perform the process)
+      correlationThresholdBaseline: 
+        type: float
+        caption: Correlation Threshold For the Baselines
+        default_value: 0.9500
+        description: TBD
+      correlationThresholdGradient: 
+        type: float
+        caption: Correlation Threshold for the Gradients
+        default_value: 0.7702
+        description: TBD
+      correlationDeviationBaseline: 
+        type: float
+        caption: Correlation Deviation for the Baselines
+        default_value: 2.5000
+        description: TBD
+      correlationDeviationGradient: 
+        type: float
+        caption: Correlation Deviation for the Gradients
+        default_value: 3.0000
+        description: TBD
+      translationThreshold: 
+        type: float
+        caption: Translation Threshold
+        default_value: 1.5000
+        description: TBD
+      rotationThreshold: 
+        type: float
+        caption: Rotation Threshold
+        default_value: 0.5000
+        description: TBD
+      outputDWIFileNameSuffix: 
+        type: string
+        caption: Suffix for the Output DWI Filename
+        default_value: null
+        description: TBD
+      excludeDWINrrdFileNameSuffix: 
+        type: string
+        caption: Suffix for the Excluded DWI Nrrd Filename
+        default_value: null
+        description: TBD
+      bQuitOnCheckFailure: 
+        type: boolean
+        caption: Quit the pipeline when failed
+        default_value: false
+        description: TBD

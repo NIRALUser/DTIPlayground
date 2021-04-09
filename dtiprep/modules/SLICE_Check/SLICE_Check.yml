@@ -1,0 +1,58 @@
+name: SLICE_Check
+description: Slicewise correlation check  
+protocol:
+      process: 
+        type: boolean 
+        caption: Run
+        default_value: true
+        description: To process this job (true to perform the process)
+      bSubregionalCheck: 
+        type: boolean
+        caption: Sub Regional Check
+        default_value: false 
+        description: TBD
+      subregionalCheckRelaxationFactor: 
+        type: float
+        caption: Sub Regional Check Relaxation Factor
+        default_value: 1.10
+        description: TBD
+      checkTimes: 
+        type: integer
+        caption: Check Times
+        default_value: 0
+        description: TBD
+      headSkipPercentage: 
+        type: float
+        caption: Head Skip Percentage
+        default_value: 0.10
+        description: TBD
+      tailSkipSlicePercentage: 
+        type: float
+        caption: Tail Skip Percentage
+        default_value: 0.10
+        description: TBD
+      correlationDeviationThresholdbaseline: 
+        type: float
+        caption: Correlation's Deviation Threshold Baseline
+        default_value: 3.0
+        description: TBD
+      correlationDeviationThresholdgradient: 
+        type: float
+        caption: Correlation's Deviation Threshold Gradient 
+        default_value: 3.5
+        description: TBD
+      outputDWIFileNameSuffix: 
+        type: string
+        caption: Suffix for the Output DWI Filename
+        default_value: null
+        description: TBD
+      excludeDWINrrdFileNameSuffix: 
+        type: string
+        caption: Suffix for the Excluded DWI Nrrd Filename
+        default_value: null
+        description: TBD
+      bQuitOnCheckFailure: 
+        type: boolean
+        caption: Quit the pipeline when failed
+        default_value: false
+        description: TBD

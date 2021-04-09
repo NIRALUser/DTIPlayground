@@ -1,0 +1,21 @@
+name: SUSCEPTIBILITY_Correction
+description: Susceptibility correction (new)
+version: "0.1"
+dependency:
+  - EDDYMOTION_Correct
+protocol:
+      process: 
+        type: boolean 
+        caption: Run
+        default_value: true
+        description: To process this job (true to perform the process)
+      outputDWIFileNameSuffix: 
+        type: string
+        caption: Suffix for the Output DWI Filename
+        default_value: null
+        description: TBD
+      finalTransformFileSuffix: 
+        type: string
+        caption: Suffix for the Final Transformed Filename
+        default_value: null
+        description: TBD

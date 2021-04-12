@@ -30,13 +30,16 @@ def io_test():
         return True
     except Exception as e:
         logger("Exception occurred : {}".format(str(e)))
+        traceback.print_exc()
         return False
     
 def protocol_test():
     try:
         proto=protocols.Protocols()
         proto.loadProtocols("data/protocol_files/protocols.yml")
-        proto.runPipeline()
+        #proto.makeDefaultProtocols(user_module_paths=['user/modules'])
+        proto.runPipeline(user_module_paths=['user/modules'])
+        proto.writeProtocols("data/test_protocols.yml")
         return True
     except Exception as e:
         logger("Exception occurred : {}".format(str(e)))

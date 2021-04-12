@@ -1,11 +1,8 @@
 name: SLICE_Check
-description: Slicewise correlation check  
+description: Slicewise correlation check
+version: "0.1"
+dependency: []
 protocol:
-      process: 
-        type: boolean 
-        caption: Run
-        default_value: true
-        description: To process this job (true to perform the process)
       bSubregionalCheck: 
         type: boolean
         caption: Sub Regional Check

@@ -3,11 +3,6 @@ description: Gradient wise check (to be obsolete)
 version: "0.1"
 dependency: []
 protocol:
-      process: 
-        type: boolean 
-        caption: Run
-        default_value: true
-        description: To process this job (true to perform the process)
       translationThreshold: 
         type: float
         caption: Translation Threshold

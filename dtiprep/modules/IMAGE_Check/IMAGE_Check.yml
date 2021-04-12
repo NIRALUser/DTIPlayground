@@ -2,12 +2,7 @@ name: IMAGE_Check
 description: Check image parameters such as size, dimension, .. (to be obsolete)
 version: "0.1"
 dependency: [] 
-protocol:
-      process: 
-        type: boolean 
-        caption: Run
-        default_value: true
-        description: To process this job (true to perform the process)    
+protocol:  
       space: 
         type: list
         caption: Space

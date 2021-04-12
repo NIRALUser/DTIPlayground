@@ -3,11 +3,6 @@ description: Check Diffusion parameters
 version: "0.1"
 dependency: []
 protocol:
-      process: 
-        type: boolean 
-        caption: Run
-        default_value: true
-        description: To process this job (true to perform the process.
       measurementFrame:
         type: matrix
         caption: Mesurement Frame
@@ -20,12 +15,13 @@ protocol:
       DWMRI_bValue:  ## populated by image information
         type: float
         caption: DWMRI b-value
-        default_value: 3009.00
+        default_value: null
         description: Representing B Value for Nrrd format with L2 normalized gradients
       DWMRI_gradients: ## populated by image information
         type: object-array
         caption: DWMRI Gradients
         keys: [index,gradient]
+        default_value: []
         description: auto generated list (gradient index and gradient vector)
       bUseDiffusionProtocol: 
         type: boolean

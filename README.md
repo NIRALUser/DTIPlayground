@@ -28,6 +28,7 @@ Server Mode:
 
 ### Requirements
 
+- Python3.6 or greater version
 
 ### Chenage Log
 

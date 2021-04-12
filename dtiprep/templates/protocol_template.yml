@@ -1,0 +1,110 @@
+##  DTIPrepV2 Application Data
+##
+##  types : boolean, string, integer, float, file, directory, list, queue , matrix, object-array
+##  default ui : boolean - checkbox
+##               string,integer,float - input
+##               list - combobox
+##               file,directory - browse with input
+##               queue - listbox
+##               matrix - edittable table
+##               object-array - ? (maybe sub dialog)
+##  Written by SK Park, NIRAL, UNC SOM, 2021
+
+version: 0.1
+options:
+
+  ### Template metadata
+  system:
+    available_types: 
+      - boolean
+      - integer
+      - float
+      - string
+      - file
+      - directory 
+      - list 
+      - queue
+      - matrix
+      - object-array 
+
+  ### settings template
+  settings: null # TBD
+
+  ### io template
+  io:
+    output_directory: 
+      type: directory # file dialog for ui
+      caption: Output Directory
+      default_value: $HOME
+      description: Output directory storing the results and generated files 
+    reportFileNameSuffix: 
+      type: string
+      caption:  Report Filename's Suffix
+      default_value: _QCReport.txt
+      description: Filename suffix for the result report 
+    reportFileMode: 
+      type: list
+      caption: Report File Mode 
+      candidates:
+        - value: overwrite
+          caption: Overwrite
+          description: TBD
+        - value: append
+          caption: Append
+          description: TBD
+      default_value: overwrite 
+      description: file writing mode 
+
+  #### Execution related
+  execution:
+    pipeline:
+      type: queue
+      caption: Pipeline Queue
+      candidates: ## add elements from below list, each one is a key for a protocol
+        - value: IMAGE_Check
+          caption: Image Check
+          description: TBD
+        - value: DIFFUSION_Check
+          caption: Diffusion Check
+          description: TBD
+        - value: DENOISING_Check
+          caption: Denoising Check
+          description: TBD
+        - value: SLICE_Check
+          caption: Slicewise Check
+          description: TBD
+        - value: INTERLACE_Check 
+          caption: Interlace Correlation Check
+          description: TBD
+        - value: BASELINE_Average
+          caption: Baseline Average
+          description: TBD
+        - value: EDDYMOTION_Correct
+          caption: Eddy motion Correction
+          description: TBD
+        - value: GRADIENT_Check
+          caption: Gradientwise Check
+          description: TBD
+        - value: JOINDENOISING_Check
+          caption: Join Denoising Check
+          description: TBD
+        - value: BRAINMASK_Check
+          caption: Brainmask Check
+          description: TBD
+        - value: DTI_Compute
+          caption: Compute DTI 
+          description: TBD
+      default_value: ## default elements 
+        - IMAGE_Check
+        - DIFFUSION_Check
+        - DENOISING_Check
+        - SLICE_Check
+        - INTERLACE_Check 
+        - BASELINE_Average
+        - EDDYMOTION_Correct
+        - SUSCEPTIBILITY_Correct
+        - GRADIENT_Check
+        - JOINDENOISING_Check
+        - BRAINMASK_Check
+        - DTI_Compute
+      description: Pipeline queue which executes as first in first processed.

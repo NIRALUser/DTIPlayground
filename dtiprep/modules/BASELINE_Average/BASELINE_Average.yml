@@ -3,11 +3,6 @@ description: Averaging baselines of the DTI
 version: "0.1"
 dependency: []
 protocol:
-      process: 
-        type: boolean 
-        caption: Run
-        default_value: true
-        description: To process this job (true to perform the process)
       averageMethod: 
         type: list 
         caption: Average Method

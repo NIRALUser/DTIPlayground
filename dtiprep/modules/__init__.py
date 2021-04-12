@@ -1,6 +1,7 @@
 
 # from .. import io as dwiio
-import yaml
+import yaml, inspect
+from pathlib import Path 
 import dtiprep 
 logger=dtiprep.logger.write
 
@@ -11,8 +12,18 @@ class DTIPrepModule:
         self.protocols=None
         self.result=None
 
+        ##
+        self.template=None
 
-    def setImage(self, image: dtiprep.io.DWI):
+        ## loading template file (yml)
+        self.loadTemplate()
+
+    def loadTemplate(self):
+        modulepath=inspect.getfile(self.__class__)
+        template_filename=Path(modulepath).parent.joinpath(self.name+".yml")
+        self.template=yaml.safe_load(open(template_filename,'r'))
+
+    def setImage(self, image ):
         self.image=image
 
     def setProtocols(self,protocols):
@@ -26,7 +37,9 @@ class DTIPrepModule:
         logger("-----------------------------------------------")
         logger("Processing : {}".format(self.__class__.__name__))
         logger("-----------------------------------------------")
-        logger("{}".format(yaml.dump(self.getProtocols())))
+        #logger("{}".format(yaml.dump(self.getProtocols())))
+        logger(">>> Template")
+        logger(yaml.dump(self.template))
 
 
     def getResult(self):

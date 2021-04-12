@@ -1,5 +1,5 @@
-name: SUSCEPTIBILITY_Correction
-description: Susceptibility correction (new)
+name: TEST2_Check
+description: User module test
 version: "0.1"
 dependency:
   - EDDYMOTION_Correct
@@ -7,7 +7,7 @@ protocol:
       outputDWIFileNameSuffix: 
         type: string
         caption: Suffix for the Output DWI Filename
-        default_value: null
+        default_value: Hello Default TEST
         description: TBD
       finalTransformFileSuffix: 
         type: string

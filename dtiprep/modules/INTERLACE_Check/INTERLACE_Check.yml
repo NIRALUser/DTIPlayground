@@ -1,4 +1,5 @@
 name: INTERLACE_Check
+caption: INTERLACE Check
 description: Interlaced correlation check
 version: "0.1"
 dependency: []

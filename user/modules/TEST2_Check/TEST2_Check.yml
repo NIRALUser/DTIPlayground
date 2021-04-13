@@ -1,4 +1,5 @@
 name: TEST2_Check
+caption: TEST2_Check
 description: User module test
 version: "0.1"
 dependency:
@@ -7,7 +8,7 @@ protocol:
       outputDWIFileNameSuffix: 
         type: string
         caption: Suffix for the Output DWI Filename
-        default_value: Hello Default TEST
+        default_value: Hello Default TEST2
         description: TBD
       finalTransformFileSuffix: 
         type: string

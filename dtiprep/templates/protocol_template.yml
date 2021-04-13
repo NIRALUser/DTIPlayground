@@ -95,16 +95,16 @@ options:
           caption: Compute DTI 
           description: TBD
       default_value: ## default elements 
-        - IMAGE_Check
+        # - IMAGE_Check
         - DIFFUSION_Check
-        - DENOISING_Check
+        # - DENOISING_Check
         - SLICE_Check
         - INTERLACE_Check 
         - BASELINE_Average
-        - EDDYMOTION_Correct
-        - SUSCEPTIBILITY_Correct
+        # - EDDYMOTION_Correct
+        # - SUSCEPTIBILITY_Correct
         - GRADIENT_Check
-        - JOINDENOISING_Check
-        - BRAINMASK_Check
-        - DTI_Compute
+        # - JOINDENOISING_Check
+        # - BRAINMASK_Check
+        # - DTI_Compute
       description: Pipeline queue which executes as first in first processed.

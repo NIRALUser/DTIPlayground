@@ -1,4 +1,5 @@
 name: DTI_Compute
+caption: DTI Compute
 description: Compute DTI analytics
 version: "0.1"
 dependency: []
@@ -44,37 +45,37 @@ protocol:
         description: TBD
       baseline: 
         type: object-array
-        keys: [0,1]
+        keys: [generate,suffix]
         caption: Baseline
         default_value: [true, _Baseline.nrrd]
         description: TBD
       idwi: 
         type: object-array
-        keys: [0,1]
+        keys: [generate,suffix]
         caption: IDWI
         default_value: [true, _IDWI.nrrd]
         description: TBD
       fa: 
         type: object-array
-        keys: [0,1]
+        keys: [generate,suffix]
         caption: FA
         default_value: [true, _FA.nrrd]
         description: TBD
       md: 
         type: object-array
-        keys: [0,1]
+        keys: [generate,suffix]
         caption: MD
         default_value: [true, _MD.nrrd]
         description: TBD
       colorfa: 
         type: object-array
-        keys: [0,1]
+        keys: [generate,suffix]
         caption: ColorFA
         default_value: [true, _colorFA.nrrd]
         description: TBD
       frobeniusnorm: 
         type: object-array
-        keys: [0,1]
+        keys: [generate,suffix]
         caption: Frobenius Norm
         default_value: [true, _frobeniusnorm.nrrd]
         description: TBD

@@ -1,4 +1,5 @@
 name: IMAGE_Check
+caption: IMAGE Check
 description: Check image parameters such as size, dimension, .. (to be obsolete)
 version: "0.1"
 dependency: [] 

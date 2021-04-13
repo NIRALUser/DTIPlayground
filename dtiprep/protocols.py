@@ -3,8 +3,6 @@ import dtiprep
 import dtiprep.io 
 import dtiprep.modules 
 from pathlib import Path
-# import importlib
-# import importlib.util
 import pkgutil
 
 
@@ -23,15 +21,16 @@ def _load_modules(user_module_paths=[]):
     modules.update(usermodules)
     return modules
 
+def _load_default_modules(): # user_modules list of paths of user modules
+    modules={}
+    default_module_paths=[Path(__file__).parent.joinpath('modules')]
+    return _load_modules_from_paths(default_module_paths)
 
 def _load_modules_from_paths(user_module_paths: list):
     modules={}
     mods=[]
-    logger("Loading modules ... ")
     for pth in map(lambda x: str(x),user_module_paths):  ## path objects to string array
-        logger("---------------------------------------------------------")
-        logger("From {} ,".format(str(pth)))
-        logger("---------------------------------------------------------")
+        logger(">> Loading modules from {} ".format(str(pth)))
         sys.path.insert(0, pth)
         pkgs_info=list(pkgutil.walk_packages([pth]))
         for p in pkgs_info:
@@ -51,54 +50,10 @@ def _load_modules_from_paths(user_module_paths: list):
                                 } 
     return modules 
 
-# def _load_modules_from_paths_deprecated(user_module_paths: list):
-#     modules={}
-#     for p in user_module_paths:
-#         files=list(Path(p).glob('**/*.py'))
-#         modulefiles=[]
-#         for fn in files:
-#             file_path = fn
-#             if '__init__.py' in str(fn):
-#                 module_name = ".".join(fn.relative_to(p).parts[1:-1])
-#             else:
-#                 module_name = ".".join(fn.relative_to(p).parts[1:-1]+(fn.stem,))
-#             if fn.stem == fn.parent.name:
-#                 modulefiles.append(fn)
-
-#             else:
-#                 logger("Loading a submodule : {}".format(module_name))
-#                 spec = importlib.util.spec_from_file_location(module_name, file_path)
-#                 module = importlib.util.module_from_spec(spec)
-#                 sys.modules[module_name] = module
-#                 spec.loader.exec_module(module)
-
-#         for fn in modulefiles:
-#             file_path = fn
-#             module_name = fn.stem
-#             logger("Loading a module : {}".format(module_name))
-#             spec = importlib.util.spec_from_file_location(module_name, file_path)
-#             module = importlib.util.module_from_spec(spec)
-#             sys.modules[module_name] = module
-#             spec.loader.exec_module(module)
-#             template_path= fn.parent.joinpath(fn.stem+'.yml')
-#             template=yaml.safe_load(open(template_path,'r'))
-#             modules[module_name]={
-#                 'module' : module,
-#                 'path' : module.__file__,
-#                 'template' :template,
-#                 'template_path' : template_path
-#                 }
-#     return modules 
-
-def _load_default_modules(): # user_modules list of paths of user modules
-    modules={}
-    default_module_paths=[Path(__file__).parent.joinpath('modules')]
-    return _load_modules_from_paths(default_module_paths)
-
 
 class Protocols:
     def __init__(self,*args,**kwargs):
-        self.image=None
+        self.image_path=None
         self.protocol_filename=None
         self.rawdata=None
         self.protocols=None
@@ -110,8 +65,15 @@ class Protocols:
         self.template_filename=Path(__file__).parent.joinpath("templates/protocol_template.yml")
         self.modules=None
 
-    def setImage(self, image:dtiprep.io.DWI):
-        self.image=image
+        #output
+        self.results=None
+
+    def setImagePath(self, image_path): # this nullify previous results
+        self.image_path=str(image_path)
+        self.results=[{"output":{"image_path": self.image_path}}]
+
+    def getImagePath(self):
+        return self.image_path
 
     def writeProtocols(self,filename):
         self.rawdata={
@@ -135,6 +97,16 @@ class Protocols:
             logger("Exception occurred : {}".format(str(e)))
             return False
 
+    def addPipeline(self,modulename,index=-1,default_protocol=False):
+        if modulename not in self.pipeline:
+            self.pipeline.insert(index, modulename)
+            if default_protocol:
+                self.makeDefaultProtocolForModule(modulename)
+
+    def makeDefaultProtocolForModule(self, module_name):
+        if module_name in self.modules.keys():
+            self.protocols[module_name]=getattr(self.modules[module_name]['module'],module_name)().generateDefaultProtocol()
+
     def makeDefaultProtocols(self,user_module_paths=[],template=None):
         if template==None:
             template=yaml.safe_load(open(self.template_filename,'r'))
@@ -148,18 +120,35 @@ class Protocols:
         self.pipeline=template['options']['execution']['pipeline']['default_value']
         self.modules=_load_modules(user_module_paths=user_module_paths)
         for mod_name,mod in self.modules.items():
-            self.protocols[mod_name]={}
-            for k,v in mod['template']['protocol'].items():
-                self.protocols[mod_name][k]=v['default_value']
+            self.makeDefaultProtocolForModule(mod_name)
 
 
     def runPipeline(self,user_module_paths=[]):
 
         ## load modules and template file
-        self.modules=_load_modules(user_module_paths=user_module_paths)
-        for p in self.pipeline:
-            m=getattr(self.modules[p]['module'], p)()
-            m.setProtocols(self.protocols)
-            m.process()
-
+        try:
+            if self.getImagePath() is None: raise Exception("Image path is not set")
+            if self.protocols is not None:
+                if self.modules is None:
+                    self.modules=_load_modules(user_module_paths=user_module_paths)
+                for idx,p in enumerate(self.pipeline):
+                    logger("-----------------------------------------------")
+                    logger("Processing [{0}/{1}] : {2}".format(idx+1,len(self.pipeline),p))
+                    logger("-----------------------------------------------")
+        
+                    m=getattr(self.modules[p]['module'], p)()
+                    m.setProtocol(self.protocols)
+                    m.initialize(self.results)
+                    success=m.run()
+                    if success : logger("Success ")
+                    else: raise Exception("Process failed in {}".format(p))
+                    self.results=m.getResult()
+                return self.results
+            else:
+                raise Exception("Protocols are not set")
+                return None
+        except Exception as e:
+            logger("Exception occurred in runPipeline {}".format(str(e)))
+            traceback.print_exc()
+            return None
 

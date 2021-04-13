@@ -1,4 +1,5 @@
 name: TEST_Check
+caption: TEST Check
 description: User module test
 version: "0.1"
 dependency:

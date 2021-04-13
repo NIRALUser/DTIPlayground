@@ -1,4 +1,5 @@
 name: SUSCEPTIBILITY_Correction
+caption: SUSCEPTIBILITY Correction
 description: Susceptibility correction (new)
 version: "0.1"
 dependency:

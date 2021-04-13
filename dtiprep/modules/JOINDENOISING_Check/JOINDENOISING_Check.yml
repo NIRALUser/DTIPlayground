@@ -1,4 +1,5 @@
 name: JOINDENOISING_Check
+caption: JOINDENOISING Check
 description: Joint Denoising Check (to be obsolete)
 version: "0.1"
 dependency: [] 

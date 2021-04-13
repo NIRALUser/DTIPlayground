@@ -1,4 +1,5 @@
 name: BRAINMASK_Check
+caption: BRAINMASK Check
 description: Brainmask check
 version: "0.1"
 dependency: []

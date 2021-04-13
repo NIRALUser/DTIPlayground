@@ -1,4 +1,5 @@
 name: SLICE_Check
+caption: SLICE Check
 description: Slicewise correlation check
 version: "0.1"
 dependency: []

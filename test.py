@@ -35,12 +35,17 @@ def io_test():
     
 def protocol_test():
     try:
+        fname_nrrd="data/images/CT-00006_DWI_dir79_APPA.nrrd"
         proto=protocols.Protocols()
-        proto.loadProtocols("data/protocol_files/protocols.yml")
-        #proto.makeDefaultProtocols(user_module_paths=['user/modules'])
-        proto.runPipeline(user_module_paths=['user/modules'])
+        #proto.loadProtocols("data/protocol_files/protocols.yml")
+        proto.setImagePath(fname_nrrd)
+        proto.makeDefaultProtocols(user_module_paths=['user/modules'])
+        proto.addPipeline('TEST_Check',index=13,default_protocol=False)
+        res=proto.runPipeline(user_module_paths=['user/modules'])
+        #logger(yaml.dump(res))
         proto.writeProtocols("data/test_protocols.yml")
-        return True
+        #logger(yaml.dump(proto.modules))
+        return res
     except Exception as e:
         logger("Exception occurred : {}".format(str(e)))
         traceback.print_exc()

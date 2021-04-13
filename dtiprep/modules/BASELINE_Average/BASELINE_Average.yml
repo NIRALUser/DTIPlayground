@@ -1,4 +1,5 @@
 name: BASELINE_Average
+caption: BASELINE Average
 description: Averaging baselines of the DTI
 version: "0.1"
 dependency: []

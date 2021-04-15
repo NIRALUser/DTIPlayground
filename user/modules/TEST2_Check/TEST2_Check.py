@@ -14,6 +14,7 @@ class TEST2_Check(DTIPrepModule):
     def generateDefaultProtocol(self):
         super().generateDefaultProtocol()
         ## todos
+        return self.protocol
     def process(self):
         super().process()
         inputParams=self.getPreviousResult()['output']

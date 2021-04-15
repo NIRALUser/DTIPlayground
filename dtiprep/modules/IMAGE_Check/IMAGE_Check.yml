@@ -3,6 +3,12 @@ caption: IMAGE Check
 description: Check image parameters such as size, dimension, .. (to be obsolete)
 version: "0.1"
 dependency: [] 
+result:
+  info: null #string
+  space: null #bool
+  origin: null #bool
+  spacing: null #bool
+  spacedirection: null #bool
 protocol:  
       space: 
         type: list

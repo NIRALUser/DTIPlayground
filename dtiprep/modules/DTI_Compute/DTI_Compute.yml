@@ -3,6 +3,7 @@ caption: DTI Compute
 description: Compute DTI analytics
 version: "0.1"
 dependency: []
+result: null
 protocol:
       dtiestimCommand: 
         type: file

@@ -3,6 +3,7 @@ caption: DENOISING Check
 description: Denoising Check (To be obsolete)
 version: "0.1"
 dependency: []
+result: null
 protocol:
       Path: 
         type: file

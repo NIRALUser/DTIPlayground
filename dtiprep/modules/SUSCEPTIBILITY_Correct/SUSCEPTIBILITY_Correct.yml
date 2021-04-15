@@ -4,6 +4,7 @@ description: Susceptibility correction (new)
 version: "0.1"
 dependency:
   - EDDYMOTION_Correct
+result: null
 protocol:
       outputDWIFileNameSuffix: 
         type: string

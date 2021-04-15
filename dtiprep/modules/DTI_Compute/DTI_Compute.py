@@ -11,6 +11,7 @@ class DTI_Compute(DTIPrepModule):
     def generateDefaultProtocol(self):
         super().generateDefaultProtocol()
         ## todos
+        return self.protocol
     def process(self): ## self.results_history, self.results 
         super().process()
         print("Child method begins")

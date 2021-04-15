@@ -1,0 +1,35 @@
+name: DOMINANTDIRECTION_Check
+caption: DOMINANTDIRECTION Check
+description: Dominant direction check 
+version: "0.1"
+dependency: [] 
+result:
+  z_score: null #float
+  entropy_value: null #float
+  detection_result: null #int
+protocol:  
+      Mean:
+        type: float
+        caption: Mean
+        default_value: 6.50
+        description: TBD
+      Deviation:
+        type: float 
+        caption: Deviation
+        default_value: 0.01
+        description: TBD
+      z-Threshold1:
+        type: float
+        caption: z-Threshold 1
+        default_value: 1.64
+        description: TBD 
+      z-Threshold2:
+        type: float 
+        caption: z-Threshold 2
+        default_value: 2.58
+        description: TBD
+      bQuitOnCheckFailure: 
+        type: boolean
+        caption: Quit the pipeline when failed
+        default_value: false
+        description: TBD

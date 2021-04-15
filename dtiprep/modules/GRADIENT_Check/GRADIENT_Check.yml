@@ -3,6 +3,14 @@ caption: GRADIENT Check
 description: Gradient wise check (to be obsolete)
 version: "0.1"
 dependency: []
+result: 
+    AngleX: null #float
+    AngleY: null #float
+    AngleZ: null #float
+    TranslationX: null #float
+    TranslationY: null #float
+    TranslationZ: null #float
+    MutualInformation: null #float
 protocol:
       translationThreshold: 
         type: float

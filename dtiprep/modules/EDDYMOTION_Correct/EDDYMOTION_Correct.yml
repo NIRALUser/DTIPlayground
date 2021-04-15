@@ -3,6 +3,7 @@ caption: EDDYMOTION Correct
 description: Eddy Motion correction (to be replaced)
 version: "0.1"
 dependency: []
+result: null
 protocol:
       numberOfIterations: 
         type: integer

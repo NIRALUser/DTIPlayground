@@ -103,7 +103,7 @@ options:
         - BASELINE_Average
         # - EDDYMOTION_Correct
         # - SUSCEPTIBILITY_Correct
-        - GRADIENT_Check
+        # - GRADIENT_Check
         # - JOINDENOISING_Check
         # - BRAINMASK_Check
         # - DTI_Compute

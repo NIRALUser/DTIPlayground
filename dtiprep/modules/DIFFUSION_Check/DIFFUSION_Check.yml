@@ -3,6 +3,10 @@ caption: DIFFUSION Check
 description: Check Diffusion parameters
 version: "0.1"
 dependency: []
+result:
+  b: null 
+  gradient: null 
+  measurementFrame: null
 protocol:
       measurementFrame:
         type: matrix

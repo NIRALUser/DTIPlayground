@@ -3,6 +3,11 @@ caption: SLICE Check
 description: Slicewise correlation check
 version: "0.1"
 dependency: []
+result:
+    GradientNum: null #int
+    SliceNum: null #int
+    Correlation: null #float
+
 protocol:
       bSubregionalCheck: 
         type: boolean

@@ -3,6 +3,15 @@ caption: INTERLACE Check
 description: Interlaced correlation check
 version: "0.1"
 dependency: []
+result:
+    AngleX: null #float
+    AngleY: null #float
+    AngleZ: null #float
+    TranslationX: null #float
+    TranslationY: null #float
+    TranslationZ: null #float
+    Metric: null #float
+    Correlation: null #float
 protocol:
       correlationThresholdBaseline: 
         type: float

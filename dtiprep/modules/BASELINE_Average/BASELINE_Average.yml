@@ -3,6 +3,8 @@ caption: BASELINE Average
 description: Averaging baselines of the DTI
 version: "0.1"
 dependency: []
+result: null
+
 protocol:
       averageMethod: 
         type: list 

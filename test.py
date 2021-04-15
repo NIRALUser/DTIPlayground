@@ -3,10 +3,14 @@
 from pathlib import Path
 import dtiprep
 from dtiprep.io import DWI 
+import dtiprep.modules
 import dtiprep.protocols as protocols
 import numpy as np 
 import argparse,yaml
 import traceback
+import time 
+import copy
+import yaml
 
 logger=dtiprep.logger.write
 
@@ -14,17 +18,37 @@ def io_test():
     
     try:
         fname_nrrd="data/images/CT-00006_DWI_dir79_APPA.nrrd"
-        fname_nifti="data/images/CT-00006_DWI_dir79_APPA.nii.gz"
-        dwi_nifti=DWI(fname_nifti)
+        # fname_nifti="data/images/CT-00006_DWI_dir79_APPA.nii.gz"
+        # dwi_nifti=DWI(fname_nifti)
         dwi_nrrd=DWI(fname_nrrd)
+        logger(str(dwi_nrrd.information))
 
-        err=0.0
-        for g in zip(dwi_nifti,dwi_nrrd):
-            dnifti,dnrrd=g
-            img_nrrd, grad_nrrd = dnrrd
-            img_nifti,grad_nifti= dnifti
-            err+= np.sum((grad_nifti['b_value']-grad_nrrd['b_value'])**2)
+        # err=0.0
+        # for g in zip(dwi_nifti,dwi_nrrd):
+        #     dnifti,dnrrd=g
+        #     img_nrrd, grad_nrrd = dnrrd
+        #     img_nifti,grad_nifti= dnifti
+        #     err+= np.sum((grad_nifti['b_value']-grad_nrrd['b_value'])**2)
 
+        bt=time.time()
+        newdwi=copy.deepcopy(dwi_nrrd)
+        refdwi=dwi_nrrd
+        elapsed=time.time()-bt
+        logger("Elapsed time to copy image : {}s".format(elapsed))
+
+        newdwi.images=None
+        logger(str(dwi_nrrd.images[:,:,40,0]))
+        logger(str(newdwi.images))
+        logger("Original address : "+str(dwi_nrrd))
+        logger("Deepcopied address : "+str(newdwi))
+        logger("Referenced address : "+str(refdwi))
+        
+        
+        dwi_nrrd.setB0Threshold(b0_threshold=1500)
+        # grad_with_baselines=dwi_nrrd.getGradients()
+        # for g in grad_with_baselines:
+        #     if g['baseline']:
+        #         logger(str(g['b_value']))
         ### writing
         #dwi_nrrd.writeImage('test.nrrd')
         return True
@@ -36,13 +60,15 @@ def io_test():
 def protocol_test():
     try:
         fname_nrrd="data/images/CT-00006_DWI_dir79_APPA.nrrd"
-        proto=protocols.Protocols()
+        pipeline=['IMAGE_Check','TEST_Check','INTERLACE_Check']
+        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
+        proto=protocols.Protocols(modules)
         #proto.loadProtocols("data/protocol_files/protocols.yml")
         proto.setImagePath(fname_nrrd)
-        proto.makeDefaultProtocols(user_module_paths=['user/modules'])
-        proto.addPipeline('TEST_Check',index=13,default_protocol=False)
-        res=proto.runPipeline(user_module_paths=['user/modules'])
-        #logger(yaml.dump(res))
+        proto.makeDefaultProtocols(pipeline=pipeline)
+        #proto.addPipeline('TEST_Check',index=13,default_protocol=False)
+        res=proto.runPipeline()
+        logger(yaml.dump(res))
         proto.writeProtocols("data/test_protocols.yml")
         #logger(yaml.dump(proto.modules))
         return res

@@ -3,6 +3,7 @@ caption: BRAINMASK Check
 description: Brainmask check
 version: "0.1"
 dependency: []
+result: null
 protocol:
       method: 
         type: list

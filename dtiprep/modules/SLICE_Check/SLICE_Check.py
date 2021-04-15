@@ -11,6 +11,7 @@ class SLICE_Check(DTIPrepModule):
     def generateDefaultProtocol(self):
         super().generateDefaultProtocol()
         ## todos
+        return self.protocol
     def process(self): ## self.results_history, self.results 
         super().process()
         print("Child method begins")
@@ -18,4 +19,10 @@ class SLICE_Check(DTIPrepModule):
         logger(yaml.dump(inputParams))
 
         self.result['output']['success']=True
+        self.result['output']['parameters']={
+            "GradientNum": None, #int
+            "SliceNum" : None,  #int
+            "Correlation" : None    #float
+        }
+
         return self.result

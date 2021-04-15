@@ -1,20 +1,18 @@
 
-
+import dtiprep
+import yaml
 from dtiprep.modules import DTIPrepModule
-import dtiprep,yaml
-
 logger=dtiprep.logger.write
 
-class BASELINE_Average(DTIPrepModule):
+class DOMINANTDIRECTION_Check(DTIPrepModule):
     def __init__(self,*args,**kwargs):
-        super().__init__(BASELINE_Average)
+        super().__init__(DOMINANTDIRECTION_Check)
 
     def generateDefaultProtocol(self):
         super().generateDefaultProtocol()
         ## todos
         return self.protocol
-        
-    def process(self): ## self.results_history, self.results 
+    def process(self): ## self.results_history, self.results , self.template , self.protocol 
         super().process()
         print("Child method begins")
         inputParams=self.getPreviousResult()['output']
@@ -22,5 +20,3 @@ class BASELINE_Average(DTIPrepModule):
 
         self.result['output']['success']=True
         return self.result
-
-

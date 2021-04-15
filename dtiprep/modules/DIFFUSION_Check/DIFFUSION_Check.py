@@ -18,7 +18,7 @@ class DIFFUSION_Check(DTIPrepModule):
         self.result['output']['success']=True
         return self.result
 
-        return self.result
     def generateDefaultProtocol(self):
         super().generateDefaultProtocol()
         ## todos
+        return self.protocol

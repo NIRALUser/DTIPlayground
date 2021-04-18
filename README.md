@@ -1,4 +1,4 @@
-# DTI Toolkits
+# DTI Toolkits 
 
 DTI Toolkits are python based NIRAL pipeline software including DTIPrep (dtiprep), DTIAtlasBuilder (dtiab), DTIFiberTract Analyzer (dtifa)
 
@@ -26,12 +26,16 @@ Server Mode:
 - NRRD 
 - NIFTI
 
+### References
+
+- [Quality Control of Diffusion Weighted Images - Zhexing Liu, et al](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3864968/)
+
 ### Requirements
 
 ##### Application required
 
 - Python >= 3.6 
-- FSL >= 6.0
+- FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction)
 
 ##### Python libraries
 - pynrrd==0.4.2
@@ -39,6 +43,9 @@ Server Mode:
 - pyyaml==5.3.1
 
 ### Change Log
+
+##### 2021-04-18
+- Slicewise check implemented
 
 ##### 2021-04-15
 - DTIPrep : Sequential Pipelining implemented

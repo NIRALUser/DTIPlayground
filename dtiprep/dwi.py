@@ -18,18 +18,47 @@ logger=dtiprep.logger.write
 
 def _load_nrrd(filename):
     org_data,header = nrrd.read(filename)
+    
+    ## dimension checkout
+    kinds=[]
+    grad_axis=0
+    for idx,k in enumerate(header['kinds']):
+        if k.lower() != "domain" and k.lower() != 'space':
+            grad_axis=idx 
+            kinds.append(False)
+        else:
+            kinds.append(True)
+    ## extract image size 
+    img_size=[]
+    space_directions=[]
+    grad_size=None
+    for idx,k in enumerate(kinds):
+        if k: 
+            img_size.append(header['sizes'])
+            space_directions.append(header['space directions'][idx])
+        else:
+            grad_size=header['sizes'][idx]
+    img_size.append(grad_size)
+
+
+
     info={
         'space':header['space'],
         'dimension': int(header['dimension']),
-        'sizes':header['sizes'],
-        'image_size' : header['sizes'][1:],
+        'sizes':img_size, #header['sizes'],
+        'kinds': header['kinds'],
+        'kinds_space' : kinds,
+        'image_size' : img_size[:3],
         'b_value':float(header['DWMRI_b-value']),
-        'space_directions':header['space directions'][1:],
+        'space_directions':np.array(space_directions),
         'measurement_frame':header['measurement frame'],
         'space_origin':header['space origin']
     }
+    if "thicknesses" in header :
+        info['thicknesses'] = header['thicknesses']
+
     ### move axis to match nifti
-    data=np.moveaxis(org_data.copy(),0,-1)
+    data=np.moveaxis(org_data.copy(),grad_axis,-1)
     info['sizes']=data.shape
     info['image_size']=data.shape[0:3]
     ### extracting gradients
@@ -37,11 +66,11 @@ def _load_nrrd(filename):
     for k,v in header.items():
         if 'DWMRI_gradient' in k:
             idx=int(k.split('_')[2])
-            vec=np.array(list(map(lambda x: float(x),v.split(' '))))
+            vec=np.array(list(map(lambda x: float(x),v.split())))
             bval=np.sum(vec**2)*info['b_value']
             unit_vec=vec/np.sqrt(np.sum(vec**2))
-            gradients.append({'index':idx,'gradient':vec,'b_value':bval,'unit_gradient':unit_vec})
-
+            gradients.append({'index':idx,'gradient':vec,'b_value':bval,'unit_gradient':unit_vec,'active':True,'original_index':idx})
+    gradients=sorted(gradients,key=lambda x: x['index'])
     return data,gradients,info , (org_data,header)
 
 def _load_nifti(filename,bvecs_file=None,bvals_file=None):
@@ -67,7 +96,12 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     max_bval=np.max(bvals)
     for idx,vec in enumerate(normalized_vecs):
         denormalized_vec=vec*np.sqrt((bvals[idx]/max_bval))
-        gradients.append({'index':idx,'gradient': denormalized_vec,'b_value': bvals[idx],'unit_gradient': vec})
+        gradients.append({'index':idx,
+                          'gradient': denormalized_vec,
+                          'b_value': bvals[idx],
+                          'unit_gradient': vec,
+                          'active':True,
+                          'original_index':idx})
 
     ## move gradient index to the first (same to nrrd format)
     org_data, affine, header= dipy.io.image.load_nifti(filename,return_img=True)
@@ -101,7 +135,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     }
         
     return data, gradients, info, (org_data,affine,header)
-    
+
 def _load_dwi(filename, filetype='nrrd'):
     if filetype.lower()=='nrrd': ## load nrrd dwi image
         return _load_nrrd(filename)
@@ -110,7 +144,8 @@ def _load_dwi(filename, filetype='nrrd'):
     else:
         logger("Not a supported image type")
         return None
-    
+
+
 def _write_dwi(filename,images,header,filetype='nrrd'):
     if filetype.lower()=='nrrd': ## load nrrd dwi image
         return nrrd.write(filename,images,header=header)
@@ -144,6 +179,7 @@ class DWI:
     def __len__(self):
         return len(self.gradients)
     
+    @dtiprep.measure_time
     def writeImage(self,filename,filetype=None):
         imgtype='nrrd'
         out_images=None
@@ -155,29 +191,47 @@ class DWI:
             out_images=self.images      
         if filetype is not None:
             imgtype=filetype
+        logger("Writing image to : {}".format(str(filename)))
         _write_dwi(filename,out_images,self.information,filetype=imgtype)
+        logger("Image written.")
        
-            
+    @dtiprep.measure_time
     def loadImage(self,filename,filetype=None):
         if '.nrrd' in filename.lower(): self.image_type='nrrd'
         if '.nii' in filename.lower(): self.image_type='nifti'
         if filetype is not None:
             self.image_type=filetype
         self.images,self.gradients,self.information ,self.original_data = _load_dwi(filename,self.image_type)
-        self.update()
+        #self.update_information()
         logger("Image - {} loaded".format(self.filename),terminal_only=True)
-    
+        #if dtiprep._debug: logger(yaml.dump(self.information))
+
     def setB0Threshold(self,b0_threshold):
         self.b0_threshold=b0_threshold
+        self.getGradients()
     def getB0Threshold(self):
         return self.b0_threshold
     def getGradients(self):
         for e in self.gradients:
             e['baseline']=(e['b_value']<=self.b0_threshold)
         return self.gradients
-    def update(self):
-        ## here goes anything to update when file has been loaded
-        pass 
+
+    def deleteGradients(self,remove_list: list): #remove gradiensts and delete images corresponding to those gradients, list of gradient indexes
+        ## remove gradient slices
+        self.images=np.delete(self.images,remove_list,3)
+        self.gradients=list(filter(lambda x: x['original_index'] not in remove_list, self.gradients))
+        for idx,g in enumerate(self.gradients):
+            g['index']=idx 
+        self.update_information()
+
+
+    def update_information(self):
+        ## here goes anything to update when there is any changes on self.images
+
+        self.information['sizes']=self.images.shape 
+        self.information['image_size']=self.images.shape[:3]
+        ## reindexing
+
 
 
         

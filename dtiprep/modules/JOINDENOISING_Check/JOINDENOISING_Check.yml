@@ -3,6 +3,7 @@ caption: JOINDENOISING Check
 description: Joint Denoising Check (to be obsolete)
 version: "0.1"
 dependency: [] 
+module_type: dtiprep
 result: null
 protocol:
       Path: 

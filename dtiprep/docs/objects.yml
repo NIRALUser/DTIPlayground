@@ -1,0 +1,39 @@
+
+dtiprep:
+  result:
+    module_name: Module's name 
+    input: Previous result's output (previous output will be the input)
+    output:
+      success: Boolean success flag
+      image_path: Output image path 
+      image_object: Output image object reference id (to be passed to the next module as an input image)
+      parameters: output parameters (the one in the template)
+
+  modules:
+    module:  module object 
+    path: module's file path 
+    template: module's default template object
+    template_path: module's template file path 
+  
+  DWI.gradients:
+    - index: 0
+      gradient: gradient vector (b_value adjusted)
+      unit_gradient: normalized gradient whose norm is 1.0
+      baseline: Boolean is this baseline(B) image?
+      active: Boolean active gradient? (filter out non-active ones in the processing)
+    - index: 1
+      gradient: gradient vector (b_value adjusted)
+      unit_gradient: normalized gradient whose norm is 1.0
+      baseline: Boolean is this baseline(B) image?
+      active: Boolean active gradient? (filter out non-active ones in the processing)
+    #...      
+  DWI.information:
+    space: null
+    dimension: null
+    sizes: null
+    image_size: null 
+    b_value: null
+    space_directions: null
+    space_origin: null
+    measurement_frame: null
+

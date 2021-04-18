@@ -1,6 +1,6 @@
-# DTIPrep V2
+# DTI Toolkits
 
-DTIPrep is a tool to quality control the diffusion tensor images.
+DTI Toolkits are python based NIRAL pipeline software including DTIPrep (dtiprep), DTIAtlasBuilder (dtiab), DTIFiberTract Analyzer (dtifa)
 
 ### Usage
 
@@ -28,14 +28,24 @@ Server Mode:
 
 ### Requirements
 
-- Python3.6 or greater version
+##### Application required
 
-### Chenage Log
+- Python >= 3.6 
+- FSL >= 6.0
 
+##### Python libraries
+- pynrrd==0.4.2
+- dipy==1.4.0
+- pyyaml==5.3.1
+
+### Change Log
+
+##### 2021-04-15
+- DTIPrep : Sequential Pipelining implemented
 
 ##### 2021-04-09
-- New protocol format (YAML)
-- New protocol template (YAML)
+- DTIPrep : New protocol format (YAML)
+- DTIPrep : New protocol template (YAML)
 
 ##### 2021-04-01
-- Deveopement initiated
+- DTIPrep : Deveopement initiated

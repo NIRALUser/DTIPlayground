@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import dtiprep
-from dtiprep.io import DWI 
+from dtiprep.dwi import DWI 
 import dtiprep.modules
 import dtiprep.protocols as protocols
 import numpy as np 
@@ -11,13 +11,15 @@ import traceback
 import time 
 import copy
 import yaml
+import dtifa #dti fiber analyser
+import dtiab #dti atlas builder
 
 logger=dtiprep.logger.write
 
 def io_test():
     
     try:
-        fname_nrrd="data/images/CT-00006_DWI_dir79_APPA.nrrd"
+        fname_nrrd="_data/images/CT-00006_DWI_dir79_APPA.nrrd"
         # fname_nifti="data/images/CT-00006_DWI_dir79_APPA.nii.gz"
         # dwi_nifti=DWI(fname_nifti)
         dwi_nrrd=DWI(fname_nrrd)
@@ -59,17 +61,25 @@ def io_test():
     
 def protocol_test():
     try:
-        fname_nrrd="data/images/CT-00006_DWI_dir79_APPA.nrrd"
-        pipeline=['IMAGE_Check','TEST_Check','INTERLACE_Check']
+        fname_nrrd="_data/images/CT-00006_DWI_dir79_APPA.nrrd"
+        #fname_nrrd="_data/images/MMU45938_DTI_HF_fix1.nrrd"
+        #fname_nrrd="_data/images/neo-0378-1-1-10year-DWI_dir79_AP_1-series.nrrd"
+        #fname_nrrd="_data/images/ImageTest1.nrrd"
+        output_dir=str(Path(fname_nrrd).parent.joinpath("output"))
+        logfile=str(Path(output_dir).joinpath('log.txt'))
+        Path(output_dir).mkdir(parents=True,exist_ok=True)
+        dtiprep.logger.setLogfile(logfile)
+        pipeline=['DIFFUSION_Check','SLICE_Check','INTERLACE_Check']#,'EDDYMOTION_Correct']
         modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
         proto=protocols.Protocols(modules)
         #proto.loadProtocols("data/protocol_files/protocols.yml")
         proto.setImagePath(fname_nrrd)
+        proto.setOutputDirectory(output_dir)
         proto.makeDefaultProtocols(pipeline=pipeline)
         #proto.addPipeline('TEST_Check',index=13,default_protocol=False)
         res=proto.runPipeline()
-        logger(yaml.dump(res))
-        proto.writeProtocols("data/test_protocols.yml")
+        #logger(yaml.dump(res))
+        #proto.writeProtocols(Path(output_dir).joinpath("protocols.yml").__str__())
         #logger(yaml.dump(proto.modules))
         return res
     except Exception as e:
@@ -89,10 +99,10 @@ def run_tests(testlist: list):
 if __name__=='__main__':
     current_dir=Path(__file__).parent
     parser=argparse.ArgumentParser()
-    parser.add_argument('--log',help='log file',default=str(current_dir.joinpath('data/log.txt')))
+    parser.add_argument('--log',help='log file',default=str(current_dir.joinpath('_data/log.txt')))
     args=parser.parse_args()
     dtiprep.logger.setLogfile(args.log)
-    
+    dtiprep.logger.setTimestamp(False)
     
     tests=['io_test','protocol_test']
     run_tests(tests[1:])

@@ -3,6 +3,7 @@ caption: INTERLACE Check
 description: Interlaced correlation check
 version: "0.1"
 dependency: []
+module_type: dtiprep
 result:
     AngleX: null #float
     AngleY: null #float

@@ -7,6 +7,7 @@ result:
   z_score: null #float
   entropy_value: null #float
   detection_result: null #int
+module_type: dtiprep
 protocol:  
       Mean:
         type: float

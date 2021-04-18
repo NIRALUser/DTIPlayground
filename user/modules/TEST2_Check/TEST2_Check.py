@@ -15,7 +15,7 @@ class TEST2_Check(DTIPrepModule):
         super().generateDefaultProtocol()
         ## todos
         return self.protocol
-    def process(self):
+    def process(self): ## self.result_history, self.result , self.template , self.protocol 
         super().process()
         inputParams=self.getPreviousResult()['output']
         logger(yaml.dump(inputParams))

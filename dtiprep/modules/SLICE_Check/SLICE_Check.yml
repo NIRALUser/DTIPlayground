@@ -3,6 +3,7 @@ caption: SLICE Check
 description: Slicewise correlation check
 version: "0.1"
 dependency: []
+module_type: dtiprep
 result:
     GradientNum: null #int
     SliceNum: null #int
@@ -24,7 +25,7 @@ protocol:
         caption: Check Times
         default_value: 0
         description: TBD
-      headSkipPercentage: 
+      headSkipSlicePercentage: 
         type: float
         caption: Head Skip Percentage
         default_value: 0.10
@@ -44,6 +45,11 @@ protocol:
         caption: Correlation's Deviation Threshold Gradient 
         default_value: 3.5
         description: TBD
+      quadFit:
+        type: boolean 
+        caption: Quadratic fit 
+        default_value: True
+        description: Quadratic fit of stdev multiple between baseline and gradients
       outputDWIFileNameSuffix: 
         type: string
         caption: Suffix for the Output DWI Filename

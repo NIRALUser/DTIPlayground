@@ -3,10 +3,10 @@
 import yaml, inspect
 from pathlib import Path 
 import dtiprep 
-import pkgutil,sys
+import pkgutil,sys, copy
 logger=dtiprep.logger.write
 
-
+@dtiprep.measure_time
 def _load_modules(user_module_paths=[]):
     modules=_load_default_modules()
     usermodules= _load_modules_from_paths(user_module_paths)
@@ -34,20 +34,23 @@ def _load_modules_from_paths(user_module_paths: list):
             fn=Path(md.__file__)
             template_path= fn.parent.joinpath(fn.stem+'.yml')
             template=yaml.safe_load(open(template_path,'r'))
+            validity=getattr(md, md.__name__.split('.')[0])().checkDependency()
             modules[md.__name__.split('.')[0]]={
                                 "module" : md,
                                 "path" : md.__file__,
                                 "template" : template,
-                                "template_path" : template_path
+                                "template_path" : template_path,
+                                "valid" : validity
                                 } 
     return modules 
 
 load_modules=_load_modules
 
-class DTIPrepModule:
+class DTIPrepModule: #base class
     def __init__(self,*args, **kwargs):
         self.name=self.__class__.__name__
-        self.image=None
+        self.source_image=None
+        self.image=None #image for output
         self.protocol=None
         self.result_history=None
         self.result={
@@ -55,30 +58,50 @@ class DTIPrepModule:
             "input" : None,
             "output": {
                 "image_path" : None, #output image path (string)
+                "image_object" : None,
+                "excluded_gradients": [],
                 "success" : False,  
                 "parameters" : {}
             }
         }
         ##
         self.template=None
-
+        self.output_dir=None 
         ## loading template file (yml)
         self.loadTemplate()
-
-    def initialize(self,result_history):
+    
+    @dtiprep.measure_time
+    def initialize(self,result_history,output_dir):
         self.result_history=result_history
+        self.output_dir=output_dir
         inputpath=Path(self.result_history[0]["output"]["image_path"]).absolute()
+        previous_result=self.getPreviousResult()
+        if previous_result["output"]["image_object"] is not None:
+            self.source_image=dtiprep.object_by_id(previous_result["output"]["image_object"])
+            self.image=copy.deepcopy(self.source_image)
+            logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.image)))
+            logger(self.image.information)
+        else:
+            logger("Loading image from the file : {}".format(previous_result['output']['image_path']))
+            self.source_image=dtiprep.dwi.DWI(str(previous_result['output']['image_path']))
+            self.image=copy.deepcopy(self.source_image)
+            logger("Source Image (Previous output) loaded")
+            logger(self.image.information)
         self.result={  ### use this to pass the result (protocol class just appends those object)
             "module_name" : self.name,
-            #"protocol" : self.getProtocol(),
-            "input" : self.result_history[-1]["output"],
+            "input" : previous_result["output"],
             "output" :{
-                "image_path" : str(Path(inputpath).parent.joinpath(inputpath.stem+'_'+self.name + inputpath.suffix)), #output image path (string)
+                "image_path" : None, #str(Path(self.output_dir).joinpath("output.nrrd")), #output image path (string)
+                "image_object" : id(self.image),
                 "success" : False,  
-                "parameters" : {}
+                "parameters" : self.template['result']
             }
         }
-        
+
+
+    def checkDependency(self): #use information in template, check if this module can be processed
+        return True
+
     def getPreviousResult(self):
         return self.result_history[-1]
 
@@ -101,14 +124,29 @@ class DTIPrepModule:
         for k,v in self.template['protocol'].items():
                 self.protocol[k]=v['default_value']
         return self.protocol
+
     
     def process(self,*args,**kwargs): ## returns new result array (User implementation), returns output result
+        #anything common
+        ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         pass
 
+    @dtiprep.measure_time
     def run(self,*args,**kwargs): #wrapper 
 
         try:
-            self.process(*args,**kwargs)['output']
+            logger(">> INPUT (Previous result)")
+            #logger(yaml.dump(self.result_history[-1]['output']))
+            res=self.process(*args,**kwargs)['output']
+            logger(">> RESULT")
+            self.result['output']=res
+            if self.result['output']['image_object'] is None:
+                self.result['output']['image_object']=id(self.image)
+            self.result['output']['success']=True
+            outstr=yaml.dump(self.result)
+            with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
+                yaml.dump(self.result,f)
+            logger(yaml.dump(self.result['output']))
         except Exception as e:
             logger("Exception occurred in {}.run() : {}".format(self.name,str(e)))
             traceback.print_exc()

@@ -12,7 +12,7 @@ class DOMINANTDIRECTION_Check(DTIPrepModule):
         super().generateDefaultProtocol()
         ## todos
         return self.protocol
-    def process(self): ## self.results_history, self.results , self.template , self.protocol 
+    def process(self): ## self.result_history, self.result , self.template , self.protocol 
         super().process()
         print("Child method begins")
         inputParams=self.getPreviousResult()['output']

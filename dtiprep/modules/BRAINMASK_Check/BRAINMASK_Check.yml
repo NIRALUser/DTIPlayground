@@ -4,6 +4,7 @@ description: Brainmask check
 version: "0.1"
 dependency: []
 result: null
+module_type: dtiprep
 protocol:
       method: 
         type: list

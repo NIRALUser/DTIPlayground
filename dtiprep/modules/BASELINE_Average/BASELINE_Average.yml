@@ -4,7 +4,7 @@ description: Averaging baselines of the DTI
 version: "0.1"
 dependency: []
 result: null
-
+module_type: dtiprep
 protocol:
       averageMethod: 
         type: list 

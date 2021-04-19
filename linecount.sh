@@ -1,5 +1,5 @@
 #!/bin/bash
 
-flist=$(find ./ -regex '.*\.[py][ym]l*' -print);cat $flist | wc -l
+flist=$(find ./dtiprep -regex '.*\.[py][ym]l*' -print);cat $flist | wc -l
 
 

@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import dtiprep
+from pathlib import Path
+import yaml
 
 logger=dtiprep.logger.write
 
@@ -34,7 +36,7 @@ def quadratic_fit_generator(domain,fimage):
     return wrapper
 
 @dtiprep.measure_time
-def slice_check(image, # image object containing all the information
+def slice_check(image, computation_dir, # image object containing all the information
                 headskip=0.1, 
                 tailskip=0.1, 
                 baseline_z_Threshold= 3.0, 
@@ -57,7 +59,8 @@ def slice_check(image, # image object containing all the information
             af=image_tensor[:,:,i,k].reshape([1,-1])
             bf=image_tensor[:,:,i-1,k].reshape([1,-1])
             corr=ncc(af,bf)
-            if not np.isnan(corr): csum.append(corr)
+            if not np.isnan(corr): csum.append(float(corr))
+            else: csum.append(0.0)
         gsum.append(csum)
     gsum=np.array(gsum) 
 
@@ -79,7 +82,12 @@ def slice_check(image, # image object containing all the information
                 z_threshold=gradient_z_Threshold
             if g < avg- z_threshold*std:
                 if idx not in artifacts: artifacts[idx]=[]
-                artifacts[idx].append({"slice":slice_index+begin_slice,"correlation":g})
+                artifacts[idx].append({"slice":slice_index+begin_slice,"correlation":float(g)})
+
+    gsum_file=Path(computation_dir).joinpath('correlation_table.yml') # row=gradient index, col = slice index
+    yaml.dump(gsum.tolist(),open(gsum_file,'w'))
+    artifacts_file=Path(computation_dir).joinpath("artifacts.yml")
+    yaml.dump(artifacts,open(artifacts_file,'w'))
 
     ## recap and return the results
     arte=list(artifacts.items())

@@ -34,28 +34,27 @@ def _load_nrrd(filename):
     grad_size=None
     for idx,k in enumerate(kinds):
         if k: 
-            img_size.append(header['sizes'])
-            space_directions.append(header['space directions'][idx])
+            img_size.append(list(header['sizes'].tolist()))
+            space_directions.append(header['space directions'].tolist()[idx])
         else:
             grad_size=header['sizes'][idx]
     img_size.append(grad_size)
 
 
-
     info={
         'space':header['space'],
         'dimension': int(header['dimension']),
-        'sizes':img_size, #header['sizes'],
+        'sizes': list(img_size), #header['sizes'],
         'kinds': header['kinds'],
         'kinds_space' : kinds,
-        'image_size' : img_size[:3],
+        'image_size' : list(img_size[:3]),
         'b_value':float(header['DWMRI_b-value']),
-        'space_directions':np.array(space_directions),
-        'measurement_frame':header['measurement frame'],
-        'space_origin':header['space origin']
+        'space_directions': space_directions,
+        'measurement_frame':header['measurement frame'].tolist(),
+        'space_origin':header['space origin'].tolist()
     }
     if "thicknesses" in header :
-        info['thicknesses'] = header['thicknesses']
+        info['thicknesses'] = header['thicknesses'].tolist()
 
     ### move axis to match nifti
     data=np.moveaxis(org_data.copy(),grad_axis,-1)
@@ -68,8 +67,8 @@ def _load_nrrd(filename):
             idx=int(k.split('_')[2])
             vec=np.array(list(map(lambda x: float(x),v.split())))
             bval=np.sum(vec**2)*info['b_value']
-            unit_vec=vec/np.sqrt(np.sum(vec**2))
-            gradients.append({'index':idx,'gradient':vec,'b_value':bval,'unit_gradient':unit_vec,'active':True,'original_index':idx})
+            unit_vec=(vec/np.sqrt(np.sum(vec**2)))
+            gradients.append({'index':idx,'gradient':vec,'b_value':bval,'unit_gradient':unit_vec,'original_index':idx})
     gradients=sorted(gradients,key=lambda x: x['index'])
     return data,gradients,info , (org_data,header)
 
@@ -100,7 +99,6 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
                           'gradient': denormalized_vec,
                           'b_value': bvals[idx],
                           'unit_gradient': vec,
-                          'active':True,
                           'original_index':idx})
 
     ## move gradient index to the first (same to nrrd format)
@@ -126,12 +124,12 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     info={
         'space': space,
         'dimension': len(data.shape),
-        'sizes': np.array(data.shape),
-        'image_size' : np.array(data.shape[0:3]),
-        'b_value': max_bval,
-        'space_directions': space_directions,
-        'measurement_frame': np.identity(3), ## this needs to be clarified for nifti
-        'space_origin':space_origin  
+        'sizes': np.array(data.shape).tolist(),
+        'image_size' : np.array(data.shape[0:3]).tolist(),
+        'b_value': float(max_bval),
+        'space_directions': space_directions.tolist(),
+        'measurement_frame': np.identity(3).tolist(), ## this needs to be clarified for nifti
+        'space_origin':space_origin.tolist()
     }
         
     return data, gradients, info, (org_data,affine,header)
@@ -142,7 +140,7 @@ def _load_dwi(filename, filetype='nrrd'):
     elif filetype.lower()=='nifti':
         return _load_nifti(filename)
     else:
-        logger("Not a supported image type")
+        logger("Not a supported image type",dtiprep.Color.ERROR)
         return None
 
 
@@ -150,10 +148,10 @@ def _write_dwi(filename,images,header,filetype='nrrd'):
     if filetype.lower()=='nrrd': ## load nrrd dwi image
         return nrrd.write(filename,images,header=header)
     elif filetype.lower()=='nifti':
-        logger("Not a supported image type")
+        logger("Not a supported image type",dtiprep.Color.ERROR)
         return False
     else:
-        logger("Not a supported image type")
+        logger("Not a supported image type",dtiprep.Color.ERROR)
         return False
     
 class DWI:
@@ -191,9 +189,9 @@ class DWI:
             out_images=self.images      
         if filetype is not None:
             imgtype=filetype
-        logger("Writing image to : {}".format(str(filename)))
+        logger("Writing image to : {}".format(str(filename)),dtiprep.Color.PROCESS)
         _write_dwi(filename,out_images,self.information,filetype=imgtype)
-        logger("Image written.")
+        logger("Image written.",dtiprep.Color.OK)
        
     @dtiprep.measure_time
     def loadImage(self,filename,filetype=None):
@@ -203,7 +201,7 @@ class DWI:
             self.image_type=filetype
         self.images,self.gradients,self.information ,self.original_data = _load_dwi(filename,self.image_type)
         #self.update_information()
-        logger("Image - {} loaded".format(self.filename),terminal_only=True)
+        logger("Image - {} loaded".format(self.filename),dtiprep.Color.OK,terminal_only=True)
         #if dtiprep._debug: logger(yaml.dump(self.information))
 
     def setB0Threshold(self,b0_threshold):
@@ -211,15 +209,60 @@ class DWI:
         self.getGradients()
     def getB0Threshold(self):
         return self.b0_threshold
+
     def getGradients(self):
         for e in self.gradients:
-            e['baseline']=(e['b_value']<=self.b0_threshold)
+            e['baseline']=bool(e['b_value']<=self.b0_threshold)
         return self.gradients
+
+    def dumpInformation(self,filename):
+        info=self.information
+
+        yaml.dump(info,open(filename,'w'))       
+    def dumpGradients(self,filename):
+        grad=self.getGradients()
+        out_grad=[]
+        for g in grad:
+            temp={'index': int(g['index']),
+                 'original_index': int(g['original_index']),
+                 'b_value' : float(g['b_value']),
+                 'gradient': g['gradient'].tolist(),
+                 'unit_gradient': g['unit_gradient'].tolist(),
+                 "baseline" : bool(g['baseline'])
+            }
+            out_grad.append(temp)
+        yaml.dump(out_grad,open(filename,'w'))
+
+    def isGradientBaseline(self,gradient_index:int):
+        return self.getGradients()[gradient_index]['baseline']
+
+    def getBValueBounds(self):
+        grad=self.getGradients()
+        min_b= float(np.min([x['b_value'] for x in grad]) )
+        max_b= float(np.max([x['b_value'] for x in grad]) )
+        return [min_b,max_b]
+
+    def convertToOriginalGradientIndex(self,grad_indexes:list): # from actual index to original gradient index list
+        
+        out=[]
+        grad=self.getGradients()
+        for idx in grad_indexes:
+            out.append(grad[idx]['original_index'])
+        return out 
+
+    def deleteGradientsByOriginalIndex(self, original_indexes: list): #remove gradiensts and delete images corresponding to those gradients, list of gradient indexes
+        ## remove gradient slices
+        remove_list=[]
+        grad=self.getGradients()
+        for idx,g in enumerate(grad):
+            if g['original_index'] in original_indexes:
+                remove_list.append(idx)
+        self.deleteGradients(remove_list)
 
     def deleteGradients(self,remove_list: list): #remove gradiensts and delete images corresponding to those gradients, list of gradient indexes
         ## remove gradient slices
         self.images=np.delete(self.images,remove_list,3)
-        self.gradients=list(filter(lambda x: x['original_index'] not in remove_list, self.gradients))
+        self.gradients=list(filter(lambda x: x['index'] not in remove_list, self.gradients))
         for idx,g in enumerate(self.gradients):
             g['index']=idx 
         self.update_information()
@@ -227,9 +270,8 @@ class DWI:
 
     def update_information(self):
         ## here goes anything to update when there is any changes on self.images
-
-        self.information['sizes']=self.images.shape 
-        self.information['image_size']=self.images.shape[:3]
+        self.information['sizes']=list(self.images.shape )
+        self.information['image_size']=list(self.images.shape[:3])
         ## reindexing
 
 

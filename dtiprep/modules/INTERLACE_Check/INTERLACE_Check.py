@@ -10,6 +10,7 @@ import INTERLACE_Check.computations as computations
 
 import numpy as np
 import time
+from pathlib import Path
 logger=dtiprep.logger.write
 
 class INTERLACE_Check(DTIPrepModule):
@@ -21,47 +22,41 @@ class INTERLACE_Check(DTIPrepModule):
         return self.protocol
     def process(self): ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
-        print("Child method begins")
         inputParams=self.getPreviousResult()['output']
-        logger(yaml.dump(inputParams))
-        logger(self.image.images.shape)
+        #logger(yaml.dump(inputParams))
 
-        affine=np.transpose(np.append(self.image.information['space_directions'],np.expand_dims(self.image.information['space_origin'],0),axis=0))
-        affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
-        affine=computations.affine_3d_to_2d(affine)
+        ### Computation 
+        output=None
+        output_filename=Path(self.computation_dir).joinpath('computations.yml')
+        if output_filename.exists():
+            logger("There exists the result of interlacing computations",dtiprep.Color.INFO)
+            output=yaml.safe_load(open(output_filename,'r'))
+            logger("Computed parameters are loaded : {}".format(str(output_filename)),dtiprep.Color.OK)
+        else: 
+            ### actual computation for interlacing correlation and motions
+            logger("Computing interlace correlations and motions ...",dtiprep.Color.PROCESS)
+            output=computations.interlace_compute(self.image)
+            yaml.dump(output,open(output_filename,'w'))
+        ### Check for QC
+        logger("Checking bad gradients ...",dtiprep.Color.PROCESS)
+        gradient_indexes_to_remove , interlacing_results= computations.interlace_check( self.image,output,
+                                                         correlationDeviationBaseline=self.protocol['correlationDeviationBaseline'],
+                                                         correlationDeviationGradient=self.protocol['correlationDeviationGradient'],
+                                                         correlationThresholdBaseline=self.protocol['correlationThresholdBaseline'],
+                                                         correlationThresholdGradient=self.protocol['correlationThresholdGradient'],
+                                                         rotationThreshold=self.protocol['rotationThreshold'],
+                                                         translationThreshold=self.protocol['translationThreshold'])
 
-        output=[]
-        for gidx in range(self.image.images.shape[3]):
-            output_for_gradient=[]
-            vol=self.image.images[:,:,:,gidx]
-            logger("\nGradient {}/{} computing".format(gidx,self.image.images.shape[3]-1))
-            grad_et=0.0
-            for ix in range(vol.shape[2]):
-                if ix < 2 : continue
-                moving=vol[:,:,ix]
-                static=vol[:,:,ix-2]
-                #print(np.sum(moving-static))
-                #print(static)
-                bt=time.time()
-                norm=0.0
-                angle=0.0
-                try:
-                    transformed, out_affine=computations.rigid_2d(static,moving,affine,affine)
-                    norm=computations.measure_translation_from_affine_matrix(out_affine)
-                except Exception as e:
-                    #traceback.print_exc()
-                    print("Exception")
-                    print("Moving : {}, Static :{}\n".format(np.sum(moving**2),np.sum(static**2)))
-                et=time.time()-bt
-                grad_et+=et
-                print("\r[Slice {} and {}]  Translation: {:.4f} ,Max Angle: {:.4f} ,Time: {:.2f}s, Total: {:.0f}s".format(ix-2,ix,norm,angle,et,grad_et),end='\r')
-                # if norm > self.protocol['translationThreshold']:
-                #     print("\n")
-                output_for_gradient.append(out_affine)
-                #logger(out_affine)
-            output.append(output_for_gradient)
-
-        #logger(self.image.getGradients())
-
+        logger("\nExcluding gradients : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING)
+        check_filename=Path(self.computation_dir).joinpath('checks.yml')
+        yaml.dump(interlacing_results,open(check_filename,'w'))
+        logger("Check file saved : {}".format(str(check_filename)),dtiprep.Color.OK)
+        ### output preparation
+        self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
         self.result['output']['success']=True
+        #raise Exception("User Exception for development ...")
         return self.result
+
+    @dtiprep.measure_time
+    def postProcess(self,result_obj):
+        super().postProcess(result_obj)

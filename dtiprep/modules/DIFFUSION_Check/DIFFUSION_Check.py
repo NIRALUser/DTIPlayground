@@ -15,8 +15,7 @@ class DIFFUSION_Check(DTIPrepModule):
         inputParams=self.getPreviousResult()['output']
         logger(yaml.dump(inputParams))
 
-        self.result['output']['success']=True
-        self.result['output']['image_object']=id(self.image)
+
         return self.result
 
     def generateDefaultProtocol(self):

@@ -20,6 +20,7 @@ def io_test():
     
     try:
         fname_nrrd="_data/images/CT-00006_DWI_dir79_APPA.nrrd"
+
         # fname_nifti="data/images/CT-00006_DWI_dir79_APPA.nii.gz"
         # dwi_nifti=DWI(fname_nifti)
         dwi_nrrd=DWI(fname_nrrd)
@@ -62,6 +63,7 @@ def io_test():
 def protocol_test():
     try:
         fname_nrrd="_data/images/CT-00006_DWI_dir79_APPA.nrrd"
+        #fname_nrrd="_data/images/CT-00006_DWI_dir79_APPA.nii.gz"
         #fname_nrrd="_data/images/MMU45938_DTI_HF_fix1.nrrd"
         #fname_nrrd="_data/images/neo-0378-1-1-10year-DWI_dir79_AP_1-series.nrrd"
         #fname_nrrd="_data/images/ImageTest1.nrrd"
@@ -69,7 +71,7 @@ def protocol_test():
         logfile=str(Path(output_dir).joinpath('log.txt'))
         Path(output_dir).mkdir(parents=True,exist_ok=True)
         dtiprep.logger.setLogfile(logfile)
-        pipeline=['DIFFUSION_Check','SLICE_Check','INTERLACE_Check']#,'EDDYMOTION_Correct']
+        pipeline=['DIFFUSION_Check','SLICE_Check','INTERLACE_Check','BASELINE_Average']#,'EDDYMOTION_Correct']
         modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
         proto=protocols.Protocols(modules)
         #proto.loadProtocols("data/protocol_files/protocols.yml")
@@ -100,9 +102,10 @@ if __name__=='__main__':
     current_dir=Path(__file__).parent
     parser=argparse.ArgumentParser()
     parser.add_argument('--log',help='log file',default=str(current_dir.joinpath('_data/log.txt')))
+    parser.add_argument('--log-timestamp',help='Add timestamp in the log', default=False, action="store_true")
     args=parser.parse_args()
     dtiprep.logger.setLogfile(args.log)
-    dtiprep.logger.setTimestamp(False)
+    dtiprep.logger.setTimestamp(args.log_timestamp)
     
     tests=['io_test','protocol_test']
     run_tests(tests[1:])

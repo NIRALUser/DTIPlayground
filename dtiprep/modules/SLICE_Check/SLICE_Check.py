@@ -26,40 +26,31 @@ class SLICE_Check(DTIPrepModule):
     def process(self):  ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
-        logger(yaml.dump(inputParams))
-        logger(str(self.image.images.shape))
-        arte_sorted=computations.slice_check(self.image,
+        #logger(yaml.dump(inputParams))
+        arte_sorted=computations.slice_check(self.image,computation_dir=self.computation_dir,
                                              headskip=self.protocol['headSkipSlicePercentage'],
                                              tailskip=self.protocol['tailSkipSlicePercentage'],
                                              baseline_z_Threshold=self.protocol['correlationDeviationThresholdbaseline'],
                                              gradient_z_Threshold=self.protocol['correlationDeviationThresholdgradient'],
                                              quad_fit=self.protocol['quadFit'],
                                              subregion_check=self.protocol['bSubregionalCheck'],
-                                             subregion_relaxation_factor=self.protocol['subregionalCheckRelaxationFactor'])
-        logger("-------------------------------------------------------------")
-        logger("Abnormal gradients")
-        logger("-------------------------------------------------------------")
-        #print(arte_sorted)
+                                             subregion_relaxation_factor=self.protocol['subregionalCheckRelaxationFactor']
+                                             )
+        logger("-------------------------------------------------------------",dtiprep.Color.WARNING)
+        logger("Abnormal gradients",dtiprep.Color.WARNING)
+        logger("-------------------------------------------------------------",dtiprep.Color.WARNING)
+
         grads=self.image.getGradients()
         for a in arte_sorted:
             logger("For gradient {} , Vec {}, isB0 {}".format(a[0],grads[a[0]]['gradient'],grads[a[0]]['baseline']))
             for i in range(len(a[1])):
                 logger("\t\tSlice {}, Corr : {}".format(a[1][i]['slice'],a[1][i]['correlation']))
-
         gradient_indexes_to_remove=[ix[0] for ix in arte_sorted]
 
-        #outimg_filename=self.result['output']['image_path']
-        #self.image.writeImage(outimg_filename)
         ## make result and set final image to self.result and self.image (which are to be copied to the next pipeline module as on input)
-        self.image.deleteGradients(gradient_indexes_to_remove)
-        logger("Excluded gradient indexes : {}".format(gradient_indexes_to_remove))
-
-        self.result['output']['image_path']=Path(self.output_dir).joinpath('output.nrrd').__str__()
+        ## Excluded original indexes will be automatically deleted in the postProcess
+        logger("Excluded gradient indexes : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING) #gradient indexes are not original one , so need to convert
+        self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
+        #self.result['output']['image_path']=Path(self.output_dir).joinpath('output.nrrd').__str__()
         self.result['output']['success']=True
-        self.result['output']['parameters']={
-            "GradientNum": None, #int
-            "SliceNum" : None,  #int
-            "Correlation" : None    #float
-        }
-
         return self.result

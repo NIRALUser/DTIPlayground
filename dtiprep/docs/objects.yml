@@ -7,6 +7,9 @@ dtiprep:
       success: Boolean success flag
       image_path: Output image path 
       image_object: Output image object reference id (to be passed to the next module as an input image)
+      output_path: Output path (null if not exist), computation result et al
+      output_directory: Output directory for the process 
+      excluded_gradients: Original indexes if excluded gradients at the stage
       parameters: output parameters (the one in the template)
 
   modules:
@@ -20,12 +23,11 @@ dtiprep:
       gradient: gradient vector (b_value adjusted)
       unit_gradient: normalized gradient whose norm is 1.0
       baseline: Boolean is this baseline(B) image?
-      active: Boolean active gradient? (filter out non-active ones in the processing)
     - index: 1
       gradient: gradient vector (b_value adjusted)
       unit_gradient: normalized gradient whose norm is 1.0
       baseline: Boolean is this baseline(B) image?
-      active: Boolean active gradient? (filter out non-active ones in the processing)
+      
     #...      
   DWI.information:
     space: null
@@ -36,4 +38,5 @@ dtiprep:
     space_directions: null
     space_origin: null
     measurement_frame: null
+    thicknesses: null
 

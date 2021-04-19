@@ -45,7 +45,7 @@ Server Mode:
 ### Change Log
 
 ##### 2021-04-18
-- Slicewise check implemented
+- DTIPrep : Slicewise check implemented
 
 ##### 2021-04-15
 - DTIPrep : Sequential Pipelining implemented

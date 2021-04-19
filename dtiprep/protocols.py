@@ -117,29 +117,36 @@ class Protocols:
                 self.processes_history=[]
                 output_dir_map=_generate_output_directories(self.output_dir,self.pipeline)
                 self.writeProtocols(Path(self.output_dir).joinpath('protocols.yml').__str__())
+
+                ## load image and pass object it to the following modules
+                image=dtiprep.dwi.DWI(self.image_path)
+                self.result_history[-1]['output']['image_object']=id(image)
                 for idx,p in enumerate(self.pipeline):
                     bt=time.time()
-                    logger("-----------------------------------------------")
-                    logger("Processing [{0}/{1}] : {2}".format(idx+1,len(self.pipeline),p))
-                    resultfile_path=Path(output_dir_map[p]).joinpath('result.yml')
-                    logger("-----------------------------------------------")
-                    # if resultfile_path.exists():
-                    #     result_temp=yaml.safe_load(open(resultfile_path,'r'))
-                    #     result_temp['output']['image_object']=None
-                    #     self.result_history.append(result_temp)
-                    #     logger("Result file exists, continue to next process")
-                    #     continue
+                    logger("-----------------------------------------------",dtiprep.Color.BOLD)
+                    logger("Processing [{0}/{1}] : {2}".format(idx+1,len(self.pipeline),p),dtiprep.Color.BOLD)    
+                    logger("-----------------------------------------------",dtiprep.Color.BOLD)
                     if not self.modules[p]['valid']: raise Exception("Module {} is not configured correctly.".format(p))
                     m=getattr(self.modules[p]['module'], p)()
                     m.setProtocol(self.protocols)
                     m.initialize(self.result_history,output_dir=output_dir_map[p])
-                    success=m.run()
+                    success=False
+                    resultfile_path=Path(output_dir_map[p]).joinpath('result.yml')
+
+                    ### if result file is exist, just run post process and continue with previous information
+                    if resultfile_path.exists():
+                        result_temp=yaml.safe_load(open(resultfile_path,'r'))
+                        logger(dtiprep.Color.BOLD+"Result file exists, just post-processing ...",dtiprep.Color.INFO)
+                        m.postProcess(result_temp)
+                        success=True
+                    else:
+                        success=m.run()
                     if not success: raise Exception("Process failed in {}".format(p))
                     self.previous_process=m  #this is for the image id reference
                     self.result_history =m.getResultHistory()
                     et=time.time()-bt
                     self.result_history[-1]['processing_time']=et
-                    logger("[{}] Processed time : {:.2f}s".format(p,et))
+                    logger("[{}] Processed time : {:.2f}s".format(p,et),dtiprep.Color.DEV)
                 return self.result_history
             else:
                 raise Exception("Protocols are not set")

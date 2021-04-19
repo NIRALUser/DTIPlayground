@@ -16,9 +16,8 @@ class BASELINE_Average(DTIPrepModule):
         
     def process(self): ## self.result_history, self.result , self.template , self.protocol 
         super().process()
-        print("Child method begins")
         inputParams=self.getPreviousResult()['output']
-        logger(yaml.dump(inputParams))
+        #logger(yaml.dump(inputParams))
 
         self.result['output']['success']=True
         return self.result

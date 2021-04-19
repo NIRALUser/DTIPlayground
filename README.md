@@ -46,6 +46,8 @@ Server Mode:
 
 ##### 2021-04-18
 - DTIPrep : Slicewise check implemented
+- DTIPrep : Interlace check implemented
+- DTIPrep : Continuation from stopped point has been implemented , but if image itself is deformed it won't work. It only has ability to track exclusion of gradients
 
 ##### 2021-04-15
 - DTIPrep : Sequential Pipelining implemented

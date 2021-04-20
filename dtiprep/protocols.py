@@ -211,7 +211,9 @@ class Protocols:
                     success=True
                 else: # in case overwriting or there is no result.yml file
                     success=m.run()
-                if not success: raise Exception("Process failed in {}".format(p))
+                if not success:
+                    logger("[ERROR] Process failed in {}".format(p),dtiprep.Color.ERROR) 
+                    raise Exception("Process failed in {}".format(p))
                 self.previous_process=m  #this is for the image id reference
                 self.result_history =m.getResultHistory()
                 et=time.time()-bt
@@ -220,7 +222,7 @@ class Protocols:
             return self.result_history
 
         except Exception as e:
-            logger("Exception occurred in runPipeline {}".format(str(e)))
+            logger("Exception occurred in runPipeline {}".format(str(e)),dtiprep.Color.ERROR)
             traceback.print_exc()
             return None
         finally:

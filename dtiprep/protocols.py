@@ -29,8 +29,6 @@ def _generate_output_directories(output_dir,exec_sequence): ## map exec sequence
         module_output_dirs[uid]=str(module_output_dir)
     return module_output_dirs
 
-
-
 def default_pipeline_options():
     return {
                  "overwrite":False,
@@ -48,6 +46,9 @@ class Protocols:
         self.io={}
         self.version=None
 
+        #Image data 
+        self.image=None
+
         #Execution variables
         self.template_filename=Path(__file__).parent.joinpath("templates/protocol_template.yml")
         self.modules=modules
@@ -56,10 +57,12 @@ class Protocols:
         self.result_history=None
         self.output_path=None
 
-    def setImagePath(self, image_path): # this nullify previous results
+    def loadImage(self, image_path):
         self.image_path=str(Path(image_path).absolute())
+        logger("Loading original image : {}".format(str(self.image_path)),dtiprep.Color.PROCESS)
+        self.image=dtiprep.dwi.DWI(str(self.image_path))
         self.result_history=[{"output":{"image_path": str(Path(self.image_path).absolute()),
-                                         "image_object" : None}}]
+                                         "image_object" : id(self.image)}}]
 
     def getImagePath(self):
         return self.image_path
@@ -105,9 +108,13 @@ class Protocols:
 
     def makeDefaultProtocolForModule(self, module_name):
         if module_name in self.modules.keys():
-            self.protocols[module_name]=getattr(self.modules[module_name]['module'],module_name)().generateDefaultProtocol()
+            self.protocols[module_name]=getattr(self.modules[module_name]['module'],module_name)().generateDefaultProtocol(self.image)
 
     def makeDefaultProtocols(self,pipeline=None,template=None):
+        if self.image is None:
+            logger("[ERROR] Image is not loaded. Image should be loaded before generating default protocols",dtiprep.Color.ERROR)
+            raise Exception("Image is not loaded. Image should be loaded before generating default protocols")
+        logger("Default protocols are being generated using image information",dtiprep.Color.PROCESS)
         if template==None:
             template=yaml.safe_load(open(self.template_filename,'r'))
 
@@ -126,6 +133,8 @@ class Protocols:
         for p in self.pipeline:
             mod_name,options  = p
             self.makeDefaultProtocolForModule(mod_name)
+
+        logger("Default protocols are generated.",dtiprep.Color.OK)
 
     def furnishPipeline(self,pipeline):
         new_pipeline=[]
@@ -156,17 +165,11 @@ class Protocols:
                         logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),dtiprep.Color.WARNING)
                         raise Exception("Module {} is not configured correctly.".format(p))
 
-                
                 execution_sequence = _generate_exec_seqeunce(self.pipeline)
                 output_dir_map=_generate_output_directories(self.output_dir,execution_sequence)
-
-                self.writeProtocols(Path(self.output_dir).joinpath('protocols.yml').__str__())
-
-                ## load image and pass object it to the following modules
-                logger("Loading original image : {}".format(str(self.image_path)),dtiprep.Color.PROCESS)
-                image=dtiprep.dwi.DWI(self.image_path)
-                self.result_history[-1]['output']['image_object']=id(image)
-
+                protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()
+                logger("Writing protocol file to : {}".format(protocol_filename),dtiprep.Color.PROCESS)
+                self.writeProtocols(protocol_filename)
                 ## run pipeline
                 for idx,parr in enumerate(execution_sequence):
                     uid, p, options=parr 
@@ -179,6 +182,7 @@ class Protocols:
                     m.setProtocol(self.protocols)
                     m.setOptions(options)
                     logger(yaml.dump(m.getOptions()),dtiprep.Color.DEV)
+                    logger(yaml.dump(m.getProtocol()),dtiprep.Color.DEV)
                     m.initialize(self.result_history,output_dir=output_dir_map[uid])
                     success=False
                     resultfile_path=Path(output_dir_map[uid]).joinpath('result.yml')

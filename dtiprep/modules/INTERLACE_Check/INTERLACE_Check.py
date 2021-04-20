@@ -16,10 +16,14 @@ logger=dtiprep.logger.write
 class INTERLACE_Check(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(INTERLACE_Check)
-    def generateDefaultProtocol(self):
-        super().generateDefaultProtocol()
+
+    def generateDefaultProtocol(self,image_obj):
+        super().generateDefaultProtocol(image_obj)
         ## todos
+        spacing=float(np.sum(image_obj.information['space_directions'])/3.0)
+        self.protocol['translationThreshold']=spacing
         return self.protocol
+
     def process(self): ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']

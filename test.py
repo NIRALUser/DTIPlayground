@@ -77,17 +77,16 @@ def protocol_test():
                     ['SLICE_Check',options],
                     ['INTERLACE_Check',options],
                     ['BASELINE_Average',{"overwrite":False,"recompute":True}],
-                    ['EDDYMOTION_Correct',{"overwrite":True,"recompute":True}],
-                    ['SLICE_Check',options],
-                    ['SLICE_Check',options]
+                    ['EDDYMOTION_Correct',{"overwrite":True,"recompute":True}]
                  ]
-        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
+        env=yaml.safe_load(open('environment.yml','r'))
+        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'],environment=env)
         proto=protocols.Protocols(modules)
-        #proto.loadProtocols("data/protocol_files/protocols.yml")
-        proto.setImagePath(fname_nrrd)
+        
+        proto.loadImage(fname_nrrd)
         proto.setOutputDirectory(output_dir)
-        #proto.makeDefaultProtocols(pipeline=pipeline)
         proto.makeDefaultProtocols(pipeline=pipeline)
+        proto.loadProtocols("_data/protocol_files/test_protocols.yml")
         #proto.addPipeline('TEST_Check',index=13,default_protocol=False)
         res=proto.runPipeline()
         #logger(yaml.dump(res))
@@ -114,9 +113,11 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--log',help='log file',default=str(current_dir.joinpath('_data/log.txt')))
     parser.add_argument('--log-timestamp',help='Add timestamp in the log', default=False, action="store_true")
+    parser.add_argument('-n','--no-verbosity',help='Add timestamp in the log', default=True, action="store_false")
     args=parser.parse_args()
     dtiprep.logger.setLogfile(args.log)
     dtiprep.logger.setTimestamp(args.log_timestamp)
+    dtiprep.logger.setVerbosity(args.no_verbosity)
     
     tests=['io_test','protocol_test']
     run_tests(tests[1:])

@@ -17,11 +17,12 @@ logger=dtiprep.logger.write
 class BASELINE_Average(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(BASELINE_Average)
-
-    def generateDefaultProtocol(self):
-        super().generateDefaultProtocol()
+        
+    def generateDefaultProtocol(self,image_obj):
+        super().generateDefaultProtocol(image_obj)
         ## todos
         return self.protocol
+
         
     def process(self): ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()

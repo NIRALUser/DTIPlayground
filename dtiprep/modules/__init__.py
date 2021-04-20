@@ -16,7 +16,7 @@ def _load_modules(user_module_paths=[],environment={}):
 def _load_default_modules(environment={}): # user_modules list of paths of user modules
     modules={}
     default_module_paths=[Path(__file__).parent]
-    return _load_modules_from_paths(default_module_paths)
+    return _load_modules_from_paths(default_module_paths,environment)
 
 def _load_modules_from_paths(user_module_paths: list, environment={}):
     modules={}
@@ -154,7 +154,7 @@ class DTIPrepModule: #base class
     def getOptions(self):
         return self.options 
 
-    def generateDefaultProtocol(self):
+    def generateDefaultProtocol(self,image_obj):
         self.protocol={}
         for k,v in self.template['protocol'].items():
                 self.protocol[k]=v['default_value']

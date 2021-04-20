@@ -82,11 +82,15 @@ def measure_time(func):
     return wrapper 
 
 class BiLogger(object):
-    def __init__(self,timestamp=False):
+    def __init__(self,timestamp=False,verbosity=True):
         self.terminal=sys.stdout
         self.log_to_file=False
         self.timestamp=timestamp
-        
+        self.verbosity=verbosity 
+
+    def setVerbosity(self,v=True):
+        self.verbosity=v 
+
     def setLogfile(self,filename):
         self.file=open(filename,'w')
         self.log_to_file=True
@@ -102,7 +106,8 @@ class BiLogger(object):
               m="[{}]\t{}".format(datestr,m)
           else:
               m="{}".format(m)
-          self.terminal.write(text_color+m + Color.END+"\n")
+          if self.verbosity:
+              self.terminal.write(text_color+m + Color.END+"\n")
           if self.log_to_file and (not terminal_only):
               self.file.write(m+"\n")
               self.flush()

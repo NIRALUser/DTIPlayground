@@ -9,16 +9,17 @@ class DIFFUSION_Check(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(DIFFUSION_Check)
 
+    def generateDefaultProtocol(self,image_obj):
+        super().generateDefaultProtocol(image_obj)
+        ## todos
+        return self.protocol
+
     def process(self): ### variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
-        print("Child method begins")
         inputParams=self.getPreviousResult()['output']
-        logger(yaml.dump(inputParams))
+        logger("NOT IMPLEMENTED YET",dtiprep.Color.ERROR)
 
 
         return self.result
 
-    def generateDefaultProtocol(self):
-        super().generateDefaultProtocol()
-        ## todos
-        return self.protocol
+

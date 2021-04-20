@@ -1,25 +1,38 @@
 
 from dtiprep.modules import DTIPrepModule
 import dtiprep,yaml
+from pathlib import Path 
 
 logger=dtiprep.logger.write
 
 class SUSCEPTIBILITY_Correct(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(SUSCEPTIBILITY_Correct)
+
     def checkDependency(self,environment): #use information in template, check if this module can be processed
         # FSL should be ready before execution
+        if self.name in environment:
+            try:
+                fslpath=Path(environment[self.name]['fsl_path'])
+                fsl_exists=fslpath.exists()
+                if fsl_exists:
+                    return True, None 
+                else:
+                    return False, "FSL Path doesn't exist : {}".format(str(fslpath))
+            except Exception as e:
+                return False, "Exception in finding FSL6 : {}".format(str(e))
+        else:
+            return False, "Can't locate FSL" #test
 
-        return False, "Can't locate FSL" #test
-    def generateDefaultProtocol(self):
-        super().generateDefaultProtocol()
+    def generateDefaultProtocol(self,image_obj):
+        super().generateDefaultProtocol(image_obj)
         ## todos
         return self.protocol
+
     def process(self): ## self.result_history, self.result , self.template , self.protocol 
         super().process()
-        print("Child method begins")
         inputParams=self.getPreviousResult()['output']
-        logger(yaml.dump(inputParams))
+        logger("NOT IMPLEMENTED YET",dtiprep.Color.ERROR)
 
         self.result['output']['success']=True
         return self.result

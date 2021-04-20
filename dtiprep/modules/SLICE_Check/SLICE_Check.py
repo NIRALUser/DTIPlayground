@@ -16,10 +16,10 @@ logger=dtiprep.logger.write
 class SLICE_Check(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(SLICE_Check)
-    def generateDefaultProtocol(self):
-        super().generateDefaultProtocol()
-        ## todos
 
+    def generateDefaultProtocol(self,image_obj):
+        super().generateDefaultProtocol(image_obj)
+        ## todos
         return self.protocol
 
     @dtiprep.measure_time

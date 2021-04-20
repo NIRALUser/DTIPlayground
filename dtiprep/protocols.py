@@ -64,9 +64,6 @@ class Protocols:
         self.result_history=[{"output":{"image_path": str(Path(self.image_path).absolute()),
                                          "image_object" : id(self.image)}}]
 
-    def getImagePath(self):
-        return self.image_path
-
     def setOutputDirectory(self, output_dir=None):
         if output_dir is None:
             self.output_dir=Path(self.getImagePath()).parent
@@ -149,62 +146,77 @@ class Protocols:
                 new_pipeline.append([p,newopt])
         return new_pipeline 
 
+
+    def checkRunnable(self):
+        if self.image is None: 
+            logger("[ERROR] Image is not loaded.",dtiprep.Color.ERROR)
+            raise Exception("Image is not set")
+        elif self.protocols is None:
+            logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
+            raise Exception("Image is not set")
+        elif self.pipeline is None:
+            logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
+            raise Exception("Image is not set")
+
+    def checkProtocols(self):
+        if self.protocols is None:
+            logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
+            raise Exception("Image is not set")        
+
+
     @dtiprep.measure_time
     def runPipeline(self):
         try:
-            if self.getImagePath() is None: raise Exception("Image path is not set")
-            if self.protocols is not None:
-                self.processes_history=[]
+            self.checkRunnable()
+            self.processes_history=[]
+            
+            ## Check module validity
+            logger("Checking module validity ...",dtiprep.Color.PROCESS)
+            for parr in self.pipeline:
+                p, options = parr 
+                if not self.modules[p]['valid']: 
+                    msg=self.modules[p]['validity_message']
+                    logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),dtiprep.Color.WARNING)
+                    raise Exception("Module {} is not configured correctly.".format(p))
+
+            execution_sequence = _generate_exec_seqeunce(self.pipeline)
+            output_dir_map=_generate_output_directories(self.output_dir,execution_sequence)
+            protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()
+            logger("Writing protocol file to : {}".format(protocol_filename),dtiprep.Color.PROCESS)
+            self.writeProtocols(protocol_filename)
+            ## run pipeline
+            for idx,parr in enumerate(execution_sequence):
+                uid, p, options=parr 
+                bt=time.time()
+                logger("-----------------------------------------------",dtiprep.Color.BOLD)
+                logger("Processing [{0}/{1}] : {2}".format(idx+1,len(self.pipeline),p),dtiprep.Color.BOLD)    
+                logger("-----------------------------------------------",dtiprep.Color.BOLD)
                 
-                ## Check module validity
-                logger("Checking module validity ...",dtiprep.Color.PROCESS)
-                for parr in self.pipeline:
-                    p, options = parr 
-                    if not self.modules[p]['valid']: 
-                        msg=self.modules[p]['validity_message']
-                        logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),dtiprep.Color.WARNING)
-                        raise Exception("Module {} is not configured correctly.".format(p))
+                m=getattr(self.modules[p]['module'], p)()
+                m.setProtocol(self.protocols)
+                m.setOptions(options)
+                logger(yaml.dump(m.getOptions()),dtiprep.Color.DEV)
+                logger(yaml.dump(m.getProtocol()),dtiprep.Color.DEV)
+                m.initialize(self.result_history,output_dir=output_dir_map[uid])
+                success=False
+                resultfile_path=Path(output_dir_map[uid]).joinpath('result.yml')
 
-                execution_sequence = _generate_exec_seqeunce(self.pipeline)
-                output_dir_map=_generate_output_directories(self.output_dir,execution_sequence)
-                protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()
-                logger("Writing protocol file to : {}".format(protocol_filename),dtiprep.Color.PROCESS)
-                self.writeProtocols(protocol_filename)
-                ## run pipeline
-                for idx,parr in enumerate(execution_sequence):
-                    uid, p, options=parr 
-                    bt=time.time()
-                    logger("-----------------------------------------------",dtiprep.Color.BOLD)
-                    logger("Processing [{0}/{1}] : {2}".format(idx+1,len(self.pipeline),p),dtiprep.Color.BOLD)    
-                    logger("-----------------------------------------------",dtiprep.Color.BOLD)
-                    
-                    m=getattr(self.modules[p]['module'], p)()
-                    m.setProtocol(self.protocols)
-                    m.setOptions(options)
-                    logger(yaml.dump(m.getOptions()),dtiprep.Color.DEV)
-                    logger(yaml.dump(m.getProtocol()),dtiprep.Color.DEV)
-                    m.initialize(self.result_history,output_dir=output_dir_map[uid])
-                    success=False
-                    resultfile_path=Path(output_dir_map[uid]).joinpath('result.yml')
+                ### if result file is exist, just run post process and continue with previous information
+                if resultfile_path.exists() and not options['overwrite']:
+                    result_temp=yaml.safe_load(open(resultfile_path,'r'))
+                    logger("Result file exists, just post-processing ...",dtiprep.Color.INFO+dtiprep.Color.BOLD)
+                    m.postProcess(result_temp)
+                    success=True
+                else: # in case overwriting or there is no result.yml file
+                    success=m.run()
+                if not success: raise Exception("Process failed in {}".format(p))
+                self.previous_process=m  #this is for the image id reference
+                self.result_history =m.getResultHistory()
+                et=time.time()-bt
+                self.result_history[-1]['processing_time']=et
+                logger("[{}] Processed time : {:.2f}s".format(p,et),dtiprep.Color.DEV)
+            return self.result_history
 
-                    ### if result file is exist, just run post process and continue with previous information
-                    if resultfile_path.exists() and not options['overwrite']:
-                        result_temp=yaml.safe_load(open(resultfile_path,'r'))
-                        logger("Result file exists, just post-processing ...",dtiprep.Color.INFO+dtiprep.Color.BOLD)
-                        m.postProcess(result_temp)
-                        success=True
-                    else: # in case overwriting or there is no result.yml file
-                        success=m.run()
-                    if not success: raise Exception("Process failed in {}".format(p))
-                    self.previous_process=m  #this is for the image id reference
-                    self.result_history =m.getResultHistory()
-                    et=time.time()-bt
-                    self.result_history[-1]['processing_time']=et
-                    logger("[{}] Processed time : {:.2f}s".format(p,et),dtiprep.Color.DEV)
-                return self.result_history
-            else:
-                raise Exception("Protocols are not set")
-                return None
         except Exception as e:
             logger("Exception occurred in runPipeline {}".format(str(e)))
             traceback.print_exc()

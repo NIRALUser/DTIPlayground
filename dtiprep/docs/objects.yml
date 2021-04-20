@@ -40,3 +40,7 @@ dtiprep:
     measurement_frame: null
     thicknesses: null
 
+  pipeline.options:
+    overwrite: Boolean overwrite the result.yml file (recompute may not be done) 
+    recompute: Boolean recompute all the part (if overwrite is not True, then it doesn't matter wheter recompute is true or not)
+    write_image: Boolean check if intermediary image is to be written, but for some modules uncheck won't work due to the forced writing (e.g. Baseline averaging)

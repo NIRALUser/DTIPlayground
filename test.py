@@ -86,7 +86,7 @@ def protocol_test():
         proto.loadImage(fname_nrrd)
         proto.setOutputDirectory(output_dir)
         proto.makeDefaultProtocols(pipeline=pipeline)
-        proto.loadProtocols("_data/protocol_files/test_protocols.yml")
+        #proto.loadProtocols("_data/protocol_files/test_protocols.yml")
         #proto.addPipeline('TEST_Check',index=13,default_protocol=False)
         res=proto.runPipeline()
         #logger(yaml.dump(res))

@@ -11,8 +11,8 @@ logger=dtiprep.logger.write
 class TEST2_Check(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(TEST2_Check)
-    def generateDefaultProtocol(self):
-        super().generateDefaultProtocol()
+    def generateDefaultProtocol(self,image_obj):
+        super().generateDefaultProtocol(image_obj)
         ## todos
         return self.protocol
     def process(self): ## self.result_history, self.result , self.template , self.protocol 

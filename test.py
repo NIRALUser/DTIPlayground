@@ -87,7 +87,7 @@ def protocol_test():
         proto.setOutputDirectory(output_dir)
         proto.makeDefaultProtocols(pipeline=pipeline)
         #proto.loadProtocols("_data/protocol_files/test_protocols.yml")
-        #proto.addPipeline('TEST_Check',index=13,default_protocol=False)
+        proto.addPipeline('TEST_Check',index=13,default_protocol=True)
         res=proto.runPipeline()
         #logger(yaml.dump(res))
         #proto.writeProtocols(Path(output_dir).joinpath("protocols.yml").__str__())

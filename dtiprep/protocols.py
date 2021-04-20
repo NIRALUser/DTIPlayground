@@ -97,9 +97,11 @@ class Protocols:
     def setModules(self,modules):
         self.modules=modules 
 
-    def addPipeline(self,modulename,options={},index=-1,default_protocol=False):
+    def addPipeline(self,modulename,options={},index=-1,default_protocol=True):
+        opt=default_pipeline_options()
+        opt.update(options)
         if modulename not in list(map(lambda x:x[0],self.pipeline)):
-            self.pipeline.insert(index, [modulename,options])
+            self.pipeline.insert(index, [modulename,opt])
             if default_protocol:
                 self.makeDefaultProtocolForModule(modulename)
 
@@ -108,9 +110,7 @@ class Protocols:
             self.protocols[module_name]=getattr(self.modules[module_name]['module'],module_name)().generateDefaultProtocol(self.image)
 
     def makeDefaultProtocols(self,pipeline=None,template=None):
-        if self.image is None:
-            logger("[ERROR] Image is not loaded. Image should be loaded before generating default protocols",dtiprep.Color.ERROR)
-            raise Exception("Image is not loaded. Image should be loaded before generating default protocols")
+        self.checkImage()
         logger("Default protocols are being generated using image information",dtiprep.Color.PROCESS)
         if template==None:
             template=yaml.safe_load(open(self.template_filename,'r'))
@@ -148,37 +148,39 @@ class Protocols:
 
 
     def checkRunnable(self):
-        if self.image is None: 
-            logger("[ERROR] Image is not loaded.",dtiprep.Color.ERROR)
-            raise Exception("Image is not set")
-        elif self.protocols is None:
-            logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
-            raise Exception("Image is not set")
-        elif self.pipeline is None:
-            logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
-            raise Exception("Image is not set")
+        logger("Checking runability ...",dtiprep.Color.PROCESS)
+        self.checkImage()
+        self.checkProtocols()
+        self.checkPipeline()
+        self.checkDependencies()
 
+    def checkImage(self):
+         if self.image is None: 
+            logger("[ERROR] Image is not loaded.",dtiprep.Color.ERROR)
+            raise Exception("Image is not set")       
     def checkProtocols(self):
         if self.protocols is None:
             logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
-            raise Exception("Image is not set")        
-
+            raise Exception("Image is not set")    
+    def checkPipeline(self):
+        if self.pipeline is None:
+            logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
+            raise Exception("Image is not set")
+    def checkDependencies(self):
+        for parr in self.pipeline:
+            p, options = parr 
+            if not self.modules[p]['valid']: 
+                msg=self.modules[p]['validity_message']
+                logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),dtiprep.Color.WARNING)
+                raise Exception("Module {} is not configured correctly.".format(p))    
 
     @dtiprep.measure_time
     def runPipeline(self):
         try:
+
             self.checkRunnable()
             self.processes_history=[]
             
-            ## Check module validity
-            logger("Checking module validity ...",dtiprep.Color.PROCESS)
-            for parr in self.pipeline:
-                p, options = parr 
-                if not self.modules[p]['valid']: 
-                    msg=self.modules[p]['validity_message']
-                    logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),dtiprep.Color.WARNING)
-                    raise Exception("Module {} is not configured correctly.".format(p))
-
             execution_sequence = _generate_exec_seqeunce(self.pipeline)
             output_dir_map=_generate_output_directories(self.output_dir,execution_sequence)
             protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()

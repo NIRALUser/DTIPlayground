@@ -42,9 +42,16 @@ class SLICE_Check(DTIPrepModule):
 
         grads=self.image.getGradients()
         for a in arte_sorted:
-            logger("For gradient {} , Vec {}, isB0 {}".format(a[0],grads[a[0]]['gradient'],grads[a[0]]['baseline']))
+            grad_index=a[0]
+            grad_original_index=grads[a[0]]['original_index']
+            vec=grads[a[0]]['gradient']
+            isB0=grads[a[0]]['baseline']
+            logger("For gradient {} (Org.Idx {}) , Vec {}, isB0 {}".format(grad_index,
+                                                                            grad_original_index,
+                                                                            vec,
+                                                                            isB0))
             for i in range(len(a[1])):
-                logger("\t\tSlice {}, Corr : {}".format(a[1][i]['slice'],a[1][i]['correlation']))
+                logger("\t\tSlice.idx {}, Correlation : {:.4f}".format(a[1][i]['slice'],a[1][i]['correlation']))
         gradient_indexes_to_remove=[ix[0] for ix in arte_sorted]
 
         ## make result and set final image to self.result and self.image (which are to be copied to the next pipeline module as on input)

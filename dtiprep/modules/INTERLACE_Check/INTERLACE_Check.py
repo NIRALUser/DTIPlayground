@@ -28,7 +28,8 @@ class INTERLACE_Check(DTIPrepModule):
         ### Computation 
         output=None
         output_filename=Path(self.computation_dir).joinpath('computations.yml')
-        if output_filename.exists():
+        if output_filename.exists() and not self.options['recompute']:
+            logger("Recompute : {}".format(self.options['recompute']),dtiprep.Color.INFO)
             logger("There exists the result of interlacing computations",dtiprep.Color.INFO)
             output=yaml.safe_load(open(output_filename,'r'))
             logger("Computed parameters are loaded : {}".format(str(output_filename)),dtiprep.Color.OK)
@@ -47,7 +48,7 @@ class INTERLACE_Check(DTIPrepModule):
                                                          rotationThreshold=self.protocol['rotationThreshold'],
                                                          translationThreshold=self.protocol['translationThreshold'])
 
-        logger("\nExcluding gradients : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING)
+        logger("\nExcluded gradients : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING)
         check_filename=Path(self.computation_dir).joinpath('checks.yml')
         yaml.dump(interlacing_results,open(check_filename,'w'))
         logger("Check file saved : {}".format(str(check_filename)),dtiprep.Color.OK)

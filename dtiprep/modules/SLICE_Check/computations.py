@@ -73,7 +73,7 @@ def slice_check(image, computation_dir, # image object containing all the inform
         gradwise_vec=gsum[:,slice_index]
         avg=np.mean(gradwise_vec)
         std=np.std(gradwise_vec)
-        logger("Slice {}, Mean {}, Std {}".format(slice_index+begin_slice,avg,std))
+        logger("Slice {}, Mean {:.4f}, Std {:.4f}".format(slice_index+begin_slice,avg,std))
         for idx,g in enumerate(gradwise_vec):
             z_threshold=baseline_z_Threshold
             if quad_fit:
@@ -82,7 +82,11 @@ def slice_check(image, computation_dir, # image object containing all the inform
                 z_threshold=gradient_z_Threshold
             if g < avg- z_threshold*std:
                 if idx not in artifacts: artifacts[idx]=[]
-                artifacts[idx].append({"slice":slice_index+begin_slice,"correlation":float(g)})
+                artifacts[idx].append({"slice":slice_index+begin_slice,
+                                        "correlation":float(g),
+                                        'z_threshold':float(z_threshold),
+                                        'z_value':float((g-avg)/std),
+                                        'b_value':float(gradients[idx]['b_value'])})
 
     gsum_file=Path(computation_dir).joinpath('correlation_table.yml') # row=gradient index, col = slice index
     yaml.dump(gsum.tolist(),open(gsum_file,'w'))

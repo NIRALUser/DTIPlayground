@@ -96,14 +96,16 @@ class BiLogger(object):
         
     def write(self,message,text_color=Color.END,terminal_only=False):
         datestr=get_timestamp()
-        if self.timestamp:
-            message="[{}]\t{}".format(datestr,message)
-        else:
-            message="{}".format(message)
-        self.terminal.write(text_color+message + Color.END+"\n")
-        if self.log_to_file and (not terminal_only):
-            self.file.write(message+"\n")
-            self.flush()
+        messages=message.split('\n')
+        for m in messages:
+          if self.timestamp:
+              m="[{}]\t{}".format(datestr,m)
+          else:
+              m="{}".format(m)
+          self.terminal.write(text_color+m + Color.END+"\n")
+          if self.log_to_file and (not terminal_only):
+              self.file.write(m+"\n")
+              self.flush()
 
     def flush(self):
         self.file.flush()

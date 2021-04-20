@@ -7,10 +7,10 @@ logger=dtiprep.logger.write
 class SUSCEPTIBILITY_Correct(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(SUSCEPTIBILITY_Correct)
-    def checkDependency(self): #use information in template, check if this module can be processed
+    def checkDependency(self,environment): #use information in template, check if this module can be processed
         # FSL should be ready before execution
 
-        return True #test
+        return False, "Can't locate FSL" #test
     def generateDefaultProtocol(self):
         super().generateDefaultProtocol()
         ## todos

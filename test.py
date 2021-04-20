@@ -71,12 +71,22 @@ def protocol_test():
         logfile=str(Path(output_dir).joinpath('log.txt'))
         Path(output_dir).mkdir(parents=True,exist_ok=True)
         dtiprep.logger.setLogfile(logfile)
-        pipeline=['DIFFUSION_Check','SLICE_Check','INTERLACE_Check','BASELINE_Average']#,'EDDYMOTION_Correct']
+        options={"overwrite":False}
+        pipeline=[  
+                    ['DIFFUSION_Check',options],
+                    ['SLICE_Check',options],
+                    ['INTERLACE_Check',options],
+                    ['BASELINE_Average',{"overwrite":False,"recompute":True}],
+                    ['EDDYMOTION_Correct',{"overwrite":True,"recompute":True}],
+                    ['SLICE_Check',options],
+                    ['SLICE_Check',options]
+                 ]
         modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
         proto=protocols.Protocols(modules)
         #proto.loadProtocols("data/protocol_files/protocols.yml")
         proto.setImagePath(fname_nrrd)
         proto.setOutputDirectory(output_dir)
+        #proto.makeDefaultProtocols(pipeline=pipeline)
         proto.makeDefaultProtocols(pipeline=pipeline)
         #proto.addPipeline('TEST_Check',index=13,default_protocol=False)
         res=proto.runPipeline()
@@ -92,9 +102,10 @@ def protocol_test():
     
 def run_tests(testlist: list):
     for idx,t in enumerate(testlist):
-        logger("---------------------------------------")
-        logger("--------- {}/{} - Running : {}".format(idx+1,len(testlist),t))
-        logger("---------------------------------------")
+        c=dtiprep.Color.BLACK+dtiprep.Color.BOLD
+        logger("---------------------------------------",c)
+        logger("--------- {}/{} - Running : {}".format(idx+1,len(testlist),t),c)
+        logger("---------------------------------------",c)
         if eval(t)() : logger("[{}/{}] : {} - Success".format(idx+1,len(testlist),t))
         else: logger("[{}/{}] : {} - Failed".format(idx+1,len(testlist),t))
 

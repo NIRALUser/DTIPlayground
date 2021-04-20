@@ -11,14 +11,32 @@ logger=dtiprep.logger.write
 def _load_protocol(filename):
     return yaml.safe_load(open(filename,'r'))
 
-def _generate_output_directories(output_dir,pipeline):
+def _generate_exec_seqeunce(pipeline): ## generate sequence using uuid to avoid the issue from redundant module use
+    seq=[]
+    for parr in pipeline:
+        uid=dtiprep.get_uuid()
+        seq.append([uid]+parr)
+    return seq 
+
+
+def _generate_output_directories(output_dir,exec_sequence): ## map exec sequence uuid to output directory
     Path(output_dir).mkdir(parents=True,exist_ok=True)
     module_output_dirs={}
-    for idx,m in enumerate(pipeline):
+    for idx,parr in enumerate(exec_sequence):
+        uid, m,options=parr 
         module_output_dir=Path(output_dir).joinpath("{:02d}_{}".format(idx,m))
         module_output_dir.mkdir(parents=True,exist_ok=True)
-        module_output_dirs[m]=str(module_output_dir)
+        module_output_dirs[uid]=str(module_output_dir)
     return module_output_dirs
+
+
+
+def default_pipeline_options():
+    return {
+                 "overwrite":False,
+                 "recompute":False,
+                 "write_image":False # unless module is forced to write (such as BASELINE_Average, or correcting ones)
+            }
 
 class Protocols:
     def __init__(self,modules=None,*args,**kwargs):
@@ -66,7 +84,7 @@ class Protocols:
         try:
             self.rawdata=_load_protocol(filename)
             self.version=self.rawdata['version']
-            self.pipeline=self.rawdata['pipeline']
+            self.pipeline=self.furnishPipeline(self.rawdata['pipeline'])
             self.protocols=self.rawdata['protocols']
             self.io=self.rawdata['io']
             self.protocol_filename=filename
@@ -79,9 +97,9 @@ class Protocols:
     def setModules(self,modules):
         self.modules=modules 
 
-    def addPipeline(self,modulename,index=-1,default_protocol=False):
-        if modulename not in self.pipeline:
-            self.pipeline.insert(index, modulename)
+    def addPipeline(self,modulename,options={},index=-1,default_protocol=False):
+        if modulename not in list(map(lambda x:x[0],self.pipeline)):
+            self.pipeline.insert(index, [modulename,options])
             if default_protocol:
                 self.makeDefaultProtocolForModule(modulename)
 
@@ -102,12 +120,25 @@ class Protocols:
         if self.output_dir is not None:
             self.io['output_directory']=str(self.output_dir)
         if pipeline is not None:
-            self.pipeline=pipeline 
+            self.pipeline=self.furnishPipeline(pipeline)
         else:
-            self.pipeline=template['options']['execution']['pipeline']['default_value']
-        for mod_name in self.pipeline:
+            self.pipeline=self.furnishPipeline(template['options']['execution']['pipeline']['default_value'])
+        for p in self.pipeline:
+            mod_name,options  = p
             self.makeDefaultProtocolForModule(mod_name)
 
+    def furnishPipeline(self,pipeline):
+        new_pipeline=[]
+        for parr in pipeline:
+            default_options=default_pipeline_options()
+            if not isinstance(parr, list):
+                new_pipeline.append([parr,default_options])
+            else:
+                p,opt = parr 
+                default_options.update(opt)
+                newopt=default_options
+                new_pipeline.append([p,newopt])
+        return new_pipeline 
 
     @dtiprep.measure_time
     def runPipeline(self):
@@ -115,31 +146,50 @@ class Protocols:
             if self.getImagePath() is None: raise Exception("Image path is not set")
             if self.protocols is not None:
                 self.processes_history=[]
-                output_dir_map=_generate_output_directories(self.output_dir,self.pipeline)
+                
+                ## Check module validity
+                logger("Checking module validity ...",dtiprep.Color.PROCESS)
+                for parr in self.pipeline:
+                    p, options = parr 
+                    if not self.modules[p]['valid']: 
+                        msg=self.modules[p]['validity_message']
+                        logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),dtiprep.Color.WARNING)
+                        raise Exception("Module {} is not configured correctly.".format(p))
+
+                
+                execution_sequence = _generate_exec_seqeunce(self.pipeline)
+                output_dir_map=_generate_output_directories(self.output_dir,execution_sequence)
+
                 self.writeProtocols(Path(self.output_dir).joinpath('protocols.yml').__str__())
 
                 ## load image and pass object it to the following modules
+                logger("Loading original image : {}".format(str(self.image_path)),dtiprep.Color.PROCESS)
                 image=dtiprep.dwi.DWI(self.image_path)
                 self.result_history[-1]['output']['image_object']=id(image)
-                for idx,p in enumerate(self.pipeline):
+
+                ## run pipeline
+                for idx,parr in enumerate(execution_sequence):
+                    uid, p, options=parr 
                     bt=time.time()
                     logger("-----------------------------------------------",dtiprep.Color.BOLD)
                     logger("Processing [{0}/{1}] : {2}".format(idx+1,len(self.pipeline),p),dtiprep.Color.BOLD)    
                     logger("-----------------------------------------------",dtiprep.Color.BOLD)
-                    if not self.modules[p]['valid']: raise Exception("Module {} is not configured correctly.".format(p))
+                    
                     m=getattr(self.modules[p]['module'], p)()
                     m.setProtocol(self.protocols)
-                    m.initialize(self.result_history,output_dir=output_dir_map[p])
+                    m.setOptions(options)
+                    logger(yaml.dump(m.getOptions()),dtiprep.Color.DEV)
+                    m.initialize(self.result_history,output_dir=output_dir_map[uid])
                     success=False
-                    resultfile_path=Path(output_dir_map[p]).joinpath('result.yml')
+                    resultfile_path=Path(output_dir_map[uid]).joinpath('result.yml')
 
                     ### if result file is exist, just run post process and continue with previous information
-                    if resultfile_path.exists():
+                    if resultfile_path.exists() and not options['overwrite']:
                         result_temp=yaml.safe_load(open(resultfile_path,'r'))
-                        logger(dtiprep.Color.BOLD+"Result file exists, just post-processing ...",dtiprep.Color.INFO)
+                        logger("Result file exists, just post-processing ...",dtiprep.Color.INFO+dtiprep.Color.BOLD)
                         m.postProcess(result_temp)
                         success=True
-                    else:
+                    else: # in case overwriting or there is no result.yml file
                         success=m.run()
                     if not success: raise Exception("Process failed in {}".format(p))
                     self.previous_process=m  #this is for the image id reference

@@ -2,7 +2,6 @@ import numpy as np
 import nrrd
 import dipy
 import dipy.io.image as dii
-import matplotlib.pyplot as plt
 import yaml
 from pathlib import Path
 import dtiprep
@@ -66,9 +65,9 @@ def _load_nrrd(filename):
         if 'DWMRI_gradient' in k:
             idx=int(k.split('_')[2])
             vec=np.array(list(map(lambda x: float(x),v.split())))
-            bval=np.sum(vec**2)*info['b_value']
+            bval=float(np.sum(vec**2)*info['b_value'])
             unit_vec=(vec/np.sqrt(np.sum(vec**2)))
-            gradients.append({'index':idx,'gradient':vec,'b_value':bval,'unit_gradient':unit_vec,'original_index':idx})
+            gradients.append({'index':idx,'gradient':vec.tolist(),'b_value':bval,'unit_gradient':unit_vec.tolist(),'original_index':idx})
     gradients=sorted(gradients,key=lambda x: x['index'])
     return data,gradients,info , (org_data,header)
 
@@ -89,14 +88,14 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     max_bval=0.0
     for idx,bv in enumerate(bvpairs):
         bval,bvec = bv
-        normalized_vecs.append(np.array(list(map(lambda x: float(x), bvec.split(' ')))))
+        normalized_vecs.append(np.array(list(map(lambda x: float(x), bvec.split(' ')))).tolist())
         bvals.append(float(bval))
 
     max_bval=np.max(bvals)
     for idx,vec in enumerate(normalized_vecs):
-        denormalized_vec=vec*np.sqrt((bvals[idx]/max_bval))
-        gradients.append({'index':idx,
-                          'gradient': denormalized_vec,
+        denormalized_vec=np.array(vec)*np.sqrt((bvals[idx]/max_bval))
+        gradients.append({'index':int(idx),
+                          'gradient': denormalized_vec.tolist(),
                           'b_value': bvals[idx],
                           'unit_gradient': vec,
                           'original_index':idx})
@@ -143,15 +142,54 @@ def _load_dwi(filename, filetype='nrrd'):
         logger("Not a supported image type",dtiprep.Color.ERROR)
         return None
 
+def get_nrrd_gradient_axis(kinds):
+    grad_axis=0
+    for idx,k in enumerate(kinds):
+        if k.lower() != "domain" and k.lower() != 'space':
+            grad_axis=idx 
+    return grad_axis
 
-def _write_dwi(filename,images,header,filetype='nrrd'):
-    if filetype.lower()=='nrrd': ## load nrrd dwi image
-        return nrrd.write(filename,images,header=header)
-    elif filetype.lower()=='nifti':
+def export_nrrd_to_nrrd(image): #nrrd loaded image to nrrd format (dtiprep.dwi.DWI object)
+    if image.image_type.lower() != 'nrrd': raise Exception("Nrrd type image is required for this function")
+    info=image.information
+    grad=image.getGradients()
+    
+    new_data=copy.deepcopy(image.images)
+    org_header=copy.deepcopy(dict(image.original_data[1]))
+    grad_axis_original=get_nrrd_gradient_axis(org_header['kinds'])
+    grad_axis=-1
+
+    new_header=copy.deepcopy(org_header)
+    s=list(new_data.shape)
+    new_header['dimension']=len(new_data.shape)
+    g=s[grad_axis]
+    s=s[:grad_axis]+s[grad_axis:-1]
+    s=s[:grad_axis_original]+[g]+s[grad_axis_original:]
+    new_header['sizes']=s
+    copy_hdr=copy.deepcopy(new_header)
+    for k,v in copy_hdr.items():    
+        if 'dwmri_gradient' in k.lower():
+            del new_header[k]
+    for idx,g in enumerate(grad):
+        k="DWMRI_gradient_{:04d}".format(idx)
+        new_header[k]=" ".join([str(x) for x in g['gradient'].tolist()])
+    new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
+    return new_data,new_header
+
+def _write_dwi(filename,image , dest_type='nrrd'): ## image : image object (dtiprep.dwi.DWI)
+    if dest_type.lower()=='nrrd': ## load nrrd dwi image
+        if image.image_type=='nrrd':
+            data,header = export_nrrd_to_nrrd(image)
+        else:
+            raise Exception("Not implemented yet")
+        return nrrd.write(filename,data,header=header)
+    elif dest_type.lower()=='nifti':
+        raise Exception("Not implemented yet")
         logger("Not a supported image type",dtiprep.Color.ERROR)
         return False
     else:
         logger("Not a supported image type",dtiprep.Color.ERROR)
+        raise Exception("Not a supported image type")
         return False
     
 class DWI:
@@ -178,21 +216,17 @@ class DWI:
         return len(self.gradients)
     
     @dtiprep.measure_time
-    def writeImage(self,filename,filetype=None):
-        imgtype='nrrd'
+    def writeImage(self,filename,dest_type='nrrd'):
         out_images=None
         if '.nrrd' in filename.lower(): 
-            imgtype='nrrd'
-            out_images=np.moveaxis(self.images.copy(),-1,0)
+            dest_type='nrrd'
         if '.nii' in filename.lower(): 
-            imgtype='nifti'
-            out_images=self.images      
-        if filetype is not None:
-            imgtype=filetype
+            dest_type='nifti'
+    
         logger("Writing image to : {}".format(str(filename)),dtiprep.Color.PROCESS)
-        _write_dwi(filename,out_images,self.information,filetype=imgtype)
+        _write_dwi(filename,self,dest_type=dest_type)
         logger("Image written.",dtiprep.Color.OK)
-       
+
     @dtiprep.measure_time
     def loadImage(self,filename,filetype=None):
         if '.nrrd' in filename.lower(): self.image_type='nrrd'
@@ -207,8 +241,16 @@ class DWI:
     def setB0Threshold(self,b0_threshold):
         self.b0_threshold=b0_threshold
         self.getGradients()
+
     def getB0Threshold(self):
         return self.b0_threshold
+
+    def setGradients(self,gradients:list):
+        _,_,_,g = self.images.shape 
+        if g != len(gradients):
+            raise Exception("Gradients in the image doesn't match to the direction number of the gradient file")
+        else:
+            self.gradients=gradients 
 
     def getGradients(self):
         for e in self.gradients:
@@ -226,8 +268,8 @@ class DWI:
             temp={'index': int(g['index']),
                  'original_index': int(g['original_index']),
                  'b_value' : float(g['b_value']),
-                 'gradient': g['gradient'].tolist(),
-                 'unit_gradient': g['unit_gradient'].tolist(),
+                 'gradient': g['gradient'],
+                 'unit_gradient': g['unit_gradient'],
                  "baseline" : bool(g['baseline'])
             }
             out_grad.append(temp)
@@ -242,8 +284,25 @@ class DWI:
         max_b= float(np.max([x['b_value'] for x in grad]) )
         return [min_b,max_b]
 
-    def convertToOriginalGradientIndex(self,grad_indexes:list): # from actual index to original gradient index list
+    def getBaselines(self):
+        grads=self.getGradients()
+        baseline_gradients=[x for x in grads if x['baseline']]
+        baseline_indexes=[x['index'] for x in baseline_gradients]
+        baseline_volumes=self.images[:,:,:,baseline_indexes]
+        return baseline_gradients, baseline_volumes
+
+    def gradientSummary(self):
+        grads=self.getGradients()
+        num_baselines=len([x for x in grads if x['baseline']])
+        num_gradients=len(grads)
+        res={
+            "number_of_baselines": num_baselines,
+            "number_of_gradients": num_gradients
+        }
+        return res
         
+
+    def convertToOriginalGradientIndex(self,grad_indexes:list): # from actual index to original gradient index list
         out=[]
         grad=self.getGradients()
         for idx in grad_indexes:

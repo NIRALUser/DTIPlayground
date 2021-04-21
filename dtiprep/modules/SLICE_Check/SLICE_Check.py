@@ -56,7 +56,7 @@ class SLICE_Check(DTIPrepModule):
 
         ## make result and set final image to self.result and self.image (which are to be copied to the next pipeline module as on input)
         ## Excluded original indexes will be automatically deleted in the postProcess
-        logger("Excluded gradient indexes : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING) #gradient indexes are not original one , so need to convert
+        #logger("Excluded gradient indexes : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING) #gradient indexes are not original one , so need to convert
         self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
         #self.result['output']['image_path']=Path(self.output_dir).joinpath('output.nrrd').__str__()
         self.result['output']['success']=True

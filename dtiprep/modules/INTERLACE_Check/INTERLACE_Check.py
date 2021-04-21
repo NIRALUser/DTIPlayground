@@ -52,7 +52,7 @@ class INTERLACE_Check(DTIPrepModule):
                                                          rotationThreshold=self.protocol['rotationThreshold'],
                                                          translationThreshold=self.protocol['translationThreshold'])
 
-        logger("\nExcluded gradients : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING)
+        #logger("\nExcluded gradients : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING)
         check_filename=Path(self.computation_dir).joinpath('checks.yml')
         yaml.dump(interlacing_results,open(check_filename,'w'))
         logger("Check file saved : {}".format(str(check_filename)),dtiprep.Color.OK)

@@ -57,12 +57,14 @@ class Protocols:
         self.result_history=None
         self.output_path=None
 
-    def loadImage(self, image_path):
+    def loadImage(self, image_path,b0_threshold=10):
         self.image_path=str(Path(image_path).absolute())
         logger("Loading original image : {}".format(str(self.image_path)),dtiprep.Color.PROCESS)
         self.image=dtiprep.dwi.DWI(str(self.image_path))
         self.result_history=[{"output":{"image_path": str(Path(self.image_path).absolute()),
                                          "image_object" : id(self.image)}}]
+        self.image.setB0Threshold(b0_threshold)
+        self.image.getGradients()
 
     def setOutputDirectory(self, output_dir=None):
         if output_dir is None:
@@ -223,7 +225,8 @@ class Protocols:
 
         except Exception as e:
             logger("Exception occurred in runPipeline {}".format(str(e)),dtiprep.Color.ERROR)
-            traceback.print_exc()
+            tbstr=traceback.format_exc()
+            logger(tbstr,dtiprep.Color.ERROR)
             return None
         finally:
             with open(Path(self.output_dir).joinpath('result_history.yml'),'w') as f:

@@ -42,7 +42,14 @@ Server Mode:
 - dipy==1.4.0
 - pyyaml==5.3.1
 
+### Todos
+- Abstract one more level for dtiprep.module.postProcess (Currently baseline averaging module override the postProcess method due to the forced writing which makes the next module load the file after first run. In the first run, object id is passed.)
+
 ### Change Log
+
+##### 2021-04-21
+- DTIPrep : Baseline average implemented (DirectAverage, BaselineOptimized)
+- DTIPrep : Optionalized pipeline implemented 
 
 ##### 2021-04-18
 - DTIPrep : Slicewise check implemented

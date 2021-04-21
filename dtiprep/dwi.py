@@ -172,7 +172,7 @@ def export_nrrd_to_nrrd(image): #nrrd loaded image to nrrd format (dtiprep.dwi.D
             del new_header[k]
     for idx,g in enumerate(grad):
         k="DWMRI_gradient_{:04d}".format(idx)
-        new_header[k]=" ".join([str(x) for x in g['gradient'].tolist()])
+        new_header[k]=" ".join([str(x) for x in g['gradient']])
     new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
     return new_data,new_header
 
@@ -240,7 +240,7 @@ class DWI:
 
     def setB0Threshold(self,b0_threshold):
         self.b0_threshold=b0_threshold
-        self.getGradients()
+
 
     def getB0Threshold(self):
         return self.b0_threshold
@@ -248,19 +248,39 @@ class DWI:
     def setGradients(self,gradients:list):
         _,_,_,g = self.images.shape 
         if g != len(gradients):
+            logger("[ERROR] Gradients in the image doesn't match to the direction number of the gradient file",dtiprep.Color.ERROR)
+            logger("Number of gradients from image file : {}, Number of gradients from gradient file : {}".format(g,len(gradients)),dtiprep.Color.ERROR)
             raise Exception("Gradients in the image doesn't match to the direction number of the gradient file")
         else:
             self.gradients=gradients 
 
-    def getGradients(self):
-        for e in self.gradients:
-            e['baseline']=bool(e['b_value']<=self.b0_threshold)
+    def getAffineMatrix(self):
+        affine=np.transpose(np.append(self.information['space_directions'],
+                                     np.expand_dims(self.information['space_origin'],0),
+                                     axis=0))
+        affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
+        return affine 
+
+    def getAffineMatrixForSlice(self,column=2): # 0 for x, 1 for y , 2 for z  output 2d affine matrix (3x3)
+        affine=self.getAffineMatrix()
+        new_mat=np.delete(affine,column,axis=0)
+        new_mat=np.transpose(np.delete(np.transpose(new_mat),column,axis=0))
+        return new_mat
+
+    def getGradients(self,b0_threshold=None):
+        if b0_threshold is None:
+            b0_threshold=self.b0_threshold
+
+        for idx,e in enumerate(self.gradients):
+            self.gradients[idx]['index']=idx
+            self.gradients[idx]['baseline']=bool(e['b_value']<=b0_threshold)
+
         return self.gradients
 
     def dumpInformation(self,filename):
         info=self.information
-
         yaml.dump(info,open(filename,'w'))       
+
     def dumpGradients(self,filename):
         grad=self.getGradients()
         out_grad=[]
@@ -284,8 +304,8 @@ class DWI:
         max_b= float(np.max([x['b_value'] for x in grad]) )
         return [min_b,max_b]
 
-    def getBaselines(self):
-        grads=self.getGradients()
+    def getBaselines(self,b0_threshold=None):
+        grads=self.getGradients(b0_threshold)
         baseline_gradients=[x for x in grads if x['baseline']]
         baseline_indexes=[x['index'] for x in baseline_gradients]
         baseline_volumes=self.images[:,:,:,baseline_indexes]
@@ -326,11 +346,16 @@ class DWI:
             g['index']=idx 
         self.update_information()
 
+    def insertGradient(self,gradient,image_volume,pos=-1):
+        self.images=np.insert(self.images,pos,image_volume,axis=3)
+        self.gradients.insert(pos,gradient)
+        self.update_information()
 
     def update_information(self):
         ## here goes anything to update when there is any changes on self.images
         self.information['sizes']=list(self.images.shape )
         self.information['image_size']=list(self.images.shape[:3])
+        self.getGradients()
         ## reindexing
 
 

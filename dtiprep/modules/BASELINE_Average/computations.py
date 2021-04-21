@@ -5,13 +5,11 @@ from dipy.align.imaffine import (transform_centers_of_mass,
                                  MutualInformationMetric,
                                  AffineRegistration)
 import dipy.align 
-from dipy.align.transforms import (TranslationTransform2D,
-                                   RigidTransform2D,
-                                   AffineTransform2D,
-                                   TranslationTransform3D,
+from dipy.align.transforms import (TranslationTransform3D,
                                    RigidTransform3D,
                                    AffineTransform3D)
 import dtiprep
+import copy
 
 logger=dtiprep.logger.write
 
@@ -19,40 +17,135 @@ def baseline_average(image_obj, opt,
                       averageInterpolationMethod='linear-interpolation',
                       averageMethod='BaselineOptimized',
                       b0Threshold=10,
-                      stopThreshold=0.02):
-    return None
+                      stopThreshold=0.02,
+                      maxIterations=2):
+    
+    image=copy.deepcopy(image_obj)
+    averaged_baseline_image=None #2d image
+    output=None
 
-def _quad_fit(bval, domain=[0,1000], fimage=[3.0,3.5]): #returns std multiple between fimage
-    if bval > domain[1] : 
-        return fimage[1]
-    elif bval < domain[0] : 
-        return fimage[0]
-    a= (fimage[1]-fimage[0])/((domain[1]-domain[0])**2)
-    c= fimage[0]
-    return a*(bval**2)+c
+    ## baseline gradients and volum extraction  
+    baseline_grads, _=image_obj.getBaselines(b0_threshold=b0Threshold)
+    logger("Found baseline gradients ... ",dtiprep.Color.INFO)
+    for idx,g in enumerate(baseline_grads):
+        logger("Gradient.idx {:03d} Original.idx {:03d} Direction {} B-value {:.1f}"
+            .format(g['index'],g['original_index'],g['gradient'],g['b_value']),dtiprep.Color.INFO)
 
-def quadratic_fit_generator(domain,fimage):
-    def wrapper(bval):
-        return _quad_fit(bval,domain,fimage)
-    return wrapper
+    ### Check availability 
+    no_baseline=False
+    only_one_baseline=False
+    if len(baseline_grads)<2:
+        if len(baseline_grads)<1: no_baseline=True
+        else: only_one_baseline=True
 
-def ncc(x,y): #normalized cross correlation in image (ref: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3864968/ )
-    ab=np.sum(x*y)
-    a2=np.sum(x**2)
-    b2=np.sum(y**2)
-    if a2*b2==0.0: 
-        return 1.0
-    else:
-        return ab/np.sqrt(a2*b2)
+    ### computation
+    if no_baseline:
+        logger("[WARNING] There was no baseline found",dtiprep.Color.WARNING)
+        return None,[]
+    elif averageMethod=='DirectAverage' or only_one_baseline:
+        if only_one_baseline: logger("Only one baseline was found, averaging method will be changed to DirectAverage",dtiprep.Color.WARNING)
+        output=direct_average(image, averageInterpolationMethod, b0Threshold,stopThreshold)
+    elif averageMethod=='BaselineOptimized':    
+        output=baseline_optimized_average(image, averageInterpolationMethod, b0Threshold,stopThreshold,maxIterations)
+    elif averageMethod=='BSplineOptimized':
+        logger("[WARNING] BSplineOptimized method is NOT implemented, averaging method will be changed to baseline optimized averaging",dtiprep.Color.WARNING)
+        output=baseline_optimized_average(image, averageInterpolationMethod, b0Threshold,stopThreshold,maxIterations)
 
-def affine_3d_to_2d(mat,indices=[0,1]):
-    new_mat=mat.copy()
-    to_remove=list(set(range(mat.shape[0]-1))-set(indices))
-    new_mat=np.delete(new_mat,to_remove,axis=0)
-    new_mat=np.transpose(np.delete(np.transpose(new_mat),to_remove,axis=0))
-    return new_mat
+    averaged_baseline_volume = output['averaged_baseline']
+    output_gradient= output['output_baseline_gradient'] ## single gradient
+    baseline_gradients= output['baseline_gradients']
 
-def decompose_affine_matrix(mat4d): ## r
+    #post processing. To remove baselines from the original image and insert the averaged basline image. Re-indexing of gradients
+    image.deleteGradientsByOriginalIndex([x['original_index'] for x in baseline_gradients])
+    image.insertGradient(output_gradient,averaged_baseline_volume,pos=0)
+    excluded_gradients_original_indexes=[x['original_index'] for x in baseline_gradients]
+
+    return image , excluded_gradients_original_indexes
+
+def default_output_gradient():
+    return {
+        "index" : None,
+        "original_index" : -1,
+        "gradient" : [0.0,0.0,0.0],
+        "unit_gradient" : [0.0,0.0,0.0],
+        "b_value" : 0,
+        "baseline" : True 
+    }
+
+def direct_average(image_obj, averageInterpolationMethod , b0Threshold, stopThreshold):
+    logger("Direct averaging on the baseline(s) ... ",dtiprep.Color.PROCESS)
+    baseline_grads, baseline_images=image_obj.getBaselines(b0_threshold=b0Threshold)
+    out_gradient=default_output_gradient()
+    output={"averaged_baseline" : np.mean(baseline_images,axis=3) ,
+            "output_baseline_gradient" : out_gradient, 
+            "baseline_gradients" : baseline_grads}
+    logger("Direct averaging DONE ",dtiprep.Color.OK)
+    return output
+
+def baseline_optimized_average(image_obj, averageInterpolationMethod , b0Threshold, stopThreshold, maxIterations=2):
+    logger("Baseline Optimized averaging on baselines ... ",dtiprep.Color.PROCESS)
+    baseline_grads, baseline_images=image_obj.getBaselines(b0_threshold=b0Threshold)
+    out_gradient=default_output_gradient()
+    affine=image_obj.getAffineMatrix()
+    static=np.mean(baseline_images,axis=3) #initial direct averaging 
+    previous_static=copy.deepcopy(static)
+    averaged_image=copy.deepcopy(static)
+    moving_images=copy.deepcopy(baseline_images)
+    x,y,z,g = moving_images.shape
+
+    succeeded=False
+    for i in range(maxIterations):
+        temp_images=[]
+        logger("Iteration {}/{}".format(i+1,maxIterations),dtiprep.Color.PROCESS)
+        for gidx in range(g):
+
+            ## rigid 3d registration to the averaged image
+            logger("Affine registration {}/{}".format(gidx+1,g),dtiprep.Color.PROCESS)
+            moving=moving_images[:,:,:,gidx]
+            transformed, out_affine = rigid_3d(static,moving,affine,affine,sampling_prop=0.1)
+            temp_images.append(transformed)
+  
+        moving_images=np.moveaxis(np.array(temp_images),0,-1) ## replace existing moving images with registered images
+        static=np.mean(moving_images,axis=3) ## re average transformed moving images
+        error=computeErrorRatio(static,previous_static)
+               
+        if error < stopThreshold:
+            succeeded=True
+            averaged_image=static 
+            logger("Error ratio : {:.4f} < tolerance level {:.4f}".format(error,stopThreshold),dtiprep.Color.OK)
+            break
+        else:
+            logger("Error ratio : {:.4f} > tolerance level {:.4f}".format(error,stopThreshold),dtiprep.Color.INFO)
+        previous_static=copy.deepcopy(static)
+
+    if not succeeded:
+        logger("[WARNING] BaselineOptimized averaging failed, so direct averaging will be performed",dtiprep.Color.WARNING)
+        return direct_average(image_obj, averageInterpolationMethod, b0Threshold,stopThreshold)
+
+    output={"averaged_baseline" : averaged_image,
+            "output_baseline_gradient" : out_gradient, 
+            "baseline_gradients" : baseline_grads}
+    logger("Baseline Optimized averaging DONE",dtiprep.Color.OK)
+    return output
+
+def computeErrorRatio(static,moving):
+
+    sq_diff=np.mean((static-moving)**2)
+    ratio = np.sqrt(sq_diff)/np.mean(moving)
+    return ratio
+
+def bspline_optimized_average(image_obj, averageInterpolationMethod , b0Threshold, stopThreshold):
+    dtiprep.not_implemented()
+    logger("BSplineOptimized averaging on baselines ... ",dtiprep.Color.PROCESS)
+    baseline_grads, baseline_images=image_obj.getBaselines(b0_threshold=b0Threshold)
+    out_gradient=default_output_gradient()
+    output={"averaged_baseline" : None ,
+            "output_baseline_gradient" : out_gradient, 
+            "baseline_gradients" : baseline_grads}
+    logger("BSplineOptimized averaging DONE",dtiprep.Color.OK)
+    return output
+
+def decompose_affine_matrix(mat4d): ## in case 
     scale, shear, angles, trans, persp =dipy.align.streamlinear.decompose_matrix(mat4d)
     angles_in_deg=list(map(lambda x : float(np.rad2deg(x)), angles))
     res={"scale":scale.tolist(),
@@ -63,23 +156,14 @@ def decompose_affine_matrix(mat4d): ## r
          "perspective":persp.tolist()}
     return res
 
-def measure_translation_from_affine_matrix(mat):
-    translation=mat[:,2][:2]
-    norm=np.sqrt(np.sum(translation*translation))
-    return norm 
-
-def measure_max_translation_from_affine_matrix(mat):
-    translation=np.abs(mat[:,2][:2])
-    norm=np.abs(np.max(translation))
-    return norm 
-
 @dtiprep.measure_time
 def rigid_3d(static,moving,
              affine_static,affine_moving,
              nbins=32,
              level_iters=[10000,1000,100],
              sigmas=[3.0,1.0,0.0],
-             factors=[4,2,1]):
+             factors=[4,2,1],
+             sampling_prop=None):
     ## Make affine map
     identity=np.eye(4)
     affine_map=AffineMap(identity,static.shape, affine_static,
@@ -94,7 +178,7 @@ def rigid_3d(static,moving,
 
     ## registration preparation
     nbins=32
-    sampling_prop = None
+    sampling_prop = sampling_prop
     metric= MutualInformationMetric(nbins,sampling_prop)
     level_iters=[10000,1000,100]
     sigmas = [3.0, 1.0, 0.0]
@@ -126,52 +210,3 @@ def rigid_3d(static,moving,
 
     return transformed, rigid.affine 
 
-
-
-def rigid_2d(static,moving,
-             affine_static,affine_moving,
-             nbins=32,
-             level_iters=[10000,1000,100],
-             sigmas=[3.0,1.0,0.0],
-             factors=[4,2,1]):
-    ## Make affine map
-    identity=np.eye(3)
-    affine_map=AffineMap(identity,static.shape, affine_static,
-                                  moving.shape, affine_moving)
-
-    ## Resample moving image from affine (but same in a volume)
-    resampled=affine_map.transform(moving)
-
-    ## center of mass transform
-    c_of_mass = transform_centers_of_mass(static, affine_static, moving, affine_moving)
-    transformed=c_of_mass.transform(moving)
-
-    ## registration preparation
-    sampling_prop = None
-    metric= MutualInformationMetric(nbins,sampling_prop)
-    affreg= AffineRegistration(metric=metric, 
-                               level_iters=level_iters, 
-                               sigmas=sigmas, 
-                               factors=factors,
-                               verbosity=0)
-
-    # Translation transform registration
-    transform=TranslationTransform2D()
-    params0=None
-    starting_affine= c_of_mass.affine
-    translation=affreg.optimize(static, 
-                                moving, 
-                                transform, 
-                                params0, 
-                                affine_static,affine_moving, 
-                                starting_affine=starting_affine)
-    transformed = translation.transform(moving)
-
-    ## Ridid registration
-    transform=RigidTransform2D()
-    params0=None
-    starting_affine=translation.affine
-    rigid=affreg.optimize(static,moving,transform,params0,affine_static,affine_moving,starting_affine=starting_affine)
-    transformed = rigid.transform(moving)
-
-    return transformed, rigid.affine 

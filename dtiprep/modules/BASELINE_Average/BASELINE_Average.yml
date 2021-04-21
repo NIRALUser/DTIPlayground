@@ -15,10 +15,10 @@ protocol:
             description: Direct Averaging over baseline images 
           - value: BSplineOptimized
             caption: B-Spline Optimized Averaging
-            description: TBD
+            description: NOT IMPLEMENTED
           - value: BaselineOptimized
             caption: Baseline Optimized Averaging
-            description: TBD
+            description: Baseline  optimized averaging. Average initial baselines and use the averaged one to register baselines and repeat the process until it converge
           # ...
         default_value: BaselineOptimized # from dtiprep v1
         description: Averaging method for the baselines
@@ -37,17 +37,22 @@ protocol:
             caption: Windowed Sinc Interpolation
             description: Windowed sinc interpolation will be used in averaging
         default_value: *ba_linear_interpolation  #shd change
-        description: Interpolation method for the Averaging
+        description: Reserverd for future use. Currently not being used
       stopThreshold: 
         type: float
         caption: Stop Threshold
-        default_value: 0.0200
-        description: stopping threshold for the averaging process 
+        default_value: 0.02 #0.0200
+        description: stopping threshold for the averaging process (previously averaged baseline versus currently averaged baseline)
       b0Threshold: 
         type: float
         caption: B-value Threshold
         default_value: 10.0
         description: Baseline filtering threshold (only average images with b value less than the threshold)
+      maxIterations: 
+        type: integer
+        caption: Maximum iteration
+        default_value: 2
+        description: Maximum number of iterations for which affine registration of baselines are performed
       outputDWIFileNameSuffix: 
         type: string 
         caption: Suffix for the Output DWI Filename

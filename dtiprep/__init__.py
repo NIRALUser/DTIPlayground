@@ -81,6 +81,9 @@ def measure_time(func):
         return res 
     return wrapper 
 
+def not_implemented():
+    raise Exception("Not Implemented yet")
+
 class BiLogger(object):
     def __init__(self,timestamp=False,verbosity=True):
         self.terminal=sys.stdout

@@ -38,21 +38,21 @@ class BASELINE_Average(DTIPrepModule):
         else: ##computed parameters doesn't exist or recompute is true
             ## compute or recompute
             logger("Computing ... ",dtiprep.Color.PROCESS)
-            computations.baseline_average(self.image, opt=None ,
-                                          averageInterpolationMethod=self.protocol['averageInterpolationMethod'],
-                                          averageMethod='averageInterpolationMethod',
-                                          b0Threshold=self.protocol['averageInterpolationMethod'],
-                                          stopThreshold=self.protocol['averageInterpolationMethod'])
+            #self.image.deleteGradientsByOriginalIndex([49, 65, 97, 129, 145])#([0, 17, 49, 65, 97, 129, 145]) For test
+            new_image, excluded_original_indexes=computations.baseline_average(self.image, opt=None ,
+                                                      averageInterpolationMethod=self.protocol['averageInterpolationMethod'],
+                                                      averageMethod=self.protocol['averageMethod'],
+                                                      b0Threshold=self.protocol['b0Threshold'],
+                                                      stopThreshold=self.protocol['stopThreshold'],
+                                                      maxIterations=self.protocol['maxIterations'])
 
-        gradient_indexes_to_remove = []
-        logger("\nExcluded gradients : {}".format(gradient_indexes_to_remove),dtiprep.Color.WARNING)
-
-        ### if image is changed, next module should load the file. So set image_object to None and write the file instead
-        
+        if new_image is not None:
+            self.image=new_image
+            ### if image is changed, next module should load the file. So set image_object to None and write the file instead
         self.writeImage(output_image_path)
-        ### output preparation
 
-        self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
+        ### output preparation
+        self.result['output']['excluded_gradients_original_indexes']=excluded_original_indexes
         self.result['output']['success']=True
         #raise Exception("User Exception for development ...")
         return self.result
@@ -62,10 +62,17 @@ class BASELINE_Average(DTIPrepModule):
         self.result=result_obj
         self.result['input']=self.getPreviousResult()['output']
         self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
+        logger("Excluded gradient indexes (original index) : {}"
+            .format(self.result['output']['excluded_gradients_original_indexes']),dtiprep.Color.WARNING)
 
         ### re-implementation due to image loading for the next module
+        gradient_filename=str(Path(self.output_dir).joinpath('gradients.yml'))
+        image_information_filename=str(Path(self.output_dir).joinpath('image_information.yml'))
+        
         if  Path(self.output_dir).joinpath('result.yml').exists() and not self.options['overwrite']:
             self.result['output']['image_object']=None 
+            self.image.gradients=yaml.safe_load(open(gradient_filename,'r'))
+            self.image.information=yaml.safe_load(open(image_information_filename,'r'))
         else:
             self.result['output']['image_object']=id(self.image)
         ### re-implementation ends
@@ -74,8 +81,8 @@ class BASELINE_Average(DTIPrepModule):
         outstr=yaml.dump(self.result)
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
             yaml.dump(self.result,f)
-        self.image.dumpGradients(str(Path(self.output_dir).joinpath('gradients.yml')))
-        self.image.dumpInformation(str(Path(self.output_dir).joinpath('image_information.yml')))
+        self.image.dumpGradients(gradient_filename)
+        self.image.dumpInformation(image_information_filename)
 
         ## output gradients summary
         b_grads, _ =self.image.getBaselines()
@@ -86,6 +93,6 @@ class BASELINE_Average(DTIPrepModule):
 
         logger("Remaining baselines",dtiprep.Color.INFO)
         for g in b_grads:
-            logger("[Index {:03d} Org.Index {:03d}] Gradient Dir{} B-Value {:.1f}"
-                .format(g['index'],g['original_index'],g['gradient'],g['b_value']),dtiprep.Color.OK)
+            logger("[Gradient.idx {:03d} Original.idx {:03d}] Gradient Dir {} B-Value {:.1f}"
+                .format(g['index'],g['original_index'],g['gradient'],g['b_value']),dtiprep.Color.INFO)
 

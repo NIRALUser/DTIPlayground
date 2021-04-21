@@ -30,7 +30,7 @@ def _load_modules_from_paths(user_module_paths: list, environment={}):
                 logger("Loading module : {}".format(p.name),dtiprep.Color.OK)
             mods.append(p.module_finder.find_module(p.name).load_module(p.name))
         mod_filtered=list(filter(lambda x: len(x.__name__.split('.'))==2 and x.__name__.split('.')[0]==x.__name__.split('.')[1] ,mods))
-        logger("Checking dependencies ...",dtiprep.Color.INFO)
+        logger("Checking dependencies ...",dtiprep.Color.PROCESS)
         for md in mod_filtered:
             fn=Path(md.__file__)
             template_path= fn.parent.joinpath(fn.stem+'.yml')
@@ -170,6 +170,9 @@ class DTIPrepModule: #base class
         self.result=result_obj
         self.result['input']=self.getPreviousResult()['output']
         self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
+        logger("Excluded gradient indexe (original index) : {}"
+            .format(self.result['output']['excluded_gradients_original_indexes']),dtiprep.Color.WARNING)
+
         self.result['output']['image_object']=id(self.image)
         self.result['output']['success']=True
         outstr=yaml.dump(self.result)
@@ -187,25 +190,17 @@ class DTIPrepModule: #base class
 
         logger("Remaining baselines",dtiprep.Color.INFO)
         for g in b_grads:
-            logger("[Index {:03d} Org.Index {:03d}] Gradient Dir{} B-Value {:.1f}"
-                .format(g['index'],g['original_index'],g['gradient'],g['b_value']),dtiprep.Color.OK)
+            logger("[Gradient.idx {:03d} Original.idx {:03d}] Gradient Dir {} B-Value {:.1f}"
+                .format(g['index'],g['original_index'],g['gradient'],g['b_value']),dtiprep.Color.INFO)
 
 
     @dtiprep.measure_time
     def run(self,*args,**kwargs): #wrapper 
-
-        try:
-            #logger(yaml.dump(self.result_history[-1]['output']))
-            res=self.process(*args,**kwargs) ## main computation for user implementation
-            ## Post processing
-            self.postProcess(res) ## pretty much automatic 
-
-        except Exception as e:
-            logger("Exception occurred in {}.run() : {}".format(self.name,str(e)))
-            traceback.print_exc()
-            self.result["output"]["success"]=False
-        finally:
-            return self.result["output"]["success"]
+    
+        res=self.process(*args,**kwargs) ## main computation for user implementation
+        ## Post processing
+        self.postProcess(res) ## pretty much automatic        
+        return self.result["output"]["success"]
 
     def getResultHistory(self):
         return self.result_history+[self.result]

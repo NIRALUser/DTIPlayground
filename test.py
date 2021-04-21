@@ -76,14 +76,14 @@ def protocol_test():
                     ['DIFFUSION_Check',options],
                     ['SLICE_Check',options],
                     ['INTERLACE_Check',options],
-                    ['BASELINE_Average',{"overwrite":False,"recompute":True}],
+                    ['BASELINE_Average',{"overwrite":False,"recompute":False}],
                     ['EDDYMOTION_Correct',{"overwrite":True,"recompute":True}]
                  ]
         env=yaml.safe_load(open('environment.yml','r'))
         modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'],environment=env)
         proto=protocols.Protocols(modules)
         
-        proto.loadImage(fname_nrrd)
+        proto.loadImage(fname_nrrd,b0_threshold=10)
         proto.setOutputDirectory(output_dir)
         proto.makeDefaultProtocols(pipeline=pipeline)
         #proto.loadProtocols("_data/protocol_files/test_protocols.yml")

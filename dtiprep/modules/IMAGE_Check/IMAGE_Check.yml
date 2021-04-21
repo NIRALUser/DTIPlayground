@@ -4,6 +4,8 @@ description: Check image parameters such as size, dimension, .. (to be obsolete)
 version: "0.1"
 dependency: [] 
 module_type: dtiprep
+process_attributes:
+    - exclude_gradients
 result:
   info: null #string
   space: null #bool

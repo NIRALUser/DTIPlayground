@@ -57,42 +57,42 @@ class BASELINE_Average(DTIPrepModule):
         #raise Exception("User Exception for development ...")
         return self.result
 
-    @dtiprep.measure_time
-    def postProcess(self,result_obj): ## this runs after self.process in run() method, so not need to be added inside of process method. This is due to the re-run and overwriting option
-        self.result=result_obj
-        self.result['input']=self.getPreviousResult()['output']
-        self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
-        logger("Excluded gradient indexes (original index) : {}"
-            .format(self.result['output']['excluded_gradients_original_indexes']),dtiprep.Color.WARNING)
+    # @dtiprep.measure_time
+    # def postProcess(self,result_obj): ## this runs after self.process in run() method, so not need to be added inside of process method. This is due to the re-run and overwriting option
+    #     self.result=result_obj
+    #     self.result['input']=self.getPreviousResult()['output']
+    #     self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
+    #     logger("Excluded gradient indexes (original index) : {}"
+    #         .format(self.result['output']['excluded_gradients_original_indexes']),dtiprep.Color.WARNING)
 
-        ### re-implementation due to image loading for the next module
-        gradient_filename=str(Path(self.output_dir).joinpath('gradients.yml'))
-        image_information_filename=str(Path(self.output_dir).joinpath('image_information.yml'))
+    #     ### re-implementation due to image loading for the next module
+    #     gradient_filename=str(Path(self.output_dir).joinpath('gradients.yml'))
+    #     image_information_filename=str(Path(self.output_dir).joinpath('image_information.yml'))
         
-        if  Path(self.output_dir).joinpath('result.yml').exists() and not self.options['overwrite']:
-            self.result['output']['image_object']=None 
-            self.image.gradients=yaml.safe_load(open(gradient_filename,'r'))
-            self.image.information=yaml.safe_load(open(image_information_filename,'r'))
-        else:
-            self.result['output']['image_object']=id(self.image)
-        ### re-implementation ends
+    #     if  Path(self.output_dir).joinpath('result.yml').exists() and not self.options['overwrite']:
+    #         self.result['output']['image_object']=None 
+    #         self.image.gradients=yaml.safe_load(open(gradient_filename,'r'))
+    #         self.image.information=yaml.safe_load(open(image_information_filename,'r'))
+    #     else:
+    #         self.result['output']['image_object']=id(self.image)
+    #     ### re-implementation ends
 
-        self.result['output']['success']=True
-        outstr=yaml.dump(self.result)
-        with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
-            yaml.dump(self.result,f)
-        self.image.dumpGradients(gradient_filename)
-        self.image.dumpInformation(image_information_filename)
+    #     self.result['output']['success']=True
+    #     outstr=yaml.dump(self.result)
+    #     with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
+    #         yaml.dump(self.result,f)
+    #     self.image.dumpGradients(gradient_filename)
+    #     self.image.dumpInformation(image_information_filename)
 
-        ## output gradients summary
-        b_grads, _ =self.image.getBaselines()
-        grad_summary = self.image.gradientSummary()
-        logger("Remaining Gradients summary - Num.Gradients: {}, Num.Baselines: {}"
-            .format(grad_summary['number_of_gradients'],
-                    grad_summary['number_of_baselines']),dtiprep.Color.INFO)
+    #     ## output gradients summary
+    #     b_grads, _ =self.image.getBaselines()
+    #     grad_summary = self.image.gradientSummary()
+    #     logger("Remaining Gradients summary - Num.Gradients: {}, Num.Baselines: {}"
+    #         .format(grad_summary['number_of_gradients'],
+    #                 grad_summary['number_of_baselines']),dtiprep.Color.INFO)
 
-        logger("Remaining baselines",dtiprep.Color.INFO)
-        for g in b_grads:
-            logger("[Gradient.idx {:03d} Original.idx {:03d}] Gradient Dir {} B-Value {:.1f}"
-                .format(g['index'],g['original_index'],g['gradient'],g['b_value']),dtiprep.Color.INFO)
+    #     logger("Remaining baselines",dtiprep.Color.INFO)
+    #     for g in b_grads:
+    #         logger("[Gradient.idx {:03d} Original.idx {:03d}] Gradient Dir {} B-Value {:.1f}"
+    #             .format(g['index'],g['original_index'],g['gradient'],g['b_value']),dtiprep.Color.INFO)
 

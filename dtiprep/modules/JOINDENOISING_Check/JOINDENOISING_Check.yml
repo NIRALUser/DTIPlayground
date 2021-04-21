@@ -4,6 +4,8 @@ description: Joint Denoising Check (to be obsolete)
 version: "0.1"
 dependency: [] 
 module_type: dtiprep
+process_attributes:
+    - exclude_gradients
 result: null
 protocol:
       Path: 

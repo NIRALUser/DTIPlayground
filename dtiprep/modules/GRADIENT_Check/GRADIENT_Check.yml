@@ -4,6 +4,8 @@ description: Gradient wise check (to be obsolete)
 version: "0.1"
 dependency: []
 module_type: dtiprep
+process_attributes:
+    - exclude_gradients
 result: 
     AngleX: null #float
     AngleY: null #float

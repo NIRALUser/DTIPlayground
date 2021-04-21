@@ -5,6 +5,8 @@ version: "0.1"
 dependency:
   - EDDYMOTION_Correct
 module_type: dtiprep
+process_attributes:
+    - exclude_gradients
 result: null
 protocol:
       outputDWIFileNameSuffix: 

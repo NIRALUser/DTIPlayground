@@ -4,6 +4,8 @@ description: Slicewise correlation check
 version: "0.1"
 dependency: []
 module_type: dtiprep
+process_attributes:
+    - exclude_gradients
 result:
     GradientNum: null #int
     SliceNum: null #int

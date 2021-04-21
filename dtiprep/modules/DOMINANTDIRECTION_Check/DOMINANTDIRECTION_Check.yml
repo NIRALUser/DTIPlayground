@@ -8,6 +8,8 @@ result:
   entropy_value: null #float
   detection_result: null #int
 module_type: dtiprep
+process_attributes:
+    - exclude_gradients
 protocol:  
       Mean:
         type: float

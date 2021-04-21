@@ -35,7 +35,7 @@ def _load_modules_from_paths(user_module_paths: list, environment={}):
             fn=Path(md.__file__)
             template_path= fn.parent.joinpath(fn.stem+'.yml')
             template=yaml.safe_load(open(template_path,'r'))
-            name=md.__name__.split('.')[0]
+            name=md.__name__.split('.')[0]  #module name
             validity, msg=getattr(md, name)().checkDependency(environment)
             if not validity:
                 logger("[WARNING] Dependency is not met for the module : {} , {}".format(name,msg),dtiprep.Color.WARNING)
@@ -157,6 +157,9 @@ class DTIPrepModule: #base class
     def getOptions(self):
         return self.options 
 
+    def getTemplate(self):
+        return self.template 
+
     def generateDefaultProtocol(self,image_obj):
         self.protocol={}
         for k,v in self.template['protocol'].items():
@@ -176,13 +179,27 @@ class DTIPrepModule: #base class
         logger("Excluded gradient indexes (original index) : {}"
             .format(self.result['output']['excluded_gradients_original_indexes']),dtiprep.Color.WARNING)
 
+        gradient_filename=str(Path(self.output_dir).joinpath('gradients.yml'))
+        image_information_filename=str(Path(self.output_dir).joinpath('image_information.yml'))
         self.result['output']['image_object']=id(self.image)
+
+        ### if deform_image process type, then forced file loading should be done from the second run in the subsequent process.
+        logger(yaml.dump(self.template['process_attributes']),dtiprep.Color.WARNING)
+        if "deform_image" in self.template['process_attributes']:        
+            if  Path(self.output_dir).joinpath('result.yml').exists() and not self.options['overwrite']: ## second run
+                self.result['output']['image_object']=None 
+                self.image.gradients=yaml.safe_load(open(gradient_filename,'r'))
+                self.image.information=yaml.safe_load(open(image_information_filename,'r'))
+            else: ## first run
+                self.result['output']['image_object']=id(self.image)
+        ### deform_image ends
+
         self.result['output']['success']=True
         outstr=yaml.dump(self.result)
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
             yaml.dump(self.result,f)
-        self.image.dumpGradients(str(Path(self.output_dir).joinpath('gradients.yml')))
-        self.image.dumpInformation(str(Path(self.output_dir).joinpath('image_information.yml')))
+        self.image.dumpGradients(gradient_filename)
+        self.image.dumpInformation(image_information_filename)
 
         ## output gradients summary
         b_grads, _ =self.image.getBaselines()

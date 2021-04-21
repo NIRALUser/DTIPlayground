@@ -5,6 +5,8 @@ version: "0.1"
 dependency:
   - EDDYMOTION_Correct
 module_type: dtiprep
+process_attributes:
+    - deform_image
 result: null
 protocol:
       outputDWIFileNameSuffix: 

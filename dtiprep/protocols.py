@@ -194,8 +194,10 @@ class Protocols:
                 
                 m=getattr(self.modules[p]['module'], p)()
                 m.setOptionsAndProtocol(options)
+                logger(yaml.dump(m.getTemplate()['process_attributes']),dtiprep.Color.DEV)
                 logger(yaml.dump(m.getOptions()),dtiprep.Color.DEV)
                 logger(yaml.dump(m.getProtocol()),dtiprep.Color.DEV)
+
                 m.initialize(self.result_history,output_dir=output_dir_map[uid])
                 success=False
                 resultfile_path=Path(output_dir_map[uid]).joinpath('result.yml')

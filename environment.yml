@@ -1,8 +1,0 @@
-SLICE_Check: null
-INTERLACE_Check: null
-BASELINE_Average: null
-EDDYMOTION_Correct:
-  &id001
-  fsl_path : /mnt/sdb1/scalphunter/bin/fsl6  ##fsl version >= 6.0.3
-SUSCEPTIBILITY_Correct:
-  *id001

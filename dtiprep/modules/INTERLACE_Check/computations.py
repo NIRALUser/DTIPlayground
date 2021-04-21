@@ -41,7 +41,7 @@ def interlace_compute(image_obj):
                                                       nbins=32,
                                                       level_iters=[10000,1000,100],
                                                       sigmas=[3.0,1.0,0.0],
-                                                      factors=[4,2,1])
+                                                      factors=[4,2,1],sampling_prop=0.1)
         affine_info=decompose_affine_matrix(out_affine)
         max_norm=np.max(np.abs(affine_info["translations"]))
         max_angle_in_deg=np.max(np.rad2deg(np.abs(affine_info["angles"])))

@@ -31,9 +31,12 @@ def _generate_output_directories(output_dir,exec_sequence): ## map exec sequence
 
 def default_pipeline_options():
     return {
-                 "overwrite":False,
-                 "recompute":False,
-                 "write_image":False # unless module is forced to write (such as BASELINE_Average, or correcting ones)
+                 "options":{
+                    "overwrite":False, # if result.yml exists and overwrite is false, module skips overall computation except for postProcess
+                    "recompute":False,
+                    "write_image":False # unless module is forced to write (such as BASELINE_Average, or correcting ones)
+                    }, 
+                 "protocol" :{}
             }
 
 class Protocols:
@@ -41,7 +44,6 @@ class Protocols:
         self.image_path=None
         self.protocol_filename=None
         self.rawdata=None
-        self.protocols=None
         self.pipeline=None
         self.io={}
         self.version=None
@@ -77,17 +79,16 @@ class Protocols:
         self.rawdata={
             'version' : self.version,
             'io' : self.io,
-            'pipeline': self.pipeline,
-            'protocols':self.protocols
+            'pipeline': self.pipeline
         }
         yaml.dump(self.rawdata,open(filename,'w'))
+
 
     def loadProtocols(self,filename):
         try:
             self.rawdata=_load_protocol(filename)
             self.version=self.rawdata['version']
             self.pipeline=self.furnishPipeline(self.rawdata['pipeline'])
-            self.protocols=self.rawdata['protocols']
             self.io=self.rawdata['io']
             self.protocol_filename=filename
             self.output_dir=self.io['output_directory']
@@ -99,16 +100,15 @@ class Protocols:
     def setModules(self,modules):
         self.modules=modules 
 
-    def addPipeline(self,modulename,options={},index=-1,default_protocol=True):
+    def addPipeline(self,modulename,options={},index=-1):
         opt=default_pipeline_options()
-        opt.update(options)
+        if 'options' in options:
+            opt['options'].update(options['options'])
+        default_protocol=getattr(self.modules[modulename]['module'],modulename)().generateDefaultProtocol(self.image)
+        opt['protocol'].update(default_protocol)
+        if 'protocol' in options:
+            opt['protocol'].update(options['protocol'])
         self.pipeline.insert(index, [modulename,opt])
-        if default_protocol:
-            self.makeDefaultProtocolForModule(modulename)
-
-    def makeDefaultProtocolForModule(self, module_name):
-        if module_name in self.modules.keys():
-            self.protocols[module_name]=getattr(self.modules[module_name]['module'],module_name)().generateDefaultProtocol(self.image)
 
     def makeDefaultProtocols(self,pipeline=None,template=None):
         self.checkImage()
@@ -117,7 +117,6 @@ class Protocols:
             template=yaml.safe_load(open(self.template_filename,'r'))
 
         ### generate default protocols
-        self.protocols={}
         self.io={}
         self.version=template['version']
         for k,elm in template['options']['io'].items():
@@ -128,21 +127,24 @@ class Protocols:
             self.pipeline=self.furnishPipeline(pipeline)
         else:
             self.pipeline=self.furnishPipeline(template['options']['execution']['pipeline']['default_value'])
-        for p in self.pipeline:
-            mod_name,options  = p
-            self.makeDefaultProtocolForModule(mod_name)
-
         logger("Default protocols are generated.",dtiprep.Color.OK)
 
     def furnishPipeline(self,pipeline):
+        self.checkImage()
         new_pipeline=[]
-        for parr in pipeline:
+        for idx,parr in enumerate(pipeline):
+            mod_name, option = parr
             default_options=default_pipeline_options()
+            default_protocol=getattr(self.modules[mod_name]['module'],mod_name)().generateDefaultProtocol(self.image)
+            default_options['protocol'].update(default_protocol)
             if not isinstance(parr, list):
                 new_pipeline.append([parr,default_options])
             else:
                 p,opt = parr 
-                default_options.update(opt)
+                if "options" in opt:
+                    default_options['options'].update(opt['options'])
+                if "protocol" in opt:
+                    default_options['protocol'].update(opt['protocol'])
                 newopt=default_options
                 new_pipeline.append([p,newopt])
         return new_pipeline 
@@ -151,7 +153,6 @@ class Protocols:
     def checkRunnable(self):
         logger("Checking runability ...",dtiprep.Color.PROCESS)
         self.checkImage()
-        self.checkProtocols()
         self.checkPipeline()
         self.checkDependencies()
 
@@ -159,10 +160,6 @@ class Protocols:
          if self.image is None: 
             logger("[ERROR] Image is not loaded.",dtiprep.Color.ERROR)
             raise Exception("Image is not set")       
-    def checkProtocols(self):
-        if self.protocols is None:
-            logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
-            raise Exception("Image is not set")    
     def checkPipeline(self):
         if self.pipeline is None:
             logger("[ERROR] Protocols are not set.",dtiprep.Color.ERROR)
@@ -196,8 +193,7 @@ class Protocols:
                 logger("-----------------------------------------------",dtiprep.Color.BOLD)
                 
                 m=getattr(self.modules[p]['module'], p)()
-                m.setProtocol(self.protocols)
-                m.setOptions(options)
+                m.setOptionsAndProtocol(options)
                 logger(yaml.dump(m.getOptions()),dtiprep.Color.DEV)
                 logger(yaml.dump(m.getProtocol()),dtiprep.Color.DEV)
                 m.initialize(self.result_history,output_dir=output_dir_map[uid])
@@ -205,7 +201,7 @@ class Protocols:
                 resultfile_path=Path(output_dir_map[uid]).joinpath('result.yml')
 
                 ### if result file is exist, just run post process and continue with previous information
-                if resultfile_path.exists() and not options['overwrite']:
+                if resultfile_path.exists() and not m.getOptions()['overwrite']:
                     result_temp=yaml.safe_load(open(resultfile_path,'r'))
                     logger("Result file exists, just post-processing ...",dtiprep.Color.INFO+dtiprep.Color.BOLD)
                     m.postProcess(result_temp)

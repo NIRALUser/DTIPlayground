@@ -71,13 +71,13 @@ def protocol_test():
         logfile=str(Path(output_dir).joinpath('log.txt'))
         Path(output_dir).mkdir(parents=True,exist_ok=True)
         dtiprep.logger.setLogfile(logfile)
-        options={"overwrite":False}
+        options={"options":{"overwrite":False}}
         pipeline=[  
                     ['DIFFUSION_Check',options],
                     ['SLICE_Check',options],
                     ['INTERLACE_Check',options],
-                    ['BASELINE_Average',{"overwrite":False,"recompute":False}],
-                    ['EDDYMOTION_Correct',{"overwrite":True,"recompute":True}]
+                    ['BASELINE_Average',{"options":{"overwrite":False,"recompute":False}, "protocol":{"stopThreshold":0.09}}],
+                    ['EDDYMOTION_Correct',{"options":{"overwrite":True,"recompute":True},"protocol":{}} ]
                  ]
         env=yaml.safe_load(open('environment.yml','r'))
         modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'],environment=env)
@@ -86,9 +86,9 @@ def protocol_test():
         proto.loadImage(fname_nrrd,b0_threshold=10)
         proto.setOutputDirectory(output_dir)
         proto.makeDefaultProtocols(pipeline=pipeline)
-        #proto.loadProtocols("_data/protocol_files/test_protocols.yml")
-        proto.addPipeline('TEST_Check',index=13,default_protocol=True)
-        proto.addPipeline('SLICE_Check',{"overwrite":False},index=15,default_protocol=True)
+        #proto.loadProtocols("_data/protocol_files/protocols-2.yml")
+        proto.addPipeline('TEST_Check',index=13)
+        proto.addPipeline('SLICE_Check',{"options":{"overwrite":False},"protocol":{"tailSkipSlicePercentage":0.5}},index=15)
         res=proto.runPipeline()
         #logger(yaml.dump(res))
         #proto.writeProtocols(Path(output_dir).joinpath("protocols.yml").__str__())

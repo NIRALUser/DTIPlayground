@@ -141,15 +141,18 @@ class DTIPrepModule: #base class
     def setImage(self, image ):
         self.image=image
 
+    def setOptionsAndProtocol(self,options):
+        self.options=options['options']
+        self.protocol=options['protocol']
 
-    def setProtocol(self,protocols):
-        self.protocol=protocols[self.name]
+    def setProtocol(self,options):
+        self.protocol=options['protocol']
 
     def getProtocol(self):
         return self.protocol
 
     def setOptions(self,options):
-        self.options=options 
+        self.options=options['options']
 
     def getOptions(self):
         return self.options 

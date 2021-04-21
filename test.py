@@ -76,7 +76,7 @@ def protocol_test():
                     ['DIFFUSION_Check',options],
                     ['SLICE_Check',options],
                     ['INTERLACE_Check',options],
-                    ['BASELINE_Average',{"overwrite":True,"recompute":False}],
+                    ['BASELINE_Average',{"overwrite":False,"recompute":False}],
                     ['EDDYMOTION_Correct',{"overwrite":True,"recompute":True}]
                  ]
         env=yaml.safe_load(open('environment.yml','r'))

@@ -102,10 +102,9 @@ class Protocols:
     def addPipeline(self,modulename,options={},index=-1,default_protocol=True):
         opt=default_pipeline_options()
         opt.update(options)
-        if modulename not in list(map(lambda x:x[0],self.pipeline)):
-            self.pipeline.insert(index, [modulename,opt])
-            if default_protocol:
-                self.makeDefaultProtocolForModule(modulename)
+        self.pipeline.insert(index, [modulename,opt])
+        if default_protocol:
+            self.makeDefaultProtocolForModule(modulename)
 
     def makeDefaultProtocolForModule(self, module_name):
         if module_name in self.modules.keys():

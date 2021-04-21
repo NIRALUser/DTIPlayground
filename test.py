@@ -88,6 +88,7 @@ def protocol_test():
         proto.makeDefaultProtocols(pipeline=pipeline)
         #proto.loadProtocols("_data/protocol_files/test_protocols.yml")
         proto.addPipeline('TEST_Check',index=13,default_protocol=True)
+        proto.addPipeline('SLICE_Check',{"overwrite":False},index=15,default_protocol=True)
         res=proto.runPipeline()
         #logger(yaml.dump(res))
         #proto.writeProtocols(Path(output_dir).joinpath("protocols.yml").__str__())

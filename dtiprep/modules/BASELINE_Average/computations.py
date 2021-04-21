@@ -177,12 +177,7 @@ def rigid_3d(static,moving,
     transformed=c_of_mass.transform(moving)
 
     ## registration preparation
-    nbins=32
-    sampling_prop = sampling_prop
     metric= MutualInformationMetric(nbins,sampling_prop)
-    level_iters=[10000,1000,100]
-    sigmas = [3.0, 1.0, 0.0]
-    factors= [4,2,1]
     affreg= AffineRegistration(metric=metric, 
                                level_iters=level_iters, 
                                sigmas=sigmas, 

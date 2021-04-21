@@ -170,7 +170,7 @@ class DTIPrepModule: #base class
         self.result=result_obj
         self.result['input']=self.getPreviousResult()['output']
         self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
-        logger("Excluded gradient indexe (original index) : {}"
+        logger("Excluded gradient indexes (original index) : {}"
             .format(self.result['output']['excluded_gradients_original_indexes']),dtiprep.Color.WARNING)
 
         self.result['output']['image_object']=id(self.image)

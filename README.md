@@ -4,7 +4,7 @@ DTI Toolkits are python based NIRAL pipeline software including DTIPrep (dtiprep
 
 ### DTIPrep Usage (dtiprep)
 
-DTIPrep is a tool that performa quality control over diffusion weighted images. Quality control is very essential preprocessing where the bad gradients with artifacts is to be excluded or corrected using various computational methods. The software and library provides a module based package in which users can make his own QC pipeline as well as new pipeline modules.
+DTIPrep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocessing where the bad gradients with artifacts is to be excluded or corrected using various computational methods. The software and library provides a module based package in which users can make his own QC pipeline as well as new pipeline modules.
 
 #### CLI Mode :
 
@@ -77,13 +77,19 @@ DTIFiberAnalyzer performs statistical computation over the extracted fibers. Thi
 #### Main developer
 
 
-#### Funding & Support
-
-DTI Toolkits are funded by National Institute of Health (NIH)
 
 #### References
 
 - [Quality Control of Diffusion Weighted Images - Zhexing Liu, et al](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3864968/)
+
+
+#### Acknowlegements
+
+DTI Toolkits are funded by National Institute of Health (NIH)
+
+#### LICENSE
+
+MIT
 
 #### Requirements
 

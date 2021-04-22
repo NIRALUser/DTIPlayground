@@ -80,7 +80,7 @@ def protocol_test():
                     ['EDDYMOTION_Correct',{"options":{"overwrite":True,"recompute":True},"protocol":{}} ]
                  ]
         env=yaml.safe_load(open('environment.yml','r'))
-        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
+        modules=dtiprep.modules.load_modules(user_module_paths=['examples/user/modules'])
         modules=dtiprep.modules.check_module_validity(modules,env)
         proto=protocols.Protocols(modules)
         

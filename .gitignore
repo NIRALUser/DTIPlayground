@@ -5,3 +5,5 @@ _dev
 **/*.nrrd
 log.txt
 environment.yml
+linecount.sh
+examples

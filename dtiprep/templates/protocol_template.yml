@@ -35,13 +35,8 @@ options:
     output_directory: 
       type: directory # file dialog for ui
       caption: Output Directory
-      default_value: $HOME
+      default_value: null
       description: Output directory storing the results and generated files 
-    reportFileNameSuffix: 
-      type: string
-      caption:  Report Filename's Suffix
-      default_value: _QCReport.txt
-      description: Filename suffix for the result report 
     reportFileMode: 
       type: list
       caption: Report File Mode 
@@ -101,7 +96,7 @@ options:
         - SLICE_Check
         - INTERLACE_Check 
         - BASELINE_Average
-        # - EDDYMOTION_Correct
+        - EDDYMOTION_Correct
         # - SUSCEPTIBILITY_Correct
         # - GRADIENT_Check
         # - JOINDENOISING_Check

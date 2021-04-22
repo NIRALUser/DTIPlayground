@@ -2,13 +2,20 @@
 from dtiprep.modules import DTIPrepModule
 import dtiprep,yaml
 from pathlib import Path 
-
+import SUSCEPTIBILITY_Correct.utils as utils 
 logger=dtiprep.logger.write
+
 
 class SUSCEPTIBILITY_Correct(DTIPrepModule):
     def __init__(self,*args,**kwargs):
         super().__init__(SUSCEPTIBILITY_Correct)
 
+    def generateDefaultEnvironment(self):
+        #find fsl path 
+        fsldir, fsl_version=utils.find_fsl(['/usr/bin','/mnt/sdb1/scalphunter/bin'])
+        res={'fsl_path': fsldir, 'fsl_version' : fsl_version}
+        return res
+    
     def checkDependency(self,environment): #use information in template, check if this module can be processed
         # FSL should be ready before execution
         if self.name in environment:

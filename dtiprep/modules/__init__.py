@@ -7,18 +7,18 @@ import pkgutil,sys, copy
 logger=dtiprep.logger.write
 
 @dtiprep.measure_time
-def _load_modules(user_module_paths=[],environment={}):
-    modules=_load_default_modules(environment=environment)
-    usermodules= _load_modules_from_paths(user_module_paths,environment=environment)
+def _load_modules(user_module_paths=[]):
+    modules=_load_default_modules()
+    usermodules= _load_modules_from_paths(user_module_paths)
     modules.update(usermodules)
     return modules
 
-def _load_default_modules(environment={}): # user_modules list of paths of user modules
+def _load_default_modules(): # user_modules list of paths of user modules
     modules={}
     default_module_paths=[Path(__file__).parent]
-    return _load_modules_from_paths(default_module_paths,environment)
+    return _load_modules_from_paths(default_module_paths)
 
-def _load_modules_from_paths(user_module_paths: list, environment={}):
+def _load_modules_from_paths(user_module_paths: list):
     modules={}
     mods=[]
     for pth in map(lambda x: str(x),user_module_paths):  ## path objects to string array
@@ -30,25 +30,42 @@ def _load_modules_from_paths(user_module_paths: list, environment={}):
                 logger("Loading module : {}".format(p.name),dtiprep.Color.OK)
             mods.append(p.module_finder.find_module(p.name).load_module(p.name))
         mod_filtered=list(filter(lambda x: len(x.__name__.split('.'))==2 and x.__name__.split('.')[0]==x.__name__.split('.')[1] ,mods))
-        logger("Checking dependencies ...",dtiprep.Color.PROCESS)
+        
         for md in mod_filtered:
             fn=Path(md.__file__)
             template_path= fn.parent.joinpath(fn.stem+'.yml')
             template=yaml.safe_load(open(template_path,'r'))
             name=md.__name__.split('.')[0]  #module name
-            validity, msg=getattr(md, name)().checkDependency(environment)
-            if not validity:
-                logger("[WARNING] Dependency is not met for the module : {} , {}".format(name,msg),dtiprep.Color.WARNING)
-            modules[md.__name__.split('.')[0]]={
+            modules[name]={
                                 "name" : name,
                                 "module" : md,
                                 "path" : md.__file__,
                                 "template" : template,
                                 "template_path" : template_path,
-                                "valid" : validity,
-                                "validity_message" : msg 
+                                "valid" : False,
+                                "validity_message" : None 
                                 } 
     return modules 
+
+@dtiprep.measure_time
+def check_module_validity(modules:list,environment):
+    logger("Checking dependencies ...",dtiprep.Color.PROCESS)
+    for name,md in modules.items():
+                validity, msg=getattr(md['module'], name)().checkDependency(environment)
+                if not validity:
+                    logger("[WARNING] Dependency is not met for the module : {} , {}".format(name,msg),dtiprep.Color.WARNING)
+                modules[name]['valid']=validity
+                modules[name]['validity_message']=msg
+    logger("Checking dependencies DONE",dtiprep.Color.OK)
+    return modules 
+
+
+def generate_module_envionrment(modules :list):
+    env={}
+    for name,m in modules.items():
+        module_env=getattr(m['module'],name)().generateDefaultEnvironment()
+        env[name]=module_env
+    return env 
 
 load_modules=_load_modules
 
@@ -165,6 +182,9 @@ class DTIPrepModule: #base class
         for k,v in self.template['protocol'].items():
                 self.protocol[k]=v['default_value']
         return self.protocol
+
+    def generateDefaultEnvironment(self):
+        return None
 
     def process(self,*args,**kwargs): ## returns new result array (User implementation), returns output result
         #anything common

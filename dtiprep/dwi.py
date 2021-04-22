@@ -66,7 +66,11 @@ def _load_nrrd(filename):
             idx=int(k.split('_')[2])
             vec=np.array(list(map(lambda x: float(x),v.split())))
             bval=float(np.sum(vec**2)*info['b_value'])
-            unit_vec=(vec/np.sqrt(np.sum(vec**2)))
+            normalize_term=np.sqrt(np.sum(vec**2))
+            if normalize_term>0:
+                unit_vec=(vec/normalize_term)
+            else:
+                unit_vec=vec 
             gradients.append({'index':idx,'gradient':vec.tolist(),'b_value':bval,'unit_gradient':unit_vec.tolist(),'original_index':idx})
     gradients=sorted(gradients,key=lambda x: x['index'])
     return data,gradients,info , (org_data,header)

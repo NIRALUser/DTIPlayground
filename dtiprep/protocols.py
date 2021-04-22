@@ -1,9 +1,10 @@
 import yaml,sys,traceback,time
+from pathlib import Path
 import dtiprep
-#import dtiprep.dwi
+import dtiprep.dwi
 from dtiprep.modules import _load_modules
 import dtiprep.modules 
-from pathlib import Path
+
 
 
 logger=dtiprep.logger.write
@@ -57,7 +58,7 @@ class Protocols:
         self.previous_process=None #this is to ensure to access previous results (image and so on)
         #output
         self.result_history=None
-        self.output_path=None
+        self.output_dir=None
 
     def loadImage(self, image_path,b0_threshold=10):
         self.image_path=str(Path(image_path).absolute())
@@ -75,12 +76,16 @@ class Protocols:
             self.output_dir=str(Path(output_dir).absolute())
         self.io['output_directory']=str(self.output_dir)
 
-    def writeProtocols(self,filename):
-        self.rawdata={
+    def getProtocols(self):
+        proto={
             'version' : self.version,
             'io' : self.io,
             'pipeline': self.pipeline
         }
+        return proto
+
+    def writeProtocols(self,filename):
+        self.rawdata=self.getProtocols()
         yaml.dump(self.rawdata,open(filename,'w'))
 
 
@@ -91,7 +96,6 @@ class Protocols:
             self.pipeline=self.furnishPipeline(self.rawdata['pipeline'])
             self.io=self.rawdata['io']
             self.protocol_filename=filename
-            self.output_dir=self.io['output_directory']
             return True
         except Exception as e:
             logger("Exception occurred : {}".format(str(e)))
@@ -133,7 +137,11 @@ class Protocols:
         self.checkImage()
         new_pipeline=[]
         for idx,parr in enumerate(pipeline):
-            mod_name, option = parr
+            mod_name = None
+            if not isinstance(parr, list):
+                mod_name = parr
+            else:
+                mod_name , _ = parr
             default_options=default_pipeline_options()
             default_protocol=getattr(self.modules[mod_name]['module'],mod_name)().generateDefaultProtocol(self.image)
             default_options['protocol'].update(default_protocol)
@@ -175,15 +183,16 @@ class Protocols:
     @dtiprep.measure_time
     def runPipeline(self):
         try:
-
             self.checkRunnable()
             self.processes_history=[]
-            
             execution_sequence = _generate_exec_seqeunce(self.pipeline)
             output_dir_map=_generate_output_directories(self.output_dir,execution_sequence)
             protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()
             logger("Writing protocol file to : {}".format(protocol_filename),dtiprep.Color.PROCESS)
             self.writeProtocols(protocol_filename)
+            ## print pipeline
+            logger("PIPELINE",dtiprep.Color.INFO)
+            logger(yaml.dump(self.pipeline),dtiprep.Color.DEV)
             ## run pipeline
             for idx,parr in enumerate(execution_sequence):
                 uid, p, options=parr 

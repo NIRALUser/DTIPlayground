@@ -58,7 +58,7 @@ class Color:
    ERROR = BOLD+RED 
 
 
-
+### util functions 
 def object_by_id(id_):
     for obj in gc.get_objects():
         if id(obj) == id_:
@@ -71,7 +71,8 @@ def get_timestamp():
 def get_uuid():
     return str(uuid.uuid4())
 
-def measure_time(func):  
+### decorators
+def measure_time(func):  ## decorator
     def wrapper(*args,**kwargs):
         logger.write("[{}] begins ... ".format(func.__qualname__),Color.DEV)
         bt=time.time()
@@ -84,6 +85,7 @@ def measure_time(func):
 def not_implemented():
     raise Exception("Not Implemented yet")
 
+### classes
 class BiLogger(object):
     def __init__(self,timestamp=False,verbosity=True):
         self.terminal=sys.stdout
@@ -94,8 +96,8 @@ class BiLogger(object):
     def setVerbosity(self,v=True):
         self.verbosity=v 
 
-    def setLogfile(self,filename):
-        self.file=open(filename,'w')
+    def setLogfile(self,filename,mode='a'):
+        self.file=open(filename,mode)
         self.log_to_file=True
     
     def setTimestamp(self,timestamp=True):

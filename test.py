@@ -80,7 +80,8 @@ def protocol_test():
                     ['EDDYMOTION_Correct',{"options":{"overwrite":True,"recompute":True},"protocol":{}} ]
                  ]
         env=yaml.safe_load(open('environment.yml','r'))
-        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'],environment=env)
+        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
+        modules=dtiprep.modules.check_module_validity(modules,env)
         proto=protocols.Protocols(modules)
         
         proto.loadImage(fname_nrrd,b0_threshold=10)
@@ -98,7 +99,23 @@ def protocol_test():
         logger("Exception occurred : {}".format(str(e)))
         traceback.print_exc()
         return False
-    pass
+
+def environment_test():
+    try:
+        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
+        env=dtiprep.modules.generate_module_envionrment(modules)
+        logger(yaml.dump(env))
+
+
+        out_filename=str(Path('_data/environment-test.yml').absolute())
+        logger("Writing test environment file : {}".format(out_filename),dtiprep.Color.PROCESS)
+        yaml.dump(env,open(out_filename,'w'))
+
+        return True
+    except Exception as e:
+        logger("Exception occurred :{}".format(str(e)))
+        traceback.print_exc()
+        return False
     
 def run_tests(testlist: list):
     for idx,t in enumerate(testlist):
@@ -120,5 +137,5 @@ if __name__=='__main__':
     dtiprep.logger.setTimestamp(args.log_timestamp)
     dtiprep.logger.setVerbosity(args.no_verbosity)
     
-    tests=['io_test','protocol_test']
-    run_tests(tests[1:])
+    tests=['io_test','protocol_test','environment_test']
+    run_tests(tests[1:2])

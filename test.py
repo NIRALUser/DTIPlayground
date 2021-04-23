@@ -1,20 +1,20 @@
 #!/usr/bin/python3
 
 from pathlib import Path
-import dtiprep
-from dtiprep.dwi import DWI 
-import dtiprep.modules
-import dtiprep.protocols as protocols
+import prep
+from prep.dwi import DWI 
+import prep.modules
+import prep.protocols as protocols
 import numpy as np 
 import argparse,yaml
 import traceback
 import time 
 import copy
 import yaml
-import dtifa #dti fiber analyser
-import dtiab #dti atlas builder
+import fa #dti fiber analyser
+import ab #dti atlas builder
 
-logger=dtiprep.logger.write
+logger=prep.logger.write
 
 def io_test():
     
@@ -70,7 +70,7 @@ def protocol_test():
         output_dir=str(Path(fname_nrrd).parent.joinpath("output"))
         logfile=str(Path(output_dir).joinpath('log.txt'))
         Path(output_dir).mkdir(parents=True,exist_ok=True)
-        dtiprep.logger.setLogfile(logfile)
+        prep.logger.setLogfile(logfile)
         options={"options":{"overwrite":False}}
         pipeline=[  
                     ['DIFFUSION_Check',options],
@@ -80,8 +80,8 @@ def protocol_test():
                     ['EDDYMOTION_Correct',{"options":{"overwrite":True,"recompute":True},"protocol":{}} ]
                  ]
         env=yaml.safe_load(open('environment.yml','r'))
-        modules=dtiprep.modules.load_modules(user_module_paths=['examples/modules'])
-        modules=dtiprep.modules.check_module_validity(modules,env)
+        modules=prep.modules.load_modules(user_module_paths=['examples/modules'])
+        modules=prep.modules.check_module_validity(modules,env)
         proto=protocols.Protocols(modules)
         
         proto.loadImage(fname_nrrd,b0_threshold=10)
@@ -102,13 +102,13 @@ def protocol_test():
 
 def environment_test():
     try:
-        modules=dtiprep.modules.load_modules(user_module_paths=['user/modules'])
-        env=dtiprep.modules.generate_module_envionrment(modules)
+        modules=prep.modules.load_modules(user_module_paths=['user/modules'])
+        env=prep.modules.generate_module_envionrment(modules)
         logger(yaml.dump(env))
 
 
         out_filename=str(Path('_data/environment-test.yml').absolute())
-        logger("Writing test environment file : {}".format(out_filename),dtiprep.Color.PROCESS)
+        logger("Writing test environment file : {}".format(out_filename),prep.Color.PROCESS)
         yaml.dump(env,open(out_filename,'w'))
 
         return True
@@ -119,7 +119,7 @@ def environment_test():
     
 def run_tests(testlist: list):
     for idx,t in enumerate(testlist):
-        c=dtiprep.Color.BLACK+dtiprep.Color.BOLD
+        c=prep.Color.BLACK+prep.Color.BOLD
         logger("---------------------------------------",c)
         logger("--------- {}/{} - Running : {}".format(idx+1,len(testlist),t),c)
         logger("---------------------------------------",c)
@@ -133,9 +133,9 @@ if __name__=='__main__':
     parser.add_argument('--log-timestamp',help='Add timestamp in the log', default=False, action="store_true")
     parser.add_argument('-n','--no-verbosity',help='Add timestamp in the log', default=True, action="store_false")
     args=parser.parse_args()
-    dtiprep.logger.setLogfile(args.log)
-    dtiprep.logger.setTimestamp(args.log_timestamp)
-    dtiprep.logger.setVerbosity(args.no_verbosity)
+    prep.logger.setLogfile(args.log)
+    prep.logger.setTimestamp(args.log_timestamp)
+    prep.logger.setVerbosity(args.no_verbosity)
     
     tests=['io_test','protocol_test','environment_test']
     run_tests(tests[1:2])

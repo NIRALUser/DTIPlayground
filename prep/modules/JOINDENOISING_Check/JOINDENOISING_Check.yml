@@ -1,0 +1,37 @@
+name: JOINDENOISING_Check
+caption: JOINDENOISING Check
+description: Joint Denoising Check (to be obsolete)
+version: "0.1"
+dependency: [] 
+module_type: prep
+process_attributes:
+    - exclude_gradients
+result: null
+protocol:
+      Path: 
+        type: file
+        caption: jointLMMSE Location
+        default_value: /tools/Slicer3/Slicer3-3.6.3-2011-03-04-linux-x86_64/lib/Slicer3/Plugins/jointLMMSE
+        description: TBD
+      ParameterSet: 
+        type: TBD
+        caption: Parameter Set
+        default_value: null
+        description: TBD
+      NumNeighborGradients: 
+        type: integer
+        caption: Number of Neighboring Gradients
+        default_value: 0
+        description: TBD
+      Est_Radius: 
+        type: matrix
+        caption: Estimation Radius
+        shape: [3,1]
+        default_value: [2,2,1]
+        description: TBD
+      Filter_Radius: 
+        type: matrix
+        caption: Filter Radius
+        shape: [3,1]
+        default_value: [2,2,1]
+        description: TBD

@@ -1,0 +1,21 @@
+name: SUSCEPTIBILITY_Correction
+caption: SUSCEPTIBILITY Correction
+description: Susceptibility correction (new)
+version: "0.1"
+dependency:
+  - EDDYMOTION_Correct
+module_type: prep
+process_attributes:
+    - deform_image
+result: null
+protocol:
+      outputDWIFileNameSuffix: 
+        type: string
+        caption: Suffix for the Output DWI Filename
+        default_value: null
+        description: TBD
+      finalTransformFileSuffix: 
+        type: string
+        caption: Suffix for the Final Transformed Filename
+        default_value: null
+        description: TBD

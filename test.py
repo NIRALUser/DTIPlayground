@@ -1,20 +1,20 @@
 #!/usr/bin/python3
 
 from pathlib import Path
-import prep
-from prep.dwi import DWI 
-import prep.modules
-import prep.protocols as protocols
+import dmri.prep
+from dmri.prep.dwi import DWI 
+import dmri.prep.modules
+import dmri.prep.protocols as protocols
 import numpy as np 
 import argparse,yaml
 import traceback
 import time 
 import copy
 import yaml
-import fa #dti fiber analyser
-import ab #dti atlas builder
+import dmri.fa #dti fiber analyser
+import dmri.ab #dti atlas builder
 
-logger=prep.logger.write
+logger=dmri.prep.logger.write
 
 def io_test():
     
@@ -23,7 +23,7 @@ def io_test():
 
         # fname_nifti="data/images/CT-00006_DWI_dir79_APPA.nii.gz"
         # dwi_nifti=DWI(fname_nifti)
-        dwi_nrrd=DWI(fname_nrrd)
+        dwi_nrrd=prep.dwi.DWI(fname_nrrd)
         logger(str(dwi_nrrd.information))
 
         # err=0.0
@@ -70,7 +70,7 @@ def protocol_test():
         output_dir=str(Path(fname_nrrd).parent.joinpath("output"))
         logfile=str(Path(output_dir).joinpath('log.txt'))
         Path(output_dir).mkdir(parents=True,exist_ok=True)
-        prep.logger.setLogfile(logfile)
+        dmri.prep.logger.setLogfile(logfile)
         options={"options":{"overwrite":False}}
         pipeline=[  
                     ['DIFFUSION_Check',options],
@@ -80,8 +80,8 @@ def protocol_test():
                     ['EDDYMOTION_Correct',{"options":{"overwrite":True,"recompute":True},"protocol":{}} ]
                  ]
         env=yaml.safe_load(open('environment.yml','r'))
-        modules=prep.modules.load_modules(user_module_paths=['examples/modules'])
-        modules=prep.modules.check_module_validity(modules,env)
+        modules=dmri.prep.modules.load_modules(user_module_paths=['test/examples/modules'])
+        modules=dmri.prep.modules.check_module_validity(modules,env)
         proto=protocols.Protocols(modules)
         
         proto.loadImage(fname_nrrd,b0_threshold=10)
@@ -102,13 +102,13 @@ def protocol_test():
 
 def environment_test():
     try:
-        modules=prep.modules.load_modules(user_module_paths=['user/modules'])
-        env=prep.modules.generate_module_envionrment(modules)
+        modules=dmri.prep.modules.load_modules(user_module_paths=['user/modules'])
+        env=dmri.prep.modules.generate_module_envionrment(modules)
         logger(yaml.dump(env))
 
 
         out_filename=str(Path('_data/environment-test.yml').absolute())
-        logger("Writing test environment file : {}".format(out_filename),prep.Color.PROCESS)
+        logger("Writing test environment file : {}".format(out_filename),dmri.prep.Color.PROCESS)
         yaml.dump(env,open(out_filename,'w'))
 
         return True
@@ -119,7 +119,7 @@ def environment_test():
     
 def run_tests(testlist: list):
     for idx,t in enumerate(testlist):
-        c=prep.Color.BLACK+prep.Color.BOLD
+        c=dmri.prep.Color.BLACK+dmri.prep.Color.BOLD
         logger("---------------------------------------",c)
         logger("--------- {}/{} - Running : {}".format(idx+1,len(testlist),t),c)
         logger("---------------------------------------",c)
@@ -133,9 +133,9 @@ if __name__=='__main__':
     parser.add_argument('--log-timestamp',help='Add timestamp in the log', default=False, action="store_true")
     parser.add_argument('-n','--no-verbosity',help='Add timestamp in the log', default=True, action="store_false")
     args=parser.parse_args()
-    prep.logger.setLogfile(args.log)
-    prep.logger.setTimestamp(args.log_timestamp)
-    prep.logger.setVerbosity(args.no_verbosity)
+    dmri.prep.logger.setLogfile(args.log)
+    dmri.prep.logger.setTimestamp(args.log_timestamp)
+    dmri.prep.logger.setVerbosity(args.no_verbosity)
     
     tests=['io_test','protocol_test','environment_test']
     run_tests(tests[1:2])

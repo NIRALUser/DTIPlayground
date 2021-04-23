@@ -1,14 +1,14 @@
-# DTI Toolkits 
+# DTI Playground 
 
-DTI Toolkits are python based NIRAL pipeline software including DTIPrep (dtiprep), DTIAtlasBuilder (dtiab), DTIFiberTract Analyzer (dtifa)
+DTI Playground are python based NIRAL pipeline software including DTIPrep (dtiprep), DTIAtlasBuilder (dtiab), DTIFiberAnalyzer (dtifa)
 
 ### DTIPrep Usage (dtiprep)
 
-DTIPrep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocessing where the bad gradients with artifacts is to be excluded or corrected using various computational methods. The software and library provides a module based package in which users can make his own QC pipeline as well as new pipeline modules.
+DTIPrep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.
 
 #### CLI Mode :
 
-1. **init** - Initialize configuration (default: $HOME/.niral-dti/dtiprep)
+1. **init** - Initialize configuration (default: `$HOME/.niral-dti/dtiprep`)
 
 **init** command generates the configuration directory and files with following command. One just needs to execute this command only once unless a different configuration is needed.
 ```
@@ -18,14 +18,14 @@ If you want to set different directory other than default one :
 ```
     $ dtiprep init --config-dir my/config/dir
 ```
-Once run, config.yml and environment.yml will be in the directory. 
+Once run, `config.yml` and `environment.yml` will be in the directory. 
 
-2. **update** - Update if config.yml has been changed (e.g. in case of adding user module directory).
-Changing `config.yml` file shoule be followed by updating `environment.yml` with running update command :
+2. **update** - Update if `config.yml` has been changed (e.g. in case of adding user module directory).
+Changing `config.yml` file should be followed by updating `environment.yml` with running update command :
 ```
     $ dtiprep update [--config-dir my/config/dir]
 ```
-This will update module-specific informations such as binary locations or package location used by the corresponding module. It simply updates environment.yml
+This will update module-specific informations such as binary locations or package location used by the corresponding module. It simply updates `environment.yml`
 
 3. **make-protocols** - Generating a default protocol file
 
@@ -74,9 +74,9 @@ DTIFiberAnalyzer performs statistical computation over the extracted fibers. Thi
 
 ### Developement 
 
-#### Main developer
+#### Author
 
-
+- SK Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill
 
 #### References
 
@@ -110,6 +110,8 @@ MIT
 - GUI client (Single page web app) - Vuejs, React, ...
 - FSL integration
 - Multi threading
+- NIFTI writing
+- NRRD-NIFTI conversion
 - Output generations for DTIPrepModule
 - Abstract one more level for dtiprep.module.postProcess (Currently baseline averaging module override the postProcess method due to the forced writing which makes the next module load the file after first run. In the first run, object id is passed.) - Done (2021-04-21)
 

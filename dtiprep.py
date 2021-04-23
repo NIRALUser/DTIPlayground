@@ -78,7 +78,7 @@ def command_init(args):
         home_dir.mkdir(parents=True,exist_ok=True)
         user_module_dir=home_dir.joinpath('modules').absolute()
         user_module_dir.mkdir(parents=True,exist_ok=True)
-        initialize(args)
+        initialize_logger(args)
         config_filename=home_dir.joinpath("config.yml")
         environment_filename=home_dir.joinpath("environment.yml")
         ## make configuration file (config.yml)
@@ -128,7 +128,6 @@ def command_make_protocols(args):
     }
     if options['output_path'] is not None:
         dtiprep.logger.setVerbosity(True)
-    print(options)
     ## load config file
     config,environment = load_configurations(options['config_dir'])
     modules=dtiprep.modules.load_modules(user_module_paths=config['user_module_directories'])
@@ -158,10 +157,8 @@ def command_run(args):
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
     dtiprep.logger.setLogfile(logfilename)  
-    ts_tag=dtiprep.logger.timestamp
-    dtiprep.logger.setTimestamp(False)
-    logger("\n----------------------------------- QC Begins ----------------------------------------\n")
-    dtiprep.logger.setTimestamp(ts_tag)
+
+    logger("\r----------------------------------- QC Begins ----------------------------------------\n")
 
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
@@ -176,15 +173,15 @@ def command_run(args):
         proto.loadProtocols(options["protocol_path"])
 
     res=proto.runPipeline()
-    dtiprep.logger.setTimestamp(False)
-    logger("\n----------------------------------- QC Done ----------------------------------------\n")
+    logger("\r----------------------------------- QC Done ----------------------------------------\n")
     return res 
 ### Arguments 
 
 def get_args():
     current_dir=Path(__file__).parent
     config_dir=Path(os.environ.get('HOME')).joinpath('.niral-dti/dtiprep')
-    parser=argparse.ArgumentParser(prog="dtiprep",description="TBD")
+    parser=argparse.ArgumentParser(prog="dtiprep",description="DTIPrep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.",
+                                                  epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States. All rights are left out somewhere in the universe, 2021")
     #parser.add_argument('command',help='command',type=str)
     subparsers=parser.add_subparsers(help="Commands")
     
@@ -200,7 +197,7 @@ def get_args():
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols')
     parser_make_protocols.add_argument('-i','--input-image',help='Input image path',type=str,required=True)
     parser_make_protocols.add_argument('-o','--output',help='Output protocol file path',type=str)
-    parser_make_protocols.add_argument('-l','--pipeline',help='ipeline sequence, only works with default protocols. Example : -l DIFFUSION_Check SLICE_Check',nargs='+')
+    parser_make_protocols.add_argument('-l','--pipeline',metavar="MODULE",help='Pipeline sequence of modules, only works with default protocols. Example : -l DIFFUSION_Check SLICE_Check',nargs='+')
     parser_make_protocols.set_defaults(func=command_make_protocols)
 
     ## run command
@@ -208,7 +205,7 @@ def get_args():
     parser_run.add_argument('-i','--input-image',help='Input image path',type=str,required=True)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('-p','--protocols',help='Protocol file path',type=str)
-    parser_run.add_argument('-l','--pipeline',help='Pipeline sequence, only works with -d option. Example : -l DIFFUSION_Check SLICE_Check',nargs='+')
+    parser_run.add_argument('-l','--pipeline',metavar="MODULE",help='Pipeline sequence of modules, only works with -d option. Example : -l DIFFUSION_Check SLICE_Check',nargs='+')
     parser_run.add_argument('-d','--default-protocols',help='Use default protocols',default=False,action='store_true')
     parser_run.set_defaults(func=command_run)
 
@@ -217,11 +214,17 @@ def get_args():
     parser.add_argument('--log',help='log file',default=str(config_dir.joinpath('log.txt')))
     parser.add_argument('--no-log-timestamp',help='Add timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
+    
+    ## if no parameter is furnished, exit with printing help
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     args=parser.parse_args()
     return args 
 
 if __name__=='__main__':
     args=get_args()
+
     try:
         dtiprep.logger.setTimestamp(True)
         result=args.func(args)

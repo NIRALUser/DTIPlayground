@@ -4,5 +4,4 @@ _dev
 **/.ipynb_checkpoints
 **/*.nrrd
 log.txt
-environment.yml
 linecount.sh

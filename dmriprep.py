@@ -10,19 +10,19 @@
 from pathlib import Path
 import argparse,yaml
 import traceback,time,copy,yaml,sys,os,uuid
-import dmri.prep
-import dmri.prep.modules
-import dmri.prep.protocols
+import dmri.preprocessing
+import dmri.preprocessing.modules
+import dmri.preprocessing.protocols
 
-logger=dmri.prep.logger.write 
+logger=dmri.preprocessing.logger.write 
 
 ### unit functions
 
 def initialize_logger(args):
     ## default log setting
-    dmri.prep.logger.setLogfile(args.log)
-    dmri.prep.logger.setTimestamp(not args.no_log_timestamp)
-    dmri.prep.logger.setVerbosity(not args.no_verbosity)
+    dmri.preprocessing.logger.setLogfile(args.log)
+    dmri.preprocessing.logger.setTimestamp(not args.no_log_timestamp)
+    dmri.preprocessing.logger.setVerbosity(not args.no_verbosity)
 
 def check_initialized(args):
     home_dir=Path(args.config_dir)
@@ -60,9 +60,9 @@ def after_initialized(func): #decorator for other functions other than command_i
 
 def log_off(func):
     def wrapper(*args,**kwargs):
-        dmri.prep.logger.setVerbosity(False)
+        dmri.preprocessing.logger.setVerbosity(False)
         res=func(*args,**kwargs)
-        dmri.prep.logger.setVerbosity(True)
+        dmri.preprocessing.logger.setVerbosity(True)
         return res 
     return wrapper
 
@@ -78,22 +78,26 @@ def command_init(args):
         home_dir.mkdir(parents=True,exist_ok=True)
         user_module_dir=home_dir.joinpath('modules').absolute()
         user_module_dir.mkdir(parents=True,exist_ok=True)
+        template_filename=home_dir.joinpath("protocol_template.yml").absolute()
+        source_template_path=Path(dmri.preprocessing.__file__).parent.joinpath("templates/protocol_template.yml")
+        protocol_template=yaml.safe_load(open(source_template_path,'r'))
         initialize_logger(args)
         config_filename=home_dir.joinpath("config.yml")
         environment_filename=home_dir.joinpath("environment.yml")
         ## make configuration file (config.yml)
-        config={"user_module_directories": [str(user_module_dir)]}
+        config={"user_module_directories": [str(user_module_dir)],"protocol_template_path" : str(template_filename)}
+        yaml.dump(protocol_template,open(template_filename,'w'))
         yaml.dump(config,open(config_filename,'w'))
-        logger("Config file written to : {}".format(str(config_filename)),dmri.prep.Color.INFO)
+        logger("Config file written to : {}".format(str(config_filename)),dmri.preprocessing.Color.INFO)
         ## make environment file (environment.yml)
-        modules=dmri.prep.modules.load_modules(user_module_paths=config['user_module_directories'])
-        environment=dmri.prep.modules.generate_module_envionrment(modules)
+        modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
+        environment=dmri.preprocessing.modules.generate_module_envionrment(modules)
         yaml.dump(environment,open(environment_filename,'w'))
-        logger("Environment file written to : {}".format(str(environment_filename)),dmri.prep.Color.INFO)
-        logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.prep.Color.OK)
+        logger("Environment file written to : {}".format(str(environment_filename)),dmri.preprocessing.Color.INFO)
+        logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.preprocessing.Color.OK)
         return True
     else:
-        logger("Already initialized in {}".format(str(home_dir)),dmri.prep.Color.WARNING)
+        logger("Already initialized in {}".format(str(home_dir)),dmri.preprocessing.Color.WARNING)
         return True
 
 @after_initialized
@@ -108,11 +112,11 @@ def command_update(args):
     ## load config_file
     config=yaml.safe_load(open(config_filename,'r'))
     ## make environment file (environment.yml)
-    modules=dmri.prep.modules.load_modules(user_module_paths=config['user_module_directories'])
-    environment=dmri.prep.modules.generate_module_envionrment(modules)
+    modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
+    environment=dmri.preprocessing.modules.generate_module_envionrment(modules)
     yaml.dump(environment,open(environment_filename,'w'))
-    logger("Environment file written to : {}".format(str(environment_filename)),dmri.prep.Color.INFO)
-    logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.prep.Color.OK)
+    logger("Environment file written to : {}".format(str(environment_filename)),dmri.preprocessing.Color.INFO)
+    logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.preprocessing.Color.OK)
     return True
 
 
@@ -127,21 +131,22 @@ def command_make_protocols(args):
         "output_path" : args.output    
     }
     if options['output_path'] is not None:
-        dmri.prep.logger.setVerbosity(True)
+        dmri.preprocessing.logger.setVerbosity(True)
     ## load config file
     config,environment = load_configurations(options['config_dir'])
-    modules=dmri.prep.modules.load_modules(user_module_paths=config['user_module_directories'])
-    modules=dmri.prep.modules.check_module_validity(modules,environment)  
-    proto=dmri.prep.protocols.Protocols(modules)
+    modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
+    template=yaml.safe_load(open(config['protocol_template_path'],'r'))
+    modules=dmri.preprocessing.modules.check_module_validity(modules,environment)  
+    proto=dmri.preprocessing.protocols.Protocols(modules)
     proto.loadImage(options['input_image_path'],b0_threshold=10)
     if options['module_list'] is not None and  len(options['module_list'])==0:
             options['module_list']=None
-    proto.makeDefaultProtocols(options['module_list'])
+    proto.makeDefaultProtocols(options['module_list'],template=template)
     outstr=yaml.dump(proto.getProtocols())
     print(outstr)
     if options['output_path'] is not None:
         open(options['output_path'],'w').write(outstr)
-        logger("Protocol file has been writte to : {}".format(options['output_path']),dmri.prep.Color.OK)
+        logger("Protocol file has been writte to : {}".format(options['output_path']),dmri.preprocessing.Color.OK)
 
 
 @after_initialized
@@ -157,23 +162,26 @@ def command_run(args):
     ## logging setup
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
-    dmri.prep.logger.setLogfile(logfilename)  
+    dmri.preprocessing.logger.setLogfile(logfilename)  
 
     logger("\r----------------------------------- QC Begins ----------------------------------------\n")
 
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
-    modules=dmri.prep.modules.load_modules(user_module_paths=config['user_module_directories'])
-    modules=dmri.prep.modules.check_module_validity(modules,environment)  
-    proto=dmri.prep.protocols.Protocols(modules)
+    modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
+    modules=dmri.preprocessing.modules.check_module_validity(modules,environment)  
+    template=yaml.safe_load(open(config['protocol_template_path'],'r'))
+    proto=dmri.preprocessing.protocols.Protocols(modules)
     proto.loadImage(options['input_image_path'],b0_threshold=10)
     proto.setOutputDirectory(options['output_dir'])
     if options['default_protocols'] is not None:
         if len(options['default_protocols'])==0:
             options['default_protocols']=None
-        proto.makeDefaultProtocols(options['default_protocols'])
-    else:
+        proto.makeDefaultProtocols(options['default_protocols'],template=template)
+    elif options['protocol_path'] is not None:
         proto.loadProtocols(options["protocol_path"])
+    else :
+        raise Exception("Protocols cannot be set. Please use -d option or -p option to generate protocols information")
 
     res=proto.runPipeline()
     logger("\r----------------------------------- QC Done ----------------------------------------\n")
@@ -182,7 +190,7 @@ def command_run(args):
 
 def get_args():
     current_dir=Path(__file__).parent
-    config_dir=Path(os.environ.get('HOME')).joinpath('.niral-dti/prep')
+    config_dir=Path(os.environ.get('HOME')).joinpath('.niral-dti/dmriprep')
     parser=argparse.ArgumentParser(prog="dmriprep",description="dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.",
                                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States. All rights are left out somewhere in the universe, 2021")
     #parser.add_argument('command',help='command',type=str)
@@ -230,12 +238,12 @@ if __name__=='__main__':
     args=get_args()
 
     try:
-        dmri.prep.logger.setTimestamp(True)
+        dmri.preprocessing.logger.setTimestamp(True)
         result=args.func(args)
     except Exception as e:
-        dmri.prep.logger.setVerbosity(True)
+        dmri.preprocessing.logger.setVerbosity(True)
         msg=traceback.format_exc()
-        logger(msg,dmri.prep.Color.ERROR)
+        logger(msg,dmri.preprocessing.Color.ERROR)
         exit(-1)
     finally:
         pass

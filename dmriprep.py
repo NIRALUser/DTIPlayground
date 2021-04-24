@@ -224,7 +224,7 @@ def get_args():
     ## log related
     parser.add_argument('--config-dir',help='Configuration directory',default=str(config_dir))
     parser.add_argument('--log',help='log file',default=str(config_dir.joinpath('log.txt')))
-    parser.add_argument('--no-log-timestamp',help='Add timestamp in the log', default=False, action="store_true")
+    parser.add_argument('--no-log-timestamp',help='Remove timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
     
     ## if no parameter is furnished, exit with printing help

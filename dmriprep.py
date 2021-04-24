@@ -208,7 +208,7 @@ def get_args():
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols')
     parser_make_protocols.add_argument('-i','--input-image',help='Input image path',type=str,required=True)
     parser_make_protocols.add_argument('-o','--output',help='Output protocol file path',type=str)
-    parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",help='Default protocols with specified list of modules, only works with default protocols. Example : -l DIFFUSION_Check SLICE_Check',default=None,nargs='*')
+    parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",help='Default protocols with specified list of modules, only works with default protocols. Example : -d DIFFUSION_Check SLICE_Check',default=None,nargs='*')
     parser_make_protocols.set_defaults(func=command_make_protocols)
         
 
@@ -217,8 +217,8 @@ def get_args():
     parser_run.add_argument('-i','--input-image',help='Input image path',type=str,required=True)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
-    run_exclusive_group.add_argument('-p','--protocols',help='Protocol file path', type=str)
-    run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -l DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
+    run_exclusive_group.add_argument('-p','--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
+    run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
     parser_run.set_defaults(func=command_run)
 
     ## log related

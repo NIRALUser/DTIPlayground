@@ -152,8 +152,8 @@ class DTIPrepModule: #base class
     def checkDependency(self,environment={}): #use information in template, check if this module can be processed
         return True , None
 
-    def writeImage(self,filename):
-        self.image.writeImage(filename,dest_type=self.image.image_type)
+    def writeImage(self,filename,dest_type='nrrd'):
+        self.image.writeImage(filename,dest_type=dest_type)
         self.result['output']['image_path']=str(Path(filename).absolute().relative_to(self.output_root))
 
     @prep.measure_time

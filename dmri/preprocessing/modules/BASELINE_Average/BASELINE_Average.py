@@ -30,7 +30,12 @@ class BASELINE_Average(prep.modules.DTIPrepModule):
         inputParams=self.getPreviousResult()['output']
 
         output=None
-        output_image_path=str(Path(self.output_dir).joinpath('output.nrrd'))
+        output_image_path=Path(self.output_dir)
+        if self.image.image_type.lower()=='nrrd':
+            output_image_path=str(output_image_path.joinpath('output.nrrd'))
+        elif self.image.image_type.lower()=='nifti':
+            output_image_path=str(output_image_path.joinpath('output.nii.gz'))
+        
         output_filename=Path(self.computation_dir).joinpath('computations.yml')
         if output_filename.exists() and not self.options['recompute']: 
             ## pass recomputation
@@ -50,7 +55,7 @@ class BASELINE_Average(prep.modules.DTIPrepModule):
         if new_image is not None:
             self.image=new_image
             ### if image is changed, next module should load the file. So set image_object to None and write the file instead
-        self.writeImage(output_image_path)
+        self.writeImage(output_image_path,dest_type=self.image.image_type)
 
         ### output preparation
         self.result['output']['excluded_gradients_original_indexes']=excluded_original_indexes

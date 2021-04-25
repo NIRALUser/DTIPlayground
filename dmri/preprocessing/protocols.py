@@ -232,6 +232,13 @@ class Protocols:
                 et=time.time()-bt
                 self.result_history[-1]['processing_time']=et
                 logger("[{}] Processed time : {:.2f}s".format(p,et),prep.Color.DEV)
+                if idx==len(execution_sequence)-1 :
+                    ## Save final Qced image
+                    stem=Path(self.image_path).name.split('.')[0]+"_QCed"
+                    ext='.nii.gz'
+                    if m.image.image_type=='nrrd' : ext='.nrrd'
+                    final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
+                    m.writeImage(final_filename,dest_type=m.image.image_type)
             return self.result_history
 
         except Exception as e:

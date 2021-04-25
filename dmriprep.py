@@ -162,7 +162,6 @@ def command_run(args):
     ## logging setup
     
 
-    logger("\r----------------------------------- QC Begins ----------------------------------------\n")
 
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
@@ -190,6 +189,7 @@ def command_run(args):
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
     dmri.preprocessing.logger.setLogfile(logfilename)  
+    logger("\r----------------------------------- QC Begins ----------------------------------------\n")
     res=proto.runPipeline()
     logger("\r----------------------------------- QC Done ----------------------------------------\n")
     return res 

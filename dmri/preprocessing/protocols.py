@@ -234,6 +234,7 @@ class Protocols:
                 logger("[{}] Processed time : {:.2f}s".format(p,et),prep.Color.DEV)
                 if idx==len(execution_sequence)-1 : ### for the last, dump image and informations
                     ## Save final Qced image
+                    logger("Preparing final output ... ",prep.Color.PROCESS)
                     stem=Path(self.image_path).name.split('.')[0]+"_QCed"
                     ext='.nii.gz'
                     if m.image.image_type=='nrrd' : ext='.nrrd'

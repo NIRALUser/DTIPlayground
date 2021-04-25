@@ -173,7 +173,12 @@ def command_run(args):
     template=yaml.safe_load(open(config['protocol_template_path'],'r'))
     proto=dmri.preprocessing.protocols.Protocols(modules)
     proto.loadImage(options['input_image_path'],b0_threshold=10)
-    proto.setOutputDirectory(options['output_dir'])
+    if options['output_dir'] is None:
+        img_path=Path(options['input_image_path'])
+        stem=img_path.name.split('.')[0]+"QC"
+        output_dir=img_path.parent.joinpath(stem)
+    else:
+        proto.setOutputDirectory(options['output_dir'])
     if options['default_protocols'] is not None:
         if len(options['default_protocols'])==0:
             options['default_protocols']=None
@@ -181,7 +186,7 @@ def command_run(args):
     elif options['protocol_path'] is not None:
         proto.loadProtocols(options["protocol_path"])
     else :
-        raise Exception("Protocols cannot be set. Please use -d option or -p option to generate protocols information")
+        proto.makeDefaultProtocols(options['default_protocols'],template=None)
 
     res=proto.runPipeline()
     logger("\r----------------------------------- QC Done ----------------------------------------\n")
@@ -215,7 +220,7 @@ def get_args():
     ## run command
     parser_run=subparsers.add_parser('run',help='Run pipeline')
     parser_run.add_argument('-i','--input-image',help='Input image path',type=str,required=True)
-    parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
+    parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=False)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
     run_exclusive_group.add_argument('-p','--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')

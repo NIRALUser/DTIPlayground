@@ -41,7 +41,7 @@ To run with default protocol generated from `protocol_template.yml`:
 ```
     $ dmriprep run -i IMAGE_FILE -o OUTPUT_DIR -d [ MODULE1 MODULE2 ... ]
 ```
-`"-d"` option (default protocol) works as described in **make-protocols** command. But you need to specify `"-d"` for the default pipeline from the template.  If `"-o"` option is omitted, default directory will be set to \<Image filename\>_QC.
+`"-d"` option (default protocol) works as described in **make-protocols** command. But you need to specify `"-d"` for the default pipeline from the template.  If `"-o"` option is omitted, default directory will be set to `Image filename_QC`.
 
 To run with existing protocol file:
 ```

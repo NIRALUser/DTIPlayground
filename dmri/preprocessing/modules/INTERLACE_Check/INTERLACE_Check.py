@@ -22,7 +22,7 @@ class INTERLACE_Check(prep.modules.DTIPrepModule):
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         ## todos
-        spacing=float(np.sum(image_obj.information['space_directions'])/3.0)
+        spacing=float(np.sum(np.abs(image_obj.information['space_directions']))/3.0)
         self.protocol['translationThreshold']=spacing
         return self.protocol
 

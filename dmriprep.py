@@ -159,10 +159,6 @@ def command_run(args):
         "output_dir" : args.output_dir,
         "default_protocols":args.default_protocols
     }
-    ## logging setup
-    
-
-
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
     modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])

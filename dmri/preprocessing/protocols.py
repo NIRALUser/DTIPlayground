@@ -232,13 +232,17 @@ class Protocols:
                 et=time.time()-bt
                 self.result_history[-1]['processing_time']=et
                 logger("[{}] Processed time : {:.2f}s".format(p,et),prep.Color.DEV)
-                if idx==len(execution_sequence)-1 :
+                if idx==len(execution_sequence)-1 : ### for the last, dump image and informations
                     ## Save final Qced image
                     stem=Path(self.image_path).name.split('.')[0]+"_QCed"
                     ext='.nii.gz'
                     if m.image.image_type=='nrrd' : ext='.nrrd'
                     final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
-                    m.writeImage(final_filename,dest_type=m.image.image_type)
+                    final_gradients_filename=Path(self.output_dir).joinpath('output_gradients.yml').__str__()
+                    final_information_filename=Path(self.output_dir).joinpath('output_image_information.yml').__str__()
+                    m.image.writeImage(final_filename,dest_type=m.image.image_type)
+                    m.image.dumpGradients(final_gradients_filename)
+                    m.image.dumpInformation(final_information_filename)
             return self.result_history
 
         except Exception as e:

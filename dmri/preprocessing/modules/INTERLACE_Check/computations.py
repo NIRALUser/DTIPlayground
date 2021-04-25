@@ -45,7 +45,7 @@ def interlace_compute(image_obj):
         affine_info=decompose_affine_matrix(out_affine)
         max_norm=np.max(np.abs(affine_info["translations"]))
         max_angle_in_deg=np.max(np.rad2deg(np.abs(affine_info["angles"])))
-        logger("Gradient {}/{}, Corr: {:.4f}, Max translation : {:.4f} , Max angle : {:.4f} degree".format(gidx,g,corr,max_norm,max_angle_in_deg))
+        logger("Gradient {}/{}, Corr: {:.4f}, Max translation : {:.4f} , Max angle : {:.4f} degree".format(gidx,g-1,corr,max_norm,max_angle_in_deg))
         output.append({"gradient_index": gidx, 
                        "original_gradient_index": image_obj.getGradients()[gidx]['original_index'], 
                        "affine_matrix":out_affine.tolist(),

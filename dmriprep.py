@@ -160,9 +160,7 @@ def command_run(args):
         "default_protocols":args.default_protocols
     }
     ## logging setup
-    Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
-    logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
-    dmri.preprocessing.logger.setLogfile(logfilename)  
+    
 
     logger("\r----------------------------------- QC Begins ----------------------------------------\n")
 
@@ -175,8 +173,10 @@ def command_run(args):
     proto.loadImage(options['input_image_path'],b0_threshold=10)
     if options['output_dir'] is None:
         img_path=Path(options['input_image_path'])
-        stem=img_path.name.split('.')[0]+"QC"
+        stem=img_path.name.split('.')[0]+"_QC"
         output_dir=img_path.parent.joinpath(stem)
+        options['output_dir']=str(output_dir)
+        proto.setOutputDirectory(options['output_dir'])
     else:
         proto.setOutputDirectory(options['output_dir'])
     if options['default_protocols'] is not None:
@@ -186,8 +186,10 @@ def command_run(args):
     elif options['protocol_path'] is not None:
         proto.loadProtocols(options["protocol_path"])
     else :
-        proto.makeDefaultProtocols(options['default_protocols'],template=None)
-
+        proto.makeDefaultProtocols(options['default_protocols'],template=template)
+    Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
+    logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
+    dmri.preprocessing.logger.setLogfile(logfilename)  
     res=proto.runPipeline()
     logger("\r----------------------------------- QC Done ----------------------------------------\n")
     return res 

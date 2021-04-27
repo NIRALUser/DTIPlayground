@@ -230,6 +230,15 @@ def get_args():
     parser.add_argument('--no-log-timestamp',help='Remove timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
     
+    ## system log
+    sys_log_dir=current_dir.joinpath('logs')
+    sys_log_dir.mkdir(parents=True,exist_ok=True)
+    env=os.environ
+    uid, ts = dmri.common.get_uuid(), dmri.common.get_timestamp()
+    sys_logfilename=env['USER']+"_"+ts+"_"+uid+".txt"
+    sys_logfile=sys_log_dir.joinpath(sys_logfilename)
+    dmri.preprocessing.logger.addLogfile(sys_logfile.__str__(),mode='w')
+
     ## if no parameter is furnished, exit with printing help
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)

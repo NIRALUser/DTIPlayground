@@ -5,3 +5,5 @@ _dev
 **/*.nrrd
 log.txt
 linecount.sh
+logs
+

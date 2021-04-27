@@ -66,7 +66,7 @@ def object_by_id(id_):
     raise Exception("No found")
 
 def get_timestamp():
-    return str(datetime.datetime.now())
+    return datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     
 def get_uuid():
     return str(uuid.uuid4())
@@ -86,12 +86,27 @@ def not_implemented():
     raise Exception("Not Implemented yet")
 
 ### classes
-class BiLogger(object):
+
+class FileLogger(object):
+    def __init__(self,filename,mode='w'):
+        self.setLogfile(filename,mode)
+
+    def setLogfile(self,filename,mode='w'):
+        self.filename=filename
+        self.file=open(filename,mode)
+
+    def write(self,message):
+        self.file.write(message)
+        self.file.flush()
+
+
+class MultiLogger(object):
     def __init__(self,timestamp=False,verbosity=True):
         self.terminal=sys.stdout
         self.log_to_file=False
         self.timestamp=timestamp
         self.verbosity=verbosity 
+        self.fileloggers=[]
 
     def setVerbosity(self,v=True):
         self.verbosity=v 
@@ -99,6 +114,9 @@ class BiLogger(object):
     def setLogfile(self,filename,mode='a'):
         self.file=open(filename,mode)
         self.log_to_file=True
+
+    def addLogfile(self,filename,mode='w'):
+        self.fileloggers.append(FileLogger(filename,mode))
     
     def setTimestamp(self,timestamp=True):
         self.timestamp=timestamp 
@@ -116,11 +134,14 @@ class BiLogger(object):
           if self.log_to_file and (not terminal_only):
               self.file.write(m+"\n")
               self.flush()
+          for fl in self.fileloggers:
+              fl.write(m+"\n")
+
 
     def flush(self):
         self.file.flush()
         pass
 
 
-logger=BiLogger()
+logger=MultiLogger()
 _debug=True

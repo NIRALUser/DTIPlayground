@@ -238,6 +238,7 @@ def get_args():
     sys_logfilename=env['USER']+"_"+ts+"_"+uid+".txt"
     sys_logfile=sys_log_dir.joinpath(sys_logfilename)
     dmri.preprocessing.logger.addLogfile(sys_logfile.__str__(),mode='w')
+    logger(" ".join(sys.argv))
 
     ## if no parameter is furnished, exit with printing help
     if len(sys.argv)==1:

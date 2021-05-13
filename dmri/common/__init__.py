@@ -87,6 +87,16 @@ def not_implemented():
 
 ### classes
 
+class AppState(object): ### software status
+  def __init__(self):
+    self.state={}
+
+  def updateState(self,state):
+    self.state=state 
+
+  def getState(self):
+    return self.state 
+
 class FileLogger(object):
     def __init__(self,filename,mode='w'):
         self.setLogfile(filename,mode)

@@ -12,7 +12,7 @@ import copy
 import yaml
 import sys
 import sys
-sys.path.append("..")
+sys.path.append("../../")
 
 import dmri.preprocessing
 from dmri.preprocessing.dwi import DWI 

@@ -49,6 +49,87 @@ def generateGreedyAtlasParametersFile(cfg):
     outputfile=cfg["m_OutputPath"]+"/2_NonLinear_Registration/GreedyAtlasParameters.xml"
     x.write(outputfile)
 
+def DisplayErrorAndQuit ( Error ):
+    msg='\n\nERROR DETECTED IN WORKFLOW:'+Error
+    logger(msg)
+    logger('ABORT')
+    raise Exception(msg)
+
+
+# Function that checks if file exist and replace old names by new names if needed
+def CheckFileExists ( File, case, caseID ) : # returns 1 if file exists or has been renamed and 0 if not
+    if os.path.isfile( File ) : # file exists
+      return 1
+    else : # file does not exist: check if older version of file can exist (if file name has been changed)
+      NamesThatHaveChanged = ["MeanImage", "DiffeomorphicDTI", "DiffeomorphicAtlasDTI", "HField", "GlobalDisplacementField"] # latest versions of the names
+      if any( changedname in File for changedname in NamesThatHaveChanged ) : # if name has been changed, check if older version files exist
+        if "MeanImage" in File :
+          OldFile = File.replace("Mean", "Average")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else:
+            return 0
+        if "DiffeomorphicDTI" in File :
+          OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("DiffeomorphicDTI", "AWDTI")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            os.rename(OldFile.replace("AWDTI","AW"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']))
+            os.rename(OldFile.replace("AWDTI","AWDTI_float"), File.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"))
+            return 1
+          else : # test other old name
+            OldFile = File.replace( caseID, "Case" + str(case+1) )
+            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+              os.rename(OldFile, File)
+              os.rename(OldFile.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']))
+              os.rename(OldFile.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"), File.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"))
+              return 1
+            else:
+              return 0
+        if "DiffeomorphicAtlasDTI" in File :
+          OldFile = File.replace("DiffeomorphicAtlasDTI", "AWAtlasDTI")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            os.rename(OldFile.replace("AWAtlasDTI","AWAtlas"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicAtlasDTI","DiffeomorphicAtlas"+config['m_ScalarMeasurement']))
+            os.rename(OldFile.replace("AWAtlasDTI","AWAtlasDTI_float"), File.replace("DiffeomorphicAtlasDTI","DiffeomorphicAtlasDTI_float"))
+            return 1
+          else:
+            return 0
+        if "HField" in File :
+          OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("H", "Deformation")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else : # test other old name
+            OldFile = File.replace( caseID, "Case" + str(case+1) )
+            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+              os.rename(OldFile, File)
+              return 1
+            else:
+              return 0
+        if "GlobalDisplacementField" in File :
+          OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("Displacement", "Deformation")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else : # test other old name
+            OldFile = File.replace( caseID, "Case" + str(case+1) )
+            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+              os.rename(OldFile, File)
+              return 1
+            else:
+              return 0
+      else: # file does not exist and name has not been changed: check if the caseX version exists
+        if caseID : # CaseID is empty for averages
+          OldFile = File.replace( caseID, "Case" + str(case+1) )
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else:
+            return 0
+        else: # for averages
+          return 0
+
 def run(cfg):
 
     config=cfg
@@ -96,10 +177,7 @@ def run(cfg):
     FinalResampPath= m_OutputPath+"/4_Final_Resampling"
     FinalAtlasPath= m_OutputPath+"/5_Final_Atlas"
 
-    def DisplayErrorAndQuit ( Error ):
-      logger('\n\nERROR DETECTED IN WORKFLOW:',Error)
-      logger('ABORT')
-      sys.exit(1)
+
 
     def TestGridProcess ( FilesFolder, NbCases , NoCase1=None):
       if NoCase1 is not None:
@@ -147,79 +225,6 @@ def run(cfg):
         shutil.rmtree(FilesFolder) # clear directory and recreate it\n"
         os.mkdir(FilesFolder)
 
-    # Function that checks if file exist and replace old names by new names if needed
-    def CheckFileExists ( File, case, caseID ) : # returns 1 if file exists or has been renamed and 0 if not
-      if os.path.isfile( File ) : # file exists
-        return 1
-      else : # file does not exist: check if older version of file can exist (if file name has been changed)
-        NamesThatHaveChanged = ["MeanImage", "DiffeomorphicDTI", "DiffeomorphicAtlasDTI", "HField", "GlobalDisplacementField"] # latest versions of the names
-        if any( changedname in File for changedname in NamesThatHaveChanged ) : # if name has been changed, check if older version files exist
-          if "MeanImage" in File :
-            OldFile = File.replace("Mean", "Average")
-            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-              os.rename(OldFile, File)
-              return 1
-            else:
-              return 0
-          if "DiffeomorphicDTI" in File :
-            OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("DiffeomorphicDTI", "AWDTI")
-            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-              os.rename(OldFile, File)
-              os.rename(OldFile.replace("AWDTI","AW"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']))
-              os.rename(OldFile.replace("AWDTI","AWDTI_float"), File.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"))
-              return 1
-            else : # test other old name
-              OldFile = File.replace( caseID, "Case" + str(case+1) )
-              if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-                os.rename(OldFile, File)
-                os.rename(OldFile.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']))
-                os.rename(OldFile.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"), File.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"))
-                return 1
-              else:
-                return 0
-          if "DiffeomorphicAtlasDTI" in File :
-            OldFile = File.replace("DiffeomorphicAtlasDTI", "AWAtlasDTI")
-            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-              os.rename(OldFile, File)
-              os.rename(OldFile.replace("AWAtlasDTI","AWAtlas"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicAtlasDTI","DiffeomorphicAtlas"+config['m_ScalarMeasurement']))
-              os.rename(OldFile.replace("AWAtlasDTI","AWAtlasDTI_float"), File.replace("DiffeomorphicAtlasDTI","DiffeomorphicAtlasDTI_float"))
-              return 1
-            else:
-              return 0
-          if "HField" in File :
-            OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("H", "Deformation")
-            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-              os.rename(OldFile, File)
-              return 1
-            else : # test other old name
-              OldFile = File.replace( caseID, "Case" + str(case+1) )
-              if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-                os.rename(OldFile, File)
-                return 1
-              else:
-                return 0
-          if "GlobalDisplacementField" in File :
-            OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("Displacement", "Deformation")
-            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-              os.rename(OldFile, File)
-              return 1
-            else : # test other old name
-              OldFile = File.replace( caseID, "Case" + str(case+1) )
-              if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-                os.rename(OldFile, File)
-                return 1
-              else:
-                return 0
-        else: # file does not exist and name has not been changed: check if the caseX version exists
-          if caseID : # CaseID is empty for averages
-            OldFile = File.replace( caseID, "Case" + str(case+1) )
-            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
-              os.rename(OldFile, File)
-              return 1
-            else:
-              return 0
-          else: # for averages
-            return 0
 
 
     GridApostrophe=""

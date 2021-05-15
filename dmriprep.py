@@ -254,6 +254,7 @@ if __name__=='__main__':
     try:
         dmri.preprocessing.logger.setTimestamp(True)
         result=args.func(args)
+        exit(0)
     except Exception as e:
         dmri.preprocessing.logger.setVerbosity(True)
         msg=traceback.format_exc()

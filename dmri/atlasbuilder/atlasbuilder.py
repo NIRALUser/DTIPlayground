@@ -13,10 +13,9 @@ from pathlib import Path
 import yaml 
 
 import dmri.atlasbuilder.utils as utils 
-import dmri.atlasbuilder as ab 
 import dmri.common
 
-logger=ab.logger.write
+logger=dmri.common.logger.write
 
 
 ## builder class

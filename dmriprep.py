@@ -13,16 +13,17 @@ import traceback,time,copy,yaml,sys,os,uuid
 import dmri.preprocessing
 import dmri.preprocessing.modules
 import dmri.preprocessing.protocols
+import dmri.common 
 
-logger=dmri.preprocessing.logger.write 
+logger=dmri.common.logger.write 
 
 ### unit functions
 
 def initialize_logger(args):
     ## default log setting
-    dmri.preprocessing.logger.setLogfile(args.log)
-    dmri.preprocessing.logger.setTimestamp(not args.no_log_timestamp)
-    dmri.preprocessing.logger.setVerbosity(not args.no_verbosity)
+    dmri.common.logger.setLogfile(args.log)
+    dmri.common.logger.setTimestamp(not args.no_log_timestamp)
+    dmri.common.logger.setVerbosity(not args.no_verbosity)
 
 def check_initialized(args):
     home_dir=Path(args.config_dir)
@@ -60,9 +61,9 @@ def after_initialized(func): #decorator for other functions other than command_i
 
 def log_off(func):
     def wrapper(*args,**kwargs):
-        dmri.preprocessing.logger.setVerbosity(False)
+        dmri.common.logger.setVerbosity(False)
         res=func(*args,**kwargs)
-        dmri.preprocessing.logger.setVerbosity(True)
+        dmri.common.logger.setVerbosity(True)
         return res 
     return wrapper
 
@@ -131,7 +132,7 @@ def command_make_protocols(args):
         "output_path" : args.output    
     }
     if options['output_path'] is not None:
-        dmri.preprocessing.logger.setVerbosity(True)
+        dmri.common.logger.setVerbosity(True)
     ## load config file
     config,environment = load_configurations(options['config_dir'])
     modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
@@ -184,7 +185,7 @@ def command_run(args):
         proto.makeDefaultProtocols(options['default_protocols'],template=template)
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
-    dmri.preprocessing.logger.setLogfile(logfilename)  
+    dmri.common.logger.setLogfile(logfilename)  
     logger("\r----------------------------------- QC Begins ----------------------------------------\n")
     res=proto.runPipeline()
     logger("\r----------------------------------- QC Done ----------------------------------------\n")
@@ -195,7 +196,7 @@ def get_args():
     current_dir=Path(__file__).parent
     config_dir=Path(os.environ.get('HOME')).joinpath('.niral-dti/dmriprep')
     parser=argparse.ArgumentParser(prog="dmriprep",description="dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.",
-                                                  epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States. All rights are left out somewhere in the universe, 2021")
+                                                  epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
     #parser.add_argument('command',help='command',type=str)
     subparsers=parser.add_subparsers(help="Commands")
     
@@ -237,7 +238,7 @@ def get_args():
     uid, ts = dmri.common.get_uuid(), dmri.common.get_timestamp()
     sys_logfilename='dmriprep_'+env['USER']+"_"+ts+"_"+uid+".txt"
     sys_logfile=sys_log_dir.joinpath(sys_logfilename)
-    dmri.preprocessing.logger.addLogfile(sys_logfile.__str__(),mode='w')
+    dmri.common.logger.addLogfile(sys_logfile.__str__(),mode='w')
     logger("Execution ID : {}".format(uid))
     logger("Execution Command : "+" ".join(sys.argv))
 
@@ -252,11 +253,11 @@ if __name__=='__main__':
     args=get_args()
 
     try:
-        dmri.preprocessing.logger.setTimestamp(True)
+        dmri.common.logger.setTimestamp(True)
         result=args.func(args)
         exit(0)
     except Exception as e:
-        dmri.preprocessing.logger.setVerbosity(True)
+        dmri.common.logger.setVerbosity(True)
         msg=traceback.format_exc()
         logger(msg,dmri.preprocessing.Color.ERROR)
         exit(-1)

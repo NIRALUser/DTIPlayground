@@ -100,7 +100,7 @@ def baseline_optimized_average(image_obj, averageInterpolationMethod , b0Thresho
         for gidx in range(g):
 
             ## rigid 3d registration to the averaged image
-            logger("Affine registration {}/{}".format(gidx+1,g),prep.Color.PROCESS)
+            logger("Rigid registration {}/{}".format(gidx+1,g),prep.Color.PROCESS)
             moving=moving_images[:,:,:,gidx]
             transformed, out_affine = rigid_3d(static,moving,affine,affine,sampling_prop=0.1)
             temp_images.append(transformed)

@@ -235,10 +235,11 @@ def get_args():
     sys_log_dir.mkdir(parents=True,exist_ok=True)
     env=os.environ
     uid, ts = dmri.common.get_uuid(), dmri.common.get_timestamp()
-    sys_logfilename=env['USER']+"_"+ts+"_"+uid+".txt"
+    sys_logfilename='dmriprep_'+env['USER']+"_"+ts+"_"+uid+".txt"
     sys_logfile=sys_log_dir.joinpath(sys_logfilename)
     dmri.preprocessing.logger.addLogfile(sys_logfile.__str__(),mode='w')
-    logger(" ".join(sys.argv))
+    logger("Execution ID : {}".format(uid))
+    logger("Execution Command : "+" ".join(sys.argv))
 
     ## if no parameter is furnished, exit with printing help
     if len(sys.argv)==1:

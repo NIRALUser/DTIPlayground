@@ -1,9 +1,10 @@
 **/__pycache__
 _data
 _dev
+**/*.pyc
 **/.ipynb_checkpoints
-**/*.nrrd
 log.txt
 linecount.sh
 logs
+dist
 

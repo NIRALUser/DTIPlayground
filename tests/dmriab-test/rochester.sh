@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export ROOT_DIR=/Human/UCIrvine/InterGenTrauma/DTIAtlasAnalysis/DTIAtlas_March26_2021_Rochester_Pitt
+export ROOT_DIR=/Human/UCIrvine/InterGenTrauma/DTIAtlasAnalysis/DTIAtlas_May132021
 export CONFIG=$ROOT_DIR/common/config.json
 export HBUILD=$ROOT_DIR/common/h-build.json
 export GREEDY=$ROOT_DIR/common/GreedyAtlasParameters.xml

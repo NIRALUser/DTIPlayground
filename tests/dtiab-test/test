@@ -1,9 +1,0 @@
-#!/bin/sh
-
-export ROOT_DIR=/BAND/USERS/skp78-dti/test-build-dev
-export CONFIG=$ROOT_DIR/common/config.yml
-export HBUILD=$ROOT_DIR/common/h-build.yml
-export GREEDY=$ROOT_DIR/common/GreedyAtlasParameters.xml
-
-source /BAND/USERS/skp78-dti/dtiplayground-env/bin/activate
-python ./test.py --output-dir $ROOT_DIR/test-output --config $CONFIG --hbuild $HBUILD --greedy-params $GREEDY

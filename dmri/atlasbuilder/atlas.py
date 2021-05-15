@@ -1,10 +1,23 @@
 #!/usr/bin/python
 
+#
+#   atlas.py 
+#   2021-05-10
+#   Written by SK Park, NIRAL, UNC
+#
+#   Atlasbuilding scripts
+#
+
 import os # To run a shell command : os.system("[shell command]") >> will
 import sys # to return an exit code
 import shutil # to remove a non empty directory and copy files
 import time 
 import xml.etree.cElementTree as ET 
+
+import dmri.atlasbuilder as ab 
+import dmri.common.tools as tools
+
+logger=ab.logger.write
 
 def generateGreedyAtlasParametersFile(cfg):
     xmlfile=cfg["m_GreedyAtlasParametersTemplatePath"]
@@ -30,7 +43,7 @@ def generateGreedyAtlasParametersFile(cfg):
 
     ## change output path 
     for neighbor in r.iter('OutputPrefix'):
-        print(neighbor.tag,neighbor.attrib)
+        logger("{} {}".format(neighbor.tag,neighbor.attrib))
         neighbor.set('val',cfg["m_OutputPath"]+"/2_NonLinear_Registration/")
 
     outputfile=cfg["m_OutputPath"]+"/2_NonLinear_Registration/GreedyAtlasParameters.xml"
@@ -74,7 +87,7 @@ def run(cfg):
     ### To be removed
     if m_nbLoopsDTIReg is None: m_nbLoopsDTIReg=1
 
-    print("\n============ Atlas Building =============")
+    logger("\n============ Atlas Building =============")
 
     # Files Paths
     DeformPath= m_OutputPath+"/2_NonLinear_Registration"
@@ -84,14 +97,14 @@ def run(cfg):
     FinalAtlasPath= m_OutputPath+"/5_Final_Atlas"
 
     def DisplayErrorAndQuit ( Error ):
-      print('\n\nERROR DETECTED IN WORKFLOW:',Error)
-      print('ABORT')
+      logger('\n\nERROR DETECTED IN WORKFLOW:',Error)
+      logger('ABORT')
       sys.exit(1)
 
     def TestGridProcess ( FilesFolder, NbCases , NoCase1=None):
       if NoCase1 is not None:
-        if NbCases>0 : print("\n| Waiting for all batches (" + str(NbCases-NoCase1) + ") to be processed on grid...")
-        else : print("\n| Waiting for 1 batch to be processed on grid...")
+        if NbCases>0 : logger("\n| Waiting for all batches (" + str(NbCases-NoCase1) + ") to be processed on grid...")
+        else : logger("\n| Waiting for 1 batch to be processed on grid...")
         filesOK = 0
         OldNbFilesOK = 0
         while not filesOK :
@@ -103,17 +116,17 @@ def run(cfg):
               if not os.path.isfile( FilesFolder + "/Case" + str(case+1) ) : filesOK = 0
               else : NbfilesOK = NbfilesOK + 1
               case += 1
-            if NbfilesOK != OldNbFilesOK : print("| [" + str(NbfilesOK) + "\t / " + str(NbCases-NoCase1) + " ] cases processed")
+            if NbfilesOK != OldNbFilesOK : logger("| [" + str(NbfilesOK) + "\t / " + str(NbCases-NoCase1) + " ] cases processed")
             OldNbFilesOK=NbfilesOK  
           elif not os.path.isfile( FilesFolder + "/file" ) : filesOK = 0
           time.sleep(60) # Test only every minute\n"
-        print("\n=> All files processed\n")
+        logger("\n=> All files processed\n")
         shutil.rmtree(FilesFolder) # clear directory and recreate it\n"
         os.mkdir(FilesFolder)
 
       else:
-        if NbCases>0 : print("\n| Waiting for all batches (" + str(NbCases) + ") to be processed on grid...")
-        else : print("\n| Waiting for 1 batch to be processed on grid...")
+        if NbCases>0 : logger("\n| Waiting for all batches (" + str(NbCases) + ") to be processed on grid...")
+        else : logger("\n| Waiting for 1 batch to be processed on grid...")
         filesOK = 0
         OldNbFilesOK = 0
         while not filesOK :
@@ -126,11 +139,11 @@ def run(cfg):
               else : NbfilesOK = NbfilesOK + 1
               case += 1
 
-            if NbfilesOK != OldNbFilesOK : print("| [" + str(NbfilesOK) + "\t / " + str(NbCases) + " ] cases processed")
+            if NbfilesOK != OldNbFilesOK : logger("| [" + str(NbfilesOK) + "\t / " + str(NbCases) + " ] cases processed")
             OldNbFilesOK=NbfilesOK
           elif not os.path.isfile( FilesFolder + "/file" ) : filesOK = 0
           time.sleep(60) # Test only every minute\n"
-        print("\n=> All files processed\n")
+        logger("\n=> All files processed\n")
         shutil.rmtree(FilesFolder) # clear directory and recreate it\n"
         os.mkdir(FilesFolder)
 
@@ -243,7 +256,7 @@ def run(cfg):
       if os.path.isdir(OldDeformPath):
         os.rename(OldDeformPath,DeformPath)
       else:
-        print("\n=> Creation of the Deformation transform directory = " + DeformPath)
+        logger("\n=> Creation of the Deformation transform directory = " + DeformPath)
         os.mkdir(DeformPath)
 
     if not os.path.isdir(FinalPath):
@@ -251,36 +264,36 @@ def run(cfg):
       if os.path.isdir(OldFinalPath):
         os.rename(OldFinalPath,FinalPath)
       else:
-        print("\n=> Creation of the Final Atlas directory = " + FinalPath)
+        logger("\n=> Creation of the Final Atlas directory = " + FinalPath)
         os.mkdir(FinalPath)
 
     if not os.path.isdir(FinalResampPath):
-      print("\n=> Creation of the Final Resampling directory = " + FinalResampPath)
+      logger("\n=> Creation of the Final Resampling directory = " + FinalResampPath)
       os.mkdir(FinalResampPath)
 
     if not os.path.isdir(FinalResampPath + "/First_Resampling"):
-      print("\n=> Creation of the First Final Resampling directory = " + FinalResampPath + "/First_Resampling")
+      logger("\n=> Creation of the First Final Resampling directory = " + FinalResampPath + "/First_Resampling")
       os.mkdir(FinalResampPath + "/First_Resampling")
 
     if not os.path.isdir(FinalResampPath + "/Second_Resampling"):
-      print("\n=> Creation of the Second Final Resampling directory = " + FinalResampPath + "/Second_Resampling")
+      logger("\n=> Creation of the Second Final Resampling directory = " + FinalResampPath + "/Second_Resampling")
       os.mkdir(FinalResampPath + "/Second_Resampling")
 
     if not os.path.isdir(FinalAtlasPath):
-      print("\n=> Creation of the Final Atlas directory = " + FinalAtlasPath)
+      logger("\n=> Creation of the Final Atlas directory = " + FinalAtlasPath)
       os.mkdir(FinalAtlasPath)
 
     # for i in range(m_nbLoopsDTIReg):
     #   if not os.path.isdir(FinalResampPath+"/Second_Resampling"+"/Loop_"+str(i)):
-    #     print("\n=> Creation of the Second Final Resampling loop directory  = " + FinalResampPath + "/Second_Resampling" +"/Loop_"+str(i))
+    #     logger("\n=> Creation of the Second Final Resampling loop directory  = " + FinalResampPath + "/Second_Resampling" +"/Loop_"+str(i))
     #     os.mkdir(FinalResampPath + "/Second_Resampling" + "/Loop_"+str(i))
 
     if not os.path.isdir(FinalResampPath + "/FinalTensors"):
-      print("\n=> Creation of the Final Tensors directory = " + FinalResampPath + "/FinalTensors")
+      logger("\n=> Creation of the Final Tensors directory = " + FinalResampPath + "/FinalTensors")
       os.mkdir(FinalResampPath + "/FinalTensors")
 
     if not os.path.isdir(FinalResampPath + "/FinalDeformationFields"):
-      print("\n=> Creation of the Final Deformation Fields directory = " + FinalResampPath + "/FinalDeformationFields\n")
+      logger("\n=> Creation of the Final Deformation Fields directory = " + FinalResampPath + "/FinalDeformationFields\n")
       os.mkdir(FinalResampPath + "/FinalDeformationFields")
 
     # Cases variables
@@ -310,7 +323,7 @@ def run(cfg):
     XMLFile= DeformPath + "/GreedyAtlasParameters.xml"
     ParsedFile= DeformPath + "/ParsedXML.xml"
     AtlasBCommand= GridProcessCmdAverage + " "+ m_SoftPath[5] + " -f " + XMLFile + " -o " + ParsedFile + GridApostrophe
-    print("[Computing the Deformation Fields with GreedyAtlas] => $ " + AtlasBCommand)
+    logger("[Computing the Deformation Fields with GreedyAtlas] => $ " + AtlasBCommand)
     if m_Overwrite==1:
       if 1 :
         if os.system(AtlasBCommand)!=0 : DisplayErrorAndQuit('GreedyAtlas: Computing non-linear atlas from affine registered images')
@@ -324,11 +337,11 @@ def run(cfg):
           NewImage= DeformPath + "/" + allcasesIDs[case] + "_NonLinearTrans_FA.mhd"
           NewHField=DeformPath + "/" + allcasesIDs[case] + "_HField.mhd"
           NewInvHField=DeformPath + "/" + allcasesIDs[case] + "_InverseHField.mhd"
-          print("[" + allcasesIDs[case] + "] => Renaming \'" + originalImage + "\' to \'" + NewImage + "\'")
+          logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalImage + "\' to \'" + NewImage + "\'")
           os.rename(originalImage,NewImage)
-          print("[" + allcasesIDs[case] + "] => Renaming \'" + originalHField + "\' to \'" + NewHField + "\'")
+          logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalHField + "\' to \'" + NewHField + "\'")
           os.rename(originalHField,NewHField)
-          print("[" + allcasesIDs[case] + "] => Renaming \'" + originalInvHField + "\' to \'" + NewInvHField + "\'")
+          logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalInvHField + "\' to \'" + NewInvHField + "\'")
           os.rename(originalInvHField,NewInvHField)
           case += 1
     else:
@@ -344,15 +357,15 @@ def run(cfg):
           NewImage= DeformPath + "/" + allcasesIDs[case] + "_NonLinearTrans_FA.mhd"
           NewHField=DeformPath + "/" + allcasesIDs[case] + "_HField.mhd"
           NewInvHField=DeformPath + "/" + allcasesIDs[case] + "_InverseHField.mhd"
-          print("[" + allcasesIDs[case] + "] => Renaming \'" + originalImage + "\' to \'" + NewImage + "\'")
+          logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalImage + "\' to \'" + NewImage + "\'")
           os.rename(originalImage,NewImage)
-          print("[" + allcasesIDs[case] + "] => Renaming \'" + originalHField + "\' to \'" + NewHField + "\'")
+          logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalHField + "\' to \'" + NewHField + "\'")
           os.rename(originalHField,NewHField)
-          print("[" + allcasesIDs[case] + "] => Renaming \'" + originalInvHField + "\' to \'" + NewInvHField + "\'")
+          logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalInvHField + "\' to \'" + NewInvHField + "\'")
           os.rename(originalInvHField,NewInvHField)
           case += 1
       else:
-        print("=> The file '" + DeformPath + "/MeanImage.mhd' already exists so the command will not be executed")
+        logger("=> The file '" + DeformPath + "/MeanImage.mhd' already exists so the command will not be executed")
         # Renaming possible existing old named files from GreedyAtlas\n";
         case = 0
         while case < len(allcases): # Updating old names if needed\n";
@@ -401,7 +414,7 @@ def run(cfg):
         if m_InterpolLogOption=="Nearest" : FinalReSampCommand = FinalReSampCommand + " --nolog --correction nearest"
       if m_TensTfm=="Preservation of the Principal Direction (PPD)": FinalReSampCommand = FinalReSampCommand + " -T PPD"
       if m_TensTfm=="Finite Strain (FS)" : FinalReSampCommand = FinalReSampCommand + " -T FS"
-      print("\n[" + allcasesIDs[case] + "] [Applying deformation fields to original DTIs] => $ " + FinalReSampCommand)
+      logger("\n[" + allcasesIDs[case] + "] [Applying deformation fields to original DTIs] => $ " + FinalReSampCommand)
 
       if m_Overwrite==1:
         if 1 :
@@ -414,9 +427,9 @@ def run(cfg):
 
           if not m_useGridProcess:
             if os.system(FinalReSampCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] ResampleDTIlogEuclidean: Applying deformation fields to original DTIs')
-            print("[" + allcasesIDs[case] + "] => $ " + GeneDiffeomorphicCaseScalarMeasurementCommand)
+            logger("[" + allcasesIDs[case] + "] => $ " + GeneDiffeomorphicCaseScalarMeasurementCommand)
             if os.system(GeneDiffeomorphicCaseScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Computing Diffeomorphic '+m_ScalarMeasurement)
-            print("[" + allcasesIDs[case] + "] => $ " + CaseDbleToFloatCommand + "\n")
+            logger("[" + allcasesIDs[case] + "] => $ " + CaseDbleToFloatCommand + "\n")
             if os.system(CaseDbleToFloatCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the final DTI images from double to float DTI')
           else:
             GridProcessCommandsArray.append(FinalReSampCommand)
@@ -443,9 +456,9 @@ def run(cfg):
 
           if not m_useGridProcess:
             if os.system(FinalReSampCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] ResampleDTIlogEuclidean: Applying deformation fields to original DTIs')
-            print("[" + allcasesIDs[case] + "] => $ " + GeneDiffeomorphicCaseScalarMeasurementCommand)
+            logger("[" + allcasesIDs[case] + "] => $ " + GeneDiffeomorphicCaseScalarMeasurementCommand)
             if os.system(GeneDiffeomorphicCaseScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Computing Diffeomorphic '+m_ScalarMeasurement)
-            print("[" + allcasesIDs[case] + "] => $ " + CaseDbleToFloatCommand + "\n")
+            logger("[" + allcasesIDs[case] + "] => $ " + CaseDbleToFloatCommand + "\n")
             if os.system(CaseDbleToFloatCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the final DTI images from double to float DTI')
           else:
             GridProcessCommandsArray.append(FinalReSampCommand)
@@ -461,7 +474,7 @@ def run(cfg):
               NbGridCommandsRan += 1
               if os.system(GridProcessCmd)!=0 : # Run script and collect error if so\n";
                 DisplayErrorAndQuit('[] Applying deformation fields to original DTIs')      
-        else : print("=> The file \'" + FinalDTI + "\' already exists so the command will not be executed")
+        else : logger("=> The file \'" + FinalDTI + "\' already exists so the command will not be executed")
       case += 1
 
     if m_useGridProcess:
@@ -476,7 +489,7 @@ def run(cfg):
       AverageCommand = AverageCommand + DTIforAVG
       case += 1
     AverageCommand = AverageCommand + "--tensor_output " + DTIAverage
-    print("\n[Computing the Diffeomorphic DTI average] => $ " + AverageCommand)
+    logger("\n[Computing the Diffeomorphic DTI average] => $ " + AverageCommand)
 
 
     #### 3_Diffeomophic_Atlas
@@ -492,14 +505,14 @@ def run(cfg):
       DbleToFloatCommand=m_SoftPath[8]+" convert -t float -i " + DTIAverage + " | " + m_SoftPath[8] + " save -f nrrd -e gzip -o " + FinalPath + "/DiffeomorphicAtlasDTI_float.nrrd"
       if not m_useGridProcess:
         if os.system(AverageCommand)!=0 : DisplayErrorAndQuit('dtiaverage: Computing the final DTI average')
-        print("[Computing some images from the final DTI with dtiprocess] => $ " + GeneScalarMeasurementCommand)
+        logger("[Computing some images from the final DTI with dtiprocess] => $ " + GeneScalarMeasurementCommand)
         if os.system(GeneScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('dtiprocess: Computing Diffeomorphic FA, color FA, MD, RD and AD')
-        print("[Computing some images from the final DTI with dtiprocess] => $ " + DbleToFloatCommand)
+        logger("[Computing some images from the final DTI with dtiprocess] => $ " + DbleToFloatCommand)
         if os.system(DbleToFloatCommand)!=0 : DisplayErrorAndQuit('unu: Converting the final DTI atlas from double to float DTI')
       else:
         AverageGridCommand=AverageCommand + "' " + "'" + GeneScalarMeasurementCommand + "' " + "'" + DbleToFloatCommand + "'"
         if os.system(AverageGridCommand)!=0 : DisplayErrorAndQuit('Computing the final DTI average')
-    else: print("=> The file '" + DTIAverage + "' already exists so the command will not be executed")
+    else: logger("=> The file '" + DTIAverage + "' already exists so the command will not be executed")
     if m_useGridProcess:
       TestGridProcess( FilesFolder, 0 ) # stays in the function until all process is done : 0 makes the function look for \'file\'
 
@@ -564,7 +577,7 @@ def run(cfg):
         ANTSTempFileBase = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_"
         GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSOutbase " + ANTSTempFileBase
 
-      print("\n[" + allcasesIDs[case] + "] [Computing global deformation fields] => $ " + GlobalDefFieldCommand)
+      logger("\n[" + allcasesIDs[case] + "] [Computing global deformation fields] => $ " + GlobalDefFieldCommand)
 
 
       if m_Overwrite==1 or not CheckFileExists(FinalDef, case, allcasesIDs[case]) :
@@ -572,14 +585,14 @@ def run(cfg):
 
         if not m_useGridProcess:
           if os.system(GlobalDefFieldCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] DTI-Reg: Computing global deformation fields')
-          print("\n[" + allcasesIDs[case] + "] [Converting the deformed images from double to float DTI] => $ " + GlobDbleToFloatCommand)
+          logger("\n[" + allcasesIDs[case] + "] [Converting the deformed images from double to float DTI] => $ " + GlobDbleToFloatCommand)
           if os.system(GlobDbleToFloatCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the deformed images from double to float DTI')
         else:
           GlobDefFieldGridCommand=GridProcessCmd +" " + GlobalDefFieldCommand + "' " + "'" + GlobDbleToFloatCommand + "'"
           if os.system(GlobDefFieldGridCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] Computing global deformation fields')
 
       else:
-        print("=> The file '" + FinalDef + "' already exists so the command will not be executed")
+        logger("=> The file '" + FinalDef + "' already exists so the command will not be executed")
       case += 1
 
     if m_useGridProcess:
@@ -587,7 +600,7 @@ def run(cfg):
 
     # for i in range(m_nbLoopsDTIReg):
     #   if not os.path.isdir(FinalResampPath+"/Second_Resampling"+"/Loop_"+str(i)):
-    #     print("\n=> Creation of the Second Final Resampling loop directory  = " + FinalResampPath + "/Second_Resampling" +"/Loop_"+str(i))
+    #     logger("\n=> Creation of the Second Final Resampling loop directory  = " + FinalResampPath + "/Second_Resampling" +"/Loop_"+str(i))
     #     os.mkdir(FinalResampPath + "/Second_Resampling" + "/Loop_"+str(i))
 
     #### 4_Second_Resampling
@@ -601,12 +614,12 @@ def run(cfg):
       cnt=max(cnt,0)
 
     while cnt < m_nbLoopsDTIReg:
-      print("-----------------------------------------------------------")
-      print("Iterative Registration cycle %d / %d" % (cnt+1,m_nbLoopsDTIReg) )
-      print("------------------------------------------------------------")
+      logger("-----------------------------------------------------------")
+      logger("Iterative Registration cycle %d / %d" % (cnt+1,m_nbLoopsDTIReg) )
+      logger("------------------------------------------------------------")
 
       if not os.path.isdir(FinalResampPath+"/Second_Resampling"+"/Loop_"+str(cnt)):
-        print("\n=> Creation of the Second Final Resampling loop directory  = " + FinalResampPath + "/Second_Resampling" +"/Loop_"+str(cnt))
+        logger("\n=> Creation of the Second Final Resampling loop directory  = " + FinalResampPath + "/Second_Resampling" +"/Loop_"+str(cnt))
         os.mkdir(FinalResampPath + "/Second_Resampling" + "/Loop_"+str(cnt))
       # dtiaverage recomputing
       IterDir="Loop_"+str(cnt)+"/"
@@ -621,7 +634,7 @@ def run(cfg):
           AverageCommand2 = AverageCommand2 + DTIforAVG2
           case += 1
         AverageCommand2 = AverageCommand2 + "--tensor_output " + DTIAverage2
-        print("\n[Recomputing the final DTI average] => $ " + AverageCommand2)
+        logger("\n[Recomputing the final DTI average] => $ " + AverageCommand2)
       else: ### when iterative registration is activated
         case=0
         while case < len(allcases):
@@ -629,7 +642,7 @@ def run(cfg):
           AverageCommand2 = AverageCommand2 + DTIforAVG2
           case += 1
         AverageCommand2 = AverageCommand2 + "--tensor_output " + DTIAverage2
-        print("\n[Recomputing the final DTI average] => $ " + AverageCommand2)   
+        logger("\n[Recomputing the final DTI average] => $ " + AverageCommand2)   
 
 
       if m_Overwrite==1 or not CheckFileExists(DTIAverage2, 0, ""): 
@@ -643,15 +656,15 @@ def run(cfg):
         DbleToFloatCommand2=m_SoftPath[8]+" convert -t float -i " + DTIAverage2 + " | "+m_SoftPath[8]+" save -f nrrd -e gzip -o " + FinalResampPath + "/Second_Resampling/" +IterDir+ "/FinalAtlasDTI_float.nrrd"
         if not m_useGridProcess:
           if os.system(AverageCommand2)!=0 : DisplayErrorAndQuit('dtiaverage: Recomputing the final DTI average')
-          print("[Computing some images from the final DTI with dtiprocess] => $ " + GeneScalarMeasurementCommand2)
+          logger("[Computing some images from the final DTI with dtiprocess] => $ " + GeneScalarMeasurementCommand2)
           if os.system(GeneScalarMeasurementCommand2)!=0 : DisplayErrorAndQuit('dtiprocess: Recomputing final FA, color FA, MD, RD and AD')
-          print("[Computing some images from the final DTI with dtiprocess] => $ " + DbleToFloatCommand2)
+          logger("[Computing some images from the final DTI with dtiprocess] => $ " + DbleToFloatCommand2)
           if os.system(DbleToFloatCommand2)!=0 : DisplayErrorAndQuit('unu: Converting the final resampled DTI atlas from double to float DTI')
         else:
           Average2GridCommand=GridProcessCmdNoCase + " "+AverageCommand2 + "' " + "'" + GeneScalarMeasurementCommand2 + "' " + "'" + DbleToFloatCommand2 + "'"
           if os.system(Average2GridCommand)!=0 : DisplayErrorAndQuit('Recomputing the final DTI average')
       else:
-        print("=> The file '" + DTIAverage2 + "' already exists so the command will not be executed")
+        logger("=> The file '" + DTIAverage2 + "' already exists so the command will not be executed")
 
       if m_useGridProcess:
         TestGridProcess( FilesFolder, 0 ) # stays in the function until all process is done : 0 makes the function look for \'file\'
@@ -712,7 +725,7 @@ def run(cfg):
           ANTSTempFileBase2 = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_"
           GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSOutbase " + ANTSTempFileBase2
 
-        print("\n[" + allcasesIDs[case] + "] [Recomputing global deformation fields] => $ " + GlobalDefFieldCommand2)
+        logger("\n[" + allcasesIDs[case] + "] [Recomputing global deformation fields] => $ " + GlobalDefFieldCommand2)
 
         if m_Overwrite==1 or not CheckFileExists(FinalDef2, case, allcasesIDs[case])  :
           SecondResampRecomputed[case] = 1
@@ -726,15 +739,15 @@ def run(cfg):
           
           if not m_useGridProcess:
             if os.system(GlobalDefFieldCommand2)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] DTI-Reg: Computing global deformation fields')
-            print("\n[" + allcasesIDs[case] + "] [Converting the deformed images from double to float DTI] => $ " + GlobDbleToFloatCommand2)
+            logger("\n[" + allcasesIDs[case] + "] [Converting the deformed images from double to float DTI] => $ " + GlobDbleToFloatCommand2)
             if os.system(GlobDbleToFloatCommand2)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the deformed images from double to float DTI')
-            print("\n[" + allcasesIDs[case] + "] [Computing DTIReg "+m_ScalarMeasurement+"] => $ " + GeneDTIRegCaseScalarMeasurementCommand)
+            logger("\n[" + allcasesIDs[case] + "] [Computing DTIReg "+m_ScalarMeasurement+"] => $ " + GeneDTIRegCaseScalarMeasurementCommand)
             if os.system(GeneDTIRegCaseScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Computing DTIReg '+m_ScalarMeasurement)
           else:
             GlobDefField2GridCommand=GridProcessCmd +" " + GlobalDefFieldCommand2 + "' " + "'" + GlobDbleToFloatCommand2 + "' " + "'" + GeneDTIRegCaseScalarMeasurementCommand + "'"
             if os.system(GlobDefField2GridCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] Recomputing global deformation fields')
         else:
-          print("=> The file '" + FinalDef2 + "' already exists so the command will not be executed")
+          logger("=> The file '" + FinalDef2 + "' already exists so the command will not be executed")
         case += 1
 
       if m_useGridProcess:
@@ -752,7 +765,7 @@ def run(cfg):
     # End while cnt < m_nbLoopDTIReg
 
     # Moving final images to final folders
-    print("\n=> Moving final images to final folders")
+    logger("\n=> Moving final images to final folders")
     case = 0
     LastIterDir="Loop_"+str(m_nbLoopsDTIReg-1)+"/"
 
@@ -782,13 +795,13 @@ def run(cfg):
 
     # Copy final atlas components to FinalAtlasPath directory
 
-    print("Copying Final atlas components to " + FinalAtlasPath)
+    logger("Copying Final atlas components to " + FinalAtlasPath)
     shutil.rmtree(FinalAtlasPath)
     shutil.copytree(FinalResampPath+"/"+"/Second_Resampling/"+LastIterDir,FinalAtlasPath)
     shutil.copytree(FinalResampPath+"/FinalDeformationFields",FinalAtlasPath+"/FinalDeformationFields")
     shutil.copytree(FinalResampPath+"/FinalTensors",FinalAtlasPath+"/FinalTensors")
 
-    print("\n============ End of Atlas Building =============")
+    logger("\n============ End of Atlas Building =============")
 
 
 

@@ -1,15 +1,22 @@
-#!/usr/bin/python
+#
+#   preprocess.py 
+#   2021-05-10
+#   Written by SK Park, NIRAL, UNC
+#
+#   Atlasbuilder preprocessing scripts
+#
+
 
 import os # To run a shell command : os.system("[shell command]") >> will be replaced to subprocess
 import sys # to return an exit code
 import shutil # to remove a non empty directory
 
+import dmri.atlasbuilder as ab 
+import dmri.common.tools as tools
+
+logger=ab.logger.write
 
 def run(cfg):    
-    # configPath=os.path.join(os.path.dirname(os.path.abspath(__file__)),"config.json")
-    # config={}
-    # with open(configPath,'r') as f:
-    #   config=json.load(f)
     config=cfg 
 
     PIDlogFile = config['m_OutputPath']+"/PID.log"
@@ -17,7 +24,7 @@ def run(cfg):
     PIDfile.write( str(os.getpid()) + "\n" )
     PIDfile.close()
 
-    print("\n============ Pre processing =============")
+    logger("\n============ Pre processing =============")
 
     # Files Paths
     allcases = config['m_CasesPath']
@@ -35,8 +42,8 @@ def run(cfg):
 
 
     def DisplayErrorAndQuit ( Error ):
-      print('\n\nERROR DETECTED IN WORKFLOW:',Error)
-      print('ABORT')
+      logger('\n\nERROR DETECTED IN WORKFLOW:',Error)
+      logger('ABORT')
       sys.exit(1)
 
 
@@ -46,7 +53,7 @@ def run(cfg):
           if os.system(NameOfCmdVarToExec)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + ']' + ErrorTxtToDisplay)
         else:
           GridProcessCaseCommandsArray.append(NameOfCmdVarToExec) # Executed eventually
-        #print("=> The file '" + NameOfFileVarToTest + "' already exists so the command will not be executed")
+        #logger("=> The file '" + NameOfFileVarToTest + "' already exists so the command will not be executed")
       else:
         if not CheckFileExists(NameOfFileVarToTest,case, allcases[case]):
           if not config["m_useGridProcess"]:
@@ -54,7 +61,7 @@ def run(cfg):
             else:
               GridProcessCaseCommandsArray.append(NameOfCmdVarToExec) # Executed eventually
         else:
-          print("=> The file '" + NameOfFileVarToTest + "' already exists so the command will not be executed")
+          logger("=> The file '" + NameOfFileVarToTest + "' already exists so the command will not be executed")
 
     # Function that checks if file exist and replace old names by new names if needed
     def CheckFileExists ( File, case, caseID ) : # returns 1 if file exists or has been renamed and 0 if not
@@ -136,14 +143,14 @@ def run(cfg):
       FilesFolder= config['m_OutputPath'] + '/GridProcessingFiles'
       if os.path.isdir(FilesFolder): shutil.rmtree(FilesFolder) # remove directory to get rid of any previous file
       os.mkdir(FilesFolder)
-      print("n=>Creation of the directory for the grid processing = " + FilesFolder)
+      logger("n=>Creation of the directory for the grid processing = " + FilesFolder)
 
 
 
     def TestGridProcess ( FilesFolder, NbCases , NoCase1=None):
       if NoCase1 is not None:
-        if NbCases>0 : print("\n| Waiting for all batches (" + str(NbCases-NoCase1) + ") to be processed on grid...")
-        else : print("\n| Waiting for 1 batch to be processed on grid...")
+        if NbCases>0 : logger("\n| Waiting for all batches (" + str(NbCases-NoCase1) + ") to be processed on grid...")
+        else : logger("\n| Waiting for 1 batch to be processed on grid...")
         filesOK = 0
         OldNbFilesOK = 0
         while not filesOK :
@@ -155,17 +162,17 @@ def run(cfg):
               if not os.path.isfile( FilesFolder + "/Case" + str(case+1) ) : filesOK = 0
               else : NbfilesOK = NbfilesOK + 1
               case += 1
-            if NbfilesOK != OldNbFilesOK : print("| [" + str(NbfilesOK) + "\t / " + str(NbCases-NoCase1) + " ] cases processed")
+            if NbfilesOK != OldNbFilesOK : logger("| [" + str(NbfilesOK) + "\t / " + str(NbCases-NoCase1) + " ] cases processed")
             OldNbFilesOK=NbfilesOK  
           elif not os.path.isfile( FilesFolder + "/file" ) : filesOK = 0
           time.sleep(60) # Test only every minute\n"
-        print("\n=> All files processed\n")
+        logger("\n=> All files processed\n")
         shutil.rmtree(FilesFolder) # clear directory and recreate it\n"
         os.mkdir(FilesFolder)
 
       else:
-        if NbCases>0 : print("\n| Waiting for all batches (" + str(NbCases) + ") to be processed on grid...")
-        else : print("\n| Waiting for 1 batch to be processed on grid...")
+        if NbCases>0 : logger("\n| Waiting for all batches (" + str(NbCases) + ") to be processed on grid...")
+        else : logger("\n| Waiting for 1 batch to be processed on grid...")
         filesOK = 0
         OldNbFilesOK = 0
         while not filesOK :
@@ -178,11 +185,11 @@ def run(cfg):
               else : NbfilesOK = NbfilesOK + 1
               case += 1
 
-            if NbfilesOK != OldNbFilesOK : print("| [" + str(NbfilesOK) + "\t / " + str(NbCases) + " ] cases processed")
+            if NbfilesOK != OldNbFilesOK : logger("| [" + str(NbfilesOK) + "\t / " + str(NbCases) + " ] cases processed")
             OldNbFilesOK=NbfilesOK
           elif not os.path.isfile( FilesFolder + "/file" ) : filesOK = 0
           time.sleep(60) # Test only every minute\n"
-        print("\n=> All files processed\n")
+        logger("\n=> All files processed\n")
         shutil.rmtree(FilesFolder) # clear directory and recreate it\n"
         os.mkdir(FilesFolder)
 
@@ -191,7 +198,7 @@ def run(cfg):
     # Create directory for temporary files
     if not os.path.isdir(OutputPath):
       os.mkdir(OutputPath)
-      print("\n=> Creation of the affine directory = " + OutputPath)
+      logger("\n=> Creation of the affine directory = " + OutputPath)
 
 
     # Creating template by processing Case 1 DTI
@@ -211,34 +218,34 @@ def run(cfg):
       RescaleTempCommand= "" + config['m_SoftPath'][0] + " " + AtlasScalarMeasurementref + " -outfile " + RescaleTemp + " -rescale 0,10000"
       if config['m_useGridProcess']:
         RescaleTempCommand= "" + config['m_GridGeneralCommand'] + " " + config['m_PythonPath'] + " " + config['m_OutputPath'] + "/Script/RunCommandOnServer.py " + FilesFolder + "/file \\'" + RescaleTempCommand  + "\\'"
-      print("\n[Rescaling " + config['m_ScalarMeasurement'] + " template] => $ " + RescaleTempCommand)
+      logger("\n[Rescaling " + config['m_ScalarMeasurement'] + " template] => $ " + RescaleTempCommand)
       if config['m_Overwrite']==1:
         if os.system(RescaleTempCommand)!=0 : DisplayErrorAndQuit('ImageMath: Rescaling ' + config['m_ScalarMeasurement'] + ' template')
       else:
         if not CheckFileExists(RescaleTemp, 0, "" ) :
           if os.system(RescaleTempCommand)!=0 : DisplayErrorAndQuit('ImageMath: Rescaling ' + config['m_ScalarMeasurement'] + ' template')
-        else : print("=> The file \\'" + RescaleTemp + "\\' already exists so the command will not be executed")
+        else : logger("=> The file \\'" + RescaleTemp + "\\' already exists so the command will not be executed")
       AtlasScalarMeasurementref= RescaleTemp
 
     else:
     # Filter case 1 DTI
-      print("")
+      logger("")
       FilteredDTI= OutputPath + "/" + config['m_CasesIDs'][0] +"_filteredDTI.nrrd"
       FilterDTICommand=  config['m_SoftPath'][1] +" " + allcases[0] + " " + FilteredDTI + " --correction zero"
-      print("["+ config['m_CasesIDs'][0] +"] [Filter DTI] => $ " + FilterDTICommand)
+      logger("["+ config['m_CasesIDs'][0] +"] [Filter DTI] => $ " + FilterDTICommand)
       if config['m_Overwrite']==1 :
         if not config['m_useGridProcess']:
           if os.system(FilterDTICommand)!=0 : DisplayErrorAndQuit('['+config['m_CasesIDs'][0]+'] ResampleDTIlogEuclidean: 1ow Filter DTI to remove negative values')
       else:
         if not CheckFileExists(FilteredDTI, 0, "" + config["m_CasesIDs"][0] + "" ) :
           if os.system(FilterDTICommand)!=0 : DisplayErrorAndQuit('['+config['m_CasesIDs'][0]+'] ResampleDTIlogEuclidean: 1 Filter DTI to remove negative values')
-        else : print("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
+        else : logger("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
 
       # Cropping case 1 DTI
       if config['m_NeedToBeCropped']==1:
         croppedDTI = OutputPath + "/" + config['m_CasesIDs'][0] + "_croppedDTI.nrrd"
         CropCommand =  config['m_SoftPath'][2] + " " + FilteredDTI + " -o " + croppedDTI + " -size " + config['m_CropSize'][0] + "," + config['m_CropSize'][1] + "," + config['m_CropSize'][2] + " -v"
-        print("[" +config['m_CasesIDs'][0] + "] [Cropping DTI Image] => $ " + CropCommand)
+        logger("[" +config['m_CasesIDs'][0] + "] [Cropping DTI Image] => $ " + CropCommand)
         
         if config["m_Overwrite"]==1:
           if not config["m_useGridProcess"]:
@@ -248,7 +255,7 @@ def run(cfg):
             if not config["m_useGridProcess"]:
               if os.system(CropCommand)!=0 : DisplayErrorAndQuit('[' + config["m_CasesIDs"][0] + '] CropDTI: Cropping DTI image')
           else:
-            print("=> The file '" + croppedDTI + "' already exists so the command will not be executed")
+            logger("=> The file '" + croppedDTI + "' already exists so the command will not be executed")
 
 
 
@@ -264,7 +271,7 @@ def run(cfg):
       else:
         GeneScalarMeasurementCommand= config['m_SoftPath'][3] + " --dti_image " + DTI + " -m " + ScalarMeasurement
 
-      print( ("[%s]"%config['m_CasesIDs'][0])+" [Generating FA] => $ " + GeneScalarMeasurementCommand)
+      logger( ("[%s]"%config['m_CasesIDs'][0])+" [Generating FA] => $ " + GeneScalarMeasurementCommand)
 
       if config['m_Overwrite']==1 :
         if not config['m_useGridProcess']:
@@ -273,7 +280,7 @@ def run(cfg):
         if not CheckFileExists(ScalarMeasurement, 0, config["m_CasesIDs"][0] ) :
           if not config['m_useGridProcess']:
             if os.system(GeneScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('[ImageTest1] dtiprocess: Generating FA of DTI image')
-          print("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
+          logger("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
           if config['m_useGridProcess']:
             if CropDTICase1Template or GeneScalarMeasurementCase1Template :
               GridCase1TemplateCommand= "" + config['m_GridGeneralCommand'] + " " + config['m_PythonPath'] + " " + config['m_OutputPath'] + "/Script/RunCommandOnServer.py " + FilesFolder + "/file"
@@ -281,18 +288,18 @@ def run(cfg):
               if config['m_NeedToBeCropped']==1:
                 GridCase1TemplateCommand = GridCase1TemplateCommand + " '" + CropCommand + "'"
               GridCase1TemplateCommand = GridCase1TemplateCommand + " '" + GeneScalarMeasurementCommand + "'"
-              print("[" + config['m_CasesIDs'][0] + "] => Submitting : " + GridCase1TemplateCommand)
+              logger("[" + config['m_CasesIDs'][0] + "] => Submitting : " + GridCase1TemplateCommand)
               if os.system(GridCase1TemplateCommand)!=0 : DisplayErrorAndQuit('[' + config['m_CasesIDs'][0] + "] Grid processing script") # Run script and collect error if so
               TestGridProcess( FilesFolder, 0, 0)        
 
 
-    print("")
+    logger("")
 
     # Affine Registration and Normalization Loop
     n = 0
     while n <= config['m_nbLoops'] : 
       if not os.path.isdir(OutputPath + "/Loop" + str(n)):
-        print("\n=> Creation of the Output directory for Loop " + str(n) + " = " + OutputPath + "/Loop" + str(n) + "\n")
+        logger("\n=> Creation of the Output directory for Loop " + str(n) + " = " + OutputPath + "/Loop" + str(n) + "\n")
         os.mkdir(OutputPath + "/Loop" + str(n))
 
       # Cases Loop
@@ -311,16 +318,16 @@ def run(cfg):
           # ResampleDTIlogEuclidean does by default a correction of tensor values by setting the negative values to zero
           FilteredDTI= OutputPath + "/" + allcasesIDs[case] + "_filteredDTI.nrrd"
           FilterDTICommand= config["m_SoftPath"][1] + " " + allcases[case] + " " + FilteredDTI + " --correction zero"
-          print("[" + allcasesIDs[case] + "] [Filter DTI] => $ " + FilterDTICommand)
+          logger("[" + allcasesIDs[case] + "] [Filter DTI] => $ " + FilterDTICommand)
 
           pyExecuteCommandPreprocessCase(FilteredDTI,FilterDTICommand,"ResampleDTIlogEuclidean: 2 Filter DTI to remove negative values",case)
           # if 1 :
           #   if os.system(FilterDTICommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] ResampleDTIlogEuclidean: Filter DTI to remove negative values')
-          # else : print("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
+          # else : logger("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
           if config["m_NeedToBeCropped"]==1:
             croppedDTI=OutputPath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
             CropCommand= "" + config["m_SoftPath"][2] + " " + FilteredDTI + " -o " + croppedDTI + " -size " + config["m_CropSize"][0] + "," + config["m_CropSize"][1] + "," + config["m_CropSize"][2] + " -v"
-            print("[" + allcasesIDs[case] + "] [Cropping DTI Image] => $ " + CropCommand)
+            logger("[" + allcasesIDs[case] + "] [Cropping DTI Image] => $ " + CropCommand)
             pyExecuteCommandPreprocessCase(croppedDTI,CropCommand,"CropDTI: Cropping DTI image" , case)
 
 
@@ -335,23 +342,23 @@ def run(cfg):
             GeneScalarMeasurementCommand= config["m_SoftPath"][3] + " --dti_image " + DTI + " -f " + ScalarMeasurement
           else:
             GeneScalarMeasurementCommand= config["m_SoftPath"][3] + " --dti_image " + DTI + " -m " + ScalarMeasurement
-          print("[" + allcasesIDs[case] + "] [Generating "+config["m_ScalarMeasurement"]+"] => $ " + GeneScalarMeasurementCommand)
+          logger("[" + allcasesIDs[case] + "] [Generating "+config["m_ScalarMeasurement"]+"] => $ " + GeneScalarMeasurementCommand)
           pyExecuteCommandPreprocessCase(ScalarMeasurement,GeneScalarMeasurementCommand,"dtiprocess: Generating " + config["m_ScalarMeasurement"] + " of DTI image",case)
 
           # if 1 :
           #   if os.system(GeneScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Generating FA of DTI image')
-          # else : print("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
+          # else : logger("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
 
     # Normalization
         ScalarMeasurement= OutputPath + "/" + allcasesIDs[case] + "_"+config["m_ScalarMeasurement"]+".nrrd"
         NormScalarMeasurement= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd"
         NormScalarMeasurementCommand= config["m_SoftPath"][0]+" " + ScalarMeasurement + " -outfile " + NormScalarMeasurement + " -matchHistogram " + AtlasScalarMeasurementref
-        print("[LOOP " + str(n) + "/"+ str(config["m_nbLoops"])+ "] [" + allcasesIDs[case] + "] [Normalization] => $ " + NormScalarMeasurementCommand)
+        logger("[LOOP " + str(n) + "/"+ str(config["m_nbLoops"])+ "] [" + allcasesIDs[case] + "] [Normalization] => $ " + NormScalarMeasurementCommand)
 
         pyExecuteCommandPreprocessCase(NormScalarMeasurement,NormScalarMeasurementCommand, "ImageMath: Normalizing " + config["m_ScalarMeasurement"] + " image",case)
         # if 1 :
         #   if os.system(NormScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] ImageMath: Normalizing FA image')
-        # else : print("=> The file \'" + NormScalarMeasurement + "\' already exists so the command will not be executed")
+        # else : logger("=> The file \'" + NormScalarMeasurement + "\' already exists so the command will not be executed")
 
     # Affine registration with BrainsFit
         NormScalarMeasurement= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd"
@@ -361,18 +368,18 @@ def run(cfg):
         InitLinearTransTxt= OutputPath + "/" + allcasesIDs[case] + "_InitLinearTrans.txt"
         InitLinearTransMat= OutputPath + "/" + allcasesIDs[case] + "_InitLinearTrans.mat"
         if n==0 and CheckFileExists( InitLinearTransMat, case, allcasesIDs[case] ) and CheckFileExists( InitLinearTransTxt, case, allcasesIDs[case] ):
-          print("[WARNING] Both \'" + allcasesIDs[case] + "_InitLinearTrans.mat\' and \'" + allcasesIDs[case] + "_InitLinearTrans.txt\' have been found. The .mat file will be used.")
+          logger("[WARNING] Both \'" + allcasesIDs[case] + "_InitLinearTrans.mat\' and \'" + allcasesIDs[case] + "_InitLinearTrans.txt\' have been found. The .mat file will be used.")
           AffineCommand= AffineCommand + " --initialTransform " + InitLinearTransMat
         elif n==0 and CheckFileExists( InitLinearTransMat, case, allcasesIDs[case] ) : AffineCommand= AffineCommand + " --initialTransform " + InitLinearTransMat
         elif n==0 and CheckFileExists( InitLinearTransTxt, case, allcasesIDs[case] ) : AffineCommand= AffineCommand + " --initialTransform " + InitLinearTransTxt
         else : AffineCommand= AffineCommand + " --initializeTransformMode "+ config["m_BFAffineTfmMode"] #useCenterOfHeadAlign"
-        print("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Affine registration with BrainsFit] => $ " + AffineCommand)
+        logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Affine registration with BrainsFit] => $ " + AffineCommand)
         CheckFileExists( LinearTrans, case, allcasesIDs[case] ) 
 
         pyExecuteCommandPreprocessCase(LinearTranstfm,AffineCommand,"BRAINSFit: Affine Registration of " + config["m_ScalarMeasurement"] + " image",case)
         # if 1 :
         #   if os.system(AffineCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] BRAINSFit: Affine Registration of FA image')
-        # else : print("=> The file \'" + LinearTranstfm + "\' already exists so the command will not be executed")
+        # else : logger("=> The file \'" + LinearTranstfm + "\' already exists so the command will not be executed")
 
     # Implementing the affine registration
         LinearTranstfm= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt"
@@ -381,11 +388,11 @@ def run(cfg):
         if config["m_NeedToBeCropped"]==1:
           originalDTI= OutputPath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
         ImplementCommand= config["m_SoftPath"][1]+" " + originalDTI + " " + LinearTransDTI + " -f " + LinearTranstfm + " -R " + AtlasScalarMeasurementref
-        print("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Implementing the Affine registration] => $ " + ImplementCommand)
+        logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Implementing the Affine registration] => $ " + ImplementCommand)
         pyExecuteCommandPreprocessCase(LinearTransDTI,ImplementCommand,  "ResampleDTIlogEuclidean: Implementing the Affine Registration on " +config["m_ScalarMeasurement"] + " image" ,case)
         # if 1 :
         #   if os.system(ImplementCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] ResampleDTIlogEuclidean: Implementing the Affine Registration on FA image')
-        # else : print("=> The file \'" + LinearTransDTI + "\' already exists so the command will not be executed")
+        # else : logger("=> The file \'" + LinearTransDTI + "\' already exists so the command will not be executed")
 
     # Generating FA/MA of registered images
         LinearTransDTI= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd"
@@ -396,11 +403,11 @@ def run(cfg):
         GeneLoopScalarMeasurementCommand= config["m_SoftPath"][3]+" --dti_image " + LinearTransDTI + " -m " + LoopScalarMeasurement
         if config["m_ScalarMeasurement"]=="FA":
           GeneLoopScalarMeasurementCommand= config["m_SoftPath"][3]+" --dti_image " + LinearTransDTI + " -f " + LoopScalarMeasurement
-        print("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Generating "+config["m_ScalarMeasurement"]+" of registered images] => $ " + GeneLoopScalarMeasurementCommand)
+        logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Generating "+config["m_ScalarMeasurement"]+" of registered images] => $ " + GeneLoopScalarMeasurementCommand)
         pyExecuteCommandPreprocessCase(LoopScalarMeasurement,GeneLoopScalarMeasurementCommand,"dtiprocess: Generating " + config["m_ScalarMeasurement"] + " of affine registered images" ,case)
         # if 1 :
         #   if os.system(GeneLoopScalarMeasurementCommand)!=0 : DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Generating FA of affine registered images')
-        # else : print("=> The file \'" + LoopScalarMeasurement + "\' already exists so the command will not be executed")
+        # else : logger("=> The file \'" + LoopScalarMeasurement + "\' already exists so the command will not be executed")
       
         if config["m_useGridProcess"]:
           if len(GridProcessCaseCommandsArray)!=0 : # There are operations to run
@@ -409,15 +416,15 @@ def run(cfg):
             while GridCmd < len(GridProcessCaseCommandsArray):
               GridAffineCommand = GridAffineCommand + " '" + GridProcessCaseCommandsArray[GridCmd] + "'"
               GridCmd += 1
-            print("[LOOP " + str(n) + "/" + str(config["m_nbLoops"]) + "] [" + allcasesIDs[case] + "] => Submitting : " + GridAffineCommand)
+            logger("[LOOP " + str(n) + "/" + str(config["m_nbLoops"]) + "] [" + allcasesIDs[case] + "] => Submitting : " + GridAffineCommand)
             if os.system(GridAffineCommand)!=0 : # Run script and collect error if so
               DisplayErrorAndQuit('[Loop ' + str(n) + '][' + allcasesIDs[case] + '] Grid processing script')
           else : # No operations to run for this case
-            print("=> No operations to run for case " + str(case+1))
+            logger("=> No operations to run for case " + str(case+1))
             f = open( FilesFolder + "/Case" + str(case+1), 'w')
             f.close()
 
-        print("")
+        logger("")
         case += 1 # indenting cases loop
       if config["m_useGridProcess"]:
         TestGridProcess( FilesFolder, len(allcases), NoCase1*(n==0)) # stays in the function until all process is done
@@ -444,7 +451,7 @@ def run(cfg):
             case += 1
           if config["m_useGridProcess"]:
             AverageCommand= config["m_GridGeneralCommand"] + " " + config["m_PythonPath"] + " " + config["m_OutputPath"] + "/Script/RunCommandOnServer.py " + FilesFolder + "/file '" + AverageCommand  + "'"
-          print("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [Computing "+config["m_ScalarMeasurement"]+" Average of registered images] => $ " + AverageCommand)
+          logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [Computing "+config["m_ScalarMeasurement"]+" Average of registered images] => $ " + AverageCommand)
           if config["m_Overwrite"]==1:
             if 1:
               if os.system(AverageCommand)!=0 : DisplayErrorAndQuit('[Loop ' + str(n) + '] dtiaverage: Computing '  + config["m_ScalarMeasurement"] + " Average of registered images")
@@ -457,7 +464,7 @@ def run(cfg):
               if config["m_useGridProcess"]:
                 TestGridProcess( FilesFolder, 0, 0) # stays in the function until all process is done : 0 makes the function look for \'file\'
             else:
-              print("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
+              logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
             AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
       else:
         if 1:
@@ -476,7 +483,7 @@ def run(cfg):
             case += 1
           if config["m_useGridProcess"]:
             AverageCommand= config["m_GridGeneralCommand"] + " " + config["m_PythonPath"] + " " + config["m_OutputPath"] + "/Script/RunCommandOnServer.py " + FilesFolder + "/file '" + AverageCommand  + "'"
-          print("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [Computing "+config["m_ScalarMeasurement"]+" Average of registered images] => $ " + AverageCommand) 
+          logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [Computing "+config["m_ScalarMeasurement"]+" Average of registered images] => $ " + AverageCommand) 
           if config["m_Overwrite"]==1:
             if 1:
               if os.system(AverageCommand)!=0 : DisplayErrorAndQuit('[Loop ' + str(n) + '] dtiaverage: Computing '  + config["m_ScalarMeasurement"] + " Average of registered images")
@@ -489,18 +496,18 @@ def run(cfg):
               if config["m_useGridProcess"]:
                 TestGridProcess( FilesFolder, 0, 0) # stays in the function until all process is done : 0 makes the function look for \'file\'
             else:
-              print("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
+              logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
             AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
 
         # if 1 :
         #   if os.system(AverageCommand)!=0 : DisplayErrorAndQuit('[Loop ' + str(n) + '] dtiaverage: Computing FA Average of registered images')
         # else :
-        #   print("=> The file \'" + ScalarMeasurementAverage + "\' already exists so the command will not be executed")
+        #   logger("=> The file \'" + ScalarMeasurementAverage + "\' already exists so the command will not be executed")
         # AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
-      print("")
+      logger("")
       n += 1 # indenting main loop
 
-    print("\n============ End of Pre processing =============")
+    logger("\n============ End of Pre processing =============")
 
     # sys.exit(0)
 

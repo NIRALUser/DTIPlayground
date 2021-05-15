@@ -1,0 +1,46 @@
+m_BFAffineTfmMode: useCenterOfHeadAlign
+m_CasesIDs: []
+m_CasesPath: []
+m_CropSize:
+- ''
+- ''
+- ''
+m_DTIRegExtraPath: ''
+m_DTIRegOptions:
+- ANTS
+- GreedyDiffeo (SyN)
+- '0.25'
+- 100x50x25
+- Cross-Correlation (CC)
+- '2'
+- '3'
+- '0'
+m_GridAtlasCommand: ''
+m_GridGeneralCommand: ''
+m_InterpolLogOption: ''
+m_InterpolOption: ''
+m_InterpolType: Linear
+m_NbThreadsString: '3'
+m_NeedToBeCropped: 0
+m_OutputPath: /BAND/USERS/skp78-dti/test-build
+m_Overwrite: 0
+m_PythonPath: /usr/bin/python
+m_RegType: 1
+m_ScalarMeasurement: FA
+m_SoftPath:
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/niral_utilities/bin/ImageMath
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/ResampleDTIlogEuclidean/bin/ResampleDTIlogEuclidean
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/niral_utilities/bin/CropDTI
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTIProcess/bin/dtiprocess
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/BRAINSTools/bin/BRAINSFit
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/AtlasWerks/bin/GreedyAtlas
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTIProcess/bin/dtiaverage
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTI-Reg/bin/DTI-Reg
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/teem/bin/unu
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/ITKTransformTools/bin/ITKTransformTools
+m_TemplatePath: ''
+m_TensInterpol: Log Euclidean
+m_TensTfm: Preservation of the Principal Direction (PPD)
+m_nbLoops: 1
+m_nbLoopsDTIReg: 3
+m_useGridProcess: false

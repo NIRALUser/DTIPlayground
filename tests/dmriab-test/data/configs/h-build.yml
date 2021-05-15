@@ -1,0 +1,35 @@
+build:
+  FinalAtlas:
+    components:
+    - subject1
+    - subject2
+    - subject3
+    datasetfiles: []
+    filetype: list
+    type: node
+  subject1:
+    components: null
+    datasetfiles:
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest1.nrrd
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest2.nrrd
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest3.nrrd
+    filetype: list
+    type: end_node
+  subject2:
+    components: null
+    datasetfiles:
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest3.nrrd
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest1.nrrd
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest2.nrrd
+    filetype: list
+    type: end_node
+  subject3:
+    components: null
+    datasetfiles:
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest1.nrrd
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest2.nrrd
+    - /BAND/USERS/skp78-dti/dtiplayground/tests/dmriab-test/data/images/ImageTest3.nrrd
+    filetype: list
+    type: end_node
+project:
+  target_node: FinalAtlas

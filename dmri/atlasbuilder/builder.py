@@ -34,6 +34,12 @@ class Builder(object):
                      buildsequence_path=None,
                      node=None):
 
+        ### assertions
+        assert(Path(config_path).exists())
+        assert(Path(hbuild_path).exists())
+        assert(Path(greedy_params_path).exists())
+
+        ### init output directories
         projectPath=Path(output_dir).absolute().resolve(strict=False)
         scriptPath=projectPath.joinpath("scripts")
         commonPath=projectPath.joinpath('common')

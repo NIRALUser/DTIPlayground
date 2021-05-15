@@ -122,6 +122,9 @@ MIT
 
 ### Change Log
 
+##### 2021-05-14
+- dtiatlasbuilder : ported to python3, refactoring
+
 ##### 2021-04-21
 - dmriprep : Baseline average implemented (DirectAverage, BaselineOptimized)
 - dmriprep : Optionalized pipeline implemented 

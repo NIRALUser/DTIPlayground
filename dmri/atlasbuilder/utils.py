@@ -16,31 +16,36 @@ import argparse
 import csv 
 import copy 
 
+import dmri.atlasbuilder as ab 
+import dmri.common.tools as tools
+
+logger=ab.logger.write
+
 def _check_deformation_sequence_file(config,payload):
     binaryPath=config["m_SoftPath"][9]
     if(not os.path.exists(binaryPath)):
-        print("Software is missing : %s" %binaryPath)
+        logger("Software is missing : %s" %binaryPath)
         return False
-    print("Software path is : %s " % binaryPath)
+    logger("Software path is : %s " % binaryPath)
     res=True
     for s in payload:
         cnt=0
         for f in s["filelist"]:
             if(not os.path.exists(f)):
-                print("Error while checking : %s " % f)
+                logger("Error while checking : %s " % f)
                 cnt+=1
                 res=False
         if cnt==0:
-            print("%s : OK" % s["id"])
+            logger("%s : OK" % s["id"])
         else:
-            print("%s : NOT OK" %s['id'])
+            logger("%s : NOT OK" %s['id'])
     return res 
 
 def _generate_concatenated_displacement_directory(config):
     projectDir=config["m_OutputPath"]
     outDir=os.path.join(projectDir,"displacement_fields")
     if not os.path.isdir(outDir):
-      print("\n=> Creation of the directory containing concatenated displacement fields = " + outDir)
+      logger("\n=> Creation of the directory containing concatenated displacement fields = " + outDir)
       os.mkdir(outDir)
     return outDir
 
@@ -55,7 +60,7 @@ def ITKTransformTools_Concatenate(config,payload): ## payload should be deformat
             hpairList=elm["id"].split("/")
             outFilename="_".join(hpairList) + "_GlobalDisplacementField_Concatenated.nrrd"
             outFilename=os.path.join(outputDir,outFilename)
-            #print("Output filename : %s"%outFilename)
+            #logger("Output filename : %s"%outFilename)
             tmpCommand=command + outFilename +" -r " + refDTI + " "
             inpListStr=""
             fl=map(str,elm["filelist"])
@@ -63,10 +68,10 @@ def ITKTransformTools_Concatenate(config,payload): ## payload should be deformat
             for fn in fl:
                 inpListStr+= fn + " displacement "
             tmpCommand+=inpListStr
-            #print("%d : %s " %(idx,tmpCommand))
+            #logger("%d : %s " %(idx,tmpCommand))
             os.system(tmpCommand)
     else:
-        print("There are some missing deformation fields file(s)")
+        logger("There are some missing deformation fields file(s)")
         raise(Exception("There are some missing deformation fields file(s)"))
 
 def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be deformation_track.json list
@@ -80,7 +85,7 @@ def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be 
             refDTI=elm['original_dti_path']
             hpairList=elm["id"].split("/")
             outFilename=elm['output_path']
-            #print("Output filename : %s"%outFilename)
+            #logger("Output filename : %s"%outFilename)
             tmpCommand=command + outFilename +" -r " + refDTI + " "
             inpListStr=""
             fl=map(str,elm["filelist"])
@@ -88,10 +93,10 @@ def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be 
             for fn in fl:
                 inpListStr+= fn + " displacement "
             tmpCommand+=inpListStr
-            #print("%d : %s " %(idx,tmpCommand))
+            #logger("%d : %s " %(idx,tmpCommand))
             os.system(tmpCommand)
     else:
-        print("There are some missing deformation fields file(s)")
+        logger("There are some missing deformation fields file(s)")
         raise(Exception("There are some missing deformation fields file(s)"))
 
 
@@ -271,17 +276,17 @@ def generate_directories(project_path,sequence): ## from build sequence, generat
     atlasesPath=os.path.join(project_path,"atlases")
     finalAtlasPath=os.path.join(project_path,"final_atlas")
     if not os.path.isdir(atlasesPath):
-      print("\n=> Creation of the atlas directory = " + atlasesPath)
+      logger("\n=> Creation of the atlas directory = " + atlasesPath)
       os.mkdir(atlasesPath)
     if not os.path.isdir(finalAtlasPath):
-      print("\n=> Creation of the atlas directory = " + finalAtlasPath)
+      logger("\n=> Creation of the atlas directory = " + finalAtlasPath)
       os.mkdir(finalAtlasPath)
     for s in sequence:
         apath=os.path.join(s["m_OutputPath"])
         if not os.path.isdir(apath):
-          print("\n=> Creation of the atlas directory = " + apath)
+          logger("\n=> Creation of the atlas directory = " + apath)
           os.mkdir(apath)
-    print("Initial directories are generated")
+    logger("Initial directories are generated")
 
 
 def dependency_satisfied(hb,node_name,completed_atlases):

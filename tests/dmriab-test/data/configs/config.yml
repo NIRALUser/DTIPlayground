@@ -2,9 +2,9 @@ m_BFAffineTfmMode: useCenterOfHeadAlign
 m_CasesIDs: []
 m_CasesPath: []
 m_CropSize:
-- ''
-- ''
-- ''
+- '50'
+- '50'
+- '50'
 m_DTIRegExtraPath: ''
 m_DTIRegOptions:
 - ANTS
@@ -21,7 +21,7 @@ m_InterpolLogOption: ''
 m_InterpolOption: ''
 m_InterpolType: Linear
 m_NbThreadsString: '3'
-m_NeedToBeCropped: 0
+m_NeedToBeCropped: 1
 m_OutputPath: /BAND/USERS/skp78-dti/test-build
 m_Overwrite: 0
 m_PythonPath: /usr/bin/python

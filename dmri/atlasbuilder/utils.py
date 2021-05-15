@@ -15,11 +15,124 @@ import json
 import argparse
 import csv 
 import copy 
+import xml.etree.cElementTree as ET 
 
 import dmri.atlasbuilder as ab 
 import dmri.common.tools as tools
 
 logger=ab.logger.write
+
+def generateGreedyAtlasParametersFile(cfg):
+    xmlfile=cfg["m_GreedyAtlasParametersTemplatePath"]
+    x=ET.parse(xmlfile)
+    r=x.getroot()
+
+    ## remove all dummy dataset files
+    wis=r.find('WeightedImageSet')
+    wi_list=wis.findall('WeightedImage')
+    for w in wi_list:
+        wis.remove(w)
+
+    ## insert new dataset
+    for cid in cfg["m_CasesIDs"]:
+        wi=ET.Element('WeightedImage',{})
+        lastLoop=str(cfg['m_nbLoops'])
+        p=os.path.join(cfg['m_OutputPath'],"1_Affine_Registration/Loop"+lastLoop+"/"+cid+"_Loop"+lastLoop+"_Final"+cfg["m_ScalarMeasurement"]+".nrrd")
+        wiFilename=ET.Element('Filename',{'val':str(p)})
+        wiItkTransform=ET.Element('ItkTransform',{'val':'1'})
+        wi.insert(0,wiFilename)
+        wi.insert(1,wiItkTransform)
+        wis.insert(-1,wi)  ## insert to the last
+
+    ## change output path 
+    for neighbor in r.iter('OutputPrefix'):
+        logger("{} {}".format(neighbor.tag,neighbor.attrib))
+        neighbor.set('val',cfg["m_OutputPath"]+"/2_NonLinear_Registration/")
+
+    outputfile=cfg["m_OutputPath"]+"/2_NonLinear_Registration/GreedyAtlasParameters.xml"
+    x.write(outputfile)
+
+
+def DisplayErrorAndQuit ( Error ):
+    msg='\n\nERROR DETECTED IN WORKFLOW:'+Error
+    logger(msg)
+    logger('ABORT')
+    raise Exception(msg)
+
+
+# Function that checks if file exist and replace old names by new names if needed
+def CheckFileExists ( File, case, caseID ) : # returns 1 if file exists or has been renamed and 0 if not
+    if os.path.isfile( File ) : # file exists
+      return 1
+    else : # file does not exist: check if older version of file can exist (if file name has been changed)
+      NamesThatHaveChanged = ["MeanImage", "DiffeomorphicDTI", "DiffeomorphicAtlasDTI", "HField", "GlobalDisplacementField"] # latest versions of the names
+      if any( changedname in File for changedname in NamesThatHaveChanged ) : # if name has been changed, check if older version files exist
+        if "MeanImage" in File :
+          OldFile = File.replace("Mean", "Average")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else:
+            return 0
+        if "DiffeomorphicDTI" in File :
+          OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("DiffeomorphicDTI", "AWDTI")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            os.rename(OldFile.replace("AWDTI","AW"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']))
+            os.rename(OldFile.replace("AWDTI","AWDTI_float"), File.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"))
+            return 1
+          else : # test other old name
+            OldFile = File.replace( caseID, "Case" + str(case+1) )
+            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+              os.rename(OldFile, File)
+              os.rename(OldFile.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicDTI","Diffeomorphic"+config['m_ScalarMeasurement']))
+              os.rename(OldFile.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"), File.replace("DiffeomorphicDTI","DiffeomorphicDTI_float"))
+              return 1
+            else:
+              return 0
+        if "DiffeomorphicAtlasDTI" in File :
+          OldFile = File.replace("DiffeomorphicAtlasDTI", "AWAtlasDTI")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            os.rename(OldFile.replace("AWAtlasDTI","AWAtlas"+config['m_ScalarMeasurement']), File.replace("DiffeomorphicAtlasDTI","DiffeomorphicAtlas"+config['m_ScalarMeasurement']))
+            os.rename(OldFile.replace("AWAtlasDTI","AWAtlasDTI_float"), File.replace("DiffeomorphicAtlasDTI","DiffeomorphicAtlasDTI_float"))
+            return 1
+          else:
+            return 0
+        if "HField" in File :
+          OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("H", "Deformation")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else : # test other old name
+            OldFile = File.replace( caseID, "Case" + str(case+1) )
+            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+              os.rename(OldFile, File)
+              return 1
+            else:
+              return 0
+        if "GlobalDisplacementField" in File :
+          OldFile = File.replace( caseID, "Case" + str(case+1) ).replace("Displacement", "Deformation")
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else : # test other old name
+            OldFile = File.replace( caseID, "Case" + str(case+1) )
+            if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+              os.rename(OldFile, File)
+              return 1
+            else:
+              return 0
+      else: # file does not exist and name has not been changed: check if the caseX version exists
+        if caseID : # CaseID is empty for averages
+          OldFile = File.replace( caseID, "Case" + str(case+1) )
+          if os.path.isfile( OldFile ) : # old file exists: rename and return 1
+            os.rename(OldFile, File)
+            return 1
+          else:
+            return 0
+        else: # for averages
+          return 0
 
 def _check_deformation_sequence_file(config,payload):
     binaryPath=config["m_SoftPath"][9]

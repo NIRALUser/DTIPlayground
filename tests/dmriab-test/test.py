@@ -10,8 +10,6 @@ import yaml
 
 sys.path.append('../../')
 
-import dmri.atlasbuilder.preprocess as preprocess
-import dmri.atlasbuilder.atlas as atlas 
 import dmri.atlasbuilder.utils as utils 
 import dmri.atlasbuilder.builder as builder
 import dmri.atlasbuilder as ab 

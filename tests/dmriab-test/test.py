@@ -11,7 +11,7 @@ import yaml
 sys.path.append('../../')
 
 import dmri.atlasbuilder.utils as utils 
-import dmri.atlasbuilder.builder as builder
+from dmri.atlasbuilder import AtlasBuilder 
 import dmri.atlasbuilder as ab 
 import dmri.common
 
@@ -33,7 +33,7 @@ def build_atlas(args):
     logger("Execution ID : {}".format(uid))
     logger("Execution Command : "+" ".join(sys.argv))
     logger("--------------- Atlasbulder begins ----------------------",ab.Color.INFO)
-    bldr=builder.Builder()
+    bldr=AtlasBuilder()
     bldr.configure(output_dir=args.output_dir,
                         config_path=args.config,
                         hbuild_path=args.hbuild,

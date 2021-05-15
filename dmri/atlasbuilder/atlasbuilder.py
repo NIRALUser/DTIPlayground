@@ -20,7 +20,7 @@ logger=ab.logger.write
 
 
 ## builder class
-class Builder(object):
+class AtlasBuilder(object):
     def __init__(self,*args,**kwargs):
         self.configuration=None
 

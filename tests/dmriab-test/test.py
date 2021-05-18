@@ -39,6 +39,7 @@ def build_atlas(args):
                         greedy_params_path=args.greedy_params,
                         buildsequence_path=args.buildsequence,
                         node=args.node)
+   
     bldr.build()
 
 ## utilities

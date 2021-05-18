@@ -14,6 +14,7 @@ import yaml
 
 import dmri.atlasbuilder.utils as utils 
 import dmri.common
+import dmri.common.tools as ext_tools 
 
 logger=dmri.common.logger.write
 
@@ -21,7 +22,8 @@ logger=dmri.common.logger.write
 ## builder class
 class AtlasBuilder(object):
     def __init__(self,*args,**kwargs):
-        self.configuration=None
+        self.configuration=None  ## configuration (build, params, ...)
+        self.tools={}  #external tools
 
     def configure(self,output_dir,config_path,hbuild_path,greedy_params_path,buildsequence_path=None,node=None):
 
@@ -85,6 +87,12 @@ class AtlasBuilder(object):
             with open(commonPath.joinpath('build_sequence.yml'),'w') as f:
                 yaml.dump(buildSequence,f)
 
+            logger("Loading external tool settings",dmri.common.Color.INFO)
+            ### init external toolset
+            tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
+            tool_pairs=list(zip(tool_list,config['m_SoftPath']))
+            tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_pairs))
+            self.tools=dict(zip(tool_list,tool_instances))
             # generate scaffolding directories 
             utils.generate_directories(projectPath,buildSequence)
         else:
@@ -138,12 +146,16 @@ class AtlasBuilder(object):
         runningAtlases=[] # should have length less or equal than numTheads, entry is the node name
 
         def buildAtlas(conf,rt,ct): # rt : list of running threads, ct : list of completed threads, nt : number of thread (numThreads)
-            prjName=conf["m_NodeName"]
-            rt.append(prjName)
-            self.preprocess(conf)
-            self.build_atlas(conf)  
-            rt.remove(prjName)
-            ct.append(prjName)
+            try:
+              prjName=conf["m_NodeName"]
+              rt.append(prjName)
+              self.preprocess(conf)
+              self.build_atlas(conf)  
+              rt.remove(prjName)
+              ct.append(prjName)
+            except Exception as e:
+              logger("Exception at {}".format(str(e)))
+              exit(-1)
 
         numNodes=len(buildSequence)
         while len(completedAtlases) < numNodes:
@@ -174,116 +186,65 @@ class AtlasBuilder(object):
     @dmri.common.measure_time
     def preprocess(self,cfg):    
         config=cfg 
-
-        PIDlogFile = config['m_OutputPath']+"/PID.log"
-        PIDfile = open( PIDlogFile, 'a') # open in Append mode
-        PIDfile.write( str(os.getpid()) + "\n" )
-        PIDfile.close()
-
         logger("\n============ Pre processing =============")
 
         # Files Paths
         allcases = config['m_CasesPath']
         allcasesIDs = config['m_CasesIDs'] 
-        OutputPath= config['m_OutputPath']+ "/1_Affine_Registration"
+        OutputPath= Path(config['m_OutputPath']).joinpath("1_Affine_Registration")
         AtlasScalarMeasurementref=None 
+        overwrite= config['m_Overwrite']==1
+        needToCrop= config['m_NeedToBeCropped']==1
 
-
+        AtlasScalarMeasurementref= config['m_TemplatePath'] 
         if config['m_RegType']==1:
-          AtlasScalarMeasurementref= OutputPath + '/' + config['m_CasesIDs'][0] + '_'+ config['m_ScalarMeasurement'] + ".nrrd" #"/ImageTest1_FA.nrrd" #the reference will be the first case for the first loop
-        else:
-          AtlasScalarMeasurementref= config['m_TemplatePath'] 
-
-        def pyExecuteCommandPreprocessCase(NameOfFileVarToTest, NameOfCmdVarToExec, ErrorTxtToDisplay,case=0):
-          if config["m_Overwrite"]==1:
-            if os.system(NameOfCmdVarToExec)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + ']' + ErrorTxtToDisplay)
-          else:
-            if not utils.CheckFileExists(NameOfFileVarToTest,case, allcases[case]):
-                if os.system(NameOfCmdVarToExec)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + ']' + ErrorTxtToDisplay)
-            else:
-              logger("=> The file '" + NameOfFileVarToTest + "' already exists so the command will not be executed")
-
+          AtlasScalarMeasurementref= OutputPath.joinpath(config['m_CasesIDs'][0] + '_'+ config['m_ScalarMeasurement'] + ".nrrd").__str__() #"/ImageTest1_FA.nrrd" #the reference will be the first case for the first loop
+        
         # Create directory for temporary files
-        if not os.path.isdir(OutputPath):
-          os.mkdir(OutputPath)
-          logger("\n=> Creation of the affine directory = " + OutputPath)
+        OutputPath.mkdir(parents=True,exist_ok=True)
+        logger("\n=> Creation of the affine directory = " + OutputPath.__str__())
 
         # Creating template by processing Case 1 DTI
         ScalarMeasurement=config['m_ScalarMeasurement']
 
         if config['m_RegType']==0:
           # Rescaling template
-          RescaleTemp= OutputPath + "/" + config['m_ScalarMeasurement'] + "Template_Rescaled.nrrd"
-          RescaleTempCommand= "" + config['m_SoftPath'][0] + " " + AtlasScalarMeasurementref + " -outfile " + RescaleTemp + " -rescale 0,10000"  
-          logger("\n[Rescaling " + config['m_ScalarMeasurement'] + " template] => $ " + RescaleTempCommand)
-          if config['m_Overwrite']==1:
-            if os.system(RescaleTempCommand)!=0 : utils.DisplayErrorAndQuit('ImageMath: Rescaling ' + config['m_ScalarMeasurement'] + ' template')
-          else:
-            if not utils.CheckFileExists(RescaleTemp, 0, "" ) :
-              if os.system(RescaleTempCommand)!=0 : utils.DisplayErrorAndQuit('ImageMath: Rescaling ' + config['m_ScalarMeasurement'] + ' template')
-            else : logger("=> The file \\'" + RescaleTemp + "\\' already exists so the command will not be executed")
+          RescaleTemp= OutputPath.joinpath(config['m_ScalarMeasurement'] + "Template_Rescaled.nrrd").__str__()
+          if overwrite or (not utils.CheckFileExists(RescaleTemp,0,"")):
+            sp_out=self.tools['ImageMath'].rescale(AtlasScalarMeasurementref,RescaleTemp,rescale=[0,10000])
+          else : logger("=> The file \\'" + RescaleTemp + "\\' already exists so the command will not be executed")
           AtlasScalarMeasurementref= RescaleTemp
-
         else:
         # Filter case 1 DTI
-          logger("")
-          FilteredDTI= OutputPath + "/" + config['m_CasesIDs'][0] +"_filteredDTI.nrrd"
-          FilterDTICommand=  config['m_SoftPath'][1] +" " + allcases[0] + " " + FilteredDTI + " --correction zero"
-          logger("["+ config['m_CasesIDs'][0] +"] [Filter DTI] => $ " + FilterDTICommand)
-          if config['m_Overwrite']==1 :
-            if os.system(FilterDTICommand)!=0 : utils.DisplayErrorAndQuit('['+config['m_CasesIDs'][0]+'] ResampleDTIlogEuclidean: 1ow Filter DTI to remove negative values')
-          else:
-            if not utils.CheckFileExists(FilteredDTI, 0, "" + config["m_CasesIDs"][0] + "" ) :
-              if os.system(FilterDTICommand)!=0 : utils.DisplayErrorAndQuit('['+config['m_CasesIDs'][0]+'] ResampleDTIlogEuclidean: 1 Filter DTI to remove negative values')
-            else : logger("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
+          FilteredDTI= OutputPath.joinpath(config['m_CasesIDs'][0] +"_filteredDTI.nrrd").__str__()
+          if overwrite or (not utils.CheckFileExists(FilteredDTI, 0, "" + config["m_CasesIDs"][0] + "" ) ):
+            sp_out=self.tools['ResampleDTIlogEuclidean'].filter_dti(allcases[0],FilteredDTI,'zero')
+          else : logger("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
 
           # Cropping case 1 DTI
-          if config['m_NeedToBeCropped']==1:
-            croppedDTI = OutputPath + "/" + config['m_CasesIDs'][0] + "_croppedDTI.nrrd"
-            CropCommand =  config['m_SoftPath'][2] + " " + FilteredDTI + " -o " + croppedDTI + " -size " + config['m_CropSize'][0] + "," + config['m_CropSize'][1] + "," + config['m_CropSize'][2] + " -v"
-            logger("[" +config['m_CasesIDs'][0] + "] [Cropping DTI Image] => $ " + CropCommand)
-            
-            if config["m_Overwrite"]==1:
-              if os.system(CropCommand)!=0 : utils.DisplayErrorAndQuit('[' + config["m_CasesIDs"][0] + '] CropDTI: Cropping DTI image')
-            else:
-              if not utils.CheckFileExists(croppedDTI, 0, "" + config['m_CasesIDs'][0] + "" ) :
-                if os.system(CropCommand)!=0 : utils.DisplayErrorAndQuit('[' + config["m_CasesIDs"][0] + '] CropDTI: Cropping DTI image')
-              else:
-                logger("=> The file '" + croppedDTI + "' already exists so the command will not be executed")
-
-
+          if needToCrop:
+            croppedDTI = OutputPath.joinpath(config['m_CasesIDs'][0] + "_croppedDTI.nrrd").__str__()
+            if overwrite or (not utils.CheckFileExists(croppedDTI, 0, "" + config['m_CasesIDs'][0] + "" )):
+              sp_out=self.tools['CropDTI'].crop(FilteredDTI,croppedDTI,size=config['m_CropSize'])
+            else: logger("=> The file '" + croppedDTI + "' already exists so the command will not be executed")
 
           # Generating case 
-          if config['m_NeedToBeCropped']==1:
-            DTI= OutputPath + "/" + config['m_CasesIDs'][0]+"_croppedDTI.nrrd"
-          else:
-            DTI= allcases[0]
+          DTI= allcases[0]
+          if needToCrop:
+            DTI= OutputPath.joinpath(config['m_CasesIDs'][0]+"_croppedDTI.nrrd").__str__()
 
-          ScalarMeasurement= OutputPath + "/" + config['m_CasesIDs'][0] + "_" + config['m_ScalarMeasurement']+".nrrd"
-          if config['m_ScalarMeasurement']=="FA" :
-            GeneScalarMeasurementCommand= config['m_SoftPath'][3] + " --dti_image " + DTI + " -f " + ScalarMeasurement
-          else:
-            GeneScalarMeasurementCommand= config['m_SoftPath'][3] + " --dti_image " + DTI + " -m " + ScalarMeasurement
-
-          logger( ("[%s]"%config['m_CasesIDs'][0])+" [Generating FA] => $ " + GeneScalarMeasurementCommand)
-
-          if config['m_Overwrite']==1 :
-            if os.system(GeneScalarMeasurementCommand)!=0 : utils.DisplayErrorAndQuit('[ImageTest1] dtiprocess: Generating FA of DTI image')
-          else : 
-            if not utils.CheckFileExists(ScalarMeasurement, 0, config["m_CasesIDs"][0] ) :
-              if os.system(GeneScalarMeasurementCommand)!=0 : utils.DisplayErrorAndQuit('[ImageTest1] dtiprocess: Generating FA of DTI image')
-              logger("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
-
-
-        logger("")
-
+          ScalarMeasurement= OutputPath.joinpath(config['m_CasesIDs'][0] + "_" + config['m_ScalarMeasurement']+".nrrd").__str__()
+          if overwrite or (not utils.CheckFileExists(ScalarMeasurement, 0, config["m_CasesIDs"][0] )) :
+            sp_out=self.tools['DTIProcess'].measure_scalars(DTI,ScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
+          else : logger("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
+            
         # Affine Registration and Normalization Loop
         n = 0
         while n <= config['m_nbLoops'] : 
-          if not os.path.isdir(OutputPath + "/Loop" + str(n)):
-            logger("\n=> Creation of the Output directory for Loop " + str(n) + " = " + OutputPath + "/Loop" + str(n) + "\n")
-            os.mkdir(OutputPath + "/Loop" + str(n))
-
+          # if not os.path.isdir(OutputPath.joinpath("Loop" + str(n)).__str__()):
+          logger("\n=> Creation of the Output directory for Loop " + str(n) + " = " + str(OutputPath) + "/Loop" + str(n) + "\n")
+            # os.mkdir(str(OutputPath) + "/Loop" + str(n))
+          OutputPath.joinpath("Loop"+str(n)).mkdir(parents=True,exist_ok=True)
           # Cases Loop
           case= 0
           if config["m_RegType"]==1: 
@@ -293,148 +254,128 @@ class AtlasBuilder(object):
             if n==0: # Filtering and Cropping DTI and Generating FA are only part of the first loop
                # Filter DTI
               # ResampleDTIlogEuclidean does by default a correction of tensor values by setting the negative values to zero
-              FilteredDTI= OutputPath + "/" + allcasesIDs[case] + "_filteredDTI.nrrd"
-              FilterDTICommand= config["m_SoftPath"][1] + " " + allcases[case] + " " + FilteredDTI + " --correction zero"
-              logger("[" + allcasesIDs[case] + "] [Filter DTI] => $ " + FilterDTICommand)
-
-              pyExecuteCommandPreprocessCase(FilteredDTI,FilterDTICommand,"ResampleDTIlogEuclidean: 2 Filter DTI to remove negative values",case)
-              if config["m_NeedToBeCropped"]==1:
-                croppedDTI=OutputPath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
-                CropCommand= "" + config["m_SoftPath"][2] + " " + FilteredDTI + " -o " + croppedDTI + " -size " + config["m_CropSize"][0] + "," + config["m_CropSize"][1] + "," + config["m_CropSize"][2] + " -v"
-                logger("[" + allcasesIDs[case] + "] [Cropping DTI Image] => $ " + CropCommand)
-                pyExecuteCommandPreprocessCase(croppedDTI,CropCommand,"CropDTI: Cropping DTI image" , case)
-
-
+              FilteredDTI= OutputPath.joinpath(allcasesIDs[case] + "_filteredDTI.nrrd").__str__()
+              if overwrite or (not Path(FilteredDTI).exists()):
+                sp_out=self.tools['ResampleDTIlogEuclidean'].filter_dti(allcases[case],FilteredDTI,correction='zero')
+              else: logger("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
+              if needToCrop:
+                croppedDTI=OutputPath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
+                if overwrite or (not Path(croppedDTI).exists()):
+                  sp_out=self.tools['CropDTI'].crop(FilteredDTI,croppedDTI,size=config['m_CropSize'])
+                else: logger("=> The file \'" + croppedDTI + "\' already exists so the command will not be executed")
               # Generating FA/MD.
-              if config["m_NeedToBeCropped"]==1:
-                DTI=OutputPath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
-              else:
-                DTI= allcases[case]
-              ScalarMeasurement= OutputPath + "/" + allcasesIDs[case] + "_" + config["m_ScalarMeasurement"] + ".nrrd"
-              if config["m_ScalarMeasurement"]=="FA":
-                GeneScalarMeasurementCommand= config["m_SoftPath"][3] + " --dti_image " + DTI + " -f " + ScalarMeasurement
-              else:
-                GeneScalarMeasurementCommand= config["m_SoftPath"][3] + " --dti_image " + DTI + " -m " + ScalarMeasurement
-              logger("[" + allcasesIDs[case] + "] [Generating "+config["m_ScalarMeasurement"]+"] => $ " + GeneScalarMeasurementCommand)
-              pyExecuteCommandPreprocessCase(ScalarMeasurement,GeneScalarMeasurementCommand,"dtiprocess: Generating " + config["m_ScalarMeasurement"] + " of DTI image",case)
+              DTI= allcases[case]
+              if needToCrop:
+                DTI=OutputPath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
 
+              ScalarMeasurement= OutputPath.joinpath(allcasesIDs[case] + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
+              if overwrite or (not Path(ScalarMeasurement).exists()):
+                sp_out=self.tools['DTIProcess'].measure_scalars(DTI,ScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
+              else: logger("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
             # Normalization
-            ScalarMeasurement= OutputPath + "/" + allcasesIDs[case] + "_"+config["m_ScalarMeasurement"]+".nrrd"
-            NormScalarMeasurement= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd"
-            NormScalarMeasurementCommand= config["m_SoftPath"][0]+" " + ScalarMeasurement + " -outfile " + NormScalarMeasurement + " -matchHistogram " + AtlasScalarMeasurementref
-            logger("[LOOP " + str(n) + "/"+ str(config["m_nbLoops"])+ "] [" + allcasesIDs[case] + "] [Normalization] => $ " + NormScalarMeasurementCommand)
+            ScalarMeasurement= OutputPath.joinpath(allcasesIDs[case] + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            NormScalarMeasurement= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            if overwrite or (not Path(NormScalarMeasurement).exists()):
+              sp_out=self.tools['ImageMath'].normalize(ScalarMeasurement,NormScalarMeasurement,AtlasScalarMeasurementref)
+            else: logger("=> The file \'" + NormScalarMeasurement + "\' already exists so the command will not be executed")
 
-            pyExecuteCommandPreprocessCase(NormScalarMeasurement,NormScalarMeasurementCommand, "ImageMath: Normalizing " + config["m_ScalarMeasurement"] + " image",case)
             # Affine registration with BrainsFit
-            NormScalarMeasurement= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd"
-            LinearTranstfm= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt"
-            LinearTrans= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_"+config["m_ScalarMeasurement"]+".nrrd"
-            AffineCommand= config["m_SoftPath"][4]+" --fixedVolume " + AtlasScalarMeasurementref + " --movingVolume " + NormScalarMeasurement + " --useAffine --outputVolume " + LinearTrans + " --outputTransform " + LinearTranstfm
-            InitLinearTransTxt= OutputPath + "/" + allcasesIDs[case] + "_InitLinearTrans.txt"
-            InitLinearTransMat= OutputPath + "/" + allcasesIDs[case] + "_InitLinearTrans.mat"
+            NormScalarMeasurement= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            LinearTranstfm= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt").__str__()
+            LinearTrans= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            InitLinearTransTxt= OutputPath.joinpath(allcasesIDs[case] + "_InitLinearTrans.txt").__str__()
+            InitLinearTransMat= OutputPath.joinpath(allcasesIDs[case] + "_InitLinearTrans.mat").__str__()
+            InitTrans=InitLinearTransMat
             if n==0 and utils.CheckFileExists( InitLinearTransMat, case, allcasesIDs[case] ) and utils.CheckFileExists( InitLinearTransTxt, case, allcasesIDs[case] ):
-              logger("[WARNING] Both \'" + allcasesIDs[case] + "_InitLinearTrans.mat\' and \'" + allcasesIDs[case] + "_InitLinearTrans.txt\' have been found. The .mat file will be used.")
-              AffineCommand= AffineCommand + " --initialTransform " + InitLinearTransMat
-            elif n==0 and utils.CheckFileExists( InitLinearTransMat, case, allcasesIDs[case] ) : AffineCommand= AffineCommand + " --initialTransform " + InitLinearTransMat
-            elif n==0 and utils.CheckFileExists( InitLinearTransTxt, case, allcasesIDs[case] ) : AffineCommand= AffineCommand + " --initialTransform " + InitLinearTransTxt
-            else : AffineCommand= AffineCommand + " --initializeTransformMode "+ config["m_BFAffineTfmMode"] #useCenterOfHeadAlign"
-            logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Affine registration with BrainsFit] => $ " + AffineCommand)
-            utils.CheckFileExists( LinearTrans, case, allcasesIDs[case] ) 
-            pyExecuteCommandPreprocessCase(LinearTranstfm,AffineCommand,"BRAINSFit: Affine Registration of " + config["m_ScalarMeasurement"] + " image",case)
+              logger("[WARNING] Both \'" + allcasesIDs[case] + "_InitLinearTrans.mat\' and \'" + allcasesIDs[case] + "_InitLinearTrans.txt\' have been found. The .mat file will be used.")              
+            elif n==0 and utils.CheckFileExists( InitLinearTransMat, case, allcasesIDs[case] ) : 
+              pass 
+            elif n==0 and utils.CheckFileExists( InitLinearTransTxt, case, allcasesIDs[case] ) : 
+              InitTrans=InitLinearTransTxt
+            else : 
+              InitTrans=None
+            if overwrite or (not Path(LinearTranstfm).exists()) or (not Path(LinearTrans).exists()):
+              sp_out=self.tools['BRAINSFit'].affine_registration(fixed_path=AtlasScalarMeasurementref,
+                                                                 moving_path=NormScalarMeasurement,
+                                                                 output_path=LinearTrans ,
+                                                                 output_transform_path=LinearTranstfm,
+                                                                 initial_transform_path=InitTrans,
+                                                                 transform_mode=config['m_BFAffineTfmMode']
+                                                                 )
+            else: logger("=> The file \'" + LinearTranstfm + "\' already exists so the command will not be executed")
 
             # Implementing the affine registration
-            LinearTranstfm= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt"
-            LinearTransDTI= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd"
+            LinearTranstfm= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt").__str__()
+            LinearTransDTI= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd").__str__()
             originalDTI= allcases[case]
-            if config["m_NeedToBeCropped"]==1:
-              originalDTI= OutputPath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
-            ImplementCommand= config["m_SoftPath"][1]+" " + originalDTI + " " + LinearTransDTI + " -f " + LinearTranstfm + " -R " + AtlasScalarMeasurementref
-            logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Implementing the Affine registration] => $ " + ImplementCommand)
-            pyExecuteCommandPreprocessCase(LinearTransDTI,ImplementCommand,  "ResampleDTIlogEuclidean: Implementing the Affine Registration on " +config["m_ScalarMeasurement"] + " image" ,case)
-
+            if needToCrop:
+              originalDTI= OutputPath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
+            if overwrite or (not Path(LinearTransDTI).exists()):
+              sp_out=self.tools['ResampleDTIlogEuclidean'].implement_affine_registration(originalDTI,LinearTransDTI,LinearTranstfm,AtlasScalarMeasurementref)
+            else: logger("=> The file \'" + LinearTransDTI + "\' already exists so the command will not be executed")
             # Generating FA/MA of registered images
-            LinearTransDTI= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd"
-            if n == config["m_nbLoops"] : LoopScalarMeasurement= OutputPath + "/Loop"+str(n)+"/" + allcasesIDs[case] + "_Loop"+ str(n)+"_Final"+config["m_ScalarMeasurement"]+".nrrd" # the last FA will be the Final output
-            else : LoopScalarMeasurement= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd"
+            LinearTransDTI= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd").__str__()
+            if n == config["m_nbLoops"] : LoopScalarMeasurement= OutputPath.joinpath("Loop"+str(n)+"/" + allcasesIDs[case] + "_Loop"+ str(n)+"_Final"+config["m_ScalarMeasurement"]+".nrrd").__str__() # the last FA will be the Final output
+            else : LoopScalarMeasurement= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
             
-            GeneLoopScalarMeasurementCommand= config["m_SoftPath"][3]+" --dti_image " + LinearTransDTI + " -m " + LoopScalarMeasurement
-            if config["m_ScalarMeasurement"]=="FA":
-              GeneLoopScalarMeasurementCommand= config["m_SoftPath"][3]+" --dti_image " + LinearTransDTI + " -f " + LoopScalarMeasurement
-            logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [" + allcasesIDs[case] + "] [Generating "+config["m_ScalarMeasurement"]+" of registered images] => $ " + GeneLoopScalarMeasurementCommand)
-            pyExecuteCommandPreprocessCase(LoopScalarMeasurement,GeneLoopScalarMeasurementCommand,"dtiprocess: Generating " + config["m_ScalarMeasurement"] + " of affine registered images" ,case)
-            logger("")
+            if overwrite or (not Path(LoopScalarMeasurement).exists()):
+                sp_out=self.tools['DTIProcess'].measure_scalars(LinearTransDTI,LoopScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
+            else: logger("=> The file \'" + LoopScalarMeasurement + "\' already exists so the command will not be executed")
             case += 1 # indenting cases loop
 
           # FA/MA Average of registered images with ImageMath
           if config["m_nbLoops"]!=0:
             if n != int(config["m_nbLoops"]) : # this will not be done for the last lap
-              ScalarMeasurementAverage = OutputPath + "/Loop" + str(n) + "/Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd"
-              ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd"
+              ScalarMeasurementAverage = OutputPath.joinpath("Loop" + str(n) + "/Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd").__str__()
+              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
               if config["m_RegType"]==1:
-                if n == 0 : ScalarMeasurementforAVG= OutputPath + "/"+config["m_CasesIDs"][0]+"_"+config["m_ScalarMeasurement"]+".nrrd"
-                else : ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/"+config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd"
+                if n == 0 : ScalarMeasurementforAVG= OutputPath.joinpath(config["m_CasesIDs"][0]+"_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+                else : ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/"+config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
               else:
-                ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd"
-              AverageCommand = config["m_SoftPath"][0]+" " + ScalarMeasurementforAVG + " -outfile " + ScalarMeasurementAverage + " -avg "
+                ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
+            
               case = 1
-
+              ScalarMeasurementList=[]
+              ScalarMeasurementList.append(ScalarMeasurementforAVG)
               while case < len(allcases):
-                ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd "
-                AverageCommand= AverageCommand + ScalarMeasurementforAVG
-                case += 1
-             
-              logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [Computing "+config["m_ScalarMeasurement"]+" Average of registered images] => $ " + AverageCommand)
-              if config["m_Overwrite"]==1:
-                if 1:
-                  if os.system(AverageCommand)!=0 : utils.DisplayErrorAndQuit('[Loop ' + str(n) + '] dtiaverage: Computing '  + config["m_ScalarMeasurement"] + " Average of registered images")
+                ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()                
+                ScalarMeasurementList.append(ScalarMeasurementforAVG)
+                case += 1             
+              if overwrite or (not utils.CheckFileExists(ScalarMeasurementAverage, 0, "")):
+                sp_out=self.tools['ImageMath'].average(ScalarMeasurementList[0],ScalarMeasurementAverage,ScalarMeasurementList[1:])
                 AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
               else:
-                if not utils.CheckFileExists(ScalarMeasurementAverage, 0, "") :
-                  if os.system(AverageCommand)!=0 : utils.DisplayErrorAndQuit('[Loop ' + str(n) + '] dtiaverage: Computing '  + config["m_ScalarMeasurement"] + " Average of registered images")
-                else:
-                  logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
+                logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
                 AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
           else:
-            if 1:
-              ScalarMeasurementAverage = OutputPath + "/Loop" + str(n) + "/Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd"
-              ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd"
-              if config["m_RegType"]==1:
-                if n == 0 : ScalarMeasurementforAVG= OutputPath + "/"+config["m_CasesIDs"][0]+"_"+config["m_ScalarMeasurement"]+".nrrd"
-                else : ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/"+config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd"
-              else:
-                ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd"
-              AverageCommand = config["m_SoftPath"][0]+" " + ScalarMeasurementforAVG + " -outfile " + ScalarMeasurementAverage + " -avg "
-              case = 1
-              while case < len(allcases):
-                ScalarMeasurementforAVG= OutputPath + "/Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd "
-                AverageCommand= AverageCommand + ScalarMeasurementforAVG
-                case += 1
-              logger("[LOOP " + str(n) + "/"+str(config["m_nbLoops"])+"] [Computing "+config["m_ScalarMeasurement"]+" Average of registered images] => $ " + AverageCommand) 
-              if config["m_Overwrite"]==1:
-                if 1:
-                  if os.system(AverageCommand)!=0 : utils.DisplayErrorAndQuit('[Loop ' + str(n) + '] dtiaverage: Computing '  + config["m_ScalarMeasurement"] + " Average of registered images")
-                AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
-              else:
-                if not utils.CheckFileExists(ScalarMeasurementAverage, 0, "") :
-                  if os.system(AverageCommand)!=0 : utils.DisplayErrorAndQuit('[Loop ' + str(n) + '] dtiaverage: Computing '  + config["m_ScalarMeasurement"] + " Average of registered images")
-      
-                else:
-                  logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
-                AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
 
-          logger("")
+            ScalarMeasurementAverage = OutputPath.joinpath("Loop" + str(n) + "/Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd").__str__()
+            ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
+            if config["m_RegType"]==1:
+              if n == 0 : ScalarMeasurementforAVG= OutputPath.joinpath(config["m_CasesIDs"][0]+"_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+              else : ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/"+config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            else:
+              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()            
+            case = 1
+            ScalarMeasurementList=[]
+            ScalarMeasurementList.append(ScalarMeasurementforAVG)
+            while case < len(allcases):
+              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()              
+              ScalarMeasurementList.append(ScalarMeasurementforAVG)
+              case += 1            
+            if overwrite or (not utils.CheckFileExists(ScalarMeasurementAverage, 0, "")):
+              sp_out=self.tools['ImageMath'].average(ScalarMeasurementList[0],ScalarMeasurementAverage,ScalarMeasurementList[1:])             
+              AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
+            else:
+              logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
+              AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
           n += 1 # indenting main loop
-
         logger("\n============ End of Pre processing =============")
 
     @dmri.common.measure_time
     def build_atlas(self,cfg):
 
         config=cfg
-        PIDlogFile = config['m_OutputPath']+"/PID.log"
-        PIDfile = open( PIDlogFile, 'a') # open in Append mode
-        PIDfile.write( str(os.getpid()) + "\n" )
-        PIDfile.close()
 
         m_OutputPath=config["m_OutputPath"]
         m_ScalarMeasurement=config["m_ScalarMeasurement"]
@@ -469,52 +410,52 @@ class AtlasBuilder(object):
         logger("\n============ Atlas Building =============")
 
         # Files Paths
-        DeformPath= m_OutputPath+"/2_NonLinear_Registration"
-        AffinePath= m_OutputPath+"/1_Affine_Registration"
+        DeformPath=Path(m_OutputPath).joinpath("2_NonLinear_Registration")
+        AffinePath=Path(m_OutputPath).joinpath("/1_Affine_Registration")
         FinalPath= m_OutputPath+"/3_Diffeomorphic_Atlas"
         FinalResampPath= m_OutputPath+"/4_Final_Resampling"
         FinalAtlasPath= m_OutputPath+"/5_Final_Atlas"
 
         # Create directory for temporary files and final
-        if not os.path.isdir(DeformPath):
-          OldDeformPath= m_OutputPath + "/2_NonLinear_Registration_AW"
-          if os.path.isdir(OldDeformPath):
-            os.rename(OldDeformPath,DeformPath)
-          else:
-            logger("\n=> Creation of the Deformation transform directory = " + DeformPath)
-            os.mkdir(DeformPath)
+        # if not os.path.isdir(DeformPath):
+        #   OldDeformPath= m_OutputPath + "/2_NonLinear_Registration_AW"
+        #   if os.path.isdir(OldDeformPath):
+        #     os.rename(OldDeformPath,DeformPath)
+        #   else:
+        logger("\n=> Creation of the Deformation transform directory = " + DeformPath)
+        Path(DeformPath).mkdir(parents=True,)
 
-        if not os.path.isdir(FinalPath):
-          OldFinalPath= m_OutputPath+"/3_AW_Atlas"
-          if os.path.isdir(OldFinalPath):
-            os.rename(OldFinalPath,FinalPath)
-          else:
-            logger("\n=> Creation of the Final Atlas directory = " + FinalPath)
-            os.mkdir(FinalPath)
+        # if not os.path.isdir(FinalPath):
+        #   OldFinalPath= m_OutputPath+"/3_AW_Atlas"
+        #   if os.path.isdir(OldFinalPath):
+        #     os.rename(OldFinalPath,FinalPath)
+        #   else:
+        logger("\n=> Creation of the Final Atlas directory = " + FinalPath)
+        os.mkdir(FinalPath)
 
-        if not os.path.isdir(FinalResampPath):
-          logger("\n=> Creation of the Final Resampling directory = " + FinalResampPath)
-          os.mkdir(FinalResampPath)
+        # if not os.path.isdir(FinalResampPath):
+        logger("\n=> Creation of the Final Resampling directory = " + FinalResampPath)
+        os.mkdir(FinalResampPath)
 
-        if not os.path.isdir(FinalResampPath + "/First_Resampling"):
-          logger("\n=> Creation of the First Final Resampling directory = " + FinalResampPath + "/First_Resampling")
-          os.mkdir(FinalResampPath + "/First_Resampling")
+        # if not os.path.isdir(FinalResampPath + "/First_Resampling"):
+        logger("\n=> Creation of the First Final Resampling directory = " + FinalResampPath + "/First_Resampling")
+        os.mkdir(FinalResampPath + "/First_Resampling")
 
-        if not os.path.isdir(FinalResampPath + "/Second_Resampling"):
-          logger("\n=> Creation of the Second Final Resampling directory = " + FinalResampPath + "/Second_Resampling")
-          os.mkdir(FinalResampPath + "/Second_Resampling")
+        # if not os.path.isdir(FinalResampPath + "/Second_Resampling"):
+        logger("\n=> Creation of the Second Final Resampling directory = " + FinalResampPath + "/Second_Resampling")
+        os.mkdir(FinalResampPath + "/Second_Resampling")
 
-        if not os.path.isdir(FinalAtlasPath):
-          logger("\n=> Creation of the Final Atlas directory = " + FinalAtlasPath)
-          os.mkdir(FinalAtlasPath)
+        # if not os.path.isdir(FinalAtlasPath):
+        logger("\n=> Creation of the Final Atlas directory = " + FinalAtlasPath)
+        os.mkdir(FinalAtlasPath)
 
-        if not os.path.isdir(FinalResampPath + "/FinalTensors"):
-          logger("\n=> Creation of the Final Tensors directory = " + FinalResampPath + "/FinalTensors")
-          os.mkdir(FinalResampPath + "/FinalTensors")
+        # if not os.path.isdir(FinalResampPath + "/FinalTensors"):
+        logger("\n=> Creation of the Final Tensors directory = " + FinalResampPath + "/FinalTensors")
+        os.mkdir(FinalResampPath + "/FinalTensors")
 
-        if not os.path.isdir(FinalResampPath + "/FinalDeformationFields"):
-          logger("\n=> Creation of the Final Deformation Fields directory = " + FinalResampPath + "/FinalDeformationFields\n")
-          os.mkdir(FinalResampPath + "/FinalDeformationFields")
+        # if not os.path.isdir(FinalResampPath + "/FinalDeformationFields"):
+        logger("\n=> Creation of the Final Deformation Fields directory = " + FinalResampPath + "/FinalDeformationFields\n")
+        os.mkdir(FinalResampPath + "/FinalDeformationFields")
 
         # Cases variables
 
@@ -953,7 +894,7 @@ class AtlasBuilder(object):
         shutil.copytree(FinalResampPath+"/FinalDeformationFields",FinalAtlasPath+"/FinalDeformationFields")
         shutil.copytree(FinalResampPath+"/FinalTensors",FinalAtlasPath+"/FinalTensors")
 
-        logger("\n============ End of Atlas Building =============")
+        logger("\n============ End of Atlas Building =============")   ### after preprocessing, build atlas with non linear registrations
 
 
 

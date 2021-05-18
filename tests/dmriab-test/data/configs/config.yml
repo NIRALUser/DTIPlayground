@@ -41,6 +41,6 @@ m_SoftPath:
 m_TemplatePath: ''
 m_TensInterpol: Log Euclidean
 m_TensTfm: Preservation of the Principal Direction (PPD)
-m_nbLoops: 1
+m_nbLoops: 2
 m_nbLoopsDTIReg: 3
 m_useGridProcess: false

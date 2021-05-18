@@ -7,27 +7,39 @@
 #   External tool wrapper base class
 #
 
-
-
+import sys
+import time
 from pathlib import Path 
 import subprocess as sp
+import dmri.common 
 
+logger=dmri.common.logger.write
+
+### decorators
+
+def measure_time(func):  ## decorator
+    def wrapper(*args,**kwargs):
+        logger("[{}] begins ... ".format(func.__qualname__),dmri.common.Color.DEV)
+        bt=time.time()
+        logger("{}".format(args))
+        res=func(*args,**kwargs)
+        et=time.time()-bt
+        logger("[{}] Processed time : {:.2f}s".format(func.__qualname__,et),dmri.common.Color.DEV)
+        return res 
+    return wrapper 
 
 class ExternalToolWrapper(object):
-    def __init__(self,*args,**argv):
-        self.path=None
+    def __init__(self,binary_path):
+        self.binary_path=binary_path
         self.arguments=[]
 
-    def __str__(self):
-        return " ".join(self.getCommand())
-
-    def setPath(self,path : str):
-        assert(Path(path).exists())
-        self.path=str(path)
+    def setPath(self,binary_path : str):
+        assert(Path(binary_path).exists())
+        self.binary_path=str(binary_path)
 
     def getPath(self):
-        assert(self.path is not None)
-        return self.path
+        assert(self.binary_path is not None)
+        return self.binary_path
 
     def setArguments(self,args_list:list):
         self.arguments=args_list 
@@ -47,8 +59,11 @@ class ExternalToolWrapper(object):
         output=sp.run(command,capture_output=True,text=True)
         return output ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
 
+    @measure_time
     def execute(self):
         command=self.getCommand()
-        output=sp.run(command,capture_output=True,text=True)
+        #logger("{}".format(" ".join(command)))
+        output=sp.run(command,capture_output=True,text=True,universal_newlines=True)
+        #logger("{}\n{} {}".format(output.args,output.stdout,output.stderr))
+        output.check_returncode()
         return output  ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
-

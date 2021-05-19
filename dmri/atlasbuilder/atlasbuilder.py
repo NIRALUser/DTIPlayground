@@ -131,12 +131,9 @@ class AtlasBuilder(object):
         configuration=self.configuration
         buildSequence=configuration['buildSequence']
         hbuild=configuration['hbuild']
-        # deformSequence=configuration['deformSequence']
-        # inverseDeformSequence=configuration['inverseDeformSequence']
         projectPath=configuration['projectPath']
         config=configuration['config']
         numThreads=max(1,int(config["m_NbThreadsString"]))
-        # node=configuration['node']
 
         ### atlas build begins (to be multiprocessed)
         logger("\n=============== Main Script ================")

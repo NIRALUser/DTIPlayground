@@ -5,10 +5,11 @@ class DTIProcess(ExternalToolWrapper):
         super().__init__(binary_path)
 
     
-    def measure_scalars(self,inputfile,outputfile,scalar_type='FA'):
-        assert(scalar_type.lower() in ['fa','ma'])
+    def measure_scalars(self,inputfile,outputfile,scalar_type='FA',options=[]):
+        assert(scalar_type.lower() in ['fa','md'])
         scalar_opt='-f' #FA
         if scalar_type.lower()!='fa' : scalar_opt='-m' #MA
-        self.setArguments(['--dti_image',inputfile,scalar_opt,outputfile])
+        arguments=['--dti_image',inputfile,scalar_opt,outputfile]+options
+        self.setArguments(arguments)
         return self.execute()
 

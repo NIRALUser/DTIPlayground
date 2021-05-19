@@ -122,6 +122,9 @@ MIT
 
 ### Change Log
 
+##### 2021-05-19
+- dtiatlasbuilder : 1st refactoring is finished. 
+
 ##### 2021-05-14
 - dtiatlasbuilder : ported to python3, refactoring
 

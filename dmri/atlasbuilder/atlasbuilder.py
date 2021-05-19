@@ -155,6 +155,8 @@ class AtlasBuilder(object):
               ct.append(prjName)
             except Exception as e:
               logger("Exception at {}".format(str(e)))
+              msg=traceback.format_exc()
+              logger("{}".format(msg))
               exit(-1)
 
         numNodes=len(buildSequence)
@@ -324,51 +326,30 @@ class AtlasBuilder(object):
             case += 1 # indenting cases loop
 
           # FA/MA Average of registered images with ImageMath
-          if config["m_nbLoops"]!=0:
-            if n != int(config["m_nbLoops"]) : # this will not be done for the last lap
-              ScalarMeasurementAverage = OutputPath.joinpath("Loop" + str(n) + "/Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd").__str__()
-              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
-              if config["m_RegType"]==1:
-                if n == 0 : ScalarMeasurementforAVG= OutputPath.joinpath(config["m_CasesIDs"][0]+"_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
-                else : ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/"+config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
-              else:
-                ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
-            
-              case = 1
-              ScalarMeasurementList=[]
-              ScalarMeasurementList.append(ScalarMeasurementforAVG)
-              while case < len(allcases):
-                ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()                
-                ScalarMeasurementList.append(ScalarMeasurementforAVG)
-                case += 1             
-              if overwrite or (not utils.CheckFileExists(ScalarMeasurementAverage, 0, "")):
-                sp_out=self.tools['ImageMath'].average(ScalarMeasurementList[0],ScalarMeasurementAverage,ScalarMeasurementList[1:])
-                AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
-              else:
-                logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
-                AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
-          else:
-
+          # if config["m_nbLoops"]!=0:
+          if n != int(config["m_nbLoops"]) : # this will not be done for the last lap
             ScalarMeasurementAverage = OutputPath.joinpath("Loop" + str(n) + "/Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd").__str__()
             ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
             if config["m_RegType"]==1:
               if n == 0 : ScalarMeasurementforAVG= OutputPath.joinpath(config["m_CasesIDs"][0]+"_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
               else : ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/"+config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
             else:
-              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()            
+              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
+          
             case = 1
             ScalarMeasurementList=[]
             ScalarMeasurementList.append(ScalarMeasurementforAVG)
             while case < len(allcases):
-              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()              
+              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()                
               ScalarMeasurementList.append(ScalarMeasurementforAVG)
-              case += 1            
+              case += 1             
             if overwrite or (not utils.CheckFileExists(ScalarMeasurementAverage, 0, "")):
-              sp_out=self.tools['ImageMath'].average(ScalarMeasurementList[0],ScalarMeasurementAverage,ScalarMeasurementList[1:])             
+              sp_out=self.tools['ImageMath'].average(ScalarMeasurementList[0],ScalarMeasurementAverage,ScalarMeasurementList[1:])
               AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
             else:
               logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
               AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
+
           n += 1 # indenting main loop
         logger("\n============ End of Pre processing =============")
 
@@ -411,222 +392,149 @@ class AtlasBuilder(object):
 
         # Files Paths
         DeformPath=Path(m_OutputPath).joinpath("2_NonLinear_Registration")
-        AffinePath=Path(m_OutputPath).joinpath("/1_Affine_Registration")
-        FinalPath= m_OutputPath+"/3_Diffeomorphic_Atlas"
-        FinalResampPath= m_OutputPath+"/4_Final_Resampling"
-        FinalAtlasPath= m_OutputPath+"/5_Final_Atlas"
+        AffinePath=Path(m_OutputPath).joinpath("1_Affine_Registration")
+        FinalPath= Path(m_OutputPath).joinpath("3_Diffeomorphic_Atlas")
+        FinalResampPath= Path(m_OutputPath).joinpath("4_Final_Resampling")
+        FinalAtlasPath= Path(m_OutputPath).joinpath("5_Final_Atlas")
 
-        # Create directory for temporary files and final
-        # if not os.path.isdir(DeformPath):
-        #   OldDeformPath= m_OutputPath + "/2_NonLinear_Registration_AW"
-        #   if os.path.isdir(OldDeformPath):
-        #     os.rename(OldDeformPath,DeformPath)
-        #   else:
-        logger("\n=> Creation of the Deformation transform directory = " + DeformPath)
-        Path(DeformPath).mkdir(parents=True,)
+        logger("\n=> Creation of the Deformation transform directory = " + str(DeformPath))
+        DeformPath.mkdir(exist_ok=True)
 
-        # if not os.path.isdir(FinalPath):
-        #   OldFinalPath= m_OutputPath+"/3_AW_Atlas"
-        #   if os.path.isdir(OldFinalPath):
-        #     os.rename(OldFinalPath,FinalPath)
-        #   else:
-        logger("\n=> Creation of the Final Atlas directory = " + FinalPath)
-        os.mkdir(FinalPath)
+        logger("\n=> Creation of the Final Atlas directory = " + str(FinalPath))
+        FinalPath.mkdir(exist_ok=True)
 
-        # if not os.path.isdir(FinalResampPath):
-        logger("\n=> Creation of the Final Resampling directory = " + FinalResampPath)
-        os.mkdir(FinalResampPath)
-
-        # if not os.path.isdir(FinalResampPath + "/First_Resampling"):
-        logger("\n=> Creation of the First Final Resampling directory = " + FinalResampPath + "/First_Resampling")
-        os.mkdir(FinalResampPath + "/First_Resampling")
-
-        # if not os.path.isdir(FinalResampPath + "/Second_Resampling"):
-        logger("\n=> Creation of the Second Final Resampling directory = " + FinalResampPath + "/Second_Resampling")
-        os.mkdir(FinalResampPath + "/Second_Resampling")
-
-        # if not os.path.isdir(FinalAtlasPath):
-        logger("\n=> Creation of the Final Atlas directory = " + FinalAtlasPath)
-        os.mkdir(FinalAtlasPath)
-
-        # if not os.path.isdir(FinalResampPath + "/FinalTensors"):
-        logger("\n=> Creation of the Final Tensors directory = " + FinalResampPath + "/FinalTensors")
-        os.mkdir(FinalResampPath + "/FinalTensors")
-
-        # if not os.path.isdir(FinalResampPath + "/FinalDeformationFields"):
-        logger("\n=> Creation of the Final Deformation Fields directory = " + FinalResampPath + "/FinalDeformationFields\n")
-        os.mkdir(FinalResampPath + "/FinalDeformationFields")
-
+        logger("\n=> Creation of the Final Resampling directory = " + str(FinalResampPath))
+        FinalResampPath.mkdir(exist_ok=True)
+        logger("\n=> Creation of the First Final Resampling directory = " + str(FinalResampPath) + "/First_Resampling")
+        FinalResampPath.joinpath("First_Resampling").mkdir(exist_ok=True)
+        logger("\n=> Creation of the Second Final Resampling directory = " + str(FinalResampPath) + "/Second_Resampling")
+        FinalResampPath.joinpath("Second_Resampling").mkdir(exist_ok=True)
+        logger("\n=> Creation of the Final Tensors directory = " + str(FinalResampPath) + "/FinalTensors")
+        FinalResampPath.joinpath("FinalTensors").mkdir(exist_ok=True)
+        logger("\n=> Creation of the Final Deformation Fields directory = " + str(FinalResampPath) + "/FinalDeformationFields\n")
+        FinalResampPath.joinpath("FinalDeformationFields").mkdir(exist_ok=True)
+        
+        logger("\n=> Creation of the Final Atlas directory = " + str(FinalAtlasPath))
+        FinalAtlasPath.mkdir(exist_ok=True)
         # Cases variables
 
         alltfms=[]
         for i,c in enumerate(m_CasesPath):
-          alltfms.append(AffinePath+"/Loop"+str(m_nbLoops)+"/" +m_CasesIDs[i] + "_Loop" + str(m_nbLoops) +"_LinearTrans.txt")
-
+          alltfms.append(AffinePath.joinpath("Loop"+str(m_nbLoops)+"/" +m_CasesIDs[i] + "_Loop" + str(m_nbLoops) +"_LinearTrans.txt").__str__())
         allcases=[]
         if m_NeedToBeCropped==1:
           for i,c in enumerate(m_CasesPath):
-            allcases.append(AffinePath + "/" + m_CasesIDs[i] + "_croppedDTI.nrrd")
+            allcases.append(AffinePath.joinpath(m_CasesIDs[i] + "_croppedDTI.nrrd").__str__())
         else:
           for i,c in enumerate(m_CasesPath):
             allcases.append(m_CasesPath[i])
-
         allcasesIDs=[]
         for i,c in enumerate(m_CasesIDs):
           allcasesIDs.append(m_CasesIDs[i])
 
         # GreedyAtlas Command
         utils.generateGreedyAtlasParametersFile(config)
-        XMLFile= DeformPath + "/GreedyAtlasParameters.xml"
-        ParsedFile= DeformPath + "/ParsedXML.xml"
-        AtlasBCommand= m_SoftPath[5] + " -f " + XMLFile + " -o " + ParsedFile 
-        logger("[Computing the Deformation Fields with GreedyAtlas] => $ " + AtlasBCommand)
-        if m_Overwrite==1:
-          if 1 :
-            if os.system(AtlasBCommand)!=0 : utils.DisplayErrorAndQuit('GreedyAtlas: Computing non-linear atlas from affine registered images')
-
-            case = 0
-            while case < len(allcases): # Renaming
-              originalImage=DeformPath + "/" + allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefToMean.mhd"
-              originalHField=DeformPath + "/" + allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefFieldImToMean.mhd"
-              originalInvHField=DeformPath + "/" + allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefFieldMeanToIm.mhd"
-              NewImage= DeformPath + "/" + allcasesIDs[case] + "_NonLinearTrans_FA.mhd"
-              NewHField=DeformPath + "/" + allcasesIDs[case] + "_HField.mhd"
-              NewInvHField=DeformPath + "/" + allcasesIDs[case] + "_InverseHField.mhd"
-              logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalImage + "\' to \'" + NewImage + "\'")
-              os.rename(originalImage,NewImage)
-              logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalHField + "\' to \'" + NewHField + "\'")
-              os.rename(originalHField,NewHField)
-              logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalInvHField + "\' to \'" + NewInvHField + "\'")
-              os.rename(originalInvHField,NewInvHField)
-              case += 1
+        XMLFile= DeformPath.joinpath("GreedyAtlasParameters.xml").__str__()
+        ParsedFile= DeformPath.joinpath("ParsedXML.xml").__str__()
+        if m_Overwrite==1 or (not utils.CheckFileExists(DeformPath.joinpath("MeanImage.mhd").__str__(), 0, "")):
+          sp_out=self.tools['GreedyAtlas'].compute_deformation_fields(XMLFile,ParsedFile)
+          case = 0
+          while case < len(allcases): # Renaming
+            originalImage=DeformPath.joinpath(allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefToMean.mhd").__str__()
+            originalHField=DeformPath.joinpath(allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefFieldImToMean.mhd").__str__()
+            originalInvHField=DeformPath.joinpath(allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefFieldMeanToIm.mhd").__str__()
+            NewImage= DeformPath.joinpath(allcasesIDs[case] + "_NonLinearTrans_FA.mhd").__str__()
+            NewHField=DeformPath.joinpath(allcasesIDs[case] + "_HField.mhd").__str__()
+            NewInvHField=DeformPath.joinpath(allcasesIDs[case] + "_InverseHField.mhd").__str__()
+            logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalImage + "\' to \'" + NewImage + "\'")
+            os.rename(originalImage,NewImage)
+            logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalHField + "\' to \'" + NewHField + "\'")
+            os.rename(originalHField,NewHField)
+            logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalInvHField + "\' to \'" + NewInvHField + "\'")
+            os.rename(originalInvHField,NewInvHField)
+            case += 1
         else:
-          if not utils.CheckFileExists(DeformPath + "/MeanImage.mhd", 0, "") :
-            if os.system(AtlasBCommand)!=0 : utils.DisplayErrorAndQuit('GreedyAtlas: Computing non-linear atlas from affine registered images')
-            case = 0
-            while case < len(allcases): # Renaming
-              originalImage=DeformPath + "/" + allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefToMean.mhd"
-              originalHField=DeformPath + "/" + allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefFieldImToMean.mhd"
-              originalInvHField=DeformPath + "/" + allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefFieldMeanToIm.mhd"
-              NewImage= DeformPath + "/" + allcasesIDs[case] + "_NonLinearTrans_FA.mhd"
-              NewHField=DeformPath + "/" + allcasesIDs[case] + "_HField.mhd"
-              NewInvHField=DeformPath + "/" + allcasesIDs[case] + "_InverseHField.mhd"
-              logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalImage + "\' to \'" + NewImage + "\'")
-              os.rename(originalImage,NewImage)
-              logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalHField + "\' to \'" + NewHField + "\'")
-              os.rename(originalHField,NewHField)
-              logger("[" + allcasesIDs[case] + "] => Renaming \'" + originalInvHField + "\' to \'" + NewInvHField + "\'")
-              os.rename(originalInvHField,NewInvHField)
-              case += 1
-          else:
-            logger("=> The file '" + DeformPath + "/MeanImage.mhd' already exists so the command will not be executed")
-            # Renaming possible existing old named files from GreedyAtlas\n";
-            case = 0
-            while case < len(allcases): # Updating old names if needed\n";
-              NewImage= DeformPath + "/" + allcasesIDs[case] + "_NonLinearTrans_" + m_ScalarMeasurement + ".mhd"
-              utils.CheckFileExists(NewImage, case, allcasesIDs[case])
-              NewHField=DeformPath + "/" + allcasesIDs[case] + "_HField.mhd"
-              utils.CheckFileExists(NewHField, case, allcasesIDs[case])
-              NewInvHField=DeformPath + "/" + allcasesIDs[case] + "_InverseHField.mhd"
-              utils.CheckFileExists(NewInvHField, case, allcasesIDs[case])
-              case += 1
+          logger("=> The file '" + str(DeformPath.joinpath('MeanImage.mhd')) + " already exists so the command will not be executed")
+          # Renaming possible existing old named files from GreedyAtlas\n";
+          case = 0
+          while case < len(allcases): # Updating old names if needed\n";
+            NewImage= DeformPath.joinpath(allcasesIDs[case] + "_NonLinearTrans_" + m_ScalarMeasurement + ".mhd").__str__()
+            utils.CheckFileExists(NewImage, case, allcasesIDs[case])
+            NewHField=DeformPath.joinpath(allcasesIDs[case] + "_HField.mhd").__str__()
+            utils.CheckFileExists(NewHField, case, allcasesIDs[case])
+            NewInvHField=DeformPath.joinpath(allcasesIDs[case] + "_InverseHField.mhd").__str__()
+            utils.CheckFileExists(NewInvHField, case, allcasesIDs[case])
+            case += 1
 
         # Apply deformation fields 
         case = 0
         while case < len(allcases):
-          FinalDTI= FinalPath + "/" + allcasesIDs[case] + "_DiffeomorphicDTI.nrrd"
+          FinalDTI= FinalPath.joinpath(allcasesIDs[case] + "_DiffeomorphicDTI.nrrd").__str__()
           if m_NeedToBeCropped==1:
-            originalDTI= AffinePath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
+            originalDTI= AffinePath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
           else:
             originalDTI= allcases[case]
           if m_nbLoops==0:
-            Ref = AffinePath + "/Loop0/Loop0_"+m_ScalarMeasurement+"Average.nrrd"
+            Ref = AffinePath.joinpath("Loop0/Loop0_"+m_ScalarMeasurement+"Average.nrrd").__str__()
           else:
-            Ref = AffinePath + "/Loop" + str(m_nbLoops-1) + "/Loop" + str(m_nbLoops-1) + "_" + m_ScalarMeasurement + "Average.nrrd"
+            Ref = AffinePath.joinpath("Loop" + str(m_nbLoops-1) + "/Loop" + str(m_nbLoops-1) + "_" + m_ScalarMeasurement + "Average.nrrd").__str__()
 
-          HField= DeformPath + "/" + allcasesIDs[case] + "_HField.mhd"
-          FinalReSampCommand= m_SoftPath[1] +" -R " + Ref + " -H " + HField + " -f " + alltfms[case] + " " + originalDTI + " " + FinalDTI
+          HField= DeformPath.joinpath(allcasesIDs[case] + "_HField.mhd").__str__()
 
-          ### options
-          if m_InterpolType=="Linear" : FinalReSampCommand = FinalReSampCommand + " -i linear"
-          if m_InterpolType=="Nearest Neighborhood" : FinalReSampCommand = FinalReSampCommand + " -i nn"
-          if m_InterpolType=="Windowed Sinc":
-            if m_InterpolOption=="Hamming": FinalReSampCommand = FinalReSampCommand + " -i ws -W h"
-            if m_InterpolOption=="Cosine" : FinalReSampCommand = FinalReSampCommand + " -i ws -W c"
-            if m_InterpolOption=="Welch"  : FinalReSampCommand = FinalReSampCommand + " -i ws -W w"
-            if m_InterpolOption=="Lanczos": FinalReSampCommand = FinalReSampCommand + " -i ws -W l"
-            if m_InterpolOption=="Blackman":FinalReSampCommand = FinalReSampCommand + " -i ws -W b"
-          if m_InterpolType=="BSpline":
-            FinalReSampCommand = FinalReSampCommand + " -i bs -o " + m_InterpolOption + ""
-          if m_TensInterpol=="Non Log Euclidean":
-            if m_InterpolLogOption=="Zero" :  FinalReSampCommand = FinalReSampCommand + " --nolog --correction zero"
-            if m_InterpolLogOption=="None" :  FinalReSampCommand = FinalReSampCommand + " --nolog --correction none"
-            if m_InterpolLogOption=="Absolute Value" : FinalReSampCommand = FinalReSampCommand + " --nolog --correction abs"
-            if m_InterpolLogOption=="Nearest" : FinalReSampCommand = FinalReSampCommand + " --nolog --correction nearest"
-          if m_TensTfm=="Preservation of the Principal Direction (PPD)": FinalReSampCommand = FinalReSampCommand + " -T PPD"
-          if m_TensTfm=="Finite Strain (FS)" : FinalReSampCommand = FinalReSampCommand + " -T FS"
-          logger("\n[" + allcasesIDs[case] + "] [Applying deformation fields to original DTIs] => $ " + FinalReSampCommand)
+          if m_Overwrite==1 or (not utils.CheckFileExists(FinalDTI, case, allcasesIDs[case])):
+            DiffeomorphicCaseScalarMeasurement = FinalPath.joinpath(allcasesIDs[case] + "_Diffeomorphic"+m_ScalarMeasurement+".nrrd").__str__()
+            
+            sp_out=self.tools['ResampleDTIlogEuclidean'].resample(reference_file=Ref,
+                                                                   deform_field_file=HField,
+                                                                   transformation_file=alltfms[case],
+                                                                   moving_file=originalDTI,
+                                                                   output_file=FinalDTI,
+                                                                   interpolation_type=m_InterpolType,
+                                                                   interpolation_option=m_InterpolOption,
+                                                                   tensor_interpolation_type=m_TensInterpol,
+                                                                   tensor_interpolation_option=m_InterpolLogOption,
+                                                                   tensor_transform=m_TensTfm
+                                                                   )
 
-          if m_Overwrite==1:
-            if 1 :
-              DiffeomorphicCaseScalarMeasurement = FinalPath + "/" + allcasesIDs[case] + "_Diffeomorphic"+m_ScalarMeasurement+".nrrd"
-              if m_ScalarMeasurement=="FA":
-                GeneDiffeomorphicCaseScalarMeasurementCommand=m_SoftPath[3]+" --scalar_float --dti_image " + FinalDTI + " -f " + DiffeomorphicCaseScalarMeasurement
-              else:
-                GeneDiffeomorphicCaseScalarMeasurementCommand=m_SoftPath[3]+" --scalar_float --dti_image " + FinalDTI + " -m " + DiffeomorphicCaseScalarMeasurement
-              CaseDbleToFloatCommand=m_SoftPath[8] +" convert -t float -i " + FinalDTI + " | " + m_SoftPath[8] +" save -f nrrd -e gzip -o " + FinalPath + "/" + allcasesIDs[case] + "_DiffeomorphicDTI_float.nrrd"
-              if os.system(FinalReSampCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] ResampleDTIlogEuclidean: Applying deformation fields to original DTIs')
-              logger("[" + allcasesIDs[case] + "] => $ " + GeneDiffeomorphicCaseScalarMeasurementCommand)
-              if os.system(GeneDiffeomorphicCaseScalarMeasurementCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Computing Diffeomorphic '+m_ScalarMeasurement)
-              logger("[" + allcasesIDs[case] + "] => $ " + CaseDbleToFloatCommand + "\n")
-              if os.system(CaseDbleToFloatCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the final DTI images from double to float DTI')
+            sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=FinalDTI,
+                                                            outputfile=DiffeomorphicCaseScalarMeasurement,
+                                                            scalar_type=m_ScalarMeasurement,
+                                                            options=['--scalar_float'])
 
-          else:
-            if not utils.CheckFileExists(FinalDTI, case, allcasesIDs[case]) :
-              DiffeomorphicCaseScalarMeasurement = FinalPath + "/" + allcasesIDs[case] + "_Diffeomorphic"+m_ScalarMeasurement+".nrrd"
-              if m_ScalarMeasurement=="FA":
-                GeneDiffeomorphicCaseScalarMeasurementCommand=m_SoftPath[3]+" --scalar_float --dti_image " + FinalDTI + " -f " + DiffeomorphicCaseScalarMeasurement
-              else:
-                GeneDiffeomorphicCaseScalarMeasurementCommand=m_SoftPath[3]+" --scalar_float --dti_image " + FinalDTI + " -m " + DiffeomorphicCaseScalarMeasurement
-              CaseDbleToFloatCommand=m_SoftPath[8] +" convert -t float -i " + FinalDTI + " | " + m_SoftPath[8] +" save -f nrrd -e gzip -o " + FinalPath + "/" + allcasesIDs[case] + "_DiffeomorphicDTI_float.nrrd"
-              if os.system(FinalReSampCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] ResampleDTIlogEuclidean: Applying deformation fields to original DTIs')
-              logger("[" + allcasesIDs[case] + "] => $ " + GeneDiffeomorphicCaseScalarMeasurementCommand)
-              if os.system(GeneDiffeomorphicCaseScalarMeasurementCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Computing Diffeomorphic '+m_ScalarMeasurement)
-              logger("[" + allcasesIDs[case] + "] => $ " + CaseDbleToFloatCommand + "\n")
-              if os.system(CaseDbleToFloatCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the final DTI images from double to float DTI')
+            out_file=FinalPath.joinpath(allcasesIDs[case] + "_DiffeomorphicDTI_float.nrrd").__str__()
+            sp_out=self.tools['UNU'].convert_to_float(FinalDTI,out_file)
 
-            else : logger("=> The file \'" + FinalDTI + "\' already exists so the command will not be executed")
+          else : logger("=> The file \'" + FinalDTI + "\' already exists so the command will not be executed")
           case += 1
 
         # DTIaverage computing
-        DTIAverage = FinalPath + "/DiffeomorphicAtlasDTI.nrrd"
-        AverageCommand = m_SoftPath[6] + " " # e.g. "/work/dtiatlasbuilder-build/DTIProcess-install/bin/dtiaverage "
+        DTIAverage = FinalPath.joinpath("DiffeomorphicAtlasDTI.nrrd").__str__()
+        ListForAverage=[]
         case = 0
         while case < len(allcases):
-          DTIforAVG= "--inputs " + FinalPath + "/" + allcasesIDs[case] + "_DiffeomorphicDTI.nrrd "
-          AverageCommand = AverageCommand + DTIforAVG
+          temp=FinalPath.joinpath(allcasesIDs[case] + "_DiffeomorphicDTI.nrrd").__str__()
+          ListForAverage.append(temp)
           case += 1
-        AverageCommand = AverageCommand + "--tensor_output " + DTIAverage
-        logger("\n[Computing the Diffeomorphic DTI average] => $ " + AverageCommand)
-
+        sp_out=self.tools['DTIAverage'].average(ListForAverage,DTIAverage)
 
         #### 3_Diffeomophic_Atlas
 
         if m_Overwrite==1 or not utils.CheckFileExists(DTIAverage, 0, "") : 
         # Computing some images from the final DTI with dtiprocess
-          FA= FinalPath + "/DiffeomorphicAtlasFA.nrrd"
-          cFA= FinalPath + "/DiffeomorphicAtlasColorFA.nrrd"
-          RD= FinalPath + "/DiffeomorphicAtlasRD.nrrd"
-          MD= FinalPath + "/DiffeomorphicAtlasMD.nrrd"
-          AD= FinalPath + "/DiffeomorphicAtlasAD.nrrd"
-          GeneScalarMeasurementCommand=m_SoftPath[3] + " --scalar_float --dti_image " + DTIAverage + " -f " + FA + " -m " + MD + " --color_fa_output " + cFA + " --RD_output " + RD + " --lambda1_output " + AD
-          DbleToFloatCommand=m_SoftPath[8]+" convert -t float -i " + DTIAverage + " | " + m_SoftPath[8] + " save -f nrrd -e gzip -o " + FinalPath + "/DiffeomorphicAtlasDTI_float.nrrd"
+          FA= FinalPath.joinpath("DiffeomorphicAtlasFA.nrrd").__str__()
+          cFA= FinalPath.joinpath("DiffeomorphicAtlasColorFA.nrrd").__str__()
+          RD= FinalPath.joinpath("DiffeomorphicAtlasRD.nrrd").__str__()
+          MD= FinalPath.joinpath("DiffeomorphicAtlasMD.nrrd").__str__()
+          AD= FinalPath.joinpath("DiffeomorphicAtlasAD.nrrd").__str__()
+          
 
-          if os.system(AverageCommand)!=0 : utils.DisplayErrorAndQuit('dtiaverage: Computing the final DTI average')
-          logger("[Computing some images from the final DTI with dtiprocess] => $ " + GeneScalarMeasurementCommand)
-          if os.system(GeneScalarMeasurementCommand)!=0 : utils.DisplayErrorAndQuit('dtiprocess: Computing Diffeomorphic FA, color FA, MD, RD and AD')
-          logger("[Computing some images from the final DTI with dtiprocess] => $ " + DbleToFloatCommand)
-          if os.system(DbleToFloatCommand)!=0 : utils.DisplayErrorAndQuit('unu: Converting the final DTI atlas from double to float DTI')
+          sp_out=self.tools['DTIAverage'].average(ListForAverage,DTIAverage) 
+          sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=DTIAverage,
+                                                outputfile=FA,
+                                                scalar_type='FA',
+                                                options=['--scalar_float','-m',MD,'--color_fa_output',cFA,'--RD_output',RD,'--lambda1_output',AD])
+          out_file=FinalPath.joinpath("DiffeomorphicAtlasDTI_float.nrrd").__str__()
+          sp_out=self.tools['UNU'].convert_to_float(DTIAverage,out_file)
 
         else: logger("=> The file '" + DTIAverage + "' already exists so the command will not be executed")
 
@@ -635,76 +543,40 @@ class AtlasBuilder(object):
         case = 0
         while case < len(allcases):
           if m_NeedToBeCropped==1:
-            origDTI= AffinePath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
+            origDTI= AffinePath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
           else:
             origDTI= allcases[case]
-          GlobalDefField = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_GlobalDisplacementField.nrrd"
-          InverseGlobalDefField = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_GlobalDisplacementField_Inverse.nrrd"
-          FinalDef = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_DeformedDTI.nrrd"
-          GlobalDefFieldCommand=m_SoftPath[7]+" --fixedVolume " + DTIAverage + " --movingVolume " + origDTI + " --scalarMeasurement "+m_ScalarMeasurement +" --outputDisplacementField " + GlobalDefField + " --outputInverseDeformationFieldVolume " +InverseGlobalDefField  + " --outputVolume " + FinalDef
-          
+          GlobalDefField = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
+          InverseGlobalDefField = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_GlobalDisplacementField_Inverse.nrrd").__str__()
+          FinalDef = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_DeformedDTI.nrrd").__str__()
+
           BRAINSExecDir = os.path.dirname(m_SoftPath[4])
           dtiprocessExecDir = os.path.dirname(m_SoftPath[3])
           ResampExecDir = os.path.dirname(m_SoftPath[1])
+          PathList=[BRAINSExecDir,dtiprocessExecDir,ResampExecDir]
 
-          GlobalDefFieldCommand = GlobalDefFieldCommand + " --ProgramsPathsVector "+m_DTIRegExtraPath+","+BRAINSExecDir+","+dtiprocessExecDir+","+ResampExecDir
-          
-          if m_DTIRegOptions[0]=="BRAINS":
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --method useScalar-BRAINS"
-            if m_DTIRegOptions[1]=="GreedyDiffeo (SyN)":
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --BRAINSRegistrationType GreedyDiffeo"
-            elif m_DTIRegOptions[1]=="SpatioTempDiffeo":
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --BRAINSRegistrationType SpatioTempDiffeo"
-            else:
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --BRAINSRegistrationType " + m_DTIRegOptions[1] + ""
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --BRAINSnumberOfPyramidLevels " + m_DTIRegOptions[3] + ""
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --BRAINSarrayOfPyramidLevelIterations " + m_DTIRegOptions[4] + ""
-            if m_DTIRegOptions[2]=="Use computed affine transform":
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --initialAffine " + alltfms[case]
-            else:
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --BRAINSinitializeTransformMode " + m_DTIRegOptions[2] + ""
-            BRAINSTempTfm = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt"
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --outputTransform " + BRAINSTempTfm
+          BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
+          ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()
 
-          if m_DTIRegOptions[0]=="ANTS":
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --method useScalar-ANTS"
-            if m_DTIRegOptions[1]=="GreedyDiffeo (SyN)":
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSRegistrationType GreedyDiffeo"
-            elif m_DTIRegOptions[1]=="SpatioTempDiffeo (SyN)":
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSRegistrationType SpatioTempDiffeo"
-            else:
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSRegistrationType " + m_DTIRegOptions[1] + ""
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSTransformationStep " + m_DTIRegOptions[2] + ""
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSIterations " + m_DTIRegOptions[3] + ""
-            if m_DTIRegOptions[4]=="Cross-Correlation (CC)" :
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSSimilarityMetric CC"
-            elif m_DTIRegOptions[4]=="Mutual Information (MI)" :
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSSimilarityMetric MI"
-            elif m_DTIRegOptions[4]=="Mean Square Difference (MSQ)":
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSSimilarityMetric MSQ"
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSSimilarityParameter " + m_DTIRegOptions[5] + ""
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSGaussianSigma " + m_DTIRegOptions[6] + ""
-            if m_DTIRegOptions[7]=="1":
-              GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSGaussianSmoothingOff"
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --initialAffine " + alltfms[case]
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSUseHistogramMatching "
-            ANTSTempFileBase = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_"
-            GlobalDefFieldCommand= GlobalDefFieldCommand + " --ANTSOutbase " + ANTSTempFileBase
+          if m_Overwrite==1 or not utils.CheckFileExists(FinalDef, case, allcasesIDs[case]) :   
+            sp_out=self.tools['DTIReg'].compute_global_deformation_fields(
+                                                                          fixed_volume=DTIAverage,
+                                                                          moving_volume=origDTI,
+                                                                          scalar_measurement=m_ScalarMeasurement,
+                                                                          output_displacement_field=GlobalDefField,
+                                                                          output_inverse_displacementField=InverseGlobalDefField,
+                                                                          output_volume=FinalDef,
+                                                                          initial_affine=alltfms[case],
+                                                                          brains_transform=BRAINSTempTfm,
+                                                                          ants_outbase=ANTSTempFileBase,
+                                                                          program_paths=PathList,
+                                                                          dti_reg_options=m_DTIRegOptions,
+                                                                          options=[])
+            out_file=FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_DeformedDTI_float.nrrd").__str__()
+            sp_out=self.tools['UNU'].convert_to_float(FinalDef,out_file)
 
-          logger("\n[" + allcasesIDs[case] + "] [Computing global deformation fields] => $ " + GlobalDefFieldCommand)
-
-
-          if m_Overwrite==1 or not utils.CheckFileExists(FinalDef, case, allcasesIDs[case]) :
-            GlobDbleToFloatCommand=m_SoftPath[8]+" convert -t float -i " + FinalDef + " | "+m_SoftPath[8]+" save -f nrrd -e gzip -o " + FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_DeformedDTI_float.nrrd"
-
-            if os.system(GlobalDefFieldCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] DTI-Reg: Computing global deformation fields')
-            logger("\n[" + allcasesIDs[case] + "] [Converting the deformed images from double to float DTI] => $ " + GlobDbleToFloatCommand)
-            if os.system(GlobDbleToFloatCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the deformed images from double to float DTI')
-
-          else:
-            logger("=> The file '" + FinalDef + "' already exists so the command will not be executed")
+          else: logger("=> The file '" + FinalDef + "' already exists so the command will not be executed")
           case += 1
-
 
         #### 4_Second_Resampling
 
@@ -712,7 +584,7 @@ class AtlasBuilder(object):
         cnt=0
         if m_Overwrite==0:
           for i in range(m_nbLoopsDTIReg):
-            if os.path.isdir(FinalResampPath+"/Second_Resampling"+"/Loop_"+str(i)):
+            if os.path.isdir(FinalResampPath.joinpath("Second_Resampling"+"/Loop_"+str(i)).__str__()):
               cnt=i 
           cnt=max(cnt,0)
 
@@ -721,140 +593,103 @@ class AtlasBuilder(object):
           logger("Iterative Registration cycle %d / %d" % (cnt+1,m_nbLoopsDTIReg) )
           logger("------------------------------------------------------------")
 
-          if not os.path.isdir(FinalResampPath+"/Second_Resampling"+"/Loop_"+str(cnt)):
-            logger("\n=> Creation of the Second Final Resampling loop directory  = " + FinalResampPath + "/Second_Resampling" +"/Loop_"+str(cnt))
-            os.mkdir(FinalResampPath + "/Second_Resampling" + "/Loop_"+str(cnt))
+          if not os.path.isdir(FinalResampPath.joinpath("Second_Resampling"+"/Loop_"+str(cnt)).__str__()):
+            logger("\n=> Creation of the Second Final Resampling loop directory  = " + str(FinalResampPath) + "/Second_Resampling" +"/Loop_"+str(cnt))
+            os.mkdir(FinalResampPath.joinpath("Second_Resampling" + "/Loop_"+str(cnt)).__str__())
           # dtiaverage recomputing
           IterDir="Loop_"+str(cnt)+"/"
           PrevIterDir="Loop_"+str(cnt-1)+"/"
-          DTIAverage2 = FinalResampPath + "/Second_Resampling/" + IterDir+ "/FinalAtlasDTI.nrrd"
-          AverageCommand2 = m_SoftPath[6]+" "  #dtiaverage
-          
+          DTIAverage2 = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasDTI.nrrd").__str__()
+
+          ListForAverage=[]
           if cnt==0:
             case = 0
             while case < len(allcases):
-              DTIforAVG2= "--inputs " + FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_DeformedDTI.nrrd "
-              AverageCommand2 = AverageCommand2 + DTIforAVG2
+              temp=FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_DeformedDTI.nrrd").__str__()
+              ListForAverage.append(temp)
               case += 1
-            AverageCommand2 = AverageCommand2 + "--tensor_output " + DTIAverage2
-            logger("\n[Recomputing the final DTI average] => $ " + AverageCommand2)
           else: ### when iterative registration is activated
             case=0
             while case < len(allcases):
-              DTIforAVG2= "--inputs " + FinalResampPath + "/Second_Resampling/" + PrevIterDir+ allcasesIDs[case] + "_FinalDeformedDTI.nrrd "
-              AverageCommand2 = AverageCommand2 + DTIforAVG2
-              case += 1
-            AverageCommand2 = AverageCommand2 + "--tensor_output " + DTIAverage2
-            logger("\n[Recomputing the final DTI average] => $ " + AverageCommand2)   
-
+              temp=FinalResampPath.joinpath("Second_Resampling/" + PrevIterDir+ allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
+              ListForAverage.append(temp)
+              case += 1 
 
           if m_Overwrite==1 or not utils.CheckFileExists(DTIAverage2, 0, ""): 
           # Computing some images from the final DTI with dtiprocess
-            FA2= FinalResampPath + "/Second_Resampling/" +IterDir+ "/FinalAtlasFA.nrrd"
-            cFA2= FinalResampPath +"/Second_Resampling/" +IterDir+ "/FinalAtlasColorFA.nrrd"
-            RD2= FinalResampPath + "/Second_Resampling/" +IterDir+"/FinalAtlasRD.nrrd"
-            MD2= FinalResampPath + "/Second_Resampling/" +IterDir+"/FinalAtlasMD.nrrd"
-            AD2= FinalResampPath + "/Second_Resampling/" +IterDir+"/FinalAtlasAD.nrrd"
-            GeneScalarMeasurementCommand2=m_SoftPath[3]+" --scalar_float --dti_image " + DTIAverage2 + " -f " + FA2 + " -m " + MD2 + " --color_fa_output " + cFA2 + " --RD_output " + RD2 + " --lambda1_output " + AD2
-            DbleToFloatCommand2=m_SoftPath[8]+" convert -t float -i " + DTIAverage2 + " | "+m_SoftPath[8]+" save -f nrrd -e gzip -o " + FinalResampPath + "/Second_Resampling/" +IterDir+ "/FinalAtlasDTI_float.nrrd"
+            FA2= FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasFA.nrrd").__str__()
+            cFA2= FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasColorFA.nrrd").__str__()
+            RD2= FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasRD.nrrd").__str__()
+            MD2= FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasMD.nrrd").__str__()
+            AD2= FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasAD.nrrd").__str__()
 
-            if os.system(AverageCommand2)!=0 : utils.DisplayErrorAndQuit('dtiaverage: Recomputing the final DTI average')
-            logger("[Computing some images from the final DTI with dtiprocess] => $ " + GeneScalarMeasurementCommand2)
-            if os.system(GeneScalarMeasurementCommand2)!=0 : utils.DisplayErrorAndQuit('dtiprocess: Recomputing final FA, color FA, MD, RD and AD')
-            logger("[Computing some images from the final DTI with dtiprocess] => $ " + DbleToFloatCommand2)
-            if os.system(DbleToFloatCommand2)!=0 : utils.DisplayErrorAndQuit('unu: Converting the final resampled DTI atlas from double to float DTI')
+            sp_out=self.tools['DTIAverage'].average(ListForAverage,DTIAverage2) 
+            sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=DTIAverage2,
+                                                  outputfile=FA2,
+                                                  scalar_type='FA',
+                                                  options=['--scalar_float','-m',MD2,'--color_fa_output',cFA2,'--RD_output',RD2,'--lambda1_output',AD2])
 
-          else:
-            logger("=> The file '" + DTIAverage2 + "' already exists so the command will not be executed")
+            out_file=FinalResampPath.joinpath("Second_Resampling/" +IterDir+ "/FinalAtlasDTI_float.nrrd").__str__()
+            sp_out=self.tools['UNU'].convert_to_float(DTIAverage2,out_file)    
+
+          else: logger("=> The file '" + DTIAverage2 + "' already exists so the command will not be executed")
 
           # Recomputing global deformation fields
           SecondResampRecomputed = [0] * len(allcases) # array of 1s and 0s to know what has been recomputed to know what to copy to final folders
           case = 0
           while case < len(allcases):
             if m_NeedToBeCropped==1:
-              origDTI2= AffinePath + "/" + allcasesIDs[case] + "_croppedDTI.nrrd"
+              origDTI2= AffinePath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
             else:
               origDTI2= allcases[case]
-            GlobalDefField2 = FinalResampPath + "/Second_Resampling/" + IterDir+ allcasesIDs[case] + "_GlobalDisplacementField.nrrd"
-            InverseGlobalDefField2 = FinalResampPath + "/Second_Resampling/" + IterDir+ allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd"
-            FinalDef2 = FinalResampPath + "/Second_Resampling/" + IterDir + allcasesIDs[case] + "_FinalDeformedDTI.nrrd"
-            GlobalDefFieldCommand2=m_SoftPath[7]+" --fixedVolume " + DTIAverage2 + " --movingVolume " + origDTI2 + " --scalarMeasurement "+m_ScalarMeasurement+" --outputDisplacementField " + GlobalDefField2 + " --outputVolume " + FinalDef2 + " --outputInverseDeformationFieldVolume " + InverseGlobalDefField2
-            GlobalDefFieldCommand2 = GlobalDefFieldCommand2 + " --ProgramsPathsVector " + m_DTIRegExtraPath + "," + BRAINSExecDir + "," + dtiprocessExecDir + "," + ResampExecDir + ""
+            GlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + IterDir+ allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
+            InverseGlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + IterDir+ allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
+            FinalDef2 = FinalResampPath.joinpath("Second_Resampling/" + IterDir + allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
 
-            if m_DTIRegOptions[0]=="BRAINS":
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --method useScalar-BRAINS"
-              if m_DTIRegOptions[1]=="GreedyDiffeo (SyN)":
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --BRAINSRegistrationType GreedyDiffeo"
-              elif m_DTIRegOptions[1]=="SpatioTempDiffeo":
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --BRAINSRegistrationType SpatioTempDiffeo"
-              else:
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --BRAINSRegistrationType " + m_DTIRegOptions[1] + ""
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --BRAINSnumberOfPyramidLevels " + m_DTIRegOptions[3] + ""
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --BRAINSarrayOfPyramidLevelIterations " + m_DTIRegOptions[4] + ""
-              if m_DTIRegOptions[2]=="Use computed affine transform":
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --initialAffine " + alltfms[case]
-              else:
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --BRAINSinitializeTransformMode " + m_DTIRegOptions[2] + ""
-              BRAINSTempTfm = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt"
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --outputTransform " + BRAINSTempTfm
+            BRAINSExecDir = os.path.dirname(m_SoftPath[4])
+            dtiprocessExecDir = os.path.dirname(m_SoftPath[3])
+            ResampExecDir = os.path.dirname(m_SoftPath[1])
+            PathList=[BRAINSExecDir,dtiprocessExecDir,ResampExecDir]
 
-            if m_DTIRegOptions[0]=="ANTS":
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --method useScalar-ANTS"
-              if m_DTIRegOptions[1]=="GreedyDiffeo (SyN)":
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSRegistrationType GreedyDiffeo"
-              elif m_DTIRegOptions[1]=="SpatioTempDiffeo (SyN)":
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSRegistrationType SpatioTempDiffeo"
-              else:
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSRegistrationType " + m_DTIRegOptions[1] + ""
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSTransformationStep " + m_DTIRegOptions[2] + ""
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSIterations " + m_DTIRegOptions[3] + ""
-              if m_DTIRegOptions[4]=="Cross-Correlation (CC)" :
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSSimilarityMetric CC"
-              elif m_DTIRegOptions[4]=="Mutual Information (MI)" :
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSSimilarityMetric MI"
-              elif m_DTIRegOptions[4]=="Mean Square Difference (MSQ)":
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSSimilarityMetric MSQ"
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSSimilarityParameter " + m_DTIRegOptions[5] + ""
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSGaussianSigma " + m_DTIRegOptions[6] + ""
-              if m_DTIRegOptions[7]=="1":
-                GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSGaussianSmoothingOff"
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --initialAffine " + alltfms[case]
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSUseHistogramMatching "
-              ANTSTempFileBase2 = FinalResampPath + "/First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_"
-              GlobalDefFieldCommand2= GlobalDefFieldCommand2 + " --ANTSOutbase " + ANTSTempFileBase2
-
-            logger("\n[" + allcasesIDs[case] + "] [Recomputing global deformation fields] => $ " + GlobalDefFieldCommand2)
+            BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
+            ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()
 
             if m_Overwrite==1 or not utils.CheckFileExists(FinalDef2, case, allcasesIDs[case])  :
               SecondResampRecomputed[case] = 1
-              DTIRegCaseScalarMeasurement = FinalResampPath + "/Second_Resampling/" + IterDir + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd"
-              if m_ScalarMeasurement=="FA":
-                GeneDTIRegCaseScalarMeasurementCommand=m_SoftPath[3]+" --scalar_float --dti_image " + FinalDef2 + " -f " + DTIRegCaseScalarMeasurement
-              else:
-                GeneDTIRegCaseScalarMeasurementCommand=m_SoftPath[3]+" --scalar_float --dti_image " + FinalDef2 + " -m " + DTIRegCaseScalarMeasurement
+              DTIRegCaseScalarMeasurement = FinalResampPath.joinpath("Second_Resampling/" + IterDir + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
 
-              GlobDbleToFloatCommand2=m_SoftPath[8]+" convert -t float -i " + FinalDef2 + " | "+m_SoftPath[8]+" save -f nrrd -e gzip -o " + FinalResampPath + "/Second_Resampling/" + IterDir +  allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd"
-              
-              if os.system(GlobalDefFieldCommand2)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] DTI-Reg: Computing global deformation fields')
-              logger("\n[" + allcasesIDs[case] + "] [Converting the deformed images from double to float DTI] => $ " + GlobDbleToFloatCommand2)
-              if os.system(GlobDbleToFloatCommand2)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] unu: Converting the deformed images from double to float DTI')
-              logger("\n[" + allcasesIDs[case] + "] [Computing DTIReg "+m_ScalarMeasurement+"] => $ " + GeneDTIRegCaseScalarMeasurementCommand)
-              if os.system(GeneDTIRegCaseScalarMeasurementCommand)!=0 : utils.DisplayErrorAndQuit('[' + allcasesIDs[case] + '] dtiprocess: Computing DTIReg '+m_ScalarMeasurement)
+              sp_out=self.tools['DTIReg'].compute_global_deformation_fields(
+                                                              fixed_volume=DTIAverage2,
+                                                              moving_volume=origDTI2,
+                                                              scalar_measurement=m_ScalarMeasurement,
+                                                              output_displacement_field=GlobalDefField2,
+                                                              output_inverse_displacementField=InverseGlobalDefField2,
+                                                              output_volume=FinalDef2,
+                                                              initial_affine=alltfms[case],
+                                                              brains_transform=BRAINSTempTfm,
+                                                              ants_outbase=ANTSTempFileBase,
+                                                              program_paths=PathList,
+                                                              dti_reg_options=m_DTIRegOptions,
+                                                              options=[])
 
-            else:
-              logger("=> The file '" + FinalDef2 + "' already exists so the command will not be executed")
+              out_file=FinalResampPath.joinpath("Second_Resampling/" + IterDir +  allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
+              sp_out=self.tools['UNU'].convert_to_float(FinalDef2,out_file)
+              sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=FinalDef2,
+                                                outputfile=DTIRegCaseScalarMeasurement,
+                                                scalar_type=m_ScalarMeasurement,
+                                                options=['--scalar_float'])
+
+            else: logger("=> The file '" + FinalDef2 + "' already exists so the command will not be executed")
             case += 1
 
           ### Cleanup - delete PrevIterDir
           if cnt > 1:
             PrevPrevIterDir="Loop_"+str(cnt-2)+"/"
-            DirToRemove = FinalResampPath + "/Second_Resampling/" + PrevPrevIterDir
+            DirToRemove = FinalResampPath.joinpath("Second_Resampling/" + PrevPrevIterDir).__str__()
             if os.path.exists(DirToRemove):
               shutil.rmtree(DirToRemove)
 
           cnt+=1
-
-
         # End while cnt < m_nbLoopDTIReg
 
         # Moving final images to final folders
@@ -864,35 +699,35 @@ class AtlasBuilder(object):
 
         while case < len(allcases):
           if SecondResampRecomputed[case] :
-            GlobalDefField2 = FinalResampPath + "/Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_GlobalDisplacementField.nrrd"
-            NewGlobalDefField2 = FinalResampPath + "/FinalDeformationFields/" + allcasesIDs[case] + "_GlobalDisplacementField.nrrd"
+            GlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
+            NewGlobalDefField2 = FinalResampPath.joinpath("FinalDeformationFields/" + allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
             if utils.CheckFileExists(GlobalDefField2, case, allcasesIDs[case]) :
               shutil.copy(GlobalDefField2, NewGlobalDefField2)
-            InverseGlobalDefField2 = FinalResampPath + "/Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd"
-            NewInverseGlobalDefField2 = FinalResampPath + "/FinalDeformationFields/" + allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd"
+            InverseGlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
+            NewInverseGlobalDefField2 = FinalResampPath.joinpath("FinalDeformationFields/" + allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
             if utils.CheckFileExists(InverseGlobalDefField2, case, allcasesIDs[case]) :
               shutil.copy(InverseGlobalDefField2, NewInverseGlobalDefField2)
-            FinalDef2 = FinalResampPath + "/Second_Resampling/" + LastIterDir+allcasesIDs[case] + "_FinalDeformedDTI.nrrd"
-            NewFinalDef2 = FinalResampPath + "/FinalTensors/" + allcasesIDs[case] + "_FinalDeformedDTI.nrrd"
+            FinalDef2 = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir+allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
+            NewFinalDef2 = FinalResampPath.joinpath("FinalTensors/" + allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
             if utils.CheckFileExists(FinalDef2, case, allcasesIDs[case]) :
               shutil.copy(FinalDef2, NewFinalDef2)
-            FinalDef2f = FinalResampPath + "/Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd"
-            NewFinalDef2f = FinalResampPath + "/FinalTensors/" + allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd"
+            FinalDef2f = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
+            NewFinalDef2f = FinalResampPath.joinpath("FinalTensors/" + allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
             if utils.CheckFileExists(FinalDef2f, case, allcasesIDs[case]) :
               shutil.copy(FinalDef2f, NewFinalDef2f)
-            DTIRegCaseScalarMeasurement = FinalResampPath + "/Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd"
-            NewDTIRegCaseScalarMeasurement = FinalResampPath + "/FinalTensors/" + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd"
+            DTIRegCaseScalarMeasurement = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
+            NewDTIRegCaseScalarMeasurement = FinalResampPath.joinpath("FinalTensors/" + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
             if utils.CheckFileExists(DTIRegCaseScalarMeasurement, case, allcasesIDs[case]) :
               shutil.copy(DTIRegCaseScalarMeasurement, NewDTIRegCaseScalarMeasurement)
           case += 1
 
         # Copy final atlas components to FinalAtlasPath directory
 
-        logger("Copying Final atlas components to " + FinalAtlasPath)
+        logger("Copying Final atlas components to " + str(FinalAtlasPath))
         shutil.rmtree(FinalAtlasPath)
-        shutil.copytree(FinalResampPath+"/"+"/Second_Resampling/"+LastIterDir,FinalAtlasPath)
-        shutil.copytree(FinalResampPath+"/FinalDeformationFields",FinalAtlasPath+"/FinalDeformationFields")
-        shutil.copytree(FinalResampPath+"/FinalTensors",FinalAtlasPath+"/FinalTensors")
+        shutil.copytree(FinalResampPath.joinpath("Second_Resampling/"+LastIterDir),FinalAtlasPath)
+        shutil.copytree(FinalResampPath.joinpath("FinalDeformationFields"),FinalAtlasPath.joinpath("FinalDeformationFields"))
+        shutil.copytree(FinalResampPath.joinpath("FinalTensors"),FinalAtlasPath.joinpath("FinalTensors"))
 
         logger("\n============ End of Atlas Building =============")   ### after preprocessing, build atlas with non linear registrations
 

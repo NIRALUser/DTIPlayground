@@ -57,13 +57,23 @@ class ExternalToolWrapper(object):
         args_list=arguments.split()
         command=[self.getPath()]+self.arguments 
         output=sp.run(command,capture_output=True,text=True)
+        output.check_returncode()
         return output ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
 
+
     @measure_time
-    def execute(self):
+    def execute(self,stdin=None):
         command=self.getCommand()
-        #logger("{}".format(" ".join(command)))
-        output=sp.run(command,capture_output=True,text=True,universal_newlines=True)
+        output=sp.run(command,capture_output=True,text=True,stdin=stdin)
         #logger("{}\n{} {}".format(output.args,output.stdout,output.stderr))
         output.check_returncode()
         return output  ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
+    
+    @measure_time
+    def execute_pipe(self,stdin=None):
+        command=self.getCommand()
+        if stdin is None:
+            pipe_output=sp.Popen(command,stdout=sp.PIPE)
+        else:
+            pipe_output=sp.Popen(command,stdin=stdin,stdout=sp.PIPE)
+        return pipe_output 

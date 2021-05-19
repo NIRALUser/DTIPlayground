@@ -28,16 +28,16 @@ m_PythonPath: /usr/bin/python
 m_RegType: 1
 m_ScalarMeasurement: FA
 m_SoftPath:
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/niral_utilities/bin/ImageMath
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/ResampleDTIlogEuclidean/bin/ResampleDTIlogEuclidean
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/niral_utilities/bin/CropDTI
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTIProcess/bin/dtiprocess
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/BRAINSTools/bin/BRAINSFit
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/AtlasWerks/bin/GreedyAtlas
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTIProcess/bin/dtiaverage
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTI-Reg/bin/DTI-Reg
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/teem/bin/unu
-- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/ITKTransformTools/bin/ITKTransformTools
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/niral_utilities/bin/ImageMath                       #0
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/ResampleDTIlogEuclidean/bin/ResampleDTIlogEuclidean #1
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/niral_utilities/bin/CropDTI                         #2
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTIProcess/bin/dtiprocess                           #3
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/BRAINSTools/bin/BRAINSFit                           #4
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/AtlasWerks/bin/GreedyAtlas                          #5
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTIProcess/bin/dtiaverage                           #6
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/DTI-Reg/bin/DTI-Reg                                 #7
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/teem/bin/unu                                        #8
+- /BAND/USERS/skp78-dti/dtiatlasbuilder-build/DTIAtlasBuilder-install/bin/ITKTransformTools/bin/ITKTransformTools             #9
 m_TemplatePath: ''
 m_TensInterpol: Log Euclidean
 m_TensTfm: Preservation of the Principal Direction (PPD)

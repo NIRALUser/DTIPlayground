@@ -76,7 +76,6 @@ class AtlasBuilder(object):
             config['m_OutputPath']=str(projectPath)
             yaml.dump(config,open(configPath,'w'))
 
-            numThreads=max(1,int(config["m_NbThreadsString"]))
             hbuild["config"]=config
             hbuild['config']['m_GreedyAtlasParametersTemplatePath']=str(commonPath.joinpath('GreedyAtlasParameters.xml'))
 
@@ -86,19 +85,19 @@ class AtlasBuilder(object):
             #save sequence 
             with open(commonPath.joinpath('build_sequence.yml'),'w') as f:
                 yaml.dump(buildSequence,f)
-
-            logger("Loading external tool settings",dmri.common.Color.INFO)
-            ### init external toolset
-            tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
-            tool_pairs=list(zip(tool_list,config['m_SoftPath']))
-            tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_pairs))
-            self.tools=dict(zip(tool_list,tool_instances))
-            # generate scaffolding directories 
-            utils.generate_directories(projectPath,buildSequence)
         else:
             with open(buildsequence,'r') as f:
                 buildSequence=yaml.safe_load(f)
-            numThreads=max(int(buildSequence[0]["m_NbThreadsString"]),1)
+        
+        numThreads=max(int(buildSequence[0]["m_NbThreadsString"]),1)
+        logger("Loading external tool settings",dmri.common.Color.INFO)
+        ### init external toolset
+        tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
+        tool_pairs=list(zip(tool_list,config['m_SoftPath']))
+        tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_pairs))
+        self.tools=dict(zip(tool_list,tool_instances))
+        # generate scaffolding directories 
+        utils.generate_directories(projectPath,buildSequence)
 
         with open(commonPath.joinpath('initial_sequence.yml'),'w') as f:
             yaml.dump(initSequence,f,indent=4)
@@ -132,12 +131,12 @@ class AtlasBuilder(object):
         configuration=self.configuration
         buildSequence=configuration['buildSequence']
         hbuild=configuration['hbuild']
-        deformSequence=configuration['deformSequence']
-        inverseDeformSequence=configuration['inverseDeformSequence']
+        # deformSequence=configuration['deformSequence']
+        # inverseDeformSequence=configuration['inverseDeformSequence']
         projectPath=configuration['projectPath']
         config=configuration['config']
         numThreads=max(1,int(config["m_NbThreadsString"]))
-        node=configuration['node']
+        # node=configuration['node']
 
         ### atlas build begins (to be multiprocessed)
         logger("\n=============== Main Script ================")
@@ -168,22 +167,8 @@ class AtlasBuilder(object):
                     threading.Thread(target=buildAtlas,args=(cfg,runningAtlases,completedAtlases)).start()
             time.sleep(1.0)
 
-        ### copy final atals to 'final_atlas' directory
-        if node is None:
-            src=projectPath.joinpath("atlases/"+hbuild['project']['target_node'])
-        else:
-            src=projectPath.joinpath("atlases/"+node)
-        dst=projectPath.joinpath("final_atlas")
-        logger("Copying filed from %s to %s" %(src,dst))
-        shutil.rmtree(dst)
-        shutil.copytree(src,dst)
-
-        logger("Final atlas copied into %s "% dst)
-        ### Concatenate the displacement fields
-        logger("\nConcatenating deformation fields")
-        utils.ITKTransformTools_Concatenate(config,deformSequence)
-        utils.ITKTransformTools_Concatenate_Inverse(config,inverseDeformSequence)
-        utils.generate_results_csv_from_deformation_track(deformSequence,projectPath)
+        ## Postprocess
+        self.postprocess()
 
     @dmri.common.measure_time
     def preprocess(self,cfg):    
@@ -731,9 +716,34 @@ class AtlasBuilder(object):
 
         logger("\n============ End of Atlas Building =============")   ### after preprocessing, build atlas with non linear registrations
 
+    @dmri.common.measure_time
+    def postprocess(self):
+        assert(self.configuration is not None)
+        configuration=self.configuration
 
+        deformSequence=configuration['deformSequence']
+        inverseDeformSequence=configuration['inverseDeformSequence']
+        projectPath=configuration['projectPath']
+        config=configuration['config']
+        hbuild=configuration['hbuild']
+        node=configuration['node']
 
+        ### copy final atals to 'final_atlas' directory
+        if node is None:
+            src=projectPath.joinpath("atlases/"+hbuild['project']['target_node'])
+        else:
+            src=projectPath.joinpath("atlases/"+node)
+        dst=projectPath.joinpath("final_atlas")
+        logger("Copying filed from %s to %s" %(src,dst))
+        shutil.rmtree(dst)
+        shutil.copytree(src,dst)
 
+        logger("Final atlas copied into %s "% dst)
+        ### Concatenate the displacement fields
+        logger("\nConcatenating deformation fields")
+        utils.ITKTransformTools_Concatenate(config,deformSequence)
+        utils.ITKTransformTools_Concatenate_Inverse(config,inverseDeformSequence)
+        utils.generate_results_csv_from_deformation_track(deformSequence,projectPath)
 
 
 

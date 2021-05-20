@@ -39,7 +39,7 @@ def build_atlas(args):
                         greedy_params_path=args.greedy_params,
                         buildsequence_path=args.buildsequence,
                         node=args.node)
-   
+    
     bldr.build()
 
 ## utilities
@@ -73,7 +73,7 @@ if __name__=="__main__":
        logger(str(e))
        msg=traceback.format_exc()
        logger(msg,dmri.common.Color.ERROR)
-       sys.exit(1)     
+       os._exit(1)
 
 
 

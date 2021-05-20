@@ -140,8 +140,9 @@ class AtlasBuilder(object):
         ## threading
         completedAtlases=[] #entry should be the node name 
         runningAtlases=[] # should have length less or equal than numTheads, entry is the node name
+        failedAtlases=[]
 
-        def buildAtlas(conf,rt,ct): # rt : list of running threads, ct : list of completed threads, nt : number of thread (numThreads)
+        def buildAtlas(conf,rt,ct,ft): # rt : list of running threads, ct : list of completed threads, ft: failed threads
             try:
               prjName=conf["m_NodeName"]
               rt.append(prjName)
@@ -153,25 +154,36 @@ class AtlasBuilder(object):
               logger("Exception at {}".format(str(e)))
               msg=traceback.format_exc()
               logger("{}".format(msg))
-              exit(-1)
+              rt.remove(prjName)
+              ft.append(prjName)
+              
 
         numNodes=len(buildSequence)
+        threads=[]
         while len(completedAtlases) < numNodes:
             if len(runningAtlases) < numThreads and len(buildSequence)>0:
                 if utils.dependency_satisfied(hbuild,buildSequence[0]["m_NodeName"],completedAtlases):
                     cfg=buildSequence.pop(0)
                     utils.generate_results_csv(cfg)
-                    threading.Thread(target=buildAtlas,args=(cfg,runningAtlases,completedAtlases)).start()
+                    th=threading.Thread(target=buildAtlas,args=(cfg,runningAtlases,completedAtlases,failedAtlases))
+                    threads.append(th)
+                    th.start()
+            if len(failedAtlases)>0:
+              logger("There is a failed thread.Exiting...",dmri.common.Color.ERROR)
+              raise Exception("Error occurred in one of the threads")
             time.sleep(1.0)
 
         ## Postprocess
         self.postprocess()
+        return True
 
     @dmri.common.measure_time
     def preprocess(self,cfg):    
         config=cfg 
-        logger("\n============ Pre processing =============")
+        ext_tools=deepcopy(self.tools) ### for thread safe
 
+        logger("\n============ Pre processing =============")
+        
         # Files Paths
         allcases = config['m_CasesPath']
         allcasesIDs = config['m_CasesIDs'] 
@@ -195,21 +207,21 @@ class AtlasBuilder(object):
           # Rescaling template
           RescaleTemp= OutputPath.joinpath(config['m_ScalarMeasurement'] + "Template_Rescaled.nrrd").__str__()
           if overwrite or (not utils.CheckFileExists(RescaleTemp,0,"")):
-            sp_out=self.tools['ImageMath'].rescale(AtlasScalarMeasurementref,RescaleTemp,rescale=[0,10000])
+            sp_out=ext_tools['ImageMath'].rescale(AtlasScalarMeasurementref,RescaleTemp,rescale=[0,10000])
           else : logger("=> The file \\'" + RescaleTemp + "\\' already exists so the command will not be executed")
           AtlasScalarMeasurementref= RescaleTemp
         else:
         # Filter case 1 DTI
           FilteredDTI= OutputPath.joinpath(config['m_CasesIDs'][0] +"_filteredDTI.nrrd").__str__()
           if overwrite or (not utils.CheckFileExists(FilteredDTI, 0, "" + config["m_CasesIDs"][0] + "" ) ):
-            sp_out=self.tools['ResampleDTIlogEuclidean'].filter_dti(allcases[0],FilteredDTI,'zero')
+            sp_out=ext_tools['ResampleDTIlogEuclidean'].filter_dti(allcases[0],FilteredDTI,'zero')
           else : logger("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
 
           # Cropping case 1 DTI
           if needToCrop:
             croppedDTI = OutputPath.joinpath(config['m_CasesIDs'][0] + "_croppedDTI.nrrd").__str__()
             if overwrite or (not utils.CheckFileExists(croppedDTI, 0, "" + config['m_CasesIDs'][0] + "" )):
-              sp_out=self.tools['CropDTI'].crop(FilteredDTI,croppedDTI,size=config['m_CropSize'])
+              sp_out=ext_tools['CropDTI'].crop(FilteredDTI,croppedDTI,size=config['m_CropSize'])
             else: logger("=> The file '" + croppedDTI + "' already exists so the command will not be executed")
 
           # Generating case 
@@ -219,16 +231,14 @@ class AtlasBuilder(object):
 
           ScalarMeasurement= OutputPath.joinpath(config['m_CasesIDs'][0] + "_" + config['m_ScalarMeasurement']+".nrrd").__str__()
           if overwrite or (not utils.CheckFileExists(ScalarMeasurement, 0, config["m_CasesIDs"][0] )) :
-            sp_out=self.tools['DTIProcess'].measure_scalars(DTI,ScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
+            sp_out=ext_tools['DTIProcess'].measure_scalars(DTI,ScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
           else : logger("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
             
         # Affine Registration and Normalization Loop
         n = 0
         while n <= config['m_nbLoops'] : 
           # if not os.path.isdir(OutputPath.joinpath("Loop" + str(n)).__str__()):
-          logger("\n=> Creation of the Output directory for Loop " + str(n) + " = " + str(OutputPath) + "/Loop" + str(n) + "\n")
-            # os.mkdir(str(OutputPath) + "/Loop" + str(n))
-          OutputPath.joinpath("Loop"+str(n)).mkdir(parents=True,exist_ok=True)
+          OutputPath.joinpath("Loop"+str(n)).mkdir(exist_ok=True)
           # Cases Loop
           case= 0
           if config["m_RegType"]==1: 
@@ -240,12 +250,12 @@ class AtlasBuilder(object):
               # ResampleDTIlogEuclidean does by default a correction of tensor values by setting the negative values to zero
               FilteredDTI= OutputPath.joinpath(allcasesIDs[case] + "_filteredDTI.nrrd").__str__()
               if overwrite or (not Path(FilteredDTI).exists()):
-                sp_out=self.tools['ResampleDTIlogEuclidean'].filter_dti(allcases[case],FilteredDTI,correction='zero')
+                sp_out=ext_tools['ResampleDTIlogEuclidean'].filter_dti(allcases[case],FilteredDTI,correction='zero')
               else: logger("=> The file \'" + FilteredDTI + "\' already exists so the command will not be executed")
               if needToCrop:
                 croppedDTI=OutputPath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
                 if overwrite or (not Path(croppedDTI).exists()):
-                  sp_out=self.tools['CropDTI'].crop(FilteredDTI,croppedDTI,size=config['m_CropSize'])
+                  sp_out=ext_tools['CropDTI'].crop(FilteredDTI,croppedDTI,size=config['m_CropSize'])
                 else: logger("=> The file \'" + croppedDTI + "\' already exists so the command will not be executed")
               # Generating FA/MD.
               DTI= allcases[case]
@@ -254,19 +264,19 @@ class AtlasBuilder(object):
 
               ScalarMeasurement= OutputPath.joinpath(allcasesIDs[case] + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
               if overwrite or (not Path(ScalarMeasurement).exists()):
-                sp_out=self.tools['DTIProcess'].measure_scalars(DTI,ScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
+                sp_out=ext_tools['DTIProcess'].measure_scalars(DTI,ScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
               else: logger("=> The file \'" + ScalarMeasurement + "\' already exists so the command will not be executed")
             # Normalization
             ScalarMeasurement= OutputPath.joinpath(allcasesIDs[case] + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
-            NormScalarMeasurement= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            NormScalarMeasurement= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd").__str__()
             if overwrite or (not Path(NormScalarMeasurement).exists()):
-              sp_out=self.tools['ImageMath'].normalize(ScalarMeasurement,NormScalarMeasurement,AtlasScalarMeasurementref)
+              sp_out=ext_tools['ImageMath'].normalize(ScalarMeasurement,NormScalarMeasurement,AtlasScalarMeasurementref)
             else: logger("=> The file \'" + NormScalarMeasurement + "\' already exists so the command will not be executed")
 
             # Affine registration with BrainsFit
-            NormScalarMeasurement= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd").__str__()
-            LinearTranstfm= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt").__str__()
-            LinearTrans= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            NormScalarMeasurement= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_Norm"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            LinearTranstfm= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt").__str__()
+            LinearTrans= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
             InitLinearTransTxt= OutputPath.joinpath(allcasesIDs[case] + "_InitLinearTrans.txt").__str__()
             InitLinearTransMat= OutputPath.joinpath(allcasesIDs[case] + "_InitLinearTrans.mat").__str__()
             InitTrans=InitLinearTransMat
@@ -279,7 +289,7 @@ class AtlasBuilder(object):
             else : 
               InitTrans=None
             if overwrite or (not Path(LinearTranstfm).exists()) or (not Path(LinearTrans).exists()):
-              sp_out=self.tools['BRAINSFit'].affine_registration(fixed_path=AtlasScalarMeasurementref,
+              sp_out=ext_tools['BRAINSFit'].affine_registration(fixed_path=AtlasScalarMeasurementref,
                                                                  moving_path=NormScalarMeasurement,
                                                                  output_path=LinearTrans ,
                                                                  output_transform_path=LinearTranstfm,
@@ -289,79 +299,79 @@ class AtlasBuilder(object):
             else: logger("=> The file \'" + LinearTranstfm + "\' already exists so the command will not be executed")
 
             # Implementing the affine registration
-            LinearTranstfm= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt").__str__()
-            LinearTransDTI= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd").__str__()
+            LinearTranstfm= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans.txt").__str__()
+            LinearTransDTI= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd").__str__()
             originalDTI= allcases[case]
             if needToCrop:
               originalDTI= OutputPath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
             if overwrite or (not Path(LinearTransDTI).exists()):
-              sp_out=self.tools['ResampleDTIlogEuclidean'].implement_affine_registration(originalDTI,LinearTransDTI,LinearTranstfm,AtlasScalarMeasurementref)
+              sp_out=ext_tools['ResampleDTIlogEuclidean'].implement_affine_registration(originalDTI,LinearTransDTI,LinearTranstfm,AtlasScalarMeasurementref)
             else: logger("=> The file \'" + LinearTransDTI + "\' already exists so the command will not be executed")
             # Generating FA/MA of registered images
-            LinearTransDTI= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd").__str__()
-            if n == config["m_nbLoops"] : LoopScalarMeasurement= OutputPath.joinpath("Loop"+str(n)+"/" + allcasesIDs[case] + "_Loop"+ str(n)+"_Final"+config["m_ScalarMeasurement"]+".nrrd").__str__() # the last FA will be the Final output
-            else : LoopScalarMeasurement= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+            LinearTransDTI= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd").__str__()
+            if n == config["m_nbLoops"] : LoopScalarMeasurement= OutputPath.joinpath("Loop"+str(n)).joinpath(allcasesIDs[case] + "_Loop"+ str(n)+"_Final"+config["m_ScalarMeasurement"]+".nrrd").__str__() # the last FA will be the Final output
+            else : LoopScalarMeasurement= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
             
             if overwrite or (not Path(LoopScalarMeasurement).exists()):
-                sp_out=self.tools['DTIProcess'].measure_scalars(LinearTransDTI,LoopScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
+                sp_out=ext_tools['DTIProcess'].measure_scalars(LinearTransDTI,LoopScalarMeasurement,scalar_type=config['m_ScalarMeasurement'])
             else: logger("=> The file \'" + LoopScalarMeasurement + "\' already exists so the command will not be executed")
             case += 1 # indenting cases loop
 
           # FA/MA Average of registered images with ImageMath
           # if config["m_nbLoops"]!=0:
           if n != int(config["m_nbLoops"]) : # this will not be done for the last lap
-            ScalarMeasurementAverage = OutputPath.joinpath("Loop" + str(n) + "/Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd").__str__()
-            ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
+            ScalarMeasurementAverage = OutputPath.joinpath("Loop" + str(n)).joinpath("Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+"Average.nrrd").__str__()
+            ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n)).joinpath(config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
             if config["m_RegType"]==1:
               if n == 0 : ScalarMeasurementforAVG= OutputPath.joinpath(config["m_CasesIDs"][0]+"_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
-              else : ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/"+config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
+              else : ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n)).joinpath(config["m_CasesIDs"][0]+"_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
             else:
-              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
+              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n)).joinpath(config["m_CasesIDs"][0] + "_Loop" + str(n) + "_" + config["m_ScalarMeasurement"] + ".nrrd").__str__()
           
             case = 1
             ScalarMeasurementList=[]
             ScalarMeasurementList.append(ScalarMeasurementforAVG)
             while case < len(allcases):
-              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n) + "/" + allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()                
+              ScalarMeasurementforAVG= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()                
               ScalarMeasurementList.append(ScalarMeasurementforAVG)
               case += 1             
             if overwrite or (not utils.CheckFileExists(ScalarMeasurementAverage, 0, "")):
-              sp_out=self.tools['ImageMath'].average(ScalarMeasurementList[0],ScalarMeasurementAverage,ScalarMeasurementList[1:])
+              sp_out=ext_tools['ImageMath'].average(ScalarMeasurementList[0],ScalarMeasurementAverage,ScalarMeasurementList[1:])
               AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
             else:
               logger("=> The file '" + ScalarMeasurementAverage + "' already exists so the command will not be executed")
               AtlasScalarMeasurementref = ScalarMeasurementAverage # the average becomes the reference
-
           n += 1 # indenting main loop
+
         logger("\n============ End of Pre processing =============")
 
     @dmri.common.measure_time
     def build_atlas(self,cfg):
-
+        ext_tools=deepcopy(self.tools) ### for thread safe
         config=cfg
 
         m_OutputPath=config["m_OutputPath"]
         m_ScalarMeasurement=config["m_ScalarMeasurement"]
-        m_GridAtlasCommand=config["m_GridAtlasCommand"]
-        m_RegType=config["m_RegType"]
+        # m_GridAtlasCommand=config["m_GridAtlasCommand"]
+        #m_RegType=config["m_RegType"]
         m_Overwrite=config["m_Overwrite"]
-        m_useGridProcess=config["m_useGridProcess"]
+        #m_useGridProcess=config["m_useGridProcess"]
         m_SoftPath=config["m_SoftPath"]
         m_nbLoops=config["m_nbLoops"]
         m_TensTfm=config["m_TensTfm"]
-        m_TemplatePath=config["m_TemplatePath"]
-        m_BFAffineTfmMode=config["m_BFAffineTfmMode"]
+        #m_TemplatePath=config["m_TemplatePath"]
+        #m_BFAffineTfmMode=config["m_BFAffineTfmMode"]
         m_CasesIDs=config["m_CasesIDs"]
         m_CasesPath=config["m_CasesPath"]
-        m_CropSize=config["m_CropSize"]
-        m_DTIRegExtraPath=config["m_DTIRegExtraPath"]
+        #m_CropSize=config["m_CropSize"]
+        #m_DTIRegExtraPath=config["m_DTIRegExtraPath"]
         m_DTIRegOptions=config["m_DTIRegOptions"]
-        m_GridAtlasCommand=config["m_GridAtlasCommand"]
-        m_GridGeneralCommand=config["m_GridGeneralCommand"]
+        # m_GridAtlasCommand=config["m_GridAtlasCommand"]
+        # m_GridGeneralCommand=config["m_GridGeneralCommand"]
         m_InterpolLogOption=config["m_InterpolLogOption"]
         m_InterpolOption=config["m_InterpolOption"]
         m_InterpolType=config["m_InterpolType"]
-        m_NbThreadsString=config["m_NbThreadsString"]
+        #m_NbThreadsString=config["m_NbThreadsString"]
         m_NeedToBeCropped=config["m_NeedToBeCropped"]
         m_PythonPath=config["m_PythonPath"]
         m_TensInterpol=config["m_TensInterpol"]
@@ -373,36 +383,27 @@ class AtlasBuilder(object):
         logger("\n============ Atlas Building =============")
 
         # Files Paths
-        DeformPath=Path(m_OutputPath).joinpath("2_NonLinear_Registration")
         AffinePath=Path(m_OutputPath).joinpath("1_Affine_Registration")
+        DeformPath=Path(m_OutputPath).joinpath("2_NonLinear_Registration")
         FinalPath= Path(m_OutputPath).joinpath("3_Diffeomorphic_Atlas")
         FinalResampPath= Path(m_OutputPath).joinpath("4_Final_Resampling")
         FinalAtlasPath= Path(m_OutputPath).joinpath("5_Final_Atlas")
 
-        logger("\n=> Creation of the Deformation transform directory = " + str(DeformPath))
         DeformPath.mkdir(exist_ok=True)
-
-        logger("\n=> Creation of the Final Atlas directory = " + str(FinalPath))
         FinalPath.mkdir(exist_ok=True)
-
-        logger("\n=> Creation of the Final Resampling directory = " + str(FinalResampPath))
         FinalResampPath.mkdir(exist_ok=True)
-        logger("\n=> Creation of the First Final Resampling directory = " + str(FinalResampPath) + "/First_Resampling")
         FinalResampPath.joinpath("First_Resampling").mkdir(exist_ok=True)
-        logger("\n=> Creation of the Second Final Resampling directory = " + str(FinalResampPath) + "/Second_Resampling")
         FinalResampPath.joinpath("Second_Resampling").mkdir(exist_ok=True)
-        logger("\n=> Creation of the Final Tensors directory = " + str(FinalResampPath) + "/FinalTensors")
         FinalResampPath.joinpath("FinalTensors").mkdir(exist_ok=True)
-        logger("\n=> Creation of the Final Deformation Fields directory = " + str(FinalResampPath) + "/FinalDeformationFields\n")
         FinalResampPath.joinpath("FinalDeformationFields").mkdir(exist_ok=True)
-        
-        logger("\n=> Creation of the Final Atlas directory = " + str(FinalAtlasPath))
         FinalAtlasPath.mkdir(exist_ok=True)
-        # Cases variables
+        
 
+# 1 Get Affine information from AffinePath
+        # Cases variables
         alltfms=[]
         for i,c in enumerate(m_CasesPath):
-          alltfms.append(AffinePath.joinpath("Loop"+str(m_nbLoops)+"/" +m_CasesIDs[i] + "_Loop" + str(m_nbLoops) +"_LinearTrans.txt").__str__())
+          alltfms.append(AffinePath.joinpath("Loop"+str(m_nbLoops)).joinpath(m_CasesIDs[i] + "_Loop" + str(m_nbLoops) +"_LinearTrans.txt").__str__())
         allcases=[]
         if m_NeedToBeCropped==1:
           for i,c in enumerate(m_CasesPath):
@@ -414,12 +415,13 @@ class AtlasBuilder(object):
         for i,c in enumerate(m_CasesIDs):
           allcasesIDs.append(m_CasesIDs[i])
 
+# 2 NonLinear_Registration (DeformPath)
         # GreedyAtlas Command
         utils.generateGreedyAtlasParametersFile(config)
         XMLFile= DeformPath.joinpath("GreedyAtlasParameters.xml").__str__()
         ParsedFile= DeformPath.joinpath("ParsedXML.xml").__str__()
         if m_Overwrite==1 or (not utils.CheckFileExists(DeformPath.joinpath("MeanImage.mhd").__str__(), 0, "")):
-          sp_out=self.tools['GreedyAtlas'].compute_deformation_fields(XMLFile,ParsedFile)
+          sp_out=ext_tools['GreedyAtlas'].compute_deformation_fields(XMLFile,ParsedFile)
           case = 0
           while case < len(allcases): # Renaming
             originalImage=DeformPath.joinpath(allcasesIDs[case] + "_Loop"+str(m_nbLoops)+"_Final"+m_ScalarMeasurement+"DefToMean.mhd").__str__()
@@ -448,6 +450,7 @@ class AtlasBuilder(object):
             utils.CheckFileExists(NewInvHField, case, allcasesIDs[case])
             case += 1
 
+# 3 Diffeomorphic Atlas (FinalPath)
         # Apply deformation fields 
         case = 0
         while case < len(allcases):
@@ -457,16 +460,16 @@ class AtlasBuilder(object):
           else:
             originalDTI= allcases[case]
           if m_nbLoops==0:
-            Ref = AffinePath.joinpath("Loop0/Loop0_"+m_ScalarMeasurement+"Average.nrrd").__str__()
+            Ref = AffinePath.joinpath("Loop0").joinpath("Loop0_"+m_ScalarMeasurement+"Average.nrrd").__str__()
           else:
-            Ref = AffinePath.joinpath("Loop" + str(m_nbLoops-1) + "/Loop" + str(m_nbLoops-1) + "_" + m_ScalarMeasurement + "Average.nrrd").__str__()
+            Ref = AffinePath.joinpath("Loop" + str(m_nbLoops-1)).joinpath("Loop" + str(m_nbLoops-1) + "_" + m_ScalarMeasurement + "Average.nrrd").__str__()
 
           HField= DeformPath.joinpath(allcasesIDs[case] + "_HField.mhd").__str__()
 
           if m_Overwrite==1 or (not utils.CheckFileExists(FinalDTI, case, allcasesIDs[case])):
             DiffeomorphicCaseScalarMeasurement = FinalPath.joinpath(allcasesIDs[case] + "_Diffeomorphic"+m_ScalarMeasurement+".nrrd").__str__()
             
-            sp_out=self.tools['ResampleDTIlogEuclidean'].resample(reference_file=Ref,
+            sp_out=ext_tools['ResampleDTIlogEuclidean'].resample(reference_file=Ref,
                                                                    deform_field_file=HField,
                                                                    transformation_file=alltfms[case],
                                                                    moving_file=originalDTI,
@@ -478,13 +481,13 @@ class AtlasBuilder(object):
                                                                    tensor_transform=m_TensTfm
                                                                    )
 
-            sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=FinalDTI,
+            sp_out=ext_tools['DTIProcess'].measure_scalars(inputfile=FinalDTI,
                                                             outputfile=DiffeomorphicCaseScalarMeasurement,
                                                             scalar_type=m_ScalarMeasurement,
                                                             options=['--scalar_float'])
 
             out_file=FinalPath.joinpath(allcasesIDs[case] + "_DiffeomorphicDTI_float.nrrd").__str__()
-            sp_out=self.tools['UNU'].convert_to_float(FinalDTI,out_file)
+            sp_out=ext_tools['UNU'].convert_to_float(FinalDTI,out_file)
 
           else : logger("=> The file \'" + FinalDTI + "\' already exists so the command will not be executed")
           case += 1
@@ -497,9 +500,7 @@ class AtlasBuilder(object):
           temp=FinalPath.joinpath(allcasesIDs[case] + "_DiffeomorphicDTI.nrrd").__str__()
           ListForAverage.append(temp)
           case += 1
-        sp_out=self.tools['DTIAverage'].average(ListForAverage,DTIAverage)
-
-        #### 3_Diffeomophic_Atlas
+        sp_out=ext_tools['DTIAverage'].average(ListForAverage,DTIAverage)
 
         if m_Overwrite==1 or not utils.CheckFileExists(DTIAverage, 0, "") : 
         # Computing some images from the final DTI with dtiprocess
@@ -510,17 +511,17 @@ class AtlasBuilder(object):
           AD= FinalPath.joinpath("DiffeomorphicAtlasAD.nrrd").__str__()
           
 
-          sp_out=self.tools['DTIAverage'].average(ListForAverage,DTIAverage) 
-          sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=DTIAverage,
+          sp_out=ext_tools['DTIAverage'].average(ListForAverage,DTIAverage) 
+          sp_out=ext_tools['DTIProcess'].measure_scalars(inputfile=DTIAverage,
                                                 outputfile=FA,
                                                 scalar_type='FA',
                                                 options=['--scalar_float','-m',MD,'--color_fa_output',cFA,'--RD_output',RD,'--lambda1_output',AD])
           out_file=FinalPath.joinpath("DiffeomorphicAtlasDTI_float.nrrd").__str__()
-          sp_out=self.tools['UNU'].convert_to_float(DTIAverage,out_file)
+          sp_out=ext_tools['UNU'].convert_to_float(DTIAverage,out_file)
 
         else: logger("=> The file '" + DTIAverage + "' already exists so the command will not be executed")
 
-
+# 4-1 First_Resampling (FinalResampPath)
         # Computing global deformation fields
         case = 0
         while case < len(allcases):
@@ -528,20 +529,20 @@ class AtlasBuilder(object):
             origDTI= AffinePath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
           else:
             origDTI= allcases[case]
-          GlobalDefField = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
-          InverseGlobalDefField = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_GlobalDisplacementField_Inverse.nrrd").__str__()
-          FinalDef = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_DeformedDTI.nrrd").__str__()
+          GlobalDefField = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
+          InverseGlobalDefField = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_GlobalDisplacementField_Inverse.nrrd").__str__()
+          FinalDef = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_DeformedDTI.nrrd").__str__()
 
           BRAINSExecDir = os.path.dirname(m_SoftPath[4])
           dtiprocessExecDir = os.path.dirname(m_SoftPath[3])
           ResampExecDir = os.path.dirname(m_SoftPath[1])
           PathList=[BRAINSExecDir,dtiprocessExecDir,ResampExecDir]
 
-          BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
-          ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()
+          BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
+          ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()
 
           if m_Overwrite==1 or not utils.CheckFileExists(FinalDef, case, allcasesIDs[case]) :   
-            sp_out=self.tools['DTIReg'].compute_global_deformation_fields(
+            sp_out=ext_tools['DTIReg'].compute_global_deformation_fields(
                                                                           fixed_volume=DTIAverage,
                                                                           moving_volume=origDTI,
                                                                           scalar_measurement=m_ScalarMeasurement,
@@ -554,19 +555,19 @@ class AtlasBuilder(object):
                                                                           program_paths=PathList,
                                                                           dti_reg_options=m_DTIRegOptions,
                                                                           options=[])
-            out_file=FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_DeformedDTI_float.nrrd").__str__()
-            sp_out=self.tools['UNU'].convert_to_float(FinalDef,out_file)
+            out_file=FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_DeformedDTI_float.nrrd").__str__()
+            sp_out=ext_tools['UNU'].convert_to_float(FinalDef,out_file)
 
           else: logger("=> The file '" + FinalDef + "' already exists so the command will not be executed")
           case += 1
 
-        #### 4_Second_Resampling
+# 4-2 Second_Resampling
 
         ### looping begins
         cnt=0
         if m_Overwrite==0:
           for i in range(m_nbLoopsDTIReg):
-            if os.path.isdir(FinalResampPath.joinpath("Second_Resampling"+"/Loop_"+str(i)).__str__()):
+            if os.path.isdir(FinalResampPath.joinpath("Second_Resampling").joinpath("Loop_"+str(i)).__str__()):
               cnt=i 
           cnt=max(cnt,0)
 
@@ -574,26 +575,23 @@ class AtlasBuilder(object):
           logger("-----------------------------------------------------------")
           logger("Iterative Registration cycle %d / %d" % (cnt+1,m_nbLoopsDTIReg) )
           logger("------------------------------------------------------------")
-
-          if not os.path.isdir(FinalResampPath.joinpath("Second_Resampling"+"/Loop_"+str(cnt)).__str__()):
-            logger("\n=> Creation of the Second Final Resampling loop directory  = " + str(FinalResampPath) + "/Second_Resampling" +"/Loop_"+str(cnt))
-            os.mkdir(FinalResampPath.joinpath("Second_Resampling" + "/Loop_"+str(cnt)).__str__())
+          FinalResampPath.joinpath("Second_Resampling").joinpath("Loop_"+str(cnt)).mkdir(exist_ok=True)
           # dtiaverage recomputing
-          IterDir="Loop_"+str(cnt)+"/"
-          PrevIterDir="Loop_"+str(cnt-1)+"/"
+          IterDir="Loop_"+str(cnt)
+          PrevIterDir="Loop_"+str(cnt-1)
           DTIAverage2 = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasDTI.nrrd").__str__()
 
           ListForAverage=[]
           if cnt==0:
             case = 0
             while case < len(allcases):
-              temp=FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_DeformedDTI.nrrd").__str__()
+              temp=FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_DeformedDTI.nrrd").__str__()
               ListForAverage.append(temp)
               case += 1
           else: ### when iterative registration is activated
             case=0
             while case < len(allcases):
-              temp=FinalResampPath.joinpath("Second_Resampling/" + PrevIterDir+ allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
+              temp=FinalResampPath.joinpath("Second_Resampling").joinpath(PrevIterDir).joinpath(allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
               ListForAverage.append(temp)
               case += 1 
 
@@ -605,14 +603,14 @@ class AtlasBuilder(object):
             MD2= FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasMD.nrrd").__str__()
             AD2= FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasAD.nrrd").__str__()
 
-            sp_out=self.tools['DTIAverage'].average(ListForAverage,DTIAverage2) 
-            sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=DTIAverage2,
+            sp_out=ext_tools['DTIAverage'].average(ListForAverage,DTIAverage2) 
+            sp_out=ext_tools['DTIProcess'].measure_scalars(inputfile=DTIAverage2,
                                                   outputfile=FA2,
                                                   scalar_type='FA',
                                                   options=['--scalar_float','-m',MD2,'--color_fa_output',cFA2,'--RD_output',RD2,'--lambda1_output',AD2])
 
-            out_file=FinalResampPath.joinpath("Second_Resampling/" +IterDir+ "/FinalAtlasDTI_float.nrrd").__str__()
-            sp_out=self.tools['UNU'].convert_to_float(DTIAverage2,out_file)    
+            out_file=FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasDTI_float.nrrd").__str__()
+            sp_out=ext_tools['UNU'].convert_to_float(DTIAverage2,out_file)    
 
           else: logger("=> The file '" + DTIAverage2 + "' already exists so the command will not be executed")
 
@@ -624,23 +622,23 @@ class AtlasBuilder(object):
               origDTI2= AffinePath.joinpath(allcasesIDs[case] + "_croppedDTI.nrrd").__str__()
             else:
               origDTI2= allcases[case]
-            GlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + IterDir+ allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
-            InverseGlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + IterDir+ allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
-            FinalDef2 = FinalResampPath.joinpath("Second_Resampling/" + IterDir + allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
+            GlobalDefField2 = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath(allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
+            InverseGlobalDefField2 = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath(allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
+            FinalDef2 = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath(allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
 
             BRAINSExecDir = os.path.dirname(m_SoftPath[4])
             dtiprocessExecDir = os.path.dirname(m_SoftPath[3])
             ResampExecDir = os.path.dirname(m_SoftPath[1])
             PathList=[BRAINSExecDir,dtiprocessExecDir,ResampExecDir]
 
-            BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
-            ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling/" + allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()
+            BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
+            ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()
 
             if m_Overwrite==1 or not utils.CheckFileExists(FinalDef2, case, allcasesIDs[case])  :
               SecondResampRecomputed[case] = 1
-              DTIRegCaseScalarMeasurement = FinalResampPath.joinpath("Second_Resampling/" + IterDir + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
+              DTIRegCaseScalarMeasurement = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath(allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
 
-              sp_out=self.tools['DTIReg'].compute_global_deformation_fields(
+              sp_out=ext_tools['DTIReg'].compute_global_deformation_fields(
                                                               fixed_volume=DTIAverage2,
                                                               moving_volume=origDTI2,
                                                               scalar_measurement=m_ScalarMeasurement,
@@ -654,9 +652,9 @@ class AtlasBuilder(object):
                                                               dti_reg_options=m_DTIRegOptions,
                                                               options=[])
 
-              out_file=FinalResampPath.joinpath("Second_Resampling/" + IterDir +  allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
-              sp_out=self.tools['UNU'].convert_to_float(FinalDef2,out_file)
-              sp_out=self.tools['DTIProcess'].measure_scalars(inputfile=FinalDef2,
+              out_file=FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath(allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
+              sp_out=ext_tools['UNU'].convert_to_float(FinalDef2,out_file)
+              sp_out=ext_tools['DTIProcess'].measure_scalars(inputfile=FinalDef2,
                                                 outputfile=DTIRegCaseScalarMeasurement,
                                                 scalar_type=m_ScalarMeasurement,
                                                 options=['--scalar_float'])
@@ -666,39 +664,40 @@ class AtlasBuilder(object):
 
           ### Cleanup - delete PrevIterDir
           if cnt > 1:
-            PrevPrevIterDir="Loop_"+str(cnt-2)+"/"
-            DirToRemove = FinalResampPath.joinpath("Second_Resampling/" + PrevPrevIterDir).__str__()
+            PrevPrevIterDir="Loop_"+str(cnt-2)
+            DirToRemove = FinalResampPath.joinpath("Second_Resampling").joinpath(PrevPrevIterDir).__str__()
             if os.path.exists(DirToRemove):
               shutil.rmtree(DirToRemove)
 
           cnt+=1
         # End while cnt < m_nbLoopDTIReg
 
+# 5 FinalAtlasPath
         # Moving final images to final folders
         logger("\n=> Moving final images to final folders")
         case = 0
-        LastIterDir="Loop_"+str(m_nbLoopsDTIReg-1)+"/"
+        LastIterDir="Loop_"+str(m_nbLoopsDTIReg-1)
 
         while case < len(allcases):
           if SecondResampRecomputed[case] :
-            GlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
-            NewGlobalDefField2 = FinalResampPath.joinpath("FinalDeformationFields/" + allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
+            GlobalDefField2 = FinalResampPath.joinpath("Second_Resampling").joinpath(LastIterDir).joinpath(allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
+            NewGlobalDefField2 = FinalResampPath.joinpath("FinalDeformationFields").joinpath(allcasesIDs[case] + "_GlobalDisplacementField.nrrd").__str__()
             if utils.CheckFileExists(GlobalDefField2, case, allcasesIDs[case]) :
               shutil.copy(GlobalDefField2, NewGlobalDefField2)
-            InverseGlobalDefField2 = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
-            NewInverseGlobalDefField2 = FinalResampPath.joinpath("FinalDeformationFields/" + allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
+            InverseGlobalDefField2 = FinalResampPath.joinpath("Second_Resampling").joinpath(LastIterDir).joinpath(allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
+            NewInverseGlobalDefField2 = FinalResampPath.joinpath("FinalDeformationFields").joinpath(allcasesIDs[case] + "_InverseGlobalDisplacementField.nrrd").__str__()
             if utils.CheckFileExists(InverseGlobalDefField2, case, allcasesIDs[case]) :
               shutil.copy(InverseGlobalDefField2, NewInverseGlobalDefField2)
-            FinalDef2 = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir+allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
-            NewFinalDef2 = FinalResampPath.joinpath("FinalTensors/" + allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
+            FinalDef2 = FinalResampPath.joinpath("Second_Resampling").joinpath(LastIterDir).joinpath(allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
+            NewFinalDef2 = FinalResampPath.joinpath("FinalTensors").joinpath(allcasesIDs[case] + "_FinalDeformedDTI.nrrd").__str__()
             if utils.CheckFileExists(FinalDef2, case, allcasesIDs[case]) :
               shutil.copy(FinalDef2, NewFinalDef2)
-            FinalDef2f = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
-            NewFinalDef2f = FinalResampPath.joinpath("FinalTensors/" + allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
+            FinalDef2f = FinalResampPath.joinpath("Second_Resampling").joinpath(LastIterDir).joinpath(allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
+            NewFinalDef2f = FinalResampPath.joinpath("FinalTensors").joinpath(allcasesIDs[case] + "_FinalDeformedDTI_float.nrrd").__str__()
             if utils.CheckFileExists(FinalDef2f, case, allcasesIDs[case]) :
               shutil.copy(FinalDef2f, NewFinalDef2f)
-            DTIRegCaseScalarMeasurement = FinalResampPath.joinpath("Second_Resampling/" + LastIterDir + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
-            NewDTIRegCaseScalarMeasurement = FinalResampPath.joinpath("FinalTensors/" + allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
+            DTIRegCaseScalarMeasurement = FinalResampPath.joinpath("Second_Resampling").joinpath(LastIterDir).joinpath(allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
+            NewDTIRegCaseScalarMeasurement = FinalResampPath.joinpath("FinalTensors").joinpath(allcasesIDs[case] + "_FinalDeformed"+m_ScalarMeasurement+".nrrd").__str__()
             if utils.CheckFileExists(DTIRegCaseScalarMeasurement, case, allcasesIDs[case]) :
               shutil.copy(DTIRegCaseScalarMeasurement, NewDTIRegCaseScalarMeasurement)
           case += 1
@@ -707,7 +706,7 @@ class AtlasBuilder(object):
 
         logger("Copying Final atlas components to " + str(FinalAtlasPath))
         shutil.rmtree(FinalAtlasPath)
-        shutil.copytree(FinalResampPath.joinpath("Second_Resampling/"+LastIterDir),FinalAtlasPath)
+        shutil.copytree(FinalResampPath.joinpath("Second_Resampling").joinpath(LastIterDir),FinalAtlasPath)
         shutil.copytree(FinalResampPath.joinpath("FinalDeformationFields"),FinalAtlasPath.joinpath("FinalDeformationFields"))
         shutil.copytree(FinalResampPath.joinpath("FinalTensors"),FinalAtlasPath.joinpath("FinalTensors"))
 
@@ -727,9 +726,9 @@ class AtlasBuilder(object):
 
         ### copy final atals to 'final_atlas' directory
         if node is None:
-            src=projectPath.joinpath("atlases/"+hbuild['project']['target_node'])
+            src=projectPath.joinpath("atlases").joinpath(hbuild['project']['target_node'])
         else:
-            src=projectPath.joinpath("atlases/"+node)
+            src=projectPath.joinpath("atlases").joinpath(node)
         dst=projectPath.joinpath("final_atlas")
         logger("Copying filed from %s to %s" %(src,dst))
         shutil.rmtree(dst)

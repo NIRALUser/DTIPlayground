@@ -16,6 +16,7 @@ import argparse
 import csv 
 import copy 
 import xml.etree.cElementTree as ET 
+from pathlib import Path 
 
 import dmri.atlasbuilder as ab 
 import dmri.common.tools as tools
@@ -173,6 +174,9 @@ def ITKTransformTools_Concatenate(config,payload): ## payload should be deformat
             hpairList=elm["id"].split("/")
             outFilename="_".join(hpairList) + "_GlobalDisplacementField_Concatenated.nrrd"
             outFilename=os.path.join(outputDir,outFilename)
+            if Path(outFilename).exists() and (not config['m_Overwrite']==1):
+                logger("File : {} already exists.".format(outFilename))
+                continue
             #logger("Output filename : %s"%outFilename)
             tmpCommand=command + outFilename +" -r " + refDTI + " "
             inpListStr=""
@@ -193,11 +197,13 @@ def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be 
         outputDir=_generate_concatenated_displacement_directory(config)
         binaryPath=config["m_SoftPath"][9] 
         command+=binaryPath + " concatenate "
-        
         for idx, elm in enumerate(payload):
             refDTI=elm['original_dti_path']
             hpairList=elm["id"].split("/")
             outFilename=elm['output_path']
+            if Path(outFilename).exists() and (not config['m_Overwrite']==1):
+                logger("File : {} already exists.".format(outFilename))
+                continue
             #logger("Output filename : %s"%outFilename)
             tmpCommand=command + outFilename +" -r " + refDTI + " "
             inpListStr=""

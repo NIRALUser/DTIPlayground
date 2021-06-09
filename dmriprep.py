@@ -155,7 +155,7 @@ def command_run(args):
     ## reparametrization
     options={
         "config_dir" : args.config_dir,
-        "input_image_path" : args.input_image,
+        "input_image_paths" : args.input_image_list,
         "protocol_path" : args.protocols,
         "output_dir" : args.output_dir,
         "default_protocols":args.default_protocols
@@ -166,7 +166,7 @@ def command_run(args):
     modules=dmri.preprocessing.modules.check_module_validity(modules,environment)  
     template=yaml.safe_load(open(config['protocol_template_path'],'r'))
     proto=dmri.preprocessing.protocols.Protocols(modules)
-    proto.loadImage(options['input_image_path'],b0_threshold=10)
+    proto.loadImage(options['input_image_paths'],b0_threshold=10)
     if options['output_dir'] is None:
         img_path=Path(options['input_image_path'])
         stem=img_path.name.split('.')[0]+"_QC"
@@ -218,7 +218,7 @@ def get_args():
 
     ## run command
     parser_run=subparsers.add_parser('run',help='Run pipeline')
-    parser_run.add_argument('-i','--input-image',help='Input image path',type=str,required=True)
+    parser_run.add_argument('-i','--input-image-list',help='Input image paths',type=str,nargs='+',required=True)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=False)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
     run_exclusive_group.add_argument('-p','--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)

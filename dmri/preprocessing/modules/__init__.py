@@ -106,8 +106,9 @@ class DTIPrepModule: #base class
         self.loadTemplate()
     
     @prep.measure_time
-    def initialize(self,result_history,output_dir):
-        self.result_history=result_history
+    def initialize(self,result_history,image_path,output_dir):
+        self.history=result_history
+        self.result_history=result_history[image_path]
         self.output_dir=output_dir
         self.output_root=str(Path(self.output_dir).parent)
         self.computation_dir=Path(output_dir).joinpath("computations")

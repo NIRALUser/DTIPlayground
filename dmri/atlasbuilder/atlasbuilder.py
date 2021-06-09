@@ -521,7 +521,7 @@ class AtlasBuilder(object):
 
         else: logger("=> The file '" + DTIAverage + "' already exists so the command will not be executed")
 
-# 4-1 First_Resampling (FinalResampPath)
+# 4-1 First_Resampling (FinalResampPath) - to be multi-threaded
         # Computing global deformation fields
         case = 0
         while case < len(allcases):
@@ -561,7 +561,7 @@ class AtlasBuilder(object):
           else: logger("=> The file '" + FinalDef + "' already exists so the command will not be executed")
           case += 1
 
-# 4-2 Second_Resampling
+# 4-2 Second_Resampling 
 
         ### looping begins
         cnt=0
@@ -614,7 +614,7 @@ class AtlasBuilder(object):
 
           else: logger("=> The file '" + DTIAverage2 + "' already exists so the command will not be executed")
 
-          # Recomputing global deformation fields
+          # Recomputing global deformation fields - to be multi-threaded
           SecondResampRecomputed = [0] * len(allcases) # array of 1s and 0s to know what has been recomputed to know what to copy to final folders
           case = 0
           while case < len(allcases):

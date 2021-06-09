@@ -236,7 +236,8 @@ def export_to_nrrd(image): #image : DWI
         "endian" : info['endian'],
         "encoding" : 'gzip',
         "space origin" : info['space_origin'],
-        "measurement frame": info['measurement_frame']
+        "measurement frame": info['measurement_frame'],
+        "DWMRI_b-value" : info['b_value']
     }
 
     s=list(new_data.shape)

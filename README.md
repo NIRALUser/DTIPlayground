@@ -39,13 +39,13 @@ if `"-o"` option is omitted, the output protocol will be printed on terminal.`"-
 To run with default protocol generated from `protocol_template.yml`:
 
 ```
-    $ dmriprep run -i IMAGE_FILE -o OUTPUT_DIR -d [ MODULE1 MODULE2 ... ]
+    $ dmriprep run -i IMAGE_FILES -o OUTPUT_DIR -d [ MODULE1 MODULE2 ... ]
 ```
-`"-d"` option (default protocol) works as described in **make-protocols** command. But you need to specify `"-d"` for the default pipeline from the template.  If `"-o"` option is omitted, default directory will be set to `Image filename_QC`.
+`"-d"` option (default protocol) works as described in **make-protocols** command. But you need to specify `"-d"` for the default pipeline from the template.  If `"-o"` option is omitted, default directory will be set to `Image filename_QC`. IMAGE_FILES may be a list of files to process. In case of susceptibility correction, IMAGE_FILES needs to have counterparts for the polarities. `dmriprep` automatically process qc for all the input images before the susceptibility correction stage.
 
 To run with existing protocol file:
 ```
-    $ dmriprep run -i IMAGE_FILE -p PROTOCOL_FILE -o output/directory/
+    $ dmriprep run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
 ```
 
 `"-p"` option cannot be used with `"-d"` option.
@@ -87,7 +87,6 @@ DTIFiberAnalyzer performs statistical computation over the extracted fibers. Thi
 
 - [Quality Control of Diffusion Weighted Images - Zhexing Liu, et al](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3864968/)
 
-
 #### Acknowlegements
 
 DTI Toolkits are funded by National Institute of Health (NIH)
@@ -100,13 +99,35 @@ MIT
 
 ##### Application required
 
+[GENERAL]
 - Python >= 3.6 
-- FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction)
 
-##### Python libraries
-- pynrrd==0.4.2
-- dipy==1.4.0
-- pyyaml==5.3.1
+[DMRIPrep]
+- Python Libraries
+    - pynrrd==0.4.2
+    - dipy==1.4.0
+    - pyyaml==5.3.1
+- External Packages
+    - FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction)
+
+[DTIAtlasbuilder]
+- Python Libraries
+    - pyyaml==5.3.1
+- Binaries
+    - DTI-Reg
+    - dtiprocess
+    - dtiaverage
+    - unu
+    - ImageMath
+    - ResampleDTIlogEuclidean
+    - GreedyAtlas
+    - BRAINSFit
+    - ITKTransformTools
+
+[DTIFiberAnalyzer]
+- Python Libraries
+    - pyyaml==5.3.1
+
 
 ### Todos
 - Docker distribution with NIRAL toolchain and FSL 
@@ -115,14 +136,16 @@ MIT
 - GUI client (Single page web app) - Vuejs, React, ...
 - FSL integration
 - Multi threading
-- NIFTI writing
-- NRRD-NIFTI conversion
 - Output generations for dmriprepModule
 - Abstract one more level for dmriprep.module.postProcess (Currently baseline averaging module override the postProcess method due to the forced writing which makes the next module load the file after first run. In the first run, object id is passed.) - Done (2021-04-21)
 
 ### Change Log
 
-##### 2021-05-19
+##### 2021-06-8
+- dmriprep : Multi input enabled both for multi processing and multi-input modules (such as susceptibility correction).
+
+##### 2021-05-20
+- dtiatlasbuilder : Threading bug fixed.
 - dtiatlasbuilder : 1st refactoring is finished. 
 
 ##### 2021-05-14

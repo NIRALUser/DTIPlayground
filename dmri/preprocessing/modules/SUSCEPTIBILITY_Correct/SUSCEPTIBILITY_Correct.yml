@@ -7,6 +7,7 @@ dependency:
 module_type: prep
 process_attributes:
     - deform_image
+    - multi_input
 result: null
 protocol:
       outputDWIFileNameSuffix: 

@@ -8,6 +8,11 @@ module_type: prep
 process_attributes:
     - deform_image
 protocol:
+      susceptibilityCorrection:
+        type: boolean
+        caption: Susceptibility Correction
+        default_value: False 
+        description: Correcting susceptibility motion, SUSCEPTIBILITY_Correct module is required to be performed before EDDY 
       numberOfIterations: 
         type: integer
         caption: Number of Iterations

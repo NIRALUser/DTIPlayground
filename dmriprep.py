@@ -15,6 +15,8 @@ import dmri.preprocessing.modules
 import dmri.preprocessing.protocols
 import dmri.common 
 
+import shutil
+
 logger=dmri.common.logger.write 
 
 ### unit functions
@@ -79,6 +81,8 @@ def command_init(args):
         home_dir.mkdir(parents=True,exist_ok=True)
         user_module_dir=home_dir.joinpath('modules').absolute()
         user_module_dir.mkdir(parents=True,exist_ok=True)
+        user_tools_param_dir=home_dir.joinpath('parameters').absolute()
+        user_tools_param_dir.mkdir(parents=True,exist_ok=True)
         template_filename=home_dir.joinpath("protocol_template.yml").absolute()
         source_template_path=Path(dmri.preprocessing.__file__).parent.joinpath("templates/protocol_template.yml")
         protocol_template=yaml.safe_load(open(source_template_path,'r'))
@@ -90,9 +94,21 @@ def command_init(args):
         yaml.dump(protocol_template,open(template_filename,'w'))
         yaml.dump(config,open(config_filename,'w'))
         logger("Config file written to : {}".format(str(config_filename)),dmri.preprocessing.Color.INFO)
+        ## copy default software path
+        software_info_path=Path(__file__).parent.joinpath("dmri/common/data/software_paths.yml")
+        software_filename=home_dir.joinpath('software_paths.yml')
+        shutil.copy(software_info_path,software_filename)
+        logger("Software path file is written to : {}".format(str(software_filename)),dmri.preprocessing.Color.INFO)
+        ## copy default software path
+        software_info_path=Path(__file__).parent.joinpath("dmri/common/data/software_paths.yml")
+        software_filename=home_dir.joinpath('software_paths.yml')
+        shutil.copy(software_info_path,software_filename)
+        logger("Software path file is written to : {}".format(str(software_filename)),dmri.preprocessing.Color.INFO)
+        ## generate tool parameters
+
         ## make environment file (environment.yml)
         modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
-        environment=dmri.preprocessing.modules.generate_module_envionrment(modules)
+        environment=dmri.preprocessing.modules.generate_module_envionrment(modules,str(home_dir))
         yaml.dump(environment,open(environment_filename,'w'))
         logger("Environment file written to : {}".format(str(environment_filename)),dmri.preprocessing.Color.INFO)
         logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.preprocessing.Color.OK)
@@ -114,7 +130,7 @@ def command_update(args):
     config=yaml.safe_load(open(config_filename,'r'))
     ## make environment file (environment.yml)
     modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
-    environment=dmri.preprocessing.modules.generate_module_envionrment(modules)
+    environment=dmri.preprocessing.modules.generate_module_envionrment(modules,str(home_dir))
     yaml.dump(environment,open(environment_filename,'w'))
     logger("Environment file written to : {}".format(str(environment_filename)),dmri.preprocessing.Color.INFO)
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.preprocessing.Color.OK)
@@ -158,7 +174,8 @@ def command_run(args):
         "input_image_paths" : args.input_image_list,
         "protocol_path" : args.protocols,
         "output_dir" : args.output_dir,
-        "default_protocols":args.default_protocols
+        "default_protocols":args.default_protocols,
+        "num_threads":args.num_threads
     }
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
@@ -183,6 +200,7 @@ def command_run(args):
         proto.loadProtocols(options["protocol_path"])
     else :
         proto.makeDefaultProtocols(options['default_protocols'],template=template)
+    proto.setNumThreads(options['num_threads'])
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
     dmri.common.logger.setLogfile(logfilename)  
@@ -220,6 +238,7 @@ def get_args():
     parser_run=subparsers.add_parser('run',help='Run pipeline')
     parser_run.add_argument('-i','--input-image-list',help='Input image paths',type=str,nargs='+',required=True)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=False)
+    parser_run.add_argument('--num-threads',help="Number of threads to use",default=1,type=int,required=False)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
     run_exclusive_group.add_argument('-p','--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')

@@ -10,12 +10,13 @@ logger=prep.logger.write
 def _load_protocol(filename):
     return yaml.safe_load(open(filename,'r'))
 
-def _generate_exec_seqeunce(pipeline,image_paths:list,modules): ## generate sequence using uuid to avoid the issue from redundant module use
+def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules): ## generate sequence using uuid to avoid the issue from redundant module use
     seq=[]
+    after_multi_input=False
     for idx,parr in enumerate(pipeline):
         module_name, options=parr 
         is_multi_input='multi_input' in modules[module_name]['template']['process_attributes']
-        if is_multi_input:
+        if is_multi_input or after_multi_input:
             uid=prep.get_uuid()
             execution={
                 "order": idx,
@@ -23,15 +24,17 @@ def _generate_exec_seqeunce(pipeline,image_paths:list,modules): ## generate sequ
                 "multi_input":True,
                 "module_name":module_name,
                 "options": options,
-                "image_path": image_paths[0],
+                "image_path": Path(output_dir).joinpath('consolidated').__str__(),
+                "output_base": Path(output_dir).joinpath('consolidated').__str__(),
                 "save": idx+1==len(pipeline) ## is it the final stage? (to save the final output)
             }
             ## save previous results
-            if idx>0:
+            if idx>0 and not after_multi_input:
                 for idx2,ip in enumerate(image_paths):
                     seq[-idx2-1]['save']=True
             #seq.append([uid]+parr+[ip])
             seq.append(execution)
+            after_multi_input=True
         else:
             for ip in image_paths:
                 uid=prep.get_uuid()
@@ -42,6 +45,7 @@ def _generate_exec_seqeunce(pipeline,image_paths:list,modules): ## generate sequ
                     "module_name":module_name,
                     "options": options,
                     "image_path":ip,
+                    "output_base": ip,
                     "save": idx+1==len(pipeline)  ## is it the final stage? (to save the final output)
                 }
                 #seq.append([uid]+parr+[ip])
@@ -86,15 +90,19 @@ class Protocols:
         #Image data 
         self.images=[]
         self.image_cache={} # cache for the previous results
+
         #Execution variables
         self.template_filename=Path(__file__).parent.joinpath("templates/protocol_template.yml")
         self.modules=modules
         self.previous_process=None #this is to ensure to access previous results (image and so on)
-        
+        self.software_info=None # binary path of softwares (such as fsl)
+        self.num_threads=4 # number of threads to use 
+
         #output
         self.result_history={}
         self.output_dir=None
 
+        self.setSoftwareInfo()
 
     def loadImage(self, image_paths,b0_threshold=10):
         self.image_paths=list(map(lambda x:str(Path(x).absolute()),image_paths))
@@ -113,6 +121,28 @@ class Protocols:
         else:
             self.output_dir=str(Path(output_dir).absolute())
         self.io['output_directory']=str(self.output_dir)
+
+    def setSoftwareInfo(self, paths:object=None):
+        softwares=None
+        if paths is None:
+            spaths=['~/.niral-dti/dmriprep/software_paths.yml',Path(__file__).parent.parent.joinpath('common/data/software_paths.yml')]
+            for p in spaths:
+                if Path(p).exists():
+                    softwares=yaml.safe_load(open(p,'r'))
+                    self.software_info=softwares 
+                    self.num_threads=softwares['parameters']['num_max_threads']
+                    break 
+        if softwares is None: raise Exception("Software information is required")
+        return softwares is not None 
+
+    def getSoftwareInfo(self):
+        return self.software_info 
+
+    def setNumThreads(self,nth:int):
+        assert(nth>0)
+        self.num_threads=nth 
+        self.software_info['parameters']['num_max_threads']=nth
+        self.io['num_threads']=nth  
 
     def getProtocols(self):
         proto={
@@ -225,7 +255,7 @@ class Protocols:
         try:
             self.checkRunnable()
             self.processes_history=[]
-            execution_sequence = _generate_exec_seqeunce(self.pipeline,self.image_paths,self.modules)
+            execution_sequence = _generate_exec_seqeunce(self.pipeline,self.image_paths,self.output_dir,self.modules)
             Path(self.output_dir).mkdir(parents=True,exist_ok=True)
             output_dir_map=_generate_output_directories_mapping(self.output_dir,execution_sequence)
             protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()
@@ -233,17 +263,24 @@ class Protocols:
             self.writeProtocols(protocol_filename)
             ## print pipeline
             logger("PIPELINE",prep.Color.INFO)
+            logger(yaml.dump(self.io),prep.Color.DEV)
             logger(yaml.dump(self.pipeline),prep.Color.DEV)
 
             ## run pipeline
+            opts={
+                    "software_info": self.getSoftwareInfo()
+                 }
             for idx,execution in enumerate(execution_sequence):
                 # uid, p, options=parr 
                 uid=execution['id']
                 p=execution['module_name']
                 options=execution['options']
                 image_path=execution['image_path']
+                output_base=execution['output_base']
                 save=execution['save']
 
+                if image_path not in self.result_history:
+                    self.result_history[image_path]=[]
                 bt=time.time()
                 logger("-----------------------------------------------",prep.Color.BOLD)
                 logger("Processing [{0}/{1}] : {2}".format(idx+1,len(execution_sequence),p),prep.Color.BOLD)
@@ -262,13 +299,15 @@ class Protocols:
                 resultfile_path=Path(output_dir_map[uid]).joinpath('result.yml')
 
                 ### if result file is exist, just run post process and continue with previous information
+
+
                 if resultfile_path.exists() and not m.getOptions()['overwrite']:
                     result_temp=yaml.safe_load(open(resultfile_path,'r'))
                     logger("Result file exists, just post-processing ...",prep.Color.INFO+prep.Color.BOLD)
                     m.postProcess(result_temp)
                     success=True
                 else: # in case overwriting or there is no result.yml file
-                    success=m.run()
+                    success=m.run(opts)
                 if not success:
                     logger("[ERROR] Process failed in {}".format(p),prep.Color.ERROR) 
                     raise Exception("Process failed in {}".format(p))
@@ -281,15 +320,17 @@ class Protocols:
                 if save: ### for the last, dump image and informations
                     ## Save final Qced image
                     logger("Preparing final output ... ",prep.Color.PROCESS)
-                    stem=Path(image_path).name.split('.')[0]+"_QCed"
+                    stem=Path(output_base).name.split('.')[0]+"_QCed"
                     ext='.nii.gz'
                     if m.image.image_type=='nrrd' : ext='.nrrd'
                     final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
-                    final_gradients_filename=Path(self.output_dir).joinpath(Path(image_path).stem).joinpath('output_gradients.yml').__str__()
-                    final_information_filename=Path(self.output_dir).joinpath(Path(image_path).stem).joinpath('output_image_information.yml').__str__()
-                    m.image.writeImage(final_filename,dest_type=m.image.image_type)
-                    m.image.dumpGradients(final_gradients_filename)
-                    m.image.dumpInformation(final_information_filename)
+                    final_gradients_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_gradients.yml').__str__()
+                    final_information_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_image_information.yml').__str__()
+                    
+                    if not Path(final_filename).exists() or idx-1==len(execution_sequence):
+                        m.image.writeImage(final_filename,dest_type=m.image.image_type,dtype='short')
+                        m.image.dumpGradients(final_gradients_filename)
+                        m.image.dumpInformation(final_information_filename)
 
             logger(yaml.dump(execution_sequence),prep.Color.INFO)
             return self.result_history

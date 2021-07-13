@@ -12,5 +12,5 @@ class DTIAverage(ExternalToolWrapper):
         arguments+=['--tensor_output',output_file]
         arguments+=options
         self.setArguments(arguments)
-        return self.execute()
+        return self.execute(arguments)
         

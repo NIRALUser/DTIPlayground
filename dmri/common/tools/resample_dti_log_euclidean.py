@@ -5,12 +5,14 @@ class ResampleDTIlogEuclidean(ExternalToolWrapper):
         super().__init__(binary_path)
 
     def filter_dti(self, inputfile, outputfile,correction='zero'):
-        self.setArguments([inputfile,outputfile,'--correction',correction])
-        return self.execute()
+        arguments=[inputfile,outputfile,'--correction',correction]
+        self.setArguments(arguments)
+        return self.execute(arguments)
 
     def implement_affine_registration(self,input_file,affine_file,transform_file,reference_file):
-        self.setArguments([input_file,affine_file,'-f',transform_file,'-R',reference_file])
-        return self.execute()
+        arguments=[input_file,affine_file,'-f',transform_file,'-R',reference_file]
+        self.setArguments(arguments)
+        return self.execute(arguments)
 
     def resample(self,reference_file,
                        deform_field_file,
@@ -52,4 +54,4 @@ class ResampleDTIlogEuclidean(ExternalToolWrapper):
 
         arguments+=options
         self.setArguments(arguments)
-        return self.execute()
+        return self.execute(arguments)

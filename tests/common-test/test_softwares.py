@@ -28,8 +28,8 @@ def ImageMath(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.ImageMath()
-    module.setPath(paths["ImageMath"])
+    module=tools.ImageMath(paths["ImageMath"])
+
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -43,9 +43,8 @@ def ResampleDTIlogEuclidean(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.ResampleDTIlogEuclidean()
-    module.setPath(paths["ResampleDTIlogEuclidean"])
-
+    module=tools.ResampleDTIlogEuclidean(paths["ResampleDTIlogEuclidean"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -59,8 +58,7 @@ def CropDTI(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.CropDTI()
-    module.setPath(paths["CropDTI"])
+    module=tools.CropDTI(paths["CropDTI"])
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -74,8 +72,8 @@ def DTIProcess(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.DTIProcess()
-    module.setPath(paths["dtiprocess"])
+    module=tools.DTIProcess(paths["dtiprocess"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -89,8 +87,8 @@ def BRAINSFit(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.BRAINSFit()
-    module.setPath(paths["BRAINSFit"])
+    module=tools.BRAINSFit(paths["BRAINSFit"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -104,8 +102,8 @@ def GreedyAtlas(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.GreedyAtlas()
-    module.setPath(paths["GreedyAtlas"])
+    module=tools.GreedyAtlas(paths["GreedyAtlas"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -120,8 +118,8 @@ def DTIReg(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.DTIReg()
-    module.setPath(paths["DTI-Reg"])
+    module=tools.DTIReg(paths["DTI-Reg"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -135,8 +133,8 @@ def DTIAverage(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.DTIAverage()
-    module.setPath(paths["dtiaverage"])
+    module=tools.DTIAverage(paths["dtiaverage"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -150,8 +148,8 @@ def unu(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.UNU()
-    module.setPath(paths["unu"])
+    module=tools.UNU(paths["unu"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -165,8 +163,8 @@ def ITKTransformTools(args):
     s_path=args.software_path 
     paths=yaml.safe_load(open(s_path,'r'))
 
-    module=tools.ITKTransformTools()
-    module.setPath(paths["ITKTransformTools"])
+    module=tools.ITKTransformTools(paths["ITKTransformTools"])
+    #module.setPath()
     comp=module.execute()
     logger(str(comp.args))
     logger(str(comp.stdout))
@@ -176,6 +174,20 @@ def ITKTransformTools(args):
     logger(str(module))
     return comp.returncode==0
 
+def FSL_eddy(args):
+    s_path=args.software_path 
+    paths=yaml.safe_load(open(s_path,'r'))
+
+    module=tools.FSL(paths["FSL"])
+    #module.setPath()
+    comp=module.execute('eddy_openmp')
+    logger(str(comp.args))
+    logger(str(comp.stdout))
+    logger(str(comp.stderr))
+    logger(str(comp.returncode))
+    #comp.check_returncode() ## 0 is success
+    logger(str(module))
+    return comp.returncode==0   
 
 ## test runner
     
@@ -215,11 +227,12 @@ if __name__=='__main__':
            'DTIReg',
            'DTIAverage',
            'unu',
-           'ITKTransformTools']
-    try:
-        run_tests(tests,args)
-    except Exception as e:
-        msg=traceback.format_exc()
-        logger("{} : {}".format(str(e),msg))
+           'ITKTransformTools',
+           'FSL_eddy']
+
+    run_tests(tests,args)
+    # except Exception as e:
+    #     msg=traceback.format_exc()
+    #     logger("{} : {}".format(str(e),msg))
 
     print(sys.argv)

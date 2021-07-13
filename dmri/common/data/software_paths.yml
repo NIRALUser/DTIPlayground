@@ -1,0 +1,26 @@
+version : 0.1
+parameters:
+  num_max_threads: 4
+softwares:
+  ImageMath : 
+    path: /NIRAL/tools/bin_linux64/ImageMath
+  ResampleDTIlogEuclidean: 
+    path: /NIRAL/tools/bin_linux64/ResampleDTIlogEuclidean
+  CropDTI: 
+    path: /NIRAL/tools/bin_linux64/CropDTI
+  dtiprocess: 
+    path: /NIRAL/tools/bin_linux64/dtiprocess
+  BRAINSFit: 
+    path: /NIRAL/tools/bin_linux64/BRAINSFit
+  GreedyAtlas: 
+    path: /NIRAL/tools/bin_linux64/GreedyAtlas
+  dtiaverage: 
+    path: /NIRAL/tools/bin_linux64/dtiaverage
+  DTI-Reg: 
+    path: /NIRAL/tools/bin_linux64/DTI-Reg
+  unu: 
+    path: /NIRAL/tools/bin_linux64/unu
+  ITKTransformTools: 
+    path: /NIRAL/tools/bin_linux64/ITKTransformTools
+  FSL: 
+    path: /NIRAL/tools/FSL/fsl-6.0.3

@@ -18,6 +18,11 @@ import copy
 
 logger=prep.logger.write
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 def _load_nrrd(filename):
     org_data,header = nrrd.read(filename)
     
@@ -93,15 +98,20 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     ## extract gradients with form {'index': , 'gradient': }
     bvals=[]
     bvecs=[]
-    bvpairs=list(zip(open(bvals_file,'r').readlines(),open(bvecs_file,'r').readlines()))
+    #bvpairs=list(zip(open(bvals_file,'r').readlines(),open(bvecs_file,'r').readlines()))
+    tmp_bvals=list(open(bvals_file,'r').read().split())
+    tmp_bvecs=list(chunks(open(bvecs_file,'r').read().split(),3))
+    bvpairs=list(zip(tmp_bvals,tmp_bvecs))
     gradients=[]
     normalized_vecs=[]
     vecs=[]
     max_bval=0.0
     for idx,bv in enumerate(bvpairs):
         bval,bvec = bv
-        normalized_vecs.append(np.array(list(map(lambda x: float(x), bvec.split()))).tolist())
+        #normalized_vecs.append(np.array(list(map(lambda x: float(x), bvec.split()))).tolist())
+        normalized_vecs.append(list(map(lambda x :float(x),bvec)))
         bvals.append(float(bval))
+
 
     max_bval=np.max(bvals)
     for idx,vec in enumerate(normalized_vecs):
@@ -122,13 +132,15 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
 
     ## extract header info
     mat=np.array(affine)
-    space=""
-    if mat[0,0]<0.0 : space+='left-'
-    else: space+='right-'
-    if mat[1,1]<0.0 : space+='posterior-'
-    else: space+='anterior-'
-    if mat[2,2]<0.0 : space+='inferior'
-    else: space+='superior'
+    # space=""
+    # if mat[0,0]<0.0 : space+='left-'
+    # else: space+='right-'
+    # if mat[1,1]<0.0 : space+='posterior-'
+    # else: space+='anterior-'
+    # if mat[2,2]<0.0 : space+='inferior'
+    # else: space+='superior'
+
+    space='left-posterior-superior'
 
     flipops=np.array(   ## x,y will be flipped
             [[-1,0,0],
@@ -136,6 +148,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
              [0,0,1]])
     space_directions=np.matmul(mat[:3,:3],flipops)[:3,:3]
     space_origin=np.matmul(mat[:3,3],flipops)[:3]
+
 
     endian="little"
     if header.endianness != '<' :
@@ -155,7 +168,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         'type': str(header.get_data_dtype()),
         'endian' : endian,
         'original_centerings' : ['cell','cell','cell','???'],
-        'thicknesses' : []
+        'thicknesses' : np.array([np.NAN,np.NAN,np.abs(space_directions.tolist()[2][2]),np.NAN]).tolist()
     }
         
     return data, gradients, info, (org_data,affine,header)
@@ -177,35 +190,6 @@ def get_nrrd_gradient_axis(kinds):
     return grad_axis
 
 
-# def export_nrrd_to_nrrd(image): #nrrd loaded image to nrrd format (prep.dwi.DWI object)
-#     if image.image_type.lower() != 'nrrd': raise Exception("Nrrd type image is required for this function")
-#     info=image.information
-#     grad=image.getGradients()
-    
-#     new_data=copy.deepcopy(image.images)
-#     org_header=copy.deepcopy(dict(image.original_data[1]))
-#     grad_axis_original=get_nrrd_gradient_axis(org_header['kinds'])
-#     grad_axis=-1
-
-#     new_header=copy.deepcopy(org_header)
-#     s=list(new_data.shape)
-#     new_header['dimension']=len(new_data.shape)
-#     g=s[grad_axis]
-#     s=s[:grad_axis]+s[grad_axis:-1]
-#     s=s[:grad_axis_original]+[g]+s[grad_axis_original:]
-
-
-
-#     new_header['sizes']=s
-#     copy_hdr=copy.deepcopy(new_header)
-#     for k,v in copy_hdr.items():    
-#         if 'dwmri_gradient' in k.lower():
-#             del new_header[k]
-#     for idx,g in enumerate(grad):
-#         k="DWMRI_gradient_{:04d}".format(idx)
-#         new_header[k]=" ".join([str(x) for x in g['gradient']])
-#     new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
-#     return new_data,new_header
 
 def export_to_nrrd(image): #image : DWI
     info=copy.deepcopy(image.information)
@@ -237,6 +221,7 @@ def export_to_nrrd(image): #image : DWI
         "encoding" : 'gzip',
         "space origin" : info['space_origin'],
         "measurement frame": info['measurement_frame'],
+        "modality" : "DWMRI",
         "DWMRI_b-value" : info['b_value']
     }
 
@@ -267,8 +252,9 @@ def export_to_nifti(image): # image DWI
     bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),x['unit_gradient']))+"\n" for x in gradients]
     return img,affine, bvals, bvecs
 
-def _write_nrrd(image,filename): 
+def _write_nrrd(image,filename,dtype): 
     data,header = export_to_nrrd(image)
+    header['type']=dtype
     return nrrd.write(filename,data,header=header)
 
 def _write_nifti(image,filename): #image : DWI
@@ -288,9 +274,9 @@ def _write_nifti(image,filename): #image : DWI
         f.writelines(bvecs)
 
 
-def _write_dwi(filename,image , dest_type='nrrd'): ## image : image object (prep.dwi.DWI)
+def _write_dwi(filename,image , dest_type='nrrd',dtype='short'): ## image : image object (prep.dwi.DWI)
     if dest_type.lower()=='nrrd': ## load nrrd dwi image
-        return _write_nrrd(image,filename)
+        return _write_nrrd(image,filename,dtype=dtype)
     elif dest_type.lower()=='nifti':
         return _write_nifti(image, filename)
     else:
@@ -322,7 +308,7 @@ class DWI:
         return len(self.gradients)
     
     @prep.measure_time
-    def writeImage(self,filename,dest_type='nrrd'):
+    def writeImage(self,filename,dest_type='nrrd',dtype='short'):
         out_images=None
         if '.nrrd' in filename.lower(): 
             dest_type='nrrd'
@@ -330,7 +316,7 @@ class DWI:
             dest_type='nifti'
     
         logger("Writing image to : {}".format(str(filename)),prep.Color.PROCESS)
-        _write_dwi(filename,self,dest_type=dest_type)
+        _write_dwi(filename,self,dest_type=dest_type,dtype=dtype)
         logger("Image written.",prep.Color.OK)
 
     @prep.measure_time
@@ -347,9 +333,17 @@ class DWI:
     def setB0Threshold(self,b0_threshold):
         self.b0_threshold=b0_threshold
 
-
     def getB0Threshold(self):
         return self.b0_threshold
+
+    def getB0Index(self):
+        grads=self.getGradients()
+        b0threshold=self.getB0Threshold()
+        res=[]
+        for idx,g in enumerate(grads):
+            if g['b_value'] <= b0threshold:
+                res.append(idx)
+        return res 
 
     def setGradients(self,gradients:list):
         _,_,_,g = self.images.shape 
@@ -359,6 +353,16 @@ class DWI:
             raise Exception("Gradients in the image doesn't match to the direction number of the gradient file")
         else:
             self.gradients=gradients 
+
+    def getGradients(self,b0_threshold=None):
+        if b0_threshold is None:
+            b0_threshold=self.b0_threshold
+
+        for idx,e in enumerate(self.gradients):
+            self.gradients[idx]['index']=idx
+            self.gradients[idx]['baseline']=bool(int(e['b_value'])<=b0_threshold)
+
+        return self.gradients
 
     def getAffineMatrix(self):
         affine=np.transpose(np.append(self.information['space_directions'],
@@ -396,15 +400,7 @@ class DWI:
     def loadImageInformation(self,filename):
         self.information=yaml.safe_load(open(filename,'r'))
 
-    def getGradients(self,b0_threshold=None):
-        if b0_threshold is None:
-            b0_threshold=self.b0_threshold
 
-        for idx,e in enumerate(self.gradients):
-            self.gradients[idx]['index']=idx
-            self.gradients[idx]['baseline']=bool(e['b_value']<=b0_threshold)
-
-        return self.gradients
 
     def dumpInformation(self,filename):
         info=self.information
@@ -439,6 +435,21 @@ class DWI:
         baseline_indexes=[x['index'] for x in baseline_gradients]
         baseline_volumes=self.images[:,:,:,baseline_indexes]
         return baseline_gradients, baseline_volumes
+
+    def extractBaselines(self,b0_threshold=None):
+        new_image=copy.deepcopy(self)
+        grads,vols=new_image.getBaselines(b0_threshold)
+        new_image.images=vols 
+        new_image.setGradients(grads)
+        return new_image
+
+    def zerorizeBaselines(self,b0_threshold):
+        grads=self.getGradients(b0_threshold)
+        for idx,g in enumerate(grads):
+            if g['baseline']:
+                grads[idx]['b_value']=0
+        self.setGradients(grads)
+
 
     def gradientSummary(self):
         grads=self.getGradients()

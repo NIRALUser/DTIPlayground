@@ -11,5 +11,5 @@ class DTIProcess(ExternalToolWrapper):
         if scalar_type.lower()!='fa' : scalar_opt='-m' #MA
         arguments=['--dti_image',inputfile,scalar_opt,outputfile]+options
         self.setArguments(arguments)
-        return self.execute()
+        return self.execute(arguments)
 

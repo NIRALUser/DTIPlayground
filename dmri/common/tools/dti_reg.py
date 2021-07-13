@@ -75,4 +75,4 @@ class DTIReg(ExternalToolWrapper):
 
         arguments+=options 
         self.setArguments(arguments)
-        return self.execute()
+        return self.execute(arguments)

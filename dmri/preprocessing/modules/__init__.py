@@ -61,10 +61,12 @@ def check_module_validity(modules:list,environment):
     return modules 
 
 
-def generate_module_envionrment(modules :list):
+def generate_module_envionrment(modules :list,install_dir,*args,**kwargs):
     env={}
     for name,m in modules.items():
-        module_env=getattr(m['module'],name)().generateDefaultEnvironment()
+        mod_instance=getattr(m['module'],name)()
+        mod_instance.install(install_dir,*args,**kwargs)
+        module_env=mod_instance.generateDefaultEnvironment()
         env[name]=module_env
     return env 
 
@@ -91,6 +93,8 @@ class DTIPrepModule: #base class
         self.name=self.__class__.__name__
         self.source_image=None
         self.image=None #image for output
+        self.images=[] #image list for the multi-input modules
+        self.image_paths=[] 
         self.protocol=None
         self.result_history=None
         self.result=empty_result()
@@ -110,52 +114,96 @@ class DTIPrepModule: #base class
         self.history=result_history
         self.result_history=result_history[image_path]
         self.output_dir=output_dir
-        self.output_root=str(Path(self.output_dir).parent)
+        self.output_root=str(Path(self.output_dir).parent.parent)
         self.computation_dir=Path(output_dir).joinpath("computations")
         self.computation_dir.mkdir(parents=True,exist_ok=True)
 
-        inputpath=Path(self.result_history[0]["output"]["image_path"]).absolute()
+        inputpath=None
 
+        if 'multi_input' in self.template['process_attributes']:
+            previous_outputs=[]
+            for k,v in self.history.items():
+                if k != image_path:
+                    previous_outputs.append(v[-1])
+            
+            for idx,previous_result in enumerate(previous_outputs):
+                if previous_result["output"]["image_object"] is not None:
+                    self.source_image=prep.object_by_id(previous_result["output"]["image_object"])
+                    self.images.append(copy.deepcopy(self.source_image))
+                    logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.source_image)),prep.Color.OK)
+                else:
+                    logger("Loading image from the file : {}".format(previous_result['output']['image_path']),prep.Color.PROCESS)
+                    src_image_filename=Path(self.output_root).joinpath(previous_result['output']['image_path']).__str__()
+                    self.source_image=self.loadImage(src_image_filename)
+                    self.images.append(copy.deepcopy(self.source_image))
+                        ## gradient information update
+                    prev_output_dir=Path(self.output_root).joinpath(previous_result['output']['output_directory'])
+                    prev_gradient_filename=prev_output_dir.joinpath('output_gradients.yml').__str__()
+                    prev_image_information_filename=prev_output_dir.joinpath('output_image_information.yml').__str__()
+                    self.images[idx].loadGradients(prev_gradient_filename)
+                    self.images[idx].loadImageInformation(prev_image_information_filename)
+                    logger("Source Image (Previous output) loaded",prep.Color.OK)
 
-        previous_result=self.getPreviousResult()
+                    ### dump initial gradients and image information
+                gradient_filename=str(Path(self.output_dir).joinpath('input_gradients_{:02d}.yml'.format(idx)))
+                image_information_filename=str(Path(self.output_dir).joinpath('input_image_information_{:02d}.yml'.format(idx)))
 
-        if previous_result["output"]["image_object"] is not None:
-            self.source_image=prep.object_by_id(previous_result["output"]["image_object"])
-            self.image=copy.deepcopy(self.source_image)
-            logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.source_image)),prep.Color.OK)
+                self.images[idx].dumpGradients(gradient_filename)
+                self.images[idx].dumpInformation(image_information_filename)
+
+            self.result_history.append({"output":previous_outputs})
+            self.image=copy.deepcopy(self.images[0])
+            self.result["module_name"]=self.name 
+            self.result["input"]=previous_outputs
+            self.result["output"]["image_object"]= id(self.image)
+            self.result["output"]["success"]=False 
+            self.result["output"]["output_directory"]=str(Path(self.output_dir).relative_to(self.output_root))
+
         else:
-            logger("Loading image from the file : {}".format(previous_result['output']['image_path']),prep.Color.PROCESS)
-            src_image_filename=Path(self.output_root).joinpath(previous_result['output']['image_path']).__str__()
-            self.source_image=self.loadImage(src_image_filename)
-            self.image=copy.deepcopy(self.source_image)
-                ## gradient information update
-            prev_output_dir=Path(self.output_root).joinpath(previous_result['output']['output_directory'])
-            prev_gradient_filename=prev_output_dir.joinpath('output_gradients.yml').__str__()
-            prev_image_information_filename=prev_output_dir.joinpath('output_image_information.yml').__str__()
-            self.image.loadGradients(prev_gradient_filename)
-            self.image.loadImageInformation(prev_image_information_filename)
-            logger("Source Image (Previous output) loaded",prep.Color.OK)
+            #inputpath=Path(self.result_history[0]["output"]["image_path"]).absolute()
+            previous_result=self.getPreviousResult()
+            logger(yaml.dump(previous_result))
+            if previous_result["output"]["image_object"] is not None:
+                self.source_image=prep.object_by_id(previous_result["output"]["image_object"])
+                self.image=copy.deepcopy(self.source_image)
+                logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.source_image)),prep.Color.OK)
+            else:
+                logger("Loading image from the file : {}".format(previous_result['output']['image_path']),prep.Color.PROCESS)
+                src_image_filename=Path(self.output_root).joinpath(previous_result['output']['image_path']).__str__()
+                self.source_image=self.loadImage(src_image_filename)
+                self.image=copy.deepcopy(self.source_image)
+                    ## gradient information update
+                prev_output_dir=Path(self.output_root).joinpath(previous_result['output']['output_directory'])
+                prev_gradient_filename=prev_output_dir.joinpath('output_gradients.yml').__str__()
+                prev_image_information_filename=prev_output_dir.joinpath('output_image_information.yml').__str__()
+                self.image.loadGradients(prev_gradient_filename)
+                self.image.loadImageInformation(prev_image_information_filename)
+                logger("Source Image (Previous output) loaded",prep.Color.OK)
 
-        ### dump initial gradients and image information
-        gradient_filename=str(Path(self.output_dir).joinpath('input_gradients.yml'))
-        image_information_filename=str(Path(self.output_dir).joinpath('input_image_information.yml'))
+            ### dump initial gradients and image information
+            gradient_filename=str(Path(self.output_dir).joinpath('input_gradients.yml'))
+            image_information_filename=str(Path(self.output_dir).joinpath('input_image_information.yml'))
 
-        self.image.dumpGradients(gradient_filename)
-        self.image.dumpInformation(image_information_filename)
+            self.image.dumpGradients(gradient_filename)
+            self.image.dumpInformation(image_information_filename)
 
-        self.result["module_name"]=self.name 
-        self.result["input"]=previous_result["output"]
-        self.result["output"]["image_object"]= id(self.image)
-        self.result["output"]["success"]=False 
-        self.result["output"]["output_directory"]=str(Path(self.output_dir).relative_to(self.output_root))
+            self.result["module_name"]=self.name 
+            self.result["input"]=previous_result["output"]
+            self.result["output"]["image_object"]= id(self.image)
+            self.result["output"]["success"]=False 
+            self.result["output"]["output_directory"]=str(Path(self.output_dir).relative_to(self.output_root))
 
+
+    def install(self,install_dir=None,*args,**kwargs):
+        pass 
 
     def checkDependency(self,environment={}): #use information in template, check if this module can be processed
         return True , None
 
     def writeImage(self,filename,dest_type='nrrd'):
         self.image.writeImage(filename,dest_type=dest_type)
-        self.result['output']['image_path']=str(Path(filename).absolute().relative_to(self.output_root))
+        #self.result['output']['image_path']=str(Path(filename).absolute().relative_to(self.output_root))
+        self.result['output']['image_path']=str(Path(filename).absolute())
 
     @prep.measure_time
     def loadImage(self, image_path, gradient_path=None):
@@ -171,6 +219,7 @@ class DTIPrepModule: #base class
 
     def getPreviousResult(self):
         return self.result_history[-1]
+
 
     def loadTemplate(self):
         modulepath=inspect.getfile(self.__class__)
@@ -216,6 +265,9 @@ class DTIPrepModule: #base class
     @prep.measure_time
     def postProcess(self,result_obj):
         self.result=result_obj
+        if "multi_input" in self.template['process_attributes']:
+            self.image=self.loadImage(self.result['output']['image_path'])
+            self.result['output']['image_object']=id(self.image)
         self.result['input']=self.getPreviousResult()['output']
         self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
         logger("Excluded gradient indexes (original index) : {}"
@@ -259,7 +311,6 @@ class DTIPrepModule: #base class
 
     @prep.measure_time
     def run(self,*args,**kwargs): #wrapper 
-    
         res=self.process(*args,**kwargs) ## main computation for user implementation
         ## Post processing
         self.postProcess(res) ## pretty much automatic        

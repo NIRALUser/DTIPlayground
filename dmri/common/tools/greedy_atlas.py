@@ -10,4 +10,4 @@ class GreedyAtlas(ExternalToolWrapper):
             '-o',parsed_file
         ]
         self.setArguments(arguments)
-        return self.execute()
+        return self.execute(arguments)

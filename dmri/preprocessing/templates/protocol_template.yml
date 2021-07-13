@@ -96,8 +96,8 @@ options:
         - SLICE_Check
         - INTERLACE_Check 
         - BASELINE_Average
-        # - EDDYMOTION_Correct
-        # - SUSCEPTIBILITY_Correct
+        - SUSCEPTIBILITY_Correct
+        - EDDYMOTION_Correct
         # - GRADIENT_Check
         # - JOINDENOISING_Check
         # - BRAINMASK_Check

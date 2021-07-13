@@ -5,6 +5,7 @@ class CropDTI(ExternalToolWrapper):
         super().__init__(binary_path)
 
     def crop(self,inputfile,outputfile,size:list):
-        self.setArguments([inputfile,'-o',outputfile,'-size',",".join(size)])
-        return self.execute()
+        arguments=[inputfile,'-o',outputfile,'-size',",".join(size)]
+        self.setArguments(arguments)
+        return self.execute(arguments)
 

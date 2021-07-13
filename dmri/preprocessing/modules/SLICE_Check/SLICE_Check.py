@@ -26,7 +26,7 @@ class SLICE_Check(prep.modules.DTIPrepModule):
         return self.protocol
 
     @prep.measure_time
-    def process(self):  ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
+    def process(self,*args,**kwargs):  ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
         #logger(yaml.dump(inputParams))

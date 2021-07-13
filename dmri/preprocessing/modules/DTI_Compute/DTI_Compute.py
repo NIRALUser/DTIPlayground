@@ -14,7 +14,7 @@ class DTI_Compute(prep.modules.DTIPrepModule):
         ## todos
         return self.protocol
 
-    def process(self): ## self.result_history, self.result , self.template , self.protocol 
+    def process(self,*args,**kwargs): ## self.result_history, self.result , self.template , self.protocol 
         super().process()
         inputParams=self.getPreviousResult()['output']
         logger("NOT IMPLEMENTED YET",prep.Color.ERROR)

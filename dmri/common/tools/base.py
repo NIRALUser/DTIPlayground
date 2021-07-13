@@ -32,6 +32,10 @@ class ExternalToolWrapper(object):
     def __init__(self,binary_path):
         self.binary_path=binary_path
         self.arguments=[]
+        self.dev_mode=False
+
+    def setDevMode(self,tf:bool):
+        self.dev_mode=tf 
 
     def setPath(self,binary_path : str):
         assert(Path(binary_path).exists())
@@ -57,21 +61,24 @@ class ExternalToolWrapper(object):
         args_list=arguments.split()
         command=[self.getPath()]+self.arguments 
         output=sp.run(command,capture_output=True,text=True)
-        output.check_returncode()
+        #output.check_returncode()
         return output ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
 
 
     @measure_time
-    def execute(self,stdin=None):
+    def execute(self,arguments=None,stdin=None):
         command=self.getCommand()
+        if arguments is not None: command=[self.binary_path]+arguments
         output=sp.run(command,capture_output=True,text=True,stdin=stdin)
-        #logger("{}\n{} {}".format(output.args,output.stdout,output.stderr))
-        output.check_returncode()
+        if self.dev_mode:
+            logger("{}\n{} {}".format(output.args,output.stdout,output.stderr))
+            output.check_returncode()
         return output  ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
     
     @measure_time
-    def execute_pipe(self,stdin=None):
+    def execute_pipe(self,arguments=None,stdin=None):
         command=self.getCommand()
+        if arguments is not None: command=[self.binary_path]+arguments
         if stdin is None:
             pipe_output=sp.Popen(command,stdout=sp.PIPE)
         else:

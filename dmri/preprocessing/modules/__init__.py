@@ -4,6 +4,7 @@ import dmri.preprocessing as prep
 import yaml, inspect
 from pathlib import Path 
 import pkgutil,sys, copy
+import os
 
 logger=prep.logger.write
 
@@ -108,7 +109,7 @@ class DTIPrepModule: #base class
 
         ## loading template file (yml)
         self.loadTemplate()
-    
+
     @prep.measure_time
     def initialize(self,result_history,image_path,output_dir):
         self.history=result_history

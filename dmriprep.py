@@ -5,7 +5,9 @@
 # prep launcher 
 #
 #
-
+import shutil
+import os 
+import importlib
 
 from pathlib import Path
 import argparse,yaml
@@ -15,7 +17,6 @@ import dmri.preprocessing.modules
 import dmri.preprocessing.protocols
 import dmri.common 
 
-import shutil
 
 logger=dmri.common.logger.write 
 
@@ -177,6 +178,8 @@ def command_run(args):
         "default_protocols":args.default_protocols,
         "num_threads":args.num_threads
     }
+
+
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
     modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
@@ -270,7 +273,6 @@ def get_args():
 
 if __name__=='__main__':
     args=get_args()
-
     try:
         dmri.common.logger.setTimestamp(True)
         result=args.func(args)

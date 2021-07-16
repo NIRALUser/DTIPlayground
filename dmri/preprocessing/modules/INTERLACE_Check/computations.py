@@ -12,6 +12,7 @@ from dipy.align.transforms import (TranslationTransform2D,
                                    RigidTransform3D,
                                    AffineTransform3D)
 import dmri.preprocessing as prep
+import os 
 
 logger=prep.logger.write
 

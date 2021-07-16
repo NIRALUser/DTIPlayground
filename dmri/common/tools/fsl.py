@@ -32,6 +32,35 @@ class FSL(ExternalToolWrapper):
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)    
 
+    def fslmaths_threshold(self,input_file,output_file,threshold=0):
+        binary_name='fslmaths'
+        arguments=[
+                input_file,
+                "-thr",
+                "{}".format(threshold),
+                output_file
+        ]
+        self.setArguments(arguments)
+        return self.execute(binary_name,arguments)    
+
+    def eddy_quad(self,
+                  input_base,  #input base is path+file name without extensions
+                  idx, #volume index file
+                  par,
+                  mask,
+                  bvals):
+        binary_name='eddy_quad'
+        arguments=[
+                input_base,
+                "-idx",idx,
+                "-par",par,
+                "-m",mask,
+                "-b",bvals
+        ]
+        self.setArguments(arguments)
+        return self.execute(binary_name,arguments)    
+
+
     def bet(self,
             inputfile,
             outputfile):
@@ -58,7 +87,7 @@ class FSL(ExternalToolWrapper):
     def topup(self,
               imain,  # input image filename
               datain, # acqp params filename
-              out,    # output basename (not a filename)
+              out,    # output basename (not a filename), path + basename(without extension)
               fout,   # field output filename (Hz)
               iout,   # movement corrected image output filename
               config):# config filename
@@ -81,7 +110,7 @@ class FSL(ExternalToolWrapper):
                     index_file, #b0 index filename
                     bvals, #bvals filename
                     bvecs, #bvecs filename
-                    out, ## output filename
+                    out, # output basename (not a filename), path + basename(without extension)
                     estimate_move_by_susceptibility:bool = False,  # susceptibility correction
                     topup=None, # topuped file (if susceptibility_correct==True)
                     data_is_shelled=True,

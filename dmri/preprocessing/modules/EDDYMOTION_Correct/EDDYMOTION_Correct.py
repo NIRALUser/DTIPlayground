@@ -90,19 +90,20 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         bidx=list(map(int,bidx_sarr))
         index_filename=Path(self.output_dir).joinpath('index.txt').__str__()
 
-        b0idx=1
+        b0idx=0
         res_index=[]
         for i,g in enumerate(grads):
-            if b0idx<len(bidx):
-                if bidx[b0idx-1]==i:
-                    b0idx+=1
-            res_index.append(b0idx)
+            if b0idx+1 < len(bidx):
+                if i>=bidx[b0idx+1]:
+                    b0idx+=1 
+            res_index.append(b0idx+1)
         res_str=" ".join(list(map(str,res_index)))
         open(index_filename,'w').write(res_str)
         return index_filename
+
     ### scripts
     @measure_time
-    def eddy(self,image,outfilename):
+    def eddy(self,image,outfilename): #singlefile eddy without susceptibility (topup)
         output_dir=Path(self.output_dir)
 
         ### conversion to nifti 
@@ -112,10 +113,13 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         output_nifti=output_dir.joinpath('output.nii.gz').__str__()
         binary_mask=output_dir.joinpath('output_mask.nii.gz').__str__()
         processed_nifti=output_dir.joinpath('output_eddied.nii.gz').__str__()
+        processed_nifti_base=Path(processed_nifti).parent.joinpath(Path(processed_nifti).name.split('.')[0]).__str__()
+        processed_nifti_nonneg=output_dir.joinpath('output_eddied_nonneg.nii.gz').__str__()
         processed_bvals=output_dir.joinpath('output_eddied.bvals').__str__()
         processed_bvecs=output_dir.joinpath('output_eddied.bvecs').__str__()
         output_nrrd=output_dir.joinpath('output.nrrd').__str__()
-
+        quad_output_dir=output_dir.joinpath('output_eddied.qc').__str__()
+        
         self.writeImage(str(input_nifti),dest_type='nifti')
 
         ### generate mask
@@ -137,12 +141,32 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                             index_file=index_filename,
                             bvals=input_bvals,
                             bvecs=input_bvecs,
-                            out=processed_nifti)
+                            out=processed_nifti_base)
         else:
             logger("Eddymotion corrected output exists: {}".format(processed_nifti),prep.Color.OK)
         shutil.copy(input_bvals,processed_bvals)
-        shutil.copy(processed_nifti+".eddy_rotated_bvecs",processed_bvecs)
-        self.image=self.loadImage(processed_nifti)
+        shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
+
+        logger("Generating Non negative DWI...",prep.Color.PROCESS)
+        nonneg_base=Path(processed_nifti_nonneg).name.split('.')[0]
+        processed_nifti_nonneg_bvals=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvals").__str__()
+        processed_nifti_nonneg_bvecs=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvecs").__str__()
+
+        if not Path(processed_nifti_nonneg).exists():
+            output=fsl.fslmaths_threshold(processed_nifti,processed_nifti_nonneg,0)
+            shutil.copy(processed_bvals,processed_nifti_nonneg_bvals)
+            shutil.copy(processed_bvecs,processed_nifti_nonneg_bvecs)
+
+        logger("Executing eddy_quad for quality assessment...",prep.Color.PROCESS)
+        if not Path(quad_output_dir).exists():
+            output=fsl.eddy_quad(
+                        input_base=processed_nifti_base,
+                        idx=index_filename,
+                        par=acqp_filename,
+                        mask=binary_mask,
+                        bvals=processed_bvals)
+
+        self.image=self.loadImage(processed_nifti_nonneg)
         self.image.image_type='nrrd'
         if not Path(output_nrrd).exists():
             self.writeImage(output_nrrd)
@@ -150,7 +174,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         return None
 
     @measure_time
-    def eddy_with_susceptibility(self,image,outfilename,params):
+    def eddy_with_susceptibility(self,image,outfilename,params): ## eddy with topup (susceptibility correction process is required before execution)
         logger(yaml.dump(params),prep.Color.DEV)
 
         output_dir=Path(self.output_dir)
@@ -162,9 +186,12 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         output_nifti=output_dir.joinpath('output.nii.gz').__str__()
         binary_mask=params['mask_path']
         processed_nifti=output_dir.joinpath('output_eddied.nii.gz').__str__()
+        processed_nifti_base=Path(processed_nifti).parent.joinpath(Path(processed_nifti).name.split('.')[0]).__str__()
+        processed_nifti_nonneg=output_dir.joinpath('output_eddied_nonneg.nii.gz').__str__()
         processed_bvals=output_dir.joinpath('output_eddied.bvals').__str__()
         processed_bvecs=output_dir.joinpath('output_eddied.bvecs').__str__()
         output_nrrd=output_dir.joinpath('output.nrrd').__str__()
+        quad_output_dir=output_dir.joinpath('output_eddied.qc').__str__()
 
         ### generate mask
         fsl=tools.FSL(self.software_info['FSL']['path'])
@@ -185,14 +212,34 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                             index_file=index_filename,
                             bvals=input_bvals,
                             bvecs=input_bvecs,
-                            out=processed_nifti,
+                            out=processed_nifti_base, #basename
                             estimate_move_by_susceptibility=True,
                             topup=topup_filename)
         else:
             logger("Eddymotion corrected output exists: {}".format(processed_nifti),prep.Color.OK)
         shutil.copy(input_bvals,processed_bvals)
-        shutil.copy(processed_nifti+".eddy_rotated_bvecs",processed_bvecs)
-        self.image=self.loadImage(processed_nifti)
+        shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
+
+        logger("Generating Non negative DWI...",prep.Color.PROCESS)
+        nonneg_base=Path(processed_nifti_nonneg).name.split('.')[0]
+        processed_nifti_nonneg_bvals=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvals").__str__()
+        processed_nifti_nonneg_bvecs=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvecs").__str__()
+
+        if not Path(processed_nifti_nonneg).exists():
+            output=fsl.fslmaths_threshold(processed_nifti,processed_nifti_nonneg,0)
+            shutil.copy(processed_bvals,processed_nifti_nonneg_bvals)
+            shutil.copy(processed_bvecs,processed_nifti_nonneg_bvecs)
+
+        logger("Executing eddy_quad for quality assessment...",prep.Color.PROCESS)
+        if not Path(quad_output_dir).exists():
+            output=fsl.eddy_quad(
+                        input_base=processed_nifti_base,
+                        idx=index_filename,
+                        par=acqp_filename,
+                        mask=binary_mask,
+                        bvals=processed_bvals)
+
+        self.image=self.loadImage(processed_nifti_nonneg)
         self.image.image_type='nrrd'
         if not Path(output_nrrd).exists():
             self.writeImage(output_nrrd)

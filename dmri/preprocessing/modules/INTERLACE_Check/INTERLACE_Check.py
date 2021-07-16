@@ -10,7 +10,7 @@ import dmri.preprocessing as prep
 import numpy as np
 import time,traceback ,yaml
 from pathlib import Path
-
+import os
 import INTERLACE_Check.computations as computations 
 
 logger=prep.logger.write
@@ -30,7 +30,6 @@ class INTERLACE_Check(prep.modules.DTIPrepModule):
         super().process()
         inputParams=self.getPreviousResult()['output']
         #logger(yaml.dump(inputParams))
-
         ### Computation 
         output=None
         output_filename=Path(self.computation_dir).joinpath('computations.yml')

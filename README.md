@@ -10,7 +10,7 @@ dmriprep is a tool that performs quality control over diffusion weighted images.
 
 1. **init** - Initialize configuration (default: `$HOME/.niral-dti/dmriprep`)
 
-**init** command generates the configuration directory and files with following command. One just needs to execute this command only once unless a different configuration is needed.
+**init** command generates the configuration directory and files with following command. One just needs to execute this command only once unless a different configuration is needed. If you want to reset the initial configuration directory, you can run init again.
 ```
     $ dmriprep init 
 ```
@@ -31,7 +31,7 @@ This will update module-specific informations such as binary locations or packag
 
 The first thing to do QC is to generate default protocol file that has pipeline information.
 ```
-    $ dmriprep make-protocols -i IMAGE_FILENAME [-o OUTPUT_FILENAME_] [-d MODULE1 MODULE2 ... ]
+    $ dmriprep [base options] make-protocols -i IMAGE_FILENAME [-o OUTPUT_FILENAME_] [-d MODULE1 MODULE2 ... ]
 ```
 if `"-o"` option is omitted, the output protocol will be printed on terminal.`"-d"` option specifies the list of modules for the QC, with which command will generate the default pipeline and protocols of the sequence. Same module can be used redundantly. If `"-d"` option is not specified, the default pipeline will be generated from the file `protocol_template.yml` . You can change the default pipeline in `protocol_template.yml` file
 
@@ -39,7 +39,7 @@ if `"-o"` option is omitted, the output protocol will be printed on terminal.`"-
 To run with default protocol generated from `protocol_template.yml`:
 
 ```
-    $ dmriprep run -i IMAGE_FILES -o OUTPUT_DIR -d [ MODULE1 MODULE2 ... ]
+    $ dmriprep [base options] run -i IMAGE_FILES -o OUTPUT_DIR -d [ MODULE1 MODULE2 ... ]
 ```
 `"-d"` option (default protocol) works as described in **make-protocols** command. But you need to specify `"-d"` for the default pipeline from the template.  If `"-o"` option is omitted, default directory will be set to `Image filename_QC`. IMAGE_FILES may be a list of files to process. In case of susceptibility correction, IMAGE_FILES needs to have counterparts for the polarities. `dmriprep` automatically process qc for all the input images before the susceptibility correction stage.
 
@@ -130,16 +130,26 @@ MIT
 
 
 ### Todos
+
 - Docker distribution with NIRAL toolchain and FSL 
 - Distributed computing - Celery 
 - Server mode - Flask 
 - GUI client (Single page web app) - Vuejs, React, ...
-- FSL integration
 - Multi threading
-- Output generations for dmriprepModule
-- Abstract one more level for dmriprep.module.postProcess (Currently baseline averaging module override the postProcess method due to the forced writing which makes the next module load the file after first run. In the first run, object id is passed.) - Done (2021-04-21)
 
 ### Change Log
+
+##### 2021-08-12
+- dmriprep : change directory name for the merged output to 'combined' from 'consolidated'
+- dmriprep : configuration directory will be provided to the protocol and submodules for reading configurations.
+- dmriprep : threading issue is addressed. --num-threads will cap the maximum number of threads to be used in the process
+
+##### 2021-07-15
+
+- dmriprep : --num-threads option is added for users to control the resource allocation. 
+- dmriprep : FSL wrapping 
+- dmriprep : Eddymotion/susceptibility correction implemented with 2 modules (SUSCEPTIBILITY_Correct, EDDYMOTION_Correct)
+- dmriprep : Multi image input is implemented for susceptibility correction (if susceptibility correction module is not in the protocol, the input images will be QCed independently)
 
 ##### 2021-06-8
 - dmriprep : Multi input enabled both for multi processing and multi-input modules (such as susceptibility correction).

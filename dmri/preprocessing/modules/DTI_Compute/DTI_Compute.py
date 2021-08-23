@@ -6,8 +6,8 @@ import dmri.preprocessing as prep
 import yaml
 
 class DTI_Compute(prep.modules.DTIPrepModule):
-    def __init__(self,*args,**kwargs):
-        super().__init__(DTI_Compute)
+    def __init__(self,config_dir,*args,**kwargs):
+        super().__init__(config_dir)
         
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)

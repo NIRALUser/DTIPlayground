@@ -16,8 +16,8 @@ import INTERLACE_Check.computations as computations
 logger=prep.logger.write
 
 class INTERLACE_Check(prep.modules.DTIPrepModule):
-    def __init__(self,*args,**kwargs):
-        super().__init__(INTERLACE_Check)
+    def __init__(self,config_dir,*args,**kwargs):
+        super().__init__(config_dir)
 
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
@@ -62,7 +62,3 @@ class INTERLACE_Check(prep.modules.DTIPrepModule):
         self.result['output']['success']=True
         #raise Exception("User Exception for development ...")
         return self.result
-
-    @prep.measure_time
-    def postProcess(self,result_obj):
-        super().postProcess(result_obj)

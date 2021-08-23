@@ -6,8 +6,8 @@ import yaml
 logger=prep.logger.write
 
 class IMAGE_Check(prep.modules.DTIPrepModule):
-    def __init__(self,*args,**kwargs):
-        super().__init__(IMAGE_Check)
+    def __init__(self,config_dir,*args,**kwargs):
+        super().__init__(config_dir)
 
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)

@@ -191,6 +191,7 @@ def rigid_3d(static,moving,
              factors=[4,2,1],
              sampling_prop=None):
     ## Make affine map
+    
     identity=np.eye(4)
     affine_map=AffineMap(identity,static.shape, affine_static,
                                   moving.shape, affine_static)

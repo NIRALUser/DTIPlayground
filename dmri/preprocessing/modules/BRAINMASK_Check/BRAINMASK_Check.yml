@@ -51,8 +51,3 @@ protocol:
         caption: Masked Image
         default_value: null
         description: TBD
-      bQuitOnCheckFailure: 
-        type: boolean
-        caption: Quit the pipeline when failed
-        default_value: false  
-        description: TBD

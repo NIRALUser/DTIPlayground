@@ -52,18 +52,3 @@ protocol:
         caption: Quadratic fit 
         default_value: True
         description: Quadratic fit of stdev multiple between baseline and gradients
-      outputDWIFileNameSuffix: 
-        type: string
-        caption: Suffix for the Output DWI Filename
-        default_value: null
-        description: TBD
-      excludeDWINrrdFileNameSuffix: 
-        type: string
-        caption: Suffix for the Excluded DWI Nrrd Filename
-        default_value: null
-        description: TBD
-      bQuitOnCheckFailure: 
-        type: boolean
-        caption: Quit the pipeline when failed
-        default_value: false
-        description: TBD

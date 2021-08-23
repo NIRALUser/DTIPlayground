@@ -9,12 +9,12 @@ process_attributes:
     - multi_input
 result: null
 protocol:
-      phaseEncodingDirection: 
+      phaseEncodingAxis: 
         type: list
-        caption: rl,ap(fh),si 
+        caption: 0 - rl, 1 - ap(fh), 2  - si 
         default_value: 
-          - ap
-        description: Phase encoding directions (list)
+          - 1
+        description: Phase encoding axis (list of axis index of phase encoding (0,1,2))
       phaseEncodingValue: 
         type: float
         caption: Phase Encoding Value 
@@ -22,6 +22,6 @@ protocol:
         description: Phase encoding value (real number)
       configurationFilePath: 
         type: string
-        caption: Suffix for the Final Transformed Filename
-        default_value: /home/skp78/.niral-dti/dmriprep/parameters/fsl/fsl_regb02b0.cnf 
-        description: TBD
+        caption: FSL topup configuration file path 
+        default_value: $CONFIG_DIR/parameters/fsl/fsl_regb02b0.cnf 
+        description: FSL topup configuration file path 

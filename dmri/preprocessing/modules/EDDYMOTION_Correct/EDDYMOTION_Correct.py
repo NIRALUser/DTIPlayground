@@ -14,8 +14,8 @@ import shutil
 logger=prep.logger.write
 
 class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
-    def __init__(self,*args,**kwargs):
-        super().__init__(EDDYMOTION_Correct)
+    def __init__(self,config_dir,*args,**kwargs):
+        super().__init__(config_dir)
 
     def generateDefaultEnvironment(self):
         #find fsl path 

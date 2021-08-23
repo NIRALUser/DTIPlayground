@@ -50,10 +50,10 @@ def _load_modules_from_paths(user_module_paths: list):
     return modules 
 
 @prep.measure_time
-def check_module_validity(modules:list,environment):
+def check_module_validity(modules:list,environment,config_dir):
     logger("Checking dependencies ...",prep.Color.PROCESS)
     for name,md in modules.items():
-                validity, msg=getattr(md['module'], name)().checkDependency(environment)
+                validity, msg=getattr(md['module'], name)(config_dir).checkDependency(environment)
                 if not validity:
                     logger("[WARNING] Dependency is not met for the module : {} , {}".format(name,msg),prep.Color.WARNING)
                 modules[name]['valid']=validity
@@ -65,7 +65,7 @@ def check_module_validity(modules:list,environment):
 def generate_module_envionrment(modules :list,install_dir,*args,**kwargs):
     env={}
     for name,m in modules.items():
-        mod_instance=getattr(m['module'],name)()
+        mod_instance=getattr(m['module'],name)(install_dir)
         mod_instance.install(install_dir,*args,**kwargs)
         module_env=mod_instance.generateDefaultEnvironment()
         env[name]=module_env
@@ -90,8 +90,9 @@ def empty_result():
     return res 
 
 class DTIPrepModule: #base class
-    def __init__(self,*args, **kwargs):
+    def __init__(self,config_dir,*args, **kwargs):
         self.name=self.__class__.__name__
+        self.config_dir=config_dir
         self.source_image=None
         self.image=None #image for output
         self.images=[] #image list for the multi-input modules
@@ -258,13 +259,14 @@ class DTIPrepModule: #base class
     def generateDefaultEnvironment(self):
         return None
 
+
     def process(self,*args,**kwargs): ## returns new result array (User implementation), returns output result
         #anything common
         ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         pass
 
     @prep.measure_time
-    def postProcess(self,result_obj):
+    def postProcess(self,result_obj,opts):
         self.result=result_obj
         if "multi_input" in self.template['process_attributes']:
             self.image=self.loadImage(self.result['output']['image_path'])
@@ -290,6 +292,11 @@ class DTIPrepModule: #base class
                 self.result['output']['image_object']=id(self.image)
         ### deform_image ends
 
+        ### set baseline_threahold
+        baseline_threshold=opts['baseline_threshold']
+        self.image.setB0Threshold(baseline_threshold)
+        self.image.getGradients()
+
         self.result['output']['success']=True
         outstr=yaml.dump(self.result)
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
@@ -312,9 +319,15 @@ class DTIPrepModule: #base class
 
     @prep.measure_time
     def run(self,*args,**kwargs): #wrapper 
+        opts=args[0]
+        baseline_threshold=opts['baseline_threshold']
+
+        self.image.setB0Threshold(baseline_threshold)
+        self.image.getGradients()
+        
         res=self.process(*args,**kwargs) ## main computation for user implementation
         ## Post processing
-        self.postProcess(res) ## pretty much automatic        
+        self.postProcess(res,opts) ## pretty much automatic        
         return self.result["output"]["success"]
 
     def getResultHistory(self):

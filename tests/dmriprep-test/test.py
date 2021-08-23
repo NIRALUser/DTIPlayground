@@ -123,7 +123,20 @@ def environment_test():
         logger("Exception occurred :{}".format(str(e)))
         traceback.print_exc()
         return False
-    
+
+def image_padding_test():
+    try:
+        fname_nrrd="../../../testdata-dtiprep/CT-00006_DWI_dir79_APPA.nrrd"
+        img=DWI(fname_nrrd)
+        img.zeroPad([2,0,0,1])
+        img.writeImage('./output.nii.gz')
+
+        return True
+    except Exception as e:
+        exc=traceback.format_exc()
+        print("Exception {} : {}".format(str(e),exc))
+        return False
+
 def run_tests(testlist: list):
     for idx,t in enumerate(testlist):
         c=dmri.preprocessing.Color.BLACK+dmri.preprocessing.Color.BOLD
@@ -136,13 +149,13 @@ def run_tests(testlist: list):
 if __name__=='__main__':
     current_dir=Path(__file__).parent
     parser=argparse.ArgumentParser()
-    parser.add_argument('--log',help='log file',default=str(current_dir.joinpath('../_data/log.txt')))
+    parser.add_argument('--log',help='log file',default=str(current_dir.joinpath('./log.txt')))
     parser.add_argument('--log-timestamp',help='Add timestamp in the log', default=False, action="store_true")
     parser.add_argument('-n','--no-verbosity',help='Add timestamp in the log', default=True, action="store_false")
     args=parser.parse_args()
-    dmri.preprocessing.logger.setLogfile(args.log)
-    dmri.preprocessing.logger.setTimestamp(args.log_timestamp)
-    dmri.preprocessing.logger.setVerbosity(args.no_verbosity)
+    # dmri.preprocessing.logger.setLogfile(args.log)
+    # dmri.preprocessing.logger.setTimestamp(args.log_timestamp)
+    # dmri.preprocessing.logger.setVerbosity(args.no_verbosity)
     
-    tests=['io_test','protocol_test','environment_test']
-    run_tests(tests[1:2])
+    tests=['io_test','protocol_test','environment_test','image_padding_test']
+    run_tests(tests[3:])

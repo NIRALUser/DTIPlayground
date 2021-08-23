@@ -16,8 +16,8 @@ logger=prep.logger.write
 
 
 class BASELINE_Average(prep.modules.DTIPrepModule):
-    def __init__(self,*args,**kwargs):
-        super().__init__(BASELINE_Average)
+    def __init__(self,config_dir,*args,**kwargs):
+        super().__init__(config_dir)
         
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
@@ -28,6 +28,8 @@ class BASELINE_Average(prep.modules.DTIPrepModule):
     def process(self,*args,**kwargs): ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
+        opts=args[0]
+        self.baseline_threshold=opts['baseline_threshold']
 
         output=None
         output_image_path=Path(self.output_dir)
@@ -48,7 +50,7 @@ class BASELINE_Average(prep.modules.DTIPrepModule):
             new_image, excluded_original_indexes=computations.baseline_average(self.image, opt=None ,
                                                       averageInterpolationMethod=self.protocol['averageInterpolationMethod'],
                                                       averageMethod=self.protocol['averageMethod'],
-                                                      b0Threshold=self.protocol['b0Threshold'],
+                                                      b0Threshold=self.baseline_threshold,
                                                       stopThreshold=self.protocol['stopThreshold'],
                                                       maxIterations=self.protocol['maxIterations'])
 

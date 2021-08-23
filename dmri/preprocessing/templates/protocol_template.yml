@@ -49,6 +49,11 @@ options:
           description: TBD
       default_value: overwrite 
       description: file writing mode 
+    baseline_threshold:
+      type: float
+      caption: B0 Threshold 
+      description: B0 Threshold value (default - 10.0)
+      default_value: 10.0
 
   #### Execution related
   execution:
@@ -58,40 +63,43 @@ options:
       candidates: ## add elements from below list, each one is a key for a protocol
         - value: IMAGE_Check
           caption: Image Check
-          description: TBD
+          description: Not implemented
         - value: DIFFUSION_Check
           caption: Diffusion Check
-          description: TBD
+          description: Not implemented
         - value: DENOISING_Check
           caption: Denoising Check
-          description: TBD
+          description: Not implemented
         - value: SLICE_Check
           caption: Slicewise Check
-          description: TBD
+          description: Check and remove outlier gradient volume based on slicewise correlation.
         - value: INTERLACE_Check 
           caption: Interlace Correlation Check
-          description: TBD
+          description: Check and remove outliers across the gradient volumes, check translation and rotation between two interlaced volumes.
         - value: BASELINE_Average
           caption: Baseline Average
-          description: TBD
+          description: Average baselines with given b0 thredhold level (default = 10)
+        - value: SUSCEPTIBILITY_Correct
+          caption: Susceptibility correction
+          description: Populate topup parameter for susceptibility correction in EDDYMOTION_Correct
         - value: EDDYMOTION_Correct
           caption: Eddy motion Correction
-          description: TBD
+          description: Eddymotion correction for both standalone single file process and phase encoded inputs with topup parameter generated in SUSCEPTIBILITY_Correct module.
         - value: GRADIENT_Check
           caption: Gradientwise Check
-          description: TBD
+          description: Not implemented
         - value: JOINDENOISING_Check
           caption: Join Denoising Check
-          description: TBD
+          description: Not implemented
         - value: BRAINMASK_Check
           caption: Brainmask Check
-          description: TBD
+          description: Not implemented
         - value: DTI_Compute
           caption: Compute DTI 
-          description: TBD
+          description: Not implemented
       default_value: ## default elements 
         # - IMAGE_Check
-        - DIFFUSION_Check
+        # - DIFFUSION_Check
         # - DENOISING_Check
         - SLICE_Check
         - INTERLACE_Check 

@@ -59,10 +59,15 @@ def _load_nrrd(filename):
         'space_directions': space_directions,
         'measurement_frame':header['measurement frame'].tolist(),
         'space_origin':header['space origin'].tolist(),
-        'original_centerings': header['centerings'],
+        #'original_centerings': header['centerings'],
         'endian' : header['endian'],
         'type' : header['type']
     }
+    if 'centerings' in header:
+        info['original_centerings']=header['centerings']
+    else:
+        info['original_centerings']=None 
+
     if "thicknesses" in header :
         info['thicknesses'] = header['thicknesses'].tolist()
     else:
@@ -213,9 +218,7 @@ def export_to_nrrd(image): #image : DWI
         "dimension": info['dimension'],
         "space":  info['space'],
         "sizes":  info['sizes'],
-        "thicknesses": info['thicknesses'],
         "space directions": space_directions.tolist(),
-        "centerings": info['original_centerings'] ,
         "kinds": info['original_kinds'],
         "endian" : info['endian'],
         "encoding" : 'gzip',
@@ -224,6 +227,11 @@ def export_to_nrrd(image): #image : DWI
         "modality" : "DWMRI",
         "DWMRI_b-value" : info['b_value']
     }
+    if info['original_centerings'] is not None:
+        new_header["centerings"]= info['original_centerings'] 
+    if info['thicknesses'] is not None:
+        new_header['thicknesses']= info['thicknesses']
+
 
     s=list(new_data.shape)
     new_header['dimension']=len(new_data.shape)
@@ -401,7 +409,6 @@ class DWI:
         self.information=yaml.safe_load(open(filename,'r'))
 
 
-
     def dumpInformation(self,filename):
         info=self.information
         yaml.dump(info,open(filename,'w'))       
@@ -450,6 +457,20 @@ class DWI:
                 grads[idx]['b_value']=0
         self.setGradients(grads)
 
+    def zeroPad(self,pad_list:list): ## [0,2,0,0] means padding 2 at axis 1 
+        x,y,z,g=self.images.shape
+        xa,ya,za,ga=pad_list 
+        new_image=np.zeros([x+xa,y+ya,z+za,g+ga],dtype=self.images.dtype)
+        
+        new_image[:x,:y,:z,:g]=self.images
+        self.images=new_image 
+        self.information['image_size']=[x+xa,y+ya,z+za]
+        self.information['sizes']=[x+xa,y+ya,z+za,g+ga]
+
+        if ga >0 : #if gradient volume is added
+            for i in range(ga):
+                grad=self.gradients[-1]
+                self.gradients.append(grad)
 
     def gradientSummary(self):
         grads=self.getGradients()

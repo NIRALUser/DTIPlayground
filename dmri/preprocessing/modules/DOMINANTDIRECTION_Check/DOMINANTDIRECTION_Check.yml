@@ -31,8 +31,3 @@ protocol:
         caption: z-Threshold 2
         default_value: 2.58
         description: TBD
-      bQuitOnCheckFailure: 
-        type: boolean
-        caption: Quit the pipeline when failed
-        default_value: false
-        description: TBD

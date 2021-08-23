@@ -46,11 +46,11 @@ protocol:
         caption: Stop Threshold
         default_value: 0.02 #0.0200
         description: stopping threshold for the averaging process (previously averaged baseline versus currently averaged baseline)
-      b0Threshold: 
-        type: float
-        caption: B-value Threshold
-        default_value: 10.0
-        description: Baseline filtering threshold (only average images with b value less than the threshold)
+      # b0Threshold: 
+      #   type: float
+      #   caption: B-value Threshold
+      #   default_value: 10.0
+      #   description: Baseline filtering threshold (only average images with b value less than the threshold)
       maxIterations: 
         type: integer
         caption: Maximum iteration

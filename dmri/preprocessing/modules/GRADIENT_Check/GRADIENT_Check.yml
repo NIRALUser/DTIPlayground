@@ -25,18 +25,3 @@ protocol:
         caption: Rotation Threshold
         default_value: 0.50
         description: TBD
-      outputDWIFileNameSuffix: 
-        type: string
-        caption: Suffix for the Output DWI Filename
-        default_value: null
-        description: TBD
-      excludedDWINrrdFileNameSuffix: 
-        type: string
-        caption: Suffix for the excluded DWI Nrrd Filename
-        default_value: null
-        description: TBD
-      bQuitOnCheckFailure: 
-        type: boolean
-        caption: Quit the pipeline when failed
-        default_value: false
-        description: TBD

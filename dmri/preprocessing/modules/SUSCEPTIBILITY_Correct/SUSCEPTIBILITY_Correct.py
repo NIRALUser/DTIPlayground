@@ -15,8 +15,9 @@ logger=prep.logger.write
 
 
 class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
-    def __init__(self,*args,**kwargs):
-        super().__init__(SUSCEPTIBILITY_Correct)
+    def __init__(self,config_dir,*args,**kwargs):
+        super().__init__(config_dir)
+
 
     def install(self,install_dir,*args,**kwargs):
         topup_config='fsl_regb02b0.cnf'
@@ -51,6 +52,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         ## todos
+        self.protocol['configurationFilePath']=self.protocol['configurationFilePath'].replace("$CONFIG_DIR",str(self.config_dir))
         return self.protocol
 
     def process(self,*args,**kwargs): ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
@@ -60,6 +62,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         protocol_options=args[0]
         self.num_threads=protocol_options['software_info']['parameters']['num_max_threads']
         self.software_info=protocol_options['software_info']['softwares']
+        self.baseline_threshold=protocol_options['baseline_threshold']
 
         res=None
         output_image_file=Path(self.output_dir).joinpath('output.nrrd')
@@ -68,7 +71,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         #     self.loadImage(output_image_file)
         # else:
         logger("Running topup ...",prep.Color.PROCESS)
-        self.run_topup( phaseEncodingDirection=self.protocol['phaseEncodingDirection'],
+        self.run_topup( phaseEncodingAxis=self.protocol['phaseEncodingAxis'],
                         phaseEncodingValue=self.protocol['phaseEncodingValue'],
                         configurationFilePath=self.protocol['configurationFilePath'])
         logger("Topup done",prep.Color.OK)
@@ -81,8 +84,9 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
 
 ### scripts
     @measure_time
-    def convert_to_nifti(self,phaseEncodingDirection): ## generate nifti file and return filenames
-        ped=phaseEncodingDirection[0].lower()
+    def convert_to_nifti(self,phaseEncodingAxis): ## generate nifti file and return filenames
+        axis_alias={0:'lr',1:'ap',2:'is'}
+        ped=axis_alias[phaseEncodingAxis[0]]
         inv_ped=ped[::-1] #reverse string
         directions=[ped,inv_ped]
         out_files=[]
@@ -196,24 +200,34 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             fw.write(outstr)
         return indices 
 
-    def get_phase_axis(self,phaseEncodingDirection):
-        if phaseEncodingDirection[0].lower() in ['ap','pa','hf','fh']:
-            return 1 
-        elif phaseEncodingDirection[0].lower() in ['rl','lr']:
-            return 0
-        elif phaseEncodingDirection[0].lower() in ['si','is']:
-            return 2
-        else:
-            raise Exception("Unknown phase encoding direction")
+    def get_phase_axis(self,phaseEncodingAxis):
+        # if phaseEncodingAxis[0].lower() in ['ap','pa','hf','fh']:
+        #     return 1 
+        # elif phaseEncodingAxis[0].lower() in ['rl','lr']:
+        #     return 0
+        # elif phaseEncodingAxis[0].lower() in ['si','is']:
+        #     return 2
+        # else:
+        #     raise Exception("Unknown phase encoding direction")
+        return phaseEncodingAxis[0]
+
+    def zero_padding_odd_sizes(self):
+        for img in self.images:
+            pad_sizes=[0,0,0,0]
+            for idx,x in enumerate(list(img.images.shape)[0:3]):
+                if x%2==1: 
+                    logger("[WARNING] Image size has odd number, automatically padding zero values...",prep.Color.WARNING)
+                    pad_sizes[idx]+=1 
+            img.zeroPad(pad_sizes)
 
     @measure_time
     def run_topup(  self,
-                    phaseEncodingDirection,
+                    phaseEncodingAxis,
                     phaseEncodingValue,
                     configurationFilePath):
 
-        b0_threshold=10
-        phase_axis=self.get_phase_axis(phaseEncodingDirection)
+        b0_threshold=self.baseline_threshold 
+        phase_axis=self.get_phase_axis(phaseEncodingAxis)
 
         output_dir=Path(self.output_dir)
         output_nrrd=output_dir.joinpath('output.nrrd').__str__()
@@ -221,9 +235,14 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         fsl=tools.FSL(self.software_info['FSL']['path'])
         fsl._set_num_threads(self.num_threads)
         #logger("Number of thread to use : {}".format(self.num_threads))
-        #fsl.setDevMode(True) 
+        fsl.setDevMode(True) 
 
-        pe_files, pe_images=self.convert_to_nifti(phaseEncodingDirection)
+        ## auto zero padding if image dimension has odd number of element (even size of image sizes is only acceptable)
+        logger("Checking image sizes...",prep.Color.INFO)
+        self.zero_padding_odd_sizes()
+
+
+        pe_files, pe_images=self.convert_to_nifti(phaseEncodingAxis)
         b0_files, b0_images, b0_index_files,b0_threshold=self.create_b0s(pe_images,b0_threshold)
         
         logger("Merging b0s ...",prep.Color.PROCESS)

@@ -8,7 +8,7 @@ dmriprep is a tool that performs quality control over diffusion weighted images.
 
 #### CLI Mode :
 
-1. **init** - Initialize configuration (default: `$HOME/.niral-dti/dmriprep`)
+1. **init** - Initialize configuration (default: `$HOME/.niral-dti/dmriprep-<version>`)
 
 **init** command generates the configuration directory and files with following command. One just needs to execute this command only once unless a different configuration is needed. If you want to reset the initial configuration directory, you can run init again.
 ```
@@ -50,18 +50,6 @@ To run with existing protocol file:
 
 `"-p"` option cannot be used with `"-d"` option.
 
- 
-
-#### GUI Mode :
-
-```
-    $ dmriprep image_file -p protocol --gui
-```
-
-#### Server Mode:
-```
-    $ dmriprep --server --port 4000
-```
 
 
 ### Supported Images
@@ -138,6 +126,7 @@ MIT
 - Multi threading
 
 ### Change Log
+
 
 ##### 2021-08-12
 - dmriprep : change directory name for the merged output to 'combined' from 'consolidated'

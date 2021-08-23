@@ -93,7 +93,7 @@ def command_init(args):
         config_filename=home_dir.joinpath("config.yml")
         environment_filename=home_dir.joinpath("environment.yml")
         ## make configuration file (config.yml)
-        config={"user_module_directories": [str(user_module_dir)],"protocol_template_path" : str(template_filename)}
+        config={"user_module_directories": [str(user_module_dir)],"protocol_template_path" : 'protocol_template.yml'}
         yaml.dump(protocol_template,open(template_filename,'w'))
         yaml.dump(config,open(config_filename,'w'))
         logger("Config file written to : {}".format(str(config_filename)),dmri.preprocessing.Color.INFO)
@@ -156,7 +156,8 @@ def command_make_protocols(args):
     ## load config file
     config,environment = load_configurations(options['config_dir'])
     modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
-    template=yaml.safe_load(open(config['protocol_template_path'],'r'))
+    template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
+    template=yaml.safe_load(open(template_path,'r'))
     modules=dmri.preprocessing.modules.check_module_validity(modules,environment,options['config_dir'])  
     proto=dmri.preprocessing.protocols.Protocols(options['config_dir'],modules)
     proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
@@ -188,7 +189,8 @@ def command_run(args):
     config,environment = load_configurations(options['config_dir'])
     modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
     modules=dmri.preprocessing.modules.check_module_validity(modules,environment,options['config_dir'])  
-    template=yaml.safe_load(open(config['protocol_template_path'],'r'))
+    template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
+    template=yaml.safe_load(open(template_path,'r'))
     proto=dmri.preprocessing.protocols.Protocols(options['config_dir'],modules)
     proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
     if options['output_dir'] is None:
@@ -227,8 +229,8 @@ def get_args():
     module_help_str=None
     if config_dir.exists():
         config,environment = load_configurations(str(config_dir))
-        template=yaml.safe_load(open(config['protocol_template_path'],'r'))
-
+        template_path=config_dir.joinpath(config['protocol_template_path'])
+        template=yaml.safe_load(open(template_path,'r'))
         available_modules=template['options']['execution']['pipeline']['candidates']
         available_modules_list=["{}".format(x['value'])  for x in available_modules if x['description']!="Not implemented"]
         module_help_str="Avaliable Modules := \n" + " , ".join(available_modules_list)
@@ -277,6 +279,7 @@ def get_args():
     ## log related
     parser.add_argument('--config-dir',help='Configuration directory',default=str(config_dir))
     parser.add_argument('--log',help='log file',default=str(config_dir.joinpath('log.txt')))
+    parser.add_argument('--system-log-dir',help='System log directory',default='/BAND/USERS/skp78-dti/system-logs',type=str)
     parser.add_argument('--execution-id',help='execution id',default=uid,type=str)
     parser.add_argument('--no-log-timestamp',help='Remove timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
@@ -289,7 +292,7 @@ def get_args():
     args=parser.parse_args()
 
     ## system log
-    sys_log_dir=current_dir.joinpath('logs')
+    sys_log_dir=Path(args.system_log_dir)
     sys_log_dir.mkdir(parents=True,exist_ok=True)
     env=os.environ
     

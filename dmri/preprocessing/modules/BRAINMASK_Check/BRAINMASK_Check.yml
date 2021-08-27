@@ -6,7 +6,7 @@ dependency: []
 result: null
 module_type: prep
 process_attributes:
-    - exclude_gradients
+    - deform_image
 protocol:
       method: 
         type: list
@@ -15,39 +15,27 @@ protocol:
           - value: fsl
             caption: FSL
             description: Use FSL for Brainmasking
-          - value: slicer
-            caption: Slicer
-            description: Use Slicer for Brainmasking
-          - value: option
-            caption: Option
-            description: Use Option for Brainmasking
+          - value: antspynet
+            caption: AntsPyNet
+            description: AntsPyNet's brain_extraction() method 
           - value: fsl_idwi
             caption: FSL IDWI
             description: Use FSL IDWI for Brainmasking
-        default_value: fsl
-        description: TBD 
+        default_value: antspynet
+        description: Method to extract the brain 
+      modality:
+        type: string
+        candidates:
+          - value: t2
+            caption: T2
+            description: T2 Modality 
+          - value: fa
+            caption: FA
+            description: Fractional Anistropy
+        default_value: t2 
+        description: Modality of the input image
       SystemPath_FSL: 
         type: file
         caption: FSL Location
-        default_value: null
-        description: TBD
-      SystemPath_convertITK: 
-        type: file
-        caption: ConvertITK Location
-        default_value: /BAND/USERS/skp78-dti/prep-build/prepTools-install/bin/convertITKformats
-        description: TBD
-      SystemPath_imagemath: 
-        type: file
-        caption: Imagemath Location
-        default_value: /BAND/USERS/skp78-dti/prep-build/prepTools-install/bin/ImageMath
-        description: TBD
-      SystemPath_Slicer: 
-        type: file
-        caption: Slicer Location
-        default_value: null 
-        description: TBD
-      MaskedImage: 
-        type: TBD
-        caption: Masked Image
         default_value: null
         description: TBD

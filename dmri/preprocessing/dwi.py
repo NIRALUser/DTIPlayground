@@ -163,7 +163,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         'space': space,
         'dimension': len(data.shape),
         'sizes': np.array(data.shape).tolist(),
-        "original_kinds": ['domain','domain','domain','vector'],
+        "original_kinds": ['space','space','space','list'],
         "original_kinds_space" : [True,True,True,False], ## image space = True, gradient dim = False
         'image_size' : np.array(data.shape[0:3]).tolist(),
         'b_value': float(max_bval),
@@ -225,6 +225,7 @@ def export_to_nrrd(image): #image : DWI
         "space origin" : info['space_origin'],
         "measurement frame": info['measurement_frame'],
         "modality" : "DWMRI",
+        "encoding" : "raw",
         "DWMRI_b-value" : info['b_value']
     }
     if info['original_centerings'] is not None:

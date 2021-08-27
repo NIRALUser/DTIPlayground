@@ -145,17 +145,22 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         else:
             logger("Eddymotion corrected output exists: {}".format(processed_nifti),prep.Color.OK)
         shutil.copy(input_bvals,processed_bvals)
-        shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
+        shutil.copy(input_bvecs,processed_bvecs)
+        #shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
 
-        logger("Generating Non negative DWI...",prep.Color.PROCESS)
+        ## DEV nrrd conversion of eddied_output
+        # img=self.loadImage(processed_nifti)
+        # img.writeImage(Path(output_dir.joinpath("output_eddied_test.nrrd")).__str__(),dest_type='nrrd')
+
+        logger("Generating Non negative DWI...to {}".format(str(processed_nifti_nonneg)),prep.Color.PROCESS)
         nonneg_base=Path(processed_nifti_nonneg).name.split('.')[0]
         processed_nifti_nonneg_bvals=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvals").__str__()
         processed_nifti_nonneg_bvecs=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvecs").__str__()
 
-        if not Path(processed_nifti_nonneg).exists():
-            output=fsl.fslmaths_threshold(processed_nifti,processed_nifti_nonneg,0)
-            shutil.copy(processed_bvals,processed_nifti_nonneg_bvals)
-            shutil.copy(processed_bvecs,processed_nifti_nonneg_bvecs)
+        # if not Path(processed_nifti_nonneg).exists():
+        output=fsl.fslmaths_threshold(processed_nifti,processed_nifti_nonneg,0)
+        shutil.copy(processed_bvals,processed_nifti_nonneg_bvals)
+        shutil.copy(processed_bvecs,processed_nifti_nonneg_bvecs)
 
         logger("Executing eddy_quad for quality assessment...",prep.Color.PROCESS)
         if not Path(quad_output_dir).exists():
@@ -168,8 +173,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         self.image=self.loadImage(processed_nifti_nonneg)
         self.image.image_type='nrrd'
-        if not Path(output_nrrd).exists():
-            self.writeImage(output_nrrd)
+        # if not Path(output_nrrd).exists():
+        self.writeImage(output_nrrd)
 
         return None
 
@@ -241,8 +246,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         self.image=self.loadImage(processed_nifti_nonneg)
         self.image.image_type='nrrd'
-        if not Path(output_nrrd).exists():
-            self.writeImage(output_nrrd)
+        # if not Path(output_nrrd).exists():
+        self.writeImage(output_nrrd)
 
         return None
 

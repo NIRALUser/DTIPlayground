@@ -16,7 +16,9 @@ def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules): ## ge
     for idx,parr in enumerate(pipeline):
         module_name, options=parr 
         is_multi_input='multi_input' in modules[module_name]['template']['process_attributes']
-        if is_multi_input or after_multi_input:
+        if (is_multi_input and (len(image_paths)<2)):
+            raise Exception("Multi_input module needs at least 2 input images. in {}".format(module_name))
+        if ((is_multi_input and (len(image_paths)>=2)) or after_multi_input) :
             uid=prep.get_uuid()
             execution={
                 "order": idx,
@@ -342,8 +344,8 @@ class Protocols:
                     final_gradients_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_gradients.yml').__str__()
                     final_information_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_image_information.yml').__str__()
                     
-                    if not Path(final_filename).exists() or idx-1==len(execution_sequence):
-                        m.image.writeImage(final_filename,dest_type=m.image.image_type,dtype='short')
+                    if not Path(final_filename).exists() or idx+1==len(execution_sequence):
+                        m.image.writeImage(final_filename,dest_type=m.image.image_type)
                         m.image.dumpGradients(final_gradients_filename)
                         m.image.dumpInformation(final_information_filename)
 

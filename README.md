@@ -95,6 +95,9 @@ MIT
     - pynrrd==0.4.2
     - dipy==1.4.0
     - pyyaml==5.3.1
+    - nibabel==3.2.1
+    - tensorflow==2.5.0
+    - antspynet==0.1.2
 - External Packages
     - FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction)
 
@@ -127,6 +130,9 @@ MIT
 
 ### Change Log
 
+##### 2021-08-24
+- dmriprep - AntsPyNet library added for brain masking
+- dmriprep - BRAIN_Mask module development initiated 
 
 ##### 2021-08-12
 - dmriprep : change directory name for the merged output to 'combined' from 'consolidated'

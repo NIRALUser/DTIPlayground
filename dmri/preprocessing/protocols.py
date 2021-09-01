@@ -16,8 +16,10 @@ def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules): ## ge
     for idx,parr in enumerate(pipeline):
         module_name, options=parr 
         is_multi_input='multi_input' in modules[module_name]['template']['process_attributes']
+        is_single_input_allowed="single_input" in modules[module_name]['template']['process_attributes']
         if (is_multi_input and (len(image_paths)<2)):
-            raise Exception("Multi_input module needs at least 2 input images. in {}".format(module_name))
+            if(not is_single_input_allowed):
+                raise Exception("Multi_input module needs at least 2 input images. in {}".format(module_name))
         if ((is_multi_input and (len(image_paths)>=2)) or after_multi_input) :
             uid=prep.get_uuid()
             execution={
@@ -28,7 +30,7 @@ def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules): ## ge
                 "options": options,
                 "image_path": Path(output_dir).joinpath('combined').__str__(),
                 "output_base": Path(output_dir).joinpath('combined').__str__(),
-                "save": idx+1==len(pipeline) ## is it the final stage? (to save the final output)
+               "save": idx+1==len(pipeline) ## is it the final stage? (to save the final output)
             }
             ## save previous results
             if idx>0 and not after_multi_input:

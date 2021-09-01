@@ -94,6 +94,9 @@ options:
         - value: BRAINMASK_Check
           caption: Brainmask Check
           description: Not implemented
+        - value: BRAIN_Mask
+          caption: Brain Masking
+          description: Brain masking using antspynet, fsl bet
         - value: DTI_Compute
           caption: Compute DTI 
           description: Not implemented
@@ -103,9 +106,10 @@ options:
         # - DENOISING_Check
         - SLICE_Check
         - INTERLACE_Check 
-        - BASELINE_Average
+        # - BASELINE_Average
         - SUSCEPTIBILITY_Correct
         - EDDYMOTION_Correct
+        # - BRAIN_Mask
         # - GRADIENT_Check
         # - JOINDENOISING_Check
         # - BRAINMASK_Check

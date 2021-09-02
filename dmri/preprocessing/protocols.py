@@ -10,6 +10,17 @@ logger=prep.logger.write
 def _load_protocol(filename):
     return yaml.safe_load(open(filename,'r'))
 
+
+def load_configurations(config_dir:str):
+    ## reparametrization
+    home_dir=Path(config_dir)
+    ## Function begins
+    config_filename=home_dir.joinpath("config.yml")
+    environment_filename=home_dir.joinpath("environment.yml")
+    config=yaml.safe_load(open(config_filename,'r'))
+    environment=yaml.safe_load(open(environment_filename,'r'))
+    return config,environment
+
 def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules): ## generate sequence using uuid to avoid the issue from redundant module use
     seq=[]
     after_multi_input=False
@@ -103,11 +114,13 @@ class Protocols:
         self.previous_process=None #this is to ensure to access previous results (image and so on)
         self.software_info=None # binary path of softwares (such as fsl)
         self.num_threads=4 # number of threads to use 
+        #Module related
+        self.config,self.environment=load_configurations(self.config_dir)
 
         #output
         self.result_history={}
         self.output_dir=None
-
+        
         self.setSoftwareInfo()
 
     def loadImages(self, image_paths,b0_threshold=10):
@@ -176,6 +189,14 @@ class Protocols:
             logger("Exception occurred : {}".format(str(e)))
             return False
 
+    def loadModules(self,pipeline:list,user_module_paths:list):
+        mod_names=[x for x in pipeline]
+        modules=prep.modules._load_modules(user_module_paths=user_module_paths,module_names=mod_names)
+        modules=prep.modules.check_module_validity(modules, self.environment, self.config_dir)
+        self.modules=modules
+
+        return self.modules 
+
     def setModules(self,modules):
         self.modules=modules 
 
@@ -212,6 +233,8 @@ class Protocols:
 
     def furnishPipeline(self,pipeline):
         self.checkImage()
+        self.loadModules(pipeline,user_module_paths=self.config['user_module_directories'])
+
         new_pipeline=[]
         for idx,parr in enumerate(pipeline):
             mod_name = None

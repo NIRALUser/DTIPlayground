@@ -9,18 +9,47 @@ import os
 logger=prep.logger.write
 
 @prep.measure_time
-def _load_modules(user_module_paths=[]):
-    modules=_load_default_modules()
-    usermodules= _load_modules_from_paths(user_module_paths)
+def _load_modules(user_module_paths=[],module_names=None):
+    modules=_load_default_modules(module_names)
+    usermodules= _load_modules_from_paths(user_module_paths,module_names)
     modules.update(usermodules)
     return modules
 
-def _load_default_modules(): # user_modules list of paths of user modules
+def _load_default_modules(module_names=None): # user_modules list of paths of user modules
     modules={}
     default_module_paths=[Path(__file__).parent]
-    return _load_modules_from_paths(default_module_paths)
+    return _load_modules_from_paths(default_module_paths,module_names)
 
-def _load_modules_from_paths(user_module_paths: list):
+# def _load_modules_from_paths(user_module_paths: list,module_names=None): #module names = list of modules to load (if none, load everything)
+#     modules={}
+#     mods=[]
+#     for pth in map(lambda x: str(x),user_module_paths):  ## path objects to string array
+#         logger("Loading modules from {} ".format(str(pth)),prep.Color.PROCESS)
+#         sys.path.insert(0, pth)
+#         pkgs_info=list(pkgutil.walk_packages([pth]))
+#         for p in pkgs_info:
+#             if len(p.name.split('.'))==1:
+#                 logger("Loading module : {}".format(p.name),prep.Color.OK)
+#             mods.append(p.module_finder.find_module(p.name).load_module(p.name))
+#         mod_filtered=list(filter(lambda x: len(x.__name__.split('.'))==2 and x.__name__.split('.')[0]==x.__name__.split('.')[1] ,mods))
+        
+#         for md in mod_filtered:
+#             fn=Path(md.__file__)
+#             template_path= fn.parent.joinpath(fn.stem+'.yml')
+#             template=yaml.safe_load(open(template_path,'r'))
+#             name=md.__name__.split('.')[0]  #module name
+#             modules[name]={
+#                                 "name" : name,
+#                                 "module" : md,
+#                                 "path" : md.__file__,
+#                                 "template" : template,
+#                                 "template_path" : template_path,
+#                                 "valid" : False,
+#                                 "validity_message" : None 
+#                                 } 
+#     return modules 
+
+def _load_modules_from_paths(user_module_paths: list,module_names=None): #module names = list of modules to load (if none, load everything)
     modules={}
     mods=[]
     for pth in map(lambda x: str(x),user_module_paths):  ## path objects to string array
@@ -28,9 +57,10 @@ def _load_modules_from_paths(user_module_paths: list):
         sys.path.insert(0, pth)
         pkgs_info=list(pkgutil.walk_packages([pth]))
         for p in pkgs_info:
-            if len(p.name.split('.'))==1:
-                logger("Loading module : {}".format(p.name),prep.Color.OK)
-            mods.append(p.module_finder.find_module(p.name).load_module(p.name))
+            if p.name.split('.')[0] in module_names:
+                if len(p.name.split('.'))==1:
+                    logger("Loading module : {}".format(p.name),prep.Color.OK)
+                mods.append(p.module_finder.find_module(p.name).load_module(p.name))
         mod_filtered=list(filter(lambda x: len(x.__name__.split('.'))==2 and x.__name__.split('.')[0]==x.__name__.split('.')[1] ,mods))
         
         for md in mod_filtered:

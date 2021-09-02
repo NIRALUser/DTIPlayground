@@ -139,7 +139,6 @@ def command_update(args):
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.preprocessing.Color.OK)
     return True
 
-
 @after_initialized
 @log_off
 def command_make_protocols(args):
@@ -155,11 +154,9 @@ def command_make_protocols(args):
         dmri.common.logger.setVerbosity(True)
     ## load config file
     config,environment = load_configurations(options['config_dir'])
-    modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
     template=yaml.safe_load(open(template_path,'r'))
-    modules=dmri.preprocessing.modules.check_module_validity(modules,environment,options['config_dir'])  
-    proto=dmri.preprocessing.protocols.Protocols(options['config_dir'],modules)
+    proto=dmri.preprocessing.protocols.Protocols(options['config_dir'])
     proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
     if options['module_list'] is not None and  len(options['module_list'])==0:
             options['module_list']=None
@@ -187,11 +184,9 @@ def command_run(args):
 
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
-    modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
-    modules=dmri.preprocessing.modules.check_module_validity(modules,environment,options['config_dir'])  
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
     template=yaml.safe_load(open(template_path,'r'))
-    proto=dmri.preprocessing.protocols.Protocols(options['config_dir'],modules)
+    proto=dmri.preprocessing.protocols.Protocols(options['config_dir'])
     proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
     if options['output_dir'] is None:
         img_path=Path(options['input_image_path'])
@@ -209,6 +204,7 @@ def command_run(args):
         proto.loadProtocols(options["protocol_path"])
     else :
         proto.makeDefaultProtocols(options['default_protocols'],template=template,options=options)
+
     proto.setNumThreads(options['num_threads'])
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())

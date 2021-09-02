@@ -130,6 +130,11 @@ MIT
 
 ### Change Log
 
+##### 2021-09-02
+- dmriprep - Only modules listed in the protocols will be loaded.
+- dmriprep - BRAIN_Mask module added (use antspynet, fsl bet), only single file modalities (t2,fa) are available.
+- dmriprep - Image orientation between Nrrd and Nifti issue are mostly cleared, however 4d Nifti in Slicer doesn't work properly. Need to look into the issue
+
 ##### 2021-08-24
 - dmriprep - AntsPyNet library added for brain masking
 - dmriprep - BRAIN_Mask module development initiated 

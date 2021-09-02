@@ -100,6 +100,9 @@ options:
         - value: DTI_Compute
           caption: Compute DTI 
           description: Not implemented
+        - value: TEST
+          caption: Test Module (Dev)
+          description: Not implemented
       default_value: ## default elements 
         # - IMAGE_Check
         # - DIFFUSION_Check
@@ -107,7 +110,7 @@ options:
         - SLICE_Check
         - INTERLACE_Check 
         # - BASELINE_Average
-        - SUSCEPTIBILITY_Correct
+        # - SUSCEPTIBILITY_Correct
         - EDDYMOTION_Correct
         # - BRAIN_Mask
         # - GRADIENT_Check

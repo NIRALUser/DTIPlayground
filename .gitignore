@@ -10,4 +10,5 @@ dist
 build
 temp
 docs
+__pycache__
 

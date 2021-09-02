@@ -1,0 +1,18 @@
+name: BRAIN_Mask
+caption: BRAIN_Mask
+description: Brain Masking
+version: "0.1"
+dependency: []
+result: null
+module_type: prep
+process_attributes:
+    - deform_image
+protocol:
+      test_list: 
+        type: list
+        caption: Method
+        default_value: 
+          - name: image_io_test
+            options: null 
+
+        description: List of test functions

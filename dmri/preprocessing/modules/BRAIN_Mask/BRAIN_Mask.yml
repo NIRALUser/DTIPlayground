@@ -1,0 +1,33 @@
+name: BRAIN_Mask
+caption: BRAIN_Mask
+description: Brain Masking
+version: "0.1"
+dependency: []
+result: null
+module_type: prep
+process_attributes:
+    - deform_image
+protocol:
+      method: 
+        type: string
+        caption: Method
+        candidates:
+          - value: fsl
+            caption: FSL
+            description: Use FSL for Brainmasking
+          - value: antspynet
+            caption: AntsPyNet
+            description: AntsPyNet's brain_extraction() method 
+        default_value: antspynet
+        description: Method to extract the brain 
+      modality: ## in case of antspynet
+        type: string
+        candidates:
+          - value: t2
+            caption: T2
+            description: T2 Modality 
+          - value: fa
+            caption: FA
+            description: Fractional Anistropy
+        default_value: t2
+        description: Modality of the input image

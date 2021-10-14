@@ -149,8 +149,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
             logger("Eddymotion corrected output exists: {}".format(processed_nifti),prep.Color.OK)
             self.image=self.loadImage(processed_nifti)
         shutil.copy(input_bvals,processed_bvals)
-        shutil.copy(input_bvecs,processed_bvecs)
-        #shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
+        # shutil.copy(input_bvecs,processed_bvecs)
+        shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
 
         # DEV nrrd conversion of eddied_output
         img=self.loadImage(processed_nifti)
@@ -232,9 +232,9 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
             logger("Eddymotion corrected output exists: {}".format(processed_nifti),prep.Color.OK)
             self.image=self.loadImage(processed_nifti)
         # shutil.copy(input_bvals,processed_bvals)
-        # shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
+        shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
         shutil.copy(input_bvals,processed_bvals)
-        shutil.copy(input_bvecs,processed_bvecs)
+        # shutil.copy(input_bvecs,processed_bvecs)
 
         img=self.loadImage(processed_nifti)
         img.writeImage(Path(output_dir.joinpath("output_eddied_dev.nrrd")).__str__(),dest_type='nrrd')

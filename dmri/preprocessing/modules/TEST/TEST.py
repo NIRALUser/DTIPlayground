@@ -21,7 +21,6 @@ class TEST(prep.modules.DTIPrepModule):
     def process(self,*args,**kwargs): ## variables : self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
-        logger("Under implementation",prep.Color.ERROR)
         # << TODOS>>
         protocol_options=args[0]
         self.num_threads=protocol_options['software_info']['parameters']['num_max_threads']
@@ -39,9 +38,10 @@ class TEST(prep.modules.DTIPrepModule):
         params={
             "image":self.image
         }
+        num_test=len(testlist)
         for idx,test in enumerate(testlist):
-            logger("----------------------\n{}  {} is running ...\n---------------------".format(idx+1,test['name']))
-            logger("------- OPTIONS-------\n{}".format(test['options']),prep.Color.DEV)
+            logger("-----------------------------------------\n{}/{}  {} is running ...\n-----------------------------------------".format(idx+1,num_test,test['name']))
+            logger("------- OPTIONS-------\n{}".format(yaml.dump(test['options'])),prep.Color.DEV)
             func=getattr(self,test['name'])
             res=func(params,test['options'])
         logger("Test is completed",prep.Color.OK)

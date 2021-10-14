@@ -96,6 +96,19 @@ def _load_nrrd(filename):
 
     return data,gradients,info , (org_data,header)
 
+def _load_nifti_bvecs(filename):
+    content=open(filename,'r').read().strip()
+    num_gradients=len(content.split())/3
+    is_old_format= len(content.split('\n'))!=num_gradients 
+    if is_old_format:
+        x,y,z=content.strip().split('\n')
+        x=x.split()
+        y=y.split()
+        z=z.split()
+        return list(zip(x,y,z))
+    else:
+        return list(chunks(content.split(),3))
+
 def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     parent_dir=Path(filename).parent
     if bvals_file is None: bvals_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvals')
@@ -108,7 +121,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     bvecs=[]
     #bvpairs=list(zip(open(bvals_file,'r').readlines(),open(bvecs_file,'r').readlines()))
     tmp_bvals=list(open(bvals_file,'r').read().split())
-    tmp_bvecs=list(chunks(open(bvecs_file,'r').read().split(),3))
+    #tmp_bvecs=list(chunks(open(bvecs_file,'r').read().split(),3))
+    tmp_bvecs=_load_nifti_bvecs(bvecs_file)
     bvpairs=list(zip(tmp_bvals,tmp_bvecs))
     gradients=[]
     normalized_vecs=[]
@@ -403,25 +417,6 @@ class DWI:
         affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
         return affine 
 
-    # def getAffineMatrixBySpace(self,target_space): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
-    #     current_space_array=self.information['space'].split('-')
-    #     target_array=target_space.split('-')
-    #     target_map=[{'left':-1.,'right':1.},{'posterior':-1.,'anterior':1.},{'inferior':-1.,'superior':1.}]
-    #     space_directions=copy.deepcopy(self.information['space_directions'])
-    #     mat=np.array(space_directions)
-    #     origin=copy.deepcopy(self.information['space_origin'])
-    #     for i,t in enumerate(target_array):
-    #         dir_sign=np.sign(space_directions[i][i])
-    #         if current_space_array[i]==t : mat[i]*=-1.0
-    #         else: mat[i]*=1.0
-    #         mat[i]*=dir_sign 
-    #         # mat[i,i]*=target_map[i][t]
-    #         origin[i]=np.sign(mat[i,i])*origin[i]
-    #     mat=np.transpose(np.append(mat,np.expand_dims(origin,0),axis=0))
-    #     mat=np.append(mat,np.array([[0,0,0,1.0]]),axis=0)
-    #     print(mat)
-    #     return mat 
-
     def getAffineMatrixBySpace(self,target_space): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
         space=self.information['space']
         space_directions=copy.deepcopy(self.information['space_directions'])
@@ -504,6 +499,12 @@ class DWI:
     def directAverage(self):
         result_volume=self.images.mean(axis=3)
         return result_volume 
+
+    def reduceTo3D(self,method="direct_average"):
+        if method=='idwi':
+            return self.idwi()
+        else: 
+            return self.directAverage()
 
     def zerorizeBaselines(self,b0_threshold):
         grads=self.getGradients(b0_threshold)

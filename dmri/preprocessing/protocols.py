@@ -233,7 +233,14 @@ class Protocols:
 
     def furnishPipeline(self,pipeline):
         self.checkImage()
-        self.loadModules(pipeline,user_module_paths=self.config['user_module_directories'])
+        module_names=[]
+        for idx,parr in enumerate(pipeline):
+            if not isinstance(parr, list):
+                mod_name = parr
+            else:
+                mod_name , _ = parr
+            module_names.append(mod_name)
+        self.loadModules(module_names,user_module_paths=self.config['user_module_directories'])
 
         new_pipeline=[]
         for idx,parr in enumerate(pipeline):

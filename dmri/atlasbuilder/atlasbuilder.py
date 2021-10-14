@@ -579,7 +579,7 @@ class AtlasBuilder(object):
           # dtiaverage recomputing
           IterDir="Loop_"+str(cnt)
           PrevIterDir="Loop_"+str(cnt-1)
-          DTIAverage2 = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasDTI.nrrd").__str__()
+          DTIAverage2 = FinalResampPath.joinpath("Second_Resampling").joinpath(IterDir).joinpath("FinalAtlasDTI_averaged.nrrd").__str__()
 
           ListForAverage=[]
           if cnt==0:

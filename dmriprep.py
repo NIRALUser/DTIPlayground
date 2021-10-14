@@ -61,7 +61,13 @@ def after_initialized(func): #decorator for other functions other than command_i
             initialize_logger(args)
             return func(args)
         else: 
-            raise Exception("Not initialized, please run init command at the first use")
+            # raise Exception("Not initialized, please run init command at the first use")
+            logger("Configuration directory is not found, commencing initialization ...",dmri.common.Color.WARNING)
+            command_init(args)
+            config_file=home_dir.joinpath('config.yml')
+            environment_file=home_dir.joinpath('environment.yml')
+            initialize_logger(args)
+            return func(args)
     return wrapper
 
 def log_off(func):

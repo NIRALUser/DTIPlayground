@@ -183,6 +183,10 @@ class Protocols:
             self.version=self.rawdata['version']
             self.pipeline=self.furnishPipeline(self.rawdata['pipeline'])
             self.io=self.rawdata['io']
+            if 'output_format' not in self.io:
+                self.io['output_format']=None
+            if 'baseline_threshold' not in self.io:
+                self.io['baseline_threshold']=10
             self.protocol_filename=filename
             return True
         except Exception as e:
@@ -225,6 +229,9 @@ class Protocols:
             self.io['output_directory']=str(self.output_dir)
         if 'baseline_threshold' in options:
             self.io['baseline_threshold']=options['baseline_threshold']
+        self.io['output_format']=None
+        if 'output_format' in options:
+            self.io['output_format']=options['output_format']
         if pipeline is not None:
             self.pipeline=self.furnishPipeline(pipeline)
         else:
@@ -371,13 +378,15 @@ class Protocols:
                     logger("Preparing final output ... ",prep.Color.PROCESS)
                     stem=Path(output_base).name.split('.')[0]+"_QCed"
                     ext='.nii.gz'
-                    if m.image.image_type=='nrrd' : ext='.nrrd'
+                    if self.io['output_format'] is None: self.io['output_format']=m.image.image_type
+                    if self.io['output_format'] =='nrrd' : ext='.nrrd'
                     final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
                     final_gradients_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_gradients.yml').__str__()
                     final_information_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_image_information.yml').__str__()
                     
                     if not Path(final_filename).exists() or idx+1==len(execution_sequence):
-                        m.image.writeImage(final_filename,dest_type=m.image.image_type)
+                        # m.image.writeImage(final_filename,dest_type=m.image.image_type)
+                        m.image.writeImage(final_filename,dest_type=self.io['output_format'])
                         m.image.dumpGradients(final_gradients_filename)
                         m.image.dumpInformation(final_information_filename)
 

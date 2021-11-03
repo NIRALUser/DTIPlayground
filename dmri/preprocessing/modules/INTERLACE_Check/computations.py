@@ -19,6 +19,7 @@ logger=prep.logger.write
 
 @prep.measure_time
 def interlace_compute(image_obj):
+    image_obj.images=image_obj.images.astype(float)
     affine=np.transpose(np.append(image_obj.information['space_directions'],np.expand_dims(image_obj.information['space_origin'],0),axis=0))
     affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
     

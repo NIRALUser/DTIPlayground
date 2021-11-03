@@ -146,7 +146,14 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
 
     ## move gradient index to the first (same to nrrd format)
     loaded_image_object= nib.load(filename)
+
+    ## to test
     affine=loaded_image_object.affine 
+    ijk_to_lps = affine
+    lps_to_ras = np.diag([-1, -1, 1, 1])
+    ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
+    affine=ijk_to_ras
+    ## test ends
     header=loaded_image_object.header
     org_data=loaded_image_object.get_fdata().astype(np.dtype(header.get_data_dtype()))
 
@@ -246,7 +253,6 @@ def export_to_nrrd(image): #image : DWI
         "space origin" : info['space_origin'],
         "measurement frame": info['measurement_frame'],
         "modality" : "DWMRI",
-        "encoding" : "raw",
         "DWMRI_b-value" : info['b_value']
     }
     if info['original_centerings'] is not None:
@@ -270,7 +276,7 @@ def export_to_nrrd(image): #image : DWI
         k="DWMRI_gradient_{:04d}".format(idx)
         new_header[k]=" ".join([str(x) for x in g['gradient']])
     new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
-
+    new_data=new_data.astype(new_header['type'])
     return new_data,new_header 
 
 
@@ -283,8 +289,8 @@ def export_to_nifti(image): # image DWI
     return img,affine, bvals, bvecs
 
 def _write_nrrd(image,filename,dtype): 
+    image.information['type']=dtype
     data,header = export_to_nrrd(image)
-    header['type']=dtype
     return nrrd.write(filename,data,header=header)
 
 def _write_nifti(image,filename): #image : DWI
@@ -364,9 +370,10 @@ class DWI:
         if filetype is not None:
             self.image_type=filetype
         self.images,self.gradients,self.information ,self.original_data = _load_dwi(filename,self.image_type)
+        self.images = self.images.astype(float)
         #self.update_information()
         logger("Image - {} loaded".format(self.filename),prep.Color.OK,terminal_only=True)
-        logger(yaml.dump(self.information),prep.Color.INFO)
+        #logger(yaml.dump(self.information),prep.Color.INFO)
         #if prep._debug: logger(yaml.dump(self.information))
 
     def setB0Threshold(self,b0_threshold):

@@ -154,7 +154,8 @@ def command_make_protocols(args):
         "input_image_paths" : args.input_images,
         "module_list": args.module_list,
         "output_path" : args.output,
-        "baseline_threshold" : args.b0_threshold
+        "baseline_threshold" : args.b0_threshold,
+        "output_format" : args.output_format
     }
     if options['output_path'] is not None:
         dmri.common.logger.setVerbosity(True)
@@ -185,7 +186,8 @@ def command_run(args):
         "default_protocols":args.default_protocols,
         "num_threads":args.num_threads,
         "execution_id":args.execution_id,
-        "baseline_threshold" : args.b0_threshold
+        "baseline_threshold" : args.b0_threshold,
+        "output_format" : args.output_format
     }
 
     ## load config file and run pipeline
@@ -264,6 +266,7 @@ def get_args():
                                         help='Default protocols with specified list of modules, only works with default protocols. Example : -d DIFFUSION_Check SLICE_Check',
                                         default=None,nargs='*')
     parser_make_protocols.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
+    parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output',type=str)
     parser_make_protocols.set_defaults(func=command_make_protocols)
         
 
@@ -273,6 +276,7 @@ def get_args():
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=False)
     parser_run.add_argument('--num-threads',help="Number of threads to use",default=1,type=int,required=False)
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
+    parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output',type=str)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
     run_exclusive_group.add_argument('-p','--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')

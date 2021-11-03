@@ -11,7 +11,7 @@ import time
 import copy
 import yaml
 import sys
-import sys
+import os
 sys.path.append("../../")
 
 import dmri.preprocessing
@@ -146,6 +146,25 @@ def run_tests(testlist: list):
         if eval(t)() : logger("[{}/{}] : {} - Success".format(idx+1,len(testlist),t))
         else: logger("[{}/{}] : {} - Failed".format(idx+1,len(testlist),t))
 
+def image_conversion_test():
+    fname_nrrd = "../../../testdata-dtiprep/CT-00006_DWI_dir79_APPA.nrrd"
+    fname_nifti = "../../../testdata-dtiprep/CT-00006_DWI_dir79_APPA.nii.gz"
+    outname_nrrd = "../../../out.nrrd"
+    outname_nifti = "../../../out.nii.gz"
+    ## nrrd to nifti to nrrd
+    nrrd_img = dmri.preprocessing.dwi.DWI(fname_nrrd)
+    nifti_img= dmri.preprocessing.dwi.DWI(fname_nifti)
+    print(nrrd_img.information['space_directions'])
+    print(nifti_img.information['space_directions'])
+    nifti_img.writeImage(outname_nrrd,dest_type="nrrd")
+    print("Testing Nifti to Nrrd")
+    os.system("unu head {} | grep 'space directions'".format(outname_nrrd))
+    print("Testing Nrrd to Nifti and back to Nrrd")
+    nrrd_img.writeImage(outname_nifti,dest_type="nifti")
+    nifti_img=dmri.preprocessing.dwi.DWI(outname_nifti)
+    nifti_img.writeImage(outname_nrrd,dest_type="nrrd",dtype="short")
+    os.system("unu head {} | grep 'space directions'".format(outname_nrrd))
+
 if __name__=='__main__':
     current_dir=Path(__file__).parent
     parser=argparse.ArgumentParser()
@@ -157,5 +176,5 @@ if __name__=='__main__':
     # dmri.preprocessing.logger.setTimestamp(args.log_timestamp)
     # dmri.preprocessing.logger.setVerbosity(args.no_verbosity)
     
-    tests=['io_test','protocol_test','environment_test','image_padding_test']
-    run_tests(tests[3:])
+    tests=['io_test','protocol_test','environment_test','image_padding_test','image_conversion_test']
+    run_tests(tests[4:])

@@ -37,18 +37,19 @@ options:
       caption: Output Directory
       default_value: null
       description: Output directory storing the results and generated files 
-    reportFileMode: 
+    output_image_type:
       type: list
-      caption: Report File Mode 
+      caption: Output image type
       candidates:
-        - value: overwrite
-          caption: Overwrite
-          description: TBD
-        - value: append
-          caption: Append
-          description: TBD
-      default_value: overwrite 
-      description: file writing mode 
+        - value: null
+          caption: Same as input
+          description: Same file format will be used for the final output.
+        - value: nrrd
+          caption: NRRD file
+          description: NRRD file type for final output
+        - value: nifti
+          caption: NIFTI file
+          description: NIFTI file type for final output
     baseline_threshold:
       type: float
       caption: B0 Threshold 

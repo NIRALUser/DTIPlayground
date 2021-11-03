@@ -52,7 +52,7 @@ def slice_check(image, computation_dir, # image object containing all the inform
                 subregion_check=False, ## not implemented yet
                 subregion_relaxation_factor=1.1):
     
-    image_tensor=image.images 
+    image_tensor=image.images.astype(float) 
     gradients=image.getGradients()
 
     ## Generate slice correlation informations over gradients

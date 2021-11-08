@@ -40,6 +40,7 @@ options:
     output_image_type:
       type: list
       caption: Output image type
+      default_value: null
       candidates:
         - value: null
           caption: Same as input

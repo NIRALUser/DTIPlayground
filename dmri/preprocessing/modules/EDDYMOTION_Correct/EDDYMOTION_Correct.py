@@ -19,7 +19,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
     def generateDefaultEnvironment(self):
         #find fsl path 
-        fsldir, fsl_version=utils.find_fsl(['/NIRAL/tools/FSL/fsl-6.0.3'])
+        fsldir, fsl_version=utils.find_fsl(['/NIRAL/tools/FSL/fsl-6.0.3','/dtiplayground-tools/centos7/FSL'])
         res={'fsl_path': fsldir, 'fsl_version' : fsl_version}
         return res
     

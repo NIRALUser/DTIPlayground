@@ -285,7 +285,7 @@ def get_args():
     ## log related
     parser.add_argument('--config-dir',help='Configuration directory',default=str(config_dir))
     parser.add_argument('--log',help='log file',default=str(config_dir.joinpath('log.txt')))
-    parser.add_argument('--system-log-dir',help='System log directory',default='/BAND/USERS/skp78-dti/system-logs',type=str)
+    # parser.add_argument('--system-log-dir',help='System log directory',default='/BAND/USERS/skp78-dti/system-logs',type=str)
     parser.add_argument('--execution-id',help='execution id',default=uid,type=str)
     parser.add_argument('--no-log-timestamp',help='Remove timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
@@ -298,15 +298,15 @@ def get_args():
     args=parser.parse_args()
 
     ## system log
-    sys_log_dir=Path(args.system_log_dir)
-    sys_log_dir.mkdir(parents=True,exist_ok=True)
-    env=os.environ
+    # sys_log_dir=Path(args.system_log_dir)
+    # sys_log_dir.mkdir(parents=True,exist_ok=True)
+    # env=os.environ
     
-    sys_logfilename='dmriprep_'+env['USER']+"_"+ts+"_"+args.execution_id+".txt"
-    sys_logfile=sys_log_dir.joinpath(sys_logfilename)
-    dmri.common.logger.addLogfile(sys_logfile.__str__(),mode='w')
-    logger("Execution ID : {}".format(args.execution_id))
-    logger("Execution Command : "+" ".join(sys.argv))
+    # sys_logfilename='dmriprep_'+env['USER']+"_"+ts+"_"+args.execution_id+".txt"
+    # sys_logfile=sys_log_dir.joinpath(sys_logfilename)
+    # dmri.common.logger.addLogfile(sys_logfile.__str__(),mode='w')
+    # logger("Execution ID : {}".format(args.execution_id))
+    # logger("Execution Command : "+" ".join(sys.argv))
 
     return args 
 

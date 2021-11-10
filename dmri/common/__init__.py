@@ -133,7 +133,9 @@ class MultiLogger(object):
         
     def write(self,message,text_color=Color.END,terminal_only=False):
         datestr=get_timestamp()
-        messages=message.split('\n')
+        messages=[]
+        if message is not None:
+          messages=message.split('\n')
         for m in messages:
           if self.timestamp:
               m="[{}]\t{}".format(datestr,m)

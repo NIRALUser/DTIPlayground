@@ -33,7 +33,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         self.result['output']['success']=True
         return self.result
 
-
+### User defined methods
     def mask_antspynet(self,params):
         logger("AntsPyNet is running ...",prep.Color.INFO)
         res=None
@@ -63,6 +63,8 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
                                   outval=0)
         logger("Writing mask file",prep.Color.PROCESS)
         ants.image_write(mask, output_mask_path)
+        dest_filename = input_image_path
+        self.addOutputFile(output_mask_path, 'Mask')
         return res 
 
     def mask_fslbet(self,params):
@@ -78,8 +80,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         fsl=rep.common.tools.FSL(self.software_info['FSL']['path'])
         logger("Generating Mask",prep.Color.INFO)
         cmd_output=fsl.fslmaths_ops(input_image_path,'mean')
-
-
+        self.addOutputFile(output_image_base+".nii.gz", 'Mask')
         res=None
         return res
 

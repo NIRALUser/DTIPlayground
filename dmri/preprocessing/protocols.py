@@ -2,6 +2,7 @@
 import dmri.preprocessing as prep
 import dmri.preprocessing.dwi as dwi
 
+import shutil
 import yaml,sys,traceback,time
 from pathlib import Path
 
@@ -232,6 +233,9 @@ class Protocols:
         self.io['output_format']=None
         if 'output_format' in options:
             self.io['output_format']=options['output_format']
+        self.io['no_output_image']= False
+        if 'no_output_image' in options:
+            self.io['no_output_image']=options['no_output_image']
         if pipeline is not None:
             self.pipeline=self.furnishPipeline(pipeline)
         else:
@@ -370,10 +374,23 @@ class Protocols:
                 self.previous_process=m  #this is for the image id reference
                 self.result_history[image_path] =m.getResultHistory()
                 self.image_cache[image_path]=m.image 
+
+                for intermediary_file in m.getOutputFiles():
+                    srcfilepath = intermediary_file['source']
+                    postfix = intermediary_file['postfix']
+                    output_stem = Path(output_base).name.split('.')[0]+"_{}".format(postfix)
+                    ext=".nii.gz"
+                    if ".nrrd" in srcfilepath.lower():
+                        ext=".nrrd"
+                    filename="{}{}".format(output_stem,ext)
+                    output_path = Path(self.output_dir).joinpath(filename)
+                    logger("Saving intermediary files from {} to {}".format(srcfilepath, output_path),prep.Color.PROCESS)
+                    shutil.copy(srcfilepath, output_path)
+
                 et=time.time()-bt
-                self.result_history[image_path][-1]['processing_time']=et
+                self.result_history[image_path][-1]['processing_time']=et                   
                 logger("[{}] Processed time : {:.2f}s".format(p,et),prep.Color.DEV)
-                if save: ### for the last, dump image and informations
+                if save and not self.io['no_output_image']: ### for the last, dump image and informations
                     ## Save final Qced image
                     logger("Preparing final output ... ",prep.Color.PROCESS)
                     stem=Path(output_base).name.split('.')[0]+"_QCed"

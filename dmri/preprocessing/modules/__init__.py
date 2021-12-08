@@ -114,7 +114,7 @@ class DTIPrepModule: #base class
         self.output_root=None ## output root (one level up)
         self.computation_dir=None ## computation files 
         self.options={} ## this is pipeline option, not protocol. It should not affect the way of computing, only does to the behaviour of execution
-
+        self.output_files = []
         ## loading template file (yml)
         self.loadTemplate()
 
@@ -208,6 +208,12 @@ class DTIPrepModule: #base class
 
     def checkDependency(self,environment={}): #use information in template, check if this module can be processed
         return True , None
+
+    def addOutputFile(self, src_filename, postfix):
+        self.output_files.append({'source': src_filename, 'postfix': postfix})
+
+    def getOutputFiles(self):
+        return self.output_files
 
     def writeImage(self,filename,dest_type='nrrd'):
         self.image.writeImage(filename,dest_type=dest_type)

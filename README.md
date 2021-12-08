@@ -50,7 +50,12 @@ To run with existing protocol file:
 
 `"-p"` option cannot be used with `"-d"` option.
 
+#### In SLURM cluster with singularity
 
+`dmriprep_slurm` is a wrapper script for dmriprep under singularity container. Usage is same. Users can change slurm resource parameter in the script.
+```
+    $ dmriprep_slurm <<same options as dmriprep>>
+```
 
 ### Supported Images
 
@@ -88,18 +93,23 @@ MIT
 ##### Application required
 
 [GENERAL]
-- Python >= 3.6 
+- Python >= 3.8.6
+- Singularity (only for dmriprep_singularity)
 
 [DMRIPrep]
 - Python Libraries
     - pynrrd==0.4.2
-    - dipy==1.4.0
+    - dipy==1.4.0 (INTERLACE_Check, BASELINE_Average)
     - pyyaml==5.3.1
     - nibabel==3.2.1
-    - tensorflow==2.5.0
-    - antspynet==0.1.2
+    - tensorflow==2.7.0 (For antspynet)
+    - antspynet==0.1.2 (For BRAIN_Mask module)
 - External Packages
-    - FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction)
+    - FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction. SUSCEPTIBILITY_Correct, EDDYMOTION_Correct)
+
+[DMRIPrepUI]
+- Python Libraries
+    - PyQt5==5.9.2
 
 [DTIAtlasbuilder]
 - Python Libraries
@@ -122,13 +132,22 @@ MIT
 
 ### Todos
 
-- Docker distribution with NIRAL toolchain and FSL 
-- Distributed computing - Celery 
 - Server mode - Flask 
 - GUI client (Single page web app) - Vuejs, React, ...
+- Native GUI client (qt)
 - Multi threading
 
 ### Change Log
+
+##### 2021-12-08
+- dmriprep - **New Module** DTI_Estimate module added with limited capability (only dtiestim is enabled)
+- dmriprep - new option --no-output-image, if it's on, there will be no QCed outputfile (only use when there should be no output file. e.g. utilities such as BRAIN_Mask, DTI_Estimate)
+- dmriprep - Intermediary files can be saved in output directory with user-specified postfix. e.g. (Module).addOutputFile(sourcefile, postfix). These stored files will be copied into project directory with filename changed with postfix.
+
+##### 2021-11-10
+- dmriprep - Singularity setup in slurm cluster
+- dmriprep - removed system logging
+- dmriprep - Nifti affine matrix orientation problem fixed.
 
 ##### 2021-09-02
 - dmriprep - Only modules listed in the protocols will be loaded.

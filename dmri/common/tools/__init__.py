@@ -11,6 +11,7 @@ from .resample_dti_log_euclidean import ResampleDTIlogEuclidean
 from .unu import UNU 
 from .crop_dti import CropDTI
 from .fsl import FSL
+from .dtiestim import DTIEstim
 
 
 

@@ -37,7 +37,7 @@ options:
       caption: Output Directory
       default_value: null
       description: Output directory storing the results and generated files 
-    output_image_type:
+    output_format:
       type: list
       caption: Output image type
       default_value: null
@@ -63,15 +63,6 @@ options:
       type: queue
       caption: Pipeline Queue
       candidates: ## add elements from below list, each one is a key for a protocol
-        - value: IMAGE_Check
-          caption: Image Check
-          description: Not implemented
-        - value: DIFFUSION_Check
-          caption: Diffusion Check
-          description: Not implemented
-        - value: DENOISING_Check
-          caption: Denoising Check
-          description: Not implemented
         - value: SLICE_Check
           caption: Slicewise Check
           description: Check and remove outlier gradient volume based on slicewise correlation.
@@ -87,36 +78,21 @@ options:
         - value: EDDYMOTION_Correct
           caption: Eddy motion Correction
           description: Eddymotion correction for both standalone single file process and phase encoded inputs with topup parameter generated in SUSCEPTIBILITY_Correct module.
-        - value: GRADIENT_Check
-          caption: Gradientwise Check
-          description: Not implemented
-        - value: JOINDENOISING_Check
-          caption: Join Denoising Check
-          description: Not implemented
-        - value: BRAINMASK_Check
-          caption: Brainmask Check
-          description: Not implemented
         - value: BRAIN_Mask
           caption: Brain Masking
           description: Brain masking using antspynet, fsl bet
-        - value: DTI_Compute
-          caption: Compute DTI 
-          description: Not implemented
+        - value: DTI_Estimate
+          caption: Estimate DTI 
+          description: Estimation of DTI scalars by DIPY or dtiestim
         - value: TEST
           caption: Test Module (Dev)
           description: Not implemented
       default_value: ## default elements 
-        # - IMAGE_Check
-        # - DIFFUSION_Check
-        # - DENOISING_Check
         - SLICE_Check
         - INTERLACE_Check 
         # - BASELINE_Average
         # - SUSCEPTIBILITY_Correct
         - EDDYMOTION_Correct
         # - BRAIN_Mask
-        # - GRADIENT_Check
-        # - JOINDENOISING_Check
-        # - BRAINMASK_Check
-        # - DTI_Compute
+        # - DTI_Estimate
       description: Pipeline queue which executes as first in first processed.

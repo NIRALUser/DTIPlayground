@@ -6,10 +6,10 @@ dependency: []
 result: null
 module_type: prep
 process_attributes:
-    - deform_image
+    - utility
 protocol:
       method: 
-        type: string
+        type: list
         caption: Method
         candidates:
           - value: fsl
@@ -21,7 +21,7 @@ protocol:
         default_value: antspynet
         description: Method to extract the brain 
       modality: ## in case of antspynet
-        type: string
+        type: list
         candidates:
           - value: t2
             caption: T2

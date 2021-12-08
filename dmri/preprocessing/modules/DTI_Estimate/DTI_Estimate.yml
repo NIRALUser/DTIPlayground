@@ -1,0 +1,43 @@
+name: DTI_Estimate
+caption: DTI Estimate
+description: Estimate DTI
+version: "0.1"
+dependency: []
+result: null
+module_type: prep
+process_attributes:
+    - utility
+protocol:
+      method: 
+        type: list
+        caption: Method
+        default_value: dtiestim
+        candidates:
+          - value: dipy
+            caption: DIPY
+            description: Use DIPY library
+          - value: dtiestim
+            caption: dtiestim
+            description: Use NIRAL dtiestim software
+        description: Method to estimate DTI (dipy/dtiestim)
+      scalar: 
+        type: list
+        caption: Scalar
+        default_value: fa
+        candidates:
+          - value: fa
+            caption: FA
+            description: Fractional Anisotropy
+          - value: md
+            caption: MD
+            description: Mean Diffusivity
+          - value: ad
+            caption: AD
+            description: Axial Diffusivity
+          - value: rd
+            caption: RD
+            description: Radial Diffusivity            
+        description: Type of scalar to estimate
+
+
+

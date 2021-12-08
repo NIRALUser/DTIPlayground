@@ -30,15 +30,19 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
 
     def generateDefaultEnvironment(self):
         #find fsl path 
-        fsldir, fsl_version=utils.find_fsl(['/NIRAL/tools/FSL/fsl-6.0.3', '/dtiplayground-tools/centos7/FSL'])
-        res={'fsl_path': fsldir, 'fsl_version' : fsl_version}
-        return res
+        # fsldir, fsl_version=utils.find_fsl(['/NIRAL/tools/FSL/fsl-6.0.3', '/dtiplayground-tools/centos7/FSL'])
+        # res={'fsl_path': fsldir, 'fsl_version' : fsl_version}
+        # return res
+        return super().generateDefaultEnvironment()
     
     def checkDependency(self,environment): #use information in template, check if this module can be processed
         # FSL should be ready before execution
+        software_path=Path(self.config_dir).joinpath('software_paths.yml')
+        software_info = yaml.safe_load(open(software_path,'r'))
         if self.name in environment:
+            fslpath=Path(software_info['softwares']['FSL']['path'])
             try:
-                fslpath=Path(environment[self.name]['fsl_path'])
+                #fslpath=Path(environment[self.name]['fsl_path'])
                 fsl_exists=fslpath.exists()
                 if fsl_exists:
                     return True, None 
@@ -81,7 +85,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         self.result['output']['success']=True
         return self.result
 
-
+### User defined methods
 ### scripts
     @measure_time
     def convert_to_nifti(self,phaseEncodingAxis): ## generate nifti file and return filenames

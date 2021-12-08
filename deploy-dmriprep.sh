@@ -14,7 +14,7 @@ export DEST_NAME="dtiplayground-${VERSION}"
 export SCRIPT_NAME="dmriprep-${VERSION}"
 export SCRIPT_FILE="${DEST_DIR}/${SCRIPT_NAME}"
 export DEFAULT_SCRIPTNAME="dmriprep"
-export DEFAULT_SCRIPTFILE="${DEST_DIR}/{DEFAULT_SCRIPTNAME}"
+export DEFAULT_SCRIPTFILE="${DEST_DIR}/${DEFAULT_SCRIPTNAME}"
 
 echo "Copying files from ${SOURCE_DIR} to ${DEST_DIR}/${DEST_NAME}"
 cp -r $SOURCE_DIR $DEST_DIR/$DEST_NAME
@@ -37,6 +37,7 @@ then
   exit
 fi
 chmod +x $SCRIPT_FILE
+echo "Copying to ${DEFAULT_SCRIPTFILE}"
 cp $SCRIPT_FILE $DEFAULT_SCRIPTFILE
 if [ $? != 0 ] 
 then

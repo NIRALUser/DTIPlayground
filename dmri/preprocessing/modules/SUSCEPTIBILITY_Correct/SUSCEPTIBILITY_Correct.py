@@ -309,4 +309,6 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             "index_path" : _index_path
         }
         self.result['output']['susceptibility_parameters']=susceptibility_parameters
-        self.writeImage(output_nrrd)
+        # self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
+        # self.writeImage(output_nrrd)
+        self.writeImageWithOriginalSpace(output_nrrd,'nrrd')

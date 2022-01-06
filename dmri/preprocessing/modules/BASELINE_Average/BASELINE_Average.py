@@ -57,6 +57,7 @@ class BASELINE_Average(prep.modules.DTIPrepModule):
         if new_image is not None:
             self.image=new_image
             ### if image is changed, next module should load the file. So set image_object to None and write the file instead
+        self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
         self.writeImage(output_image_path,dest_type=self.image.image_type)
 
         ### output preparation

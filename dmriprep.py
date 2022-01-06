@@ -86,45 +86,43 @@ def command_init(args):
     home_dir=Path(args.config_dir)
 
     ## Function begins
-    if not check_initialized(args) or True:
-        home_dir.mkdir(parents=True,exist_ok=True)
-        user_module_dir=home_dir.joinpath('modules').absolute()
-        user_module_dir.mkdir(parents=True,exist_ok=True)
-        user_tools_param_dir=home_dir.joinpath('parameters').absolute()
-        user_tools_param_dir.mkdir(parents=True,exist_ok=True)
-        template_filename=home_dir.joinpath("protocol_template.yml").absolute()
-        source_template_path=Path(dmri.preprocessing.__file__).parent.joinpath("templates/protocol_template.yml")
-        protocol_template=yaml.safe_load(open(source_template_path,'r'))
-        initialize_logger(args)
-        config_filename=home_dir.joinpath("config.yml")
-        environment_filename=home_dir.joinpath("environment.yml")
-        ## make configuration file (config.yml)
-        config={"user_module_directories": [str(user_module_dir)],"protocol_template_path" : 'protocol_template.yml'}
-        yaml.dump(protocol_template,open(template_filename,'w'))
-        yaml.dump(config,open(config_filename,'w'))
-        logger("Config file written to : {}".format(str(config_filename)),dmri.preprocessing.Color.INFO)
-        ## copy default software path
-        software_info_path=Path(__file__).parent.joinpath("dmri/common/data/software_paths.yml")
-        software_filename=home_dir.joinpath('software_paths.yml')
-        shutil.copy(software_info_path,software_filename)
-        logger("Software path file is written to : {}".format(str(software_filename)),dmri.preprocessing.Color.INFO)
-        ## copy default software path
-        software_info_path=Path(__file__).parent.joinpath("dmri/common/data/software_paths.yml")
-        software_filename=home_dir.joinpath('software_paths.yml')
-        shutil.copy(software_info_path,software_filename)
-        logger("Software path file is written to : {}".format(str(software_filename)),dmri.preprocessing.Color.INFO)
-        ## generate tool parameters
+    home_dir.mkdir(parents=True,exist_ok=True)
+    user_module_dir=home_dir.joinpath('modules').absolute()
+    user_module_dir.mkdir(parents=True,exist_ok=True)
+    user_tools_param_dir=home_dir.joinpath('parameters').absolute()
+    user_tools_param_dir.mkdir(parents=True,exist_ok=True)
+    template_filename=home_dir.joinpath("protocol_template.yml").absolute()
+    source_template_path=Path(dmri.preprocessing.__file__).parent.joinpath("templates/protocol_template.yml")
+    protocol_template=yaml.safe_load(open(source_template_path,'r'))
+    initialize_logger(args)
+    config_filename=home_dir.joinpath("config.yml")
+    environment_filename=home_dir.joinpath("environment.yml")
+    ## make configuration file (config.yml)
+    config={"user_module_directories": [str(user_module_dir)],"protocol_template_path" : 'protocol_template.yml'}
+    yaml.dump(protocol_template,open(template_filename,'w'))
+    yaml.dump(config,open(config_filename,'w'))
+    logger("Config file written to : {}".format(str(config_filename)),dmri.preprocessing.Color.INFO)
+    ## copy default software path
+    software_info_path=Path(__file__).parent.joinpath("dmri/common/data/software_paths.yml")
+    software_filename=home_dir.joinpath('software_paths.yml')
+    shutil.copy(software_info_path,software_filename)
+    logger("Software path file is written to : {}".format(str(software_filename)),dmri.preprocessing.Color.INFO)
+    ## copy default software path
+    software_info_path=Path(__file__).parent.joinpath("dmri/common/data/software_paths.yml")
+    software_filename=home_dir.joinpath('software_paths.yml')
+    shutil.copy(software_info_path,software_filename)
+    logger("Software path file is written to : {}".format(str(software_filename)),dmri.preprocessing.Color.INFO)
+    ## generate tool parameters
 
-        ## make environment file (environment.yml)
-        modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
-        environment=dmri.preprocessing.modules.generate_module_envionrment(modules,str(home_dir))
-        yaml.dump(environment,open(environment_filename,'w'))
-        logger("Environment file written to : {}".format(str(environment_filename)),dmri.preprocessing.Color.INFO)
-        logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.preprocessing.Color.OK)
-        return True
-    else:
-        logger("Already initialized in {}".format(str(home_dir)),dmri.preprocessing.Color.WARNING)
-        return True
+    ## make environment file (environment.yml)
+    modules=dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
+    environment=dmri.preprocessing.modules.generate_module_envionrment(modules,str(home_dir))
+    yaml.dump(environment,open(environment_filename,'w'))
+    logger("Environment file written to : {}".format(str(environment_filename)),dmri.preprocessing.Color.INFO)
+    logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dmri.preprocessing.Color.OK)
+    
+    return True
+
 
 @after_initialized
 def command_update(args):
@@ -211,8 +209,8 @@ def command_run(args):
         proto.loadProtocols(options["protocol_path"])
     else :
         proto.makeDefaultProtocols(options['default_protocols'],template=template,options=options)
-
-    proto.setNumThreads(options['num_threads'])
+    if options['num_threads'] is not None:
+        proto.setNumThreads(options['num_threads'])
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
     dmri.common.logger.setLogfile(logfilename)  
@@ -266,6 +264,7 @@ def get_args():
                                         default=None,nargs='*')
     parser_make_protocols.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
+    parser_make_protocols.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
     parser_make_protocols.set_defaults(func=command_make_protocols)
         
 
@@ -273,7 +272,7 @@ def get_args():
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
     parser_run.add_argument('-i','--input-image-list',help='Input image paths',type=str,nargs='+',required=True)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
-    parser_run.add_argument('--num-threads',help="Number of threads to use",default=1,type=int,required=False)
+    parser_run.add_argument('--num-threads',help="Number of threads to use",default=None,type=int,required=False)
     parser_run.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output  (NRRD | NIFTI)',type=str)

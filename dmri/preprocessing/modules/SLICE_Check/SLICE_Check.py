@@ -61,4 +61,5 @@ class SLICE_Check(prep.modules.DTIPrepModule):
         self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
         #self.result['output']['image_path']=Path(self.output_dir).joinpath('output.nrrd').__str__()
         self.result['output']['success']=True
+        self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
         return self.result

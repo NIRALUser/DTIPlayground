@@ -36,25 +36,25 @@ def _load_nrrd(filename):
         else:
             kinds.append(True)
     ## extract image size 
-    img_size=[]
+    img_size=list(header['sizes'])
     space_directions=[]
     grad_size=None
     for idx,k in enumerate(kinds):
         if k: 
-            img_size.append(list(header['sizes'].tolist()))
+            # img_size.append(list(header['sizes'].tolist()))
             space_directions.append(header['space directions'].tolist()[idx])
         else:
             grad_size=header['sizes'][idx]
-    img_size.append(grad_size)
+    # img_size.append(grad_size)
 
-
+    # print(img_size)
     info={
         'space':header['space'],
         'dimension': int(header['dimension']),
-        'sizes': list(img_size), #header['sizes'],
+        'sizes': img_size, #header['sizes'],
         'original_kinds': header['kinds'],
         'original_kinds_space' : kinds,
-        'image_size' : list(img_size[:3]),
+        'image_size' : img_size[:3],
         'b_value':float(header['DWMRI_b-value']),
         'space_directions': space_directions,
         'measurement_frame':header['measurement frame'].tolist(),
@@ -76,8 +76,8 @@ def _load_nrrd(filename):
 
     ### move axis to match nifti
     data=np.moveaxis(org_data.copy(),grad_axis,-1)
-    info['sizes']=data.shape
-    info['image_size']=data.shape[0:3]
+    info['sizes']=list(data.shape)
+    info['image_size']=list(data.shape[0:3])
     ### extracting gradients
     gradients=[]
     for k,v in header.items():
@@ -92,8 +92,6 @@ def _load_nrrd(filename):
                 unit_vec=vec 
             gradients.append({'index':idx,'gradient':vec.tolist(),'b_value':bval,'unit_gradient':unit_vec.tolist(),'original_index':idx})
     gradients=sorted(gradients,key=lambda x: x['index'])
-
-
     return data,gradients,info , (org_data,header)
 
 def _load_nifti_bvecs(filename):
@@ -113,71 +111,60 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     parent_dir=Path(filename).parent
     if bvals_file is None: bvals_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvals')
     if bvecs_file is None: bvecs_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvecs')
-        
+    
+    loaded_image_object= nib.load(filename)
+    header=loaded_image_object.header
+    org_data=loaded_image_object.get_fdata().astype(np.dtype(header.get_data_dtype()))
+    image_dim = len(org_data.shape)
     gradients=None
 
     ## extract gradients with form {'index': , 'gradient': }
     bvals=[]
     bvecs=[]
-    #bvpairs=list(zip(open(bvals_file,'r').readlines(),open(bvecs_file,'r').readlines()))
-    tmp_bvals=list(open(bvals_file,'r').read().split())
-    #tmp_bvecs=list(chunks(open(bvecs_file,'r').read().split(),3))
-    tmp_bvecs=_load_nifti_bvecs(bvecs_file)
-    bvpairs=list(zip(tmp_bvals,tmp_bvecs))
     gradients=[]
-    normalized_vecs=[]
-    vecs=[]
     max_bval=0.0
-    for idx,bv in enumerate(bvpairs):
-        bval,bvec = bv
-        #normalized_vecs.append(np.array(list(map(lambda x: float(x), bvec.split()))).tolist())
-        normalized_vecs.append(list(map(lambda x :float(x),bvec)))
-        bvals.append(float(bval))
+    #bvpairs=list(zip(open(bvals_file,'r').readlines(),open(bvecs_file,'r').readlines()))
+    if image_dim == 4:
+        tmp_bvals=list(open(bvals_file,'r').read().split())
+        #tmp_bvecs=list(chunks(open(bvecs_file,'r').read().split(),3))
+        tmp_bvecs=_load_nifti_bvecs(bvecs_file)
+        bvpairs=list(zip(tmp_bvals,tmp_bvecs))
+        normalized_vecs=[]
+        vecs=[]
+        
+        for idx,bv in enumerate(bvpairs):
+            bval,bvec = bv
+            #normalized_vecs.append(np.array(list(map(lambda x: float(x), bvec.split()))).tolist())
+            normalized_vecs.append(list(map(lambda x :float(x),bvec)))
+            bvals.append(float(bval))
 
 
-    max_bval=np.max(bvals)
-    for idx,vec in enumerate(normalized_vecs):
-        denormalized_vec=np.array(vec)*np.sqrt((bvals[idx]/max_bval))
-        gradients.append({'index':int(idx),
-                          'gradient': denormalized_vec.tolist(),
-                          'b_value': bvals[idx],
-                          'unit_gradient': vec,
-                          'original_index':idx})
+        max_bval=np.max(bvals)
+        for idx,vec in enumerate(normalized_vecs):
+            denormalized_vec=np.array(vec)*np.sqrt((bvals[idx]/max_bval))
+            gradients.append({'index':int(idx),
+                              'gradient': denormalized_vec.tolist(),
+                              'b_value': bvals[idx],
+                              'unit_gradient': vec,
+                              'original_index':idx})
 
     ## move gradient index to the first (same to nrrd format)
-    loaded_image_object= nib.load(filename)
+    
 
-    ## to test
     affine=loaded_image_object.affine 
     ijk_to_lps = affine
-    lps_to_ras = np.diag([-1, -1, 1, 1])
+    lps_to_ras = np.diag([-1, -1, 1, 1]) # ras to lps 
     ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
     affine=ijk_to_ras
-    ## test ends
-    header=loaded_image_object.header
-    org_data=loaded_image_object.get_fdata().astype(np.dtype(header.get_data_dtype()))
 
     data=org_data.copy()
 
     ## extract header info
     mat=np.array(affine)
-    # space=""
-    # if mat[0,0]<0.0 : space+='left-'
-    # else: space+='right-'
-    # if mat[1,1]<0.0 : space+='posterior-'
-    # else: space+='anterior-'
-    # if mat[2,2]<0.0 : space+='inferior'
-    # else: space+='superior'
 
-    space='right-anterior-superior'
+    space='left-posterior-superior'
+    # space='right-anterior-superior'
 
-    # flipops=np.array(   ## x,y will be flipped
-    #         [[-1,0,0],
-    #          [0,-1,0],
-    #          [0,0,1]])
-    # lps_to_ras=np.diag([-1,-1,1,1])
-    # space_directions=np.matmul(mat[:3,:3],flipops)[:3,:3]
-    # space_origin=np.matmul(mat[:3,3],flipops)[:3]
     space_directions=mat[:3,:3]
     space_origin=mat[:3,3]
 
@@ -189,8 +176,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         'space': space,
         'dimension': len(data.shape),
         'sizes': np.array(data.shape).tolist(),
-        "original_kinds": ['space','space','space','list'],
-        "original_kinds_space" : [True,True,True,False], ## image space = True, gradient dim = False
+        "original_kinds": ['space','space','space','list'][:image_dim],
+        "original_kinds_space" : [True,True,True,False][:image_dim], ## image space = True, gradient dim = False
         'image_size' : np.array(data.shape[0:3]).tolist(),
         'b_value': float(max_bval),
         'space_directions': space_directions.tolist(),
@@ -198,8 +185,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         'space_origin':space_origin.tolist(),
         'type': str(header.get_data_dtype()),
         'endian' : endian,
-        'original_centerings' : ['cell','cell','cell','???'],
-        'thicknesses' : np.array([np.NAN,np.NAN,np.abs(space_directions.tolist()[2][2]),np.NAN]).tolist()
+        'original_centerings' : ['cell','cell','cell','???'][:image_dim],
+        'thicknesses' : np.array([np.NAN,np.NAN,np.abs(space_directions.tolist()[2][2]),np.NAN]).tolist()[:image_dim]
     }
 
 
@@ -232,29 +219,33 @@ def export_to_nrrd(image): #image : DWI
     grad_axis=-1
     
     space_directions=info['space_directions']
-    space_directions.append([np.NAN,np.NAN,np.NAN])
-    space_directions_grad_axis=space_directions[grad_axis]
-    space_directions=np.insert(space_directions,
-                                grad_axis_original,
-                                space_directions_grad_axis,
-                                axis=0)
-    space_directions=np.delete(space_directions,-1,axis=0)
-    
+    if image.information['dimension']>3:
+        space_directions.append([np.NAN,np.NAN,np.NAN])
+        space_directions_grad_axis=space_directions[grad_axis]
+        space_directions=np.insert(space_directions,
+                                    grad_axis_original,
+                                    space_directions_grad_axis,
+                                    axis=0)
+        space_directions=np.delete(space_directions,-1,axis=0)
+        space_directions=space_directions.tolist()
+        
 
     new_header={
         "type": info['type'],
         "dimension": info['dimension'],
         "space":  info['space'],
         "sizes":  info['sizes'],
-        "space directions": space_directions.tolist(),
+        "space directions": space_directions,
         "kinds": info['original_kinds'],
         "endian" : info['endian'],
         "encoding" : 'gzip',
         "space origin" : info['space_origin'],
-        "measurement frame": info['measurement_frame'],
-        "modality" : "DWMRI",
-        "DWMRI_b-value" : info['b_value']
+        "measurement frame": info['measurement_frame']
     }
+    if info['dimension'] == 4:
+        new_header['modality']="DWMRI"
+        new_header['DWMRI_b-value']=info['b_value']
+
     if info['original_centerings'] is not None:
         new_header["centerings"]= info['original_centerings'] 
     if info['thicknesses'] is not None:
@@ -263,9 +254,10 @@ def export_to_nrrd(image): #image : DWI
 
     s=list(new_data.shape)
     new_header['dimension']=len(new_data.shape)
-    g=s[grad_axis]
-    s=s[:grad_axis]+s[grad_axis:-1]
-    s=s[:grad_axis_original]+[g]+s[grad_axis_original:]
+    if new_header['dimension'] > 3:
+        g=s[grad_axis]
+        s=s[:grad_axis]+s[grad_axis:-1]
+        s=s[:grad_axis_original]+[g]+s[grad_axis_original:]
     new_header['sizes']=s
 
     copy_hdr=copy.deepcopy(new_header)
@@ -275,13 +267,14 @@ def export_to_nrrd(image): #image : DWI
     for idx,g in enumerate(grad):
         k="DWMRI_gradient_{:04d}".format(idx)
         new_header[k]=" ".join([str(x) for x in g['gradient']])
-    new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
+    if new_header['dimension'] > 3:
+        new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
     new_data=new_data.astype(new_header['type'])
     return new_data,new_header 
 
 
 def export_to_nifti(image): # image DWI
-    affine=image.getAffineMatrixBySpace('left-posterior-inferior')
+    affine=image.getAffineMatrixForNifti()
     img=image.images 
     gradients=image.getGradients()
     bvals=["{:d}\n".format(int(x['b_value'])) for x in gradients]
@@ -293,23 +286,14 @@ def _write_nrrd(image,filename,dtype):
     data,header = export_to_nrrd(image)
     return nrrd.write(filename,data,header=header)
 
-def _write_nifti(image,filename): #image : DWI
+def _write_nifti(image,filename,dtype): #image : DWI
     data,affine,bvals,bvecs=export_to_nifti(image)
     out_dir=Path(filename).parent
     filename_stem=Path(filename).name.split('.')[0]
     bvals_filename=out_dir.joinpath(filename_stem+".bvals")
     bvecs_filename=out_dir.joinpath(filename_stem+".bvecs")
-
+    data=data.astype(dtype)
     out_image_object=nib.Nifti1Image(data,affine)
-    # print(out_image_object.affine)
-    # pixdim=out_image_object.header['pixdim']
-    # pixdim[4:]=0.0
-    # out_image_object.header['pixdim']=pixdim
-    # out_image_object.header['regular']=b'r'
-    # out_image_object.header['qform_code']=1
-    # out_image_object.header['sform_code']=1
-    # out_image_object.header['xyzt_units']=3
-    ## writing nifti image
     nib.save(out_image_object,str(filename))
     ## wrting bvals, bvecs
     with open(bvals_filename.__str__(),'w') as f:
@@ -322,7 +306,7 @@ def _write_dwi(filename,image , dest_type='nrrd',dtype='short'): ## image : imag
     if dest_type.lower()=='nrrd': ## load nrrd dwi image
         return _write_nrrd(image,filename,dtype=dtype)
     elif dest_type.lower()=='nifti':
-        return _write_nifti(image, filename)
+        return _write_nifti(image, filename,dtype=dtype)
     else:
         logger("Not a supported image type",prep.Color.ERROR)
         raise Exception("Not a supported image type")
@@ -376,6 +360,15 @@ class DWI:
         #logger(yaml.dump(self.information),prep.Color.INFO)
         #if prep._debug: logger(yaml.dump(self.information))
 
+    def setSpaceDirection(self, target_space=None):
+        if not target_space:
+            return
+        affine = self.getAffineMatrixBySpace(target_space=target_space)
+        at=affine.transpose()
+        self.information['space_directions']=affine[:3,:3].tolist()
+        self.information['space_origin']=at[3,:3].tolist()
+        self.information['space']=target_space
+
     def setB0Threshold(self,b0_threshold):
         self.b0_threshold=b0_threshold
 
@@ -408,13 +401,6 @@ class DWI:
             self.gradients[idx]['index']=idx
             self.gradients[idx]['baseline']=bool(int(e['b_value'])<=b0_threshold)
 
-        ## if baseline doesn't exist 
-        # b0_grads=[x for x in self.gradients if x['baseline']]
-        # if len(b0_grads)<1:
-        #     ## force the gradients with minimum of b vals will be set to the baselines and set b0_threshold to the b value automatically
-        #     new_b0_threshold, _ = self.getBValueBounds()
-        #     self.gradients=self.getGradients(new_b0_threshold)            
-
         return self.gradients
 
     def getAffineMatrix(self):
@@ -424,7 +410,10 @@ class DWI:
         affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
         return affine 
 
-    def getAffineMatrixBySpace(self,target_space): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
+    def getAffineMatrixForNifti(self):
+        return self.getAffineMatrixBySpace('right-anterior-superior')
+
+    def getAffineMatrixBySpace(self,target_space="right-anterior-superior"): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
         space=self.information['space']
         space_directions=copy.deepcopy(self.information['space_directions'])
         affine=copy.deepcopy(np.array(space_directions))
@@ -432,11 +421,16 @@ class DWI:
         affine=np.append(affine,[space_origin],axis=0)
         affine=affine.transpose()
         affine=np.append(affine,np.array([[0,0, 0, 1]]),axis=0)
-        if space=='left-posterior-superior':
-            ijk_to_lps = affine
-            lps_to_ras = np.diag([-1, -1, 1, 1])
-            ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
-            affine=ijk_to_ras
+        src_space_elem = space.split('-')
+        target_space_elem = target_space.split('-')
+        diag_elements = [1,1,1,1]
+        for i,v in enumerate(target_space_elem):
+            if v != src_space_elem[i]:
+                diag_elements[i]=-1
+        ijk_to_lps = affine
+        src_to_tgt = np.diag(diag_elements)
+        ijk_to_ras = np.matmul(src_to_tgt, ijk_to_lps)
+        affine=ijk_to_ras
         return affine
 
     def getAffineMatrixForSlice(self,column=2): # 0 for x, 1 for y , 2 for z  output 2d affine matrix (3x3)

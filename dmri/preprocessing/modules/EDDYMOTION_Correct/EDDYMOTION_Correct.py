@@ -159,7 +159,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         # DEV nrrd conversion of eddied_output
         img=self.loadImage(processed_nifti)
-        img.writeImage(Path(output_dir.joinpath("output_eddied_dev.nrrd")).__str__(),dest_type='nrrd')
+        if not Path(output_dir.joinpath("output_eddied_dev.nrrd")).exists():
+            img.writeImage(Path(output_dir.joinpath("output_eddied_dev.nrrd")).__str__(),dest_type='nrrd')
 
         logger("Generating Non negative DWI...to {}".format(str(processed_nifti_nonneg)),prep.Color.PROCESS)
         nonneg_base=Path(processed_nifti_nonneg).name.split('.')[0]
@@ -173,7 +174,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         # DEV nrrd conversion of eddied_output
         img=self.loadImage(processed_nifti_nonneg)
-        img.writeImage(Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).__str__(),dest_type='nrrd')
+        if not Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).exists():
+            img.writeImage(Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).__str__(),dest_type='nrrd')
 
         logger("Executing eddy_quad for quality assessment...",prep.Color.PROCESS)
         if not Path(quad_output_dir).exists():
@@ -185,10 +187,11 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                         bvals=processed_bvals)
 
         self.image=self.loadImage(processed_nifti_nonneg)
-        self.image.image_type='nrrd'
-        # if not Path(output_nrrd).exists():
-        self.writeImage(output_nrrd)
-
+        # self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
+        # self.image.image_type='nrrd'
+        # # if not Path(output_nrrd).exists():
+        # self.writeImage(output_nrrd)
+        self.writeImageWithOriginalSpace(output_nrrd,'nrrd')
         return None
 
     @measure_time
@@ -242,7 +245,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         # shutil.copy(input_bvecs,processed_bvecs)
 
         img=self.loadImage(processed_nifti)
-        img.writeImage(Path(output_dir.joinpath("output_eddied_dev.nrrd")).__str__(),dest_type='nrrd')
+        if not Path(output_dir.joinpath("output_eddied_dev.nrrd")).exists():
+            img.writeImage(Path(output_dir.joinpath("output_eddied_dev.nrrd")).__str__(),dest_type='nrrd')
 
         logger("Generating Non negative DWI...",prep.Color.PROCESS)
         nonneg_base=Path(processed_nifti_nonneg).name.split('.')[0]
@@ -255,7 +259,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
             shutil.copy(processed_bvecs,processed_nifti_nonneg_bvecs)
 
         img=self.loadImage(processed_nifti_nonneg)
-        img.writeImage(Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).__str__(),dest_type='nrrd')
+        if not Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).exists():
+            img.writeImage(Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).__str__(),dest_type='nrrd')
 
         logger("Executing eddy_quad for quality assessment...",prep.Color.PROCESS)
         if not Path(quad_output_dir).exists():
@@ -268,9 +273,10 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         self.image=self.loadImage(processed_nifti_nonneg)
         self.image.image_type='nrrd'
-        # if not Path(output_nrrd).exists():
-        self.writeImage(output_nrrd)
-
+        # self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
+        # # if not Path(output_nrrd).exists():
+        # self.writeImage(output_nrrd)
+        self.writeImageWithOriginalSpace(output_nrrd,'nrrd')
         return None
 
 

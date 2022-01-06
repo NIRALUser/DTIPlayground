@@ -22,7 +22,7 @@ options:
       - string
       - file
       - directory 
-      - list 
+      - list
       - queue
       - matrix
       - object-array 
@@ -56,6 +56,11 @@ options:
       caption: B0 Threshold 
       description: B0 Threshold value (default - 10.0)
       default_value: 10.0
+    no_output_image:
+      type: boolean
+      default_value: false
+      caption: Omit Final Output
+      description: No final image output (utility purpose)
 
   #### Execution related
   execution:
@@ -84,6 +89,12 @@ options:
         - value: DTI_Estimate
           caption: Estimate DTI 
           description: Estimation of DTI scalars by DIPY or dtiestim
+        - value: MANUAL_Exclude
+          caption: Exclude Gradients
+          description: Manual Exclusion of Gradient volume
+        - value: UTIL_Header
+          caption: View Header
+          description: View header information of the image
         - value: TEST
           caption: Test Module (Dev)
           description: Not implemented
@@ -95,4 +106,5 @@ options:
         - EDDYMOTION_Correct
         # - BRAIN_Mask
         # - DTI_Estimate
+        # - MANUAL_Exclude
       description: Pipeline queue which executes as first in first processed.

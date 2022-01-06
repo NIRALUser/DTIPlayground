@@ -139,6 +139,9 @@ MIT
 
 ### Change Log
 
+##### 2021-12-10
+- dmriprep **New Module** MANUAL_Exclude module added. It is a simple utility module that can exclude gradient volumes from an image with gradient indices from user input via protocols file.
+
 ##### 2021-12-08
 - dmriprep - **New Module** DTI_Estimate module added with limited capability (only dtiestim is enabled)
 - dmriprep - new option --no-output-image, if it's on, there will be no QCed outputfile (only use when there should be no output file. e.g. utilities such as BRAIN_Mask, DTI_Estimate)

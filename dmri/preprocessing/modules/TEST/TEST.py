@@ -21,6 +21,8 @@ class TEST(prep.modules.DTIPrepModule):
     def process(self,*args,**kwargs): ## variables : self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
+        sourceImageInformation=self.getSourceImageInformation()
+        print(sourceImageInformation)
         # << TODOS>>
         protocol_options=args[0]
         self.num_threads=protocol_options['software_info']['parameters']['num_max_threads']
@@ -52,8 +54,8 @@ class TEST(prep.modules.DTIPrepModule):
     def image_io_test(self,params,options):
         
         res=None
-        input_image_path=Path(self.output_dir).joinpath("input.nii.gz").__str__()
         src_image=params['image']
+        input_image_path=Path(self.output_dir).joinpath("input.nii.gz").__str__()
         src_image.writeImage(input_image_path,dest_type='nifti')
         temp_nrrd_path=Path(self.output_dir).joinpath("input_directsave.nrrd").__str__()
         src_image.writeImage(temp_nrrd_path,dest_type='nrrd')

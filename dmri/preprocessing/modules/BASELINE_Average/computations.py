@@ -86,7 +86,7 @@ def baseline_optimized_average(image_obj, averageInterpolationMethod , b0Thresho
     logger("Baseline Optimized averaging on baselines ... ",prep.Color.PROCESS)
     baseline_grads, baseline_images=image_obj.getBaselines(b0_threshold=b0Threshold)
     out_gradient=default_output_gradient()
-    affine=image_obj.getAffineMatrix()
+    affine=image_obj.getAffineMatrixForNifti()
     static=np.mean(baseline_images,axis=3) #initial direct averaging 
     previous_static=copy.deepcopy(static)
     averaged_image=copy.deepcopy(static)

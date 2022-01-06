@@ -90,7 +90,8 @@ def empty_result():
                 "output_directory": None,
                 "excluded_gradients_original_indexes": [],
                 "output_path": None,
-                "success" : False
+                "success" : False,
+                "image_information": None
             } 
         }
 
@@ -215,12 +216,19 @@ class DTIPrepModule: #base class
     def getOutputFiles(self):
         return self.output_files
 
-    def writeImage(self,filename,dest_type='nrrd'):
-        self.image.writeImage(filename,dest_type=dest_type)
+    @prep.measure_time
+    def writeImage(self,filename,dest_type='nrrd',dtype='short'):
+        self.image.writeImage(filename,dest_type=dest_type,dtype=dtype)
         #self.result['output']['image_path']=str(Path(filename).absolute().relative_to(self.output_root))
         self.result['output']['image_path']=str(Path(filename).absolute())
 
     @prep.measure_time
+    def writeImageWithOriginalSpace(self,filename,dest_type='nrrd',dtype='short'):
+        target_space = self.getSourceImageInformation()['space']
+        self.image.setSpaceDirection(target_space=target_space)
+        self.writeImage(filename,dest_type,dtype)
+
+    @prep.measure_time 
     def loadImage(self, image_path, gradient_path=None):
         grad_path=gradient_path 
         if gradient_path is None:
@@ -232,9 +240,21 @@ class DTIPrepModule: #base class
             image.setGradients(grad)
         return image
 
+    def getInputResult(self):
+        return self.result_history[0]
+
     def getPreviousResult(self):
         return self.result_history[-1]
 
+    def getSourceImageInformation(self):
+        inputInfo = self.getInputResult()
+        info=None
+        #if 'multi_input' in self.template['process_attributes']:
+        if type(inputInfo['output'])==list:
+            info = inputInfo['output'][0]['output']['image_information']
+        else:
+            info = inputInfo['output']['image_information']
+        return info
 
     def loadTemplate(self):
         modulepath=inspect.getfile(self.__class__)
@@ -311,6 +331,7 @@ class DTIPrepModule: #base class
         self.image.getGradients()
 
         self.result['output']['success']=True
+        self.result['output']['image_information']=self.image.information
         outstr=yaml.dump(self.result)
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
             yaml.dump(self.result,f)

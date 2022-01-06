@@ -52,6 +52,7 @@ class Color:
 
    DEV = GRAY
    OK = GREEN
+   SUCCESS = GREEN
    INFO = PURPLE
    PROCESS = BLUE
    WARNING = LIGHTRED

@@ -11,7 +11,7 @@ protocol:
       method: 
         type: list
         caption: Method
-        default_value: dtiestim
+        default_value: dipy
         candidates:
           - value: dipy
             caption: DIPY
@@ -20,24 +20,44 @@ protocol:
             caption: dtiestim
             description: Use NIRAL dtiestim software
         description: Method to estimate DTI (dipy/dtiestim)
-      scalar: 
+      optimizationMethod:
         type: list
-        caption: Scalar
-        default_value: fa
+        caption: Optimization Method
+        default_value: wls
         candidates:
-          - value: fa
-            caption: FA
-            description: Fractional Anisotropy
-          - value: md
-            caption: MD
-            description: Mean Diffusivity
-          - value: ad
-            caption: AD
-            description: Axial Diffusivity
-          - value: rd
-            caption: RD
-            description: Radial Diffusivity            
-        description: Type of scalar to estimate
+          - value : wls
+            caption: Weighted Least Squares
+            description: Weighted Least Squares
+          - value : lls
+            caption: Linear Least Squares
+            description: Linear Least Squares
+          - value : nls
+            caption: Non-Linear Least Squares
+            description: Non-Linear Least Squares
+          - value : ml
+            caption: Maximum Likelihood (dtiestim Only)
+            description: Maximum Likelihood (dtiestim Only)
+          - value : restore
+            caption: RESTORE (DIPY Only)
+            description: RESTORE (DIPY Only)
+      correctionMethod:
+        type: list
+        caption: Tensor Correction
+        default_value: zero
+        description: Tensor correction method when a computed tensor is not positive semi-definite (dtiestim only)
+        candidates:
+          - value: zero
+            caption: Zero
+            description: Substitute to zero value
+          - value: nearest
+            caption: Nearest (dtiestim only)
+            description: Nearest (dtiestim only)
+          - value: abs
+            caption: Absolute (dtiestim only)
+            description: Absolute (dtiestim only)
+          - value: none
+            caption: None (dtiestim only)
+            description: None (dtiestim only)
 
 
 

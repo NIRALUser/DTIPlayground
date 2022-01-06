@@ -1,0 +1,16 @@
+name: MANUAL_Exclude
+caption: MANUAL_Exclude
+description: Manually excludes gradient volumes
+version: "0.1"
+dependency: []
+module_type: prep
+process_attributes:
+    - exclude_gradients
+    - utility
+result: null
+protocol:
+      gradientsToExclude: 
+        type: object-array
+        caption: Gradient List to Exclude
+        default_value: [] 
+        description: List of gradient indices to exclude from an image.

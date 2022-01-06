@@ -106,6 +106,7 @@ class Protocols:
         self.config_dir=config_dir 
 
         #Image data 
+        self.original_image_information=None
         self.images=[]
         self.image_cache={} # cache for the previous results
 
@@ -131,10 +132,12 @@ class Protocols:
             logger("Loading original image : {}".format(str(ip)),prep.Color.PROCESS)
             img=dwi.DWI(str(ip))
             self.result_history[ip]=[{"output":{"image_path": str(Path(ip).absolute()),
+                                             "image_information": img.information,
                                              "image_object" : id(img)}}]
             img.setB0Threshold(b0_threshold)
             img.getGradients()
             self.images.append(img)
+        self.original_image_information = self.images[0].information 
 
     def setOutputDirectory(self, output_dir=None):
         if output_dir is None:
@@ -184,6 +187,8 @@ class Protocols:
             self.version=self.rawdata['version']
             self.pipeline=self.furnishPipeline(self.rawdata['pipeline'])
             self.io=self.rawdata['io']
+            if 'no_output_image' not in self.io:
+                self.io['no_output_image']= False
             if 'output_format' not in self.io:
                 self.io['output_format']=None
             if 'baseline_threshold' not in self.io:

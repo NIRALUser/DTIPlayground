@@ -1,6 +1,7 @@
 
 
 import dmri.preprocessing as prep
+from dmri.preprocessing.dwi import DWI
 import yaml
 from pathlib import Path
 
@@ -52,7 +53,6 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         ants_image_3d.set_spacing(list(ants_image.spacing)[:3])
         new_dir=np.resize(ants_image.direction,[4,4])[:3,:3]
         ants_image_3d.set_direction(new_dir.tolist())
-
         logger("Computing probability mask ...",prep.Color.INFO)
         probability_mask=antspynet.brain_extraction(ants_image_3d,modality)
         logger("Generating thresholded mask ...",prep.Color.INFO)
@@ -64,7 +64,21 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         logger("Writing mask file",prep.Color.PROCESS)
         ants.image_write(mask, output_mask_path)
         dest_filename = input_image_path
+        ## dev for nrrd output
+        logger("Loading mask file",prep.Color.PROCESS)
+        image=DWI(output_mask_path)
+        # print(image.information)
+        logger("Mask loaded",prep.Color.OK)
+        logger("Saving NRRD")
+        output_nrrd_path = Path(self.output_dir).joinpath("mask.nrrd").__str__()
+        # print(image.information)
+        image.setSpaceDirection(self.getSourceImageInformation()['space'])
+        image.writeImage(output_nrrd_path,dest_type='nrrd')
+        # print(image.information)
+        logger("Saved as NRRD")
+        ## dev-end
         self.addOutputFile(output_mask_path, 'Mask')
+        self.addOutputFile(output_nrrd_path, 'Mask')
         return res 
 
     def mask_fslbet(self,params):

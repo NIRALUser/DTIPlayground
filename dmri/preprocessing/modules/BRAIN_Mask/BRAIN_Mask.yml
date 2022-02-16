@@ -20,6 +20,18 @@ protocol:
             description: AntsPyNet's brain_extraction() method 
         default_value: antspynet
         description: Method to extract the brain 
+      averagingMethod:
+        type: list
+        caption: Average Method
+        default_value: idwi
+        description: Averaging method by which the source image is generated for the mask
+        candidates:
+          - value: direct_average
+            caption: Direct Average
+            description: Direct average on baseline images. If no baseline is found then average whole volume
+          - value: idwi
+            caption: IDWI
+            description: Geometric mean of baseline images. If no baseline is found then whole images will be used.
       modality: ## in case of antspynet
         type: list
         candidates:

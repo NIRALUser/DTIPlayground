@@ -98,6 +98,7 @@ MIT
 
 [DMRIPrep]
 - Python Libraries
+    - SimpleITK==2.1.1
     - pynrrd==0.4.2
     - dipy==1.4.0 (INTERLACE_Check, BASELINE_Average)
     - pyyaml==5.3.1
@@ -138,6 +139,10 @@ MIT
 - Multi threading
 
 ### Change Log
+
+##### 2022-01-26
+- dmriprep - Minor bug fix (conversion related)
+- dmriprep - Intermediary files can be exported during computation (in module level)
 
 ##### 2021-12-10
 - dmriprep **New Module** MANUAL_Exclude module added. It is a simple utility module that can exclude gradient volumes from an image with gradient indices from user input via protocols file.

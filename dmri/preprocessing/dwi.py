@@ -55,14 +55,17 @@ def _load_nrrd(filename):
         'original_kinds': header['kinds'],
         'original_kinds_space' : kinds,
         'image_size' : img_size[:3],
-        'b_value':float(header['DWMRI_b-value']),
+        # 'b_value':float(header['DWMRI_b-value']),
         'space_directions': space_directions,
         'measurement_frame':header['measurement frame'].tolist(),
         'space_origin':header['space origin'].tolist(),
         #'original_centerings': header['centerings'],
         'endian' : header['endian'],
-        'type' : header['type']
+        'type' : header['type'],
+        'modality': header['modality']
     }
+    if 'DWMRI_b-value' in header:
+        info['b_value'] = float(header['DWMRI_b-value'])
     #print(info)
     if 'centerings' in header:
         info['original_centerings']=header['centerings']
@@ -74,10 +77,12 @@ def _load_nrrd(filename):
     else:
         info["thicknesses"] = None
 
+    data=org_data.copy()
     ### move axis to match nifti
-    data=np.moveaxis(org_data.copy(),grad_axis,-1)
-    info['sizes']=list(data.shape)
-    info['image_size']=list(data.shape[0:3])
+    if 'DWMRI_b-value' in header: ## only for the dwmri images
+        data=np.moveaxis(data,grad_axis,-1)
+        info['sizes']=list(data.shape)
+        info['image_size']=list(data.shape[0:3])
     ### extracting gradients
     gradients=[]
     for k,v in header.items():
@@ -165,8 +170,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     space='left-posterior-superior'
     # space='right-anterior-superior'
 
-    space_directions=mat[:3,:3]
-    space_origin=mat[:3,3]
+    space_directions=mat.transpose()[:3,:3]
+    space_origin=mat.transpose()[3,:3]
 
     endian="little"
     if header.endianness != '<' :
@@ -186,7 +191,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         'type': str(header.get_data_dtype()),
         'endian' : endian,
         'original_centerings' : ['cell','cell','cell','???'][:image_dim],
-        'thicknesses' : np.array([np.NAN,np.NAN,np.abs(space_directions.tolist()[2][2]),np.NAN]).tolist()[:image_dim]
+        'thicknesses' : np.array([np.NAN,np.NAN,np.abs(space_directions.tolist()[2][2]),np.NAN]).tolist()[:image_dim],
+        'modality': None
     }
 
 
@@ -242,7 +248,11 @@ def export_to_nrrd(image): #image : DWI
         "space origin" : info['space_origin'],
         "measurement frame": info['measurement_frame']
     }
-    if info['dimension'] == 4:
+    if 'modality' in info:
+        new_header['modality']=info['modality']
+    else:
+        new_header['modality']=None
+    if info['dimension'] == 4 and info['modality'] != 'DTI':
         new_header['modality']="DWMRI"
         new_header['DWMRI_b-value']=info['b_value']
 
@@ -264,11 +274,12 @@ def export_to_nrrd(image): #image : DWI
     for k,v in copy_hdr.items():    
         if 'dwmri_gradient' in k.lower():
             del new_header[k]
-    for idx,g in enumerate(grad):
-        k="DWMRI_gradient_{:04d}".format(idx)
-        new_header[k]=" ".join([str(x) for x in g['gradient']])
-    if new_header['dimension'] > 3:
-        new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
+    if new_header['modality']=='DWMRI':
+        for idx,g in enumerate(grad):
+            k="DWMRI_gradient_{:04d}".format(idx)
+            new_header[k]=" ".join([str(x) for x in g['gradient']])
+        if new_header['dimension'] > 3:
+            new_data=np.moveaxis(new_data,grad_axis,grad_axis_original)
     new_data=new_data.astype(new_header['type'])
     return new_data,new_header 
 
@@ -335,6 +346,15 @@ class DWI:
     def __len__(self):
         return len(self.gradients)
     
+    def setImage(self,img, modality='DWMRI', kinds = ['space','space','space','list']):
+        self.information['sizes'] = list(img.shape)
+        self.information['kinds'] = kinds
+        self.information['original_kinds'] = kinds
+        self.information['dimension'] = len(img.shape)
+        self.information['modality'] = modality
+        self.images = img
+        self.gradients=[]
+
     @prep.measure_time
     def writeImage(self,filename,dest_type=None,dtype='short'):
         if not dest_type:
@@ -360,12 +380,50 @@ class DWI:
         #logger(yaml.dump(self.information),prep.Color.INFO)
         #if prep._debug: logger(yaml.dump(self.information))
 
+
+    def getAffineMatrix(self):
+        affine=np.transpose(np.append(self.information['space_directions'],
+                                     np.expand_dims(self.information['space_origin'],0),
+                                     axis=0))
+        affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
+        return affine 
+
+    def getAffineMatrixForNifti(self):
+        return self.getAffineMatrixBySpace('right-anterior-superior')
+
+    def getAffineMatrixBySpace(self,target_space="right-anterior-superior"): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
+        space=self.information['space']
+        space_directions=copy.deepcopy(self.information['space_directions'])
+        affine=copy.deepcopy(np.array(space_directions))
+        # affine=self.getAffineMatrix()
+        space_origin=np.array(self.information['space_origin'])
+        affine=np.append(affine,[space_origin],axis=0)
+        affine=affine.transpose()
+        affine=np.append(affine,np.array([[0,0, 0, 1]]),axis=0)
+        src_space_elem = space.split('-')
+        target_space_elem = target_space.split('-')
+        diag_elements = [1,1,1,1]
+        for i,v in enumerate(target_space_elem):
+            if v != src_space_elem[i]:
+                diag_elements[i]=-1
+        ijk_to_lps = affine
+        src_to_tgt = np.diag(diag_elements)
+        ijk_to_ras = np.matmul(src_to_tgt, ijk_to_lps)
+        affine=ijk_to_ras
+        return affine
+
+    def getAffineMatrixForSlice(self,column=2): # 0 for x, 1 for y , 2 for z  output 2d affine matrix (3x3)
+        affine=self.getAffineMatrix()
+        new_mat=np.delete(affine,column,axis=0)
+        new_mat=np.transpose(np.delete(np.transpose(new_mat),column,axis=0))
+        return new_mat
+
     def setSpaceDirection(self, target_space=None):
         if not target_space:
             return
         affine = self.getAffineMatrixBySpace(target_space=target_space)
         at=affine.transpose()
-        self.information['space_directions']=affine[:3,:3].tolist()
+        self.information['space_directions']=at[:3,:3].tolist()
         self.information['space_origin']=at[3,:3].tolist()
         self.information['space']=target_space
 
@@ -403,41 +461,9 @@ class DWI:
 
         return self.gradients
 
-    def getAffineMatrix(self):
-        affine=np.transpose(np.append(self.information['space_directions'],
-                                     np.expand_dims(self.information['space_origin'],0),
-                                     axis=0))
-        affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
-        return affine 
-
-    def getAffineMatrixForNifti(self):
-        return self.getAffineMatrixBySpace('right-anterior-superior')
-
-    def getAffineMatrixBySpace(self,target_space="right-anterior-superior"): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
-        space=self.information['space']
-        space_directions=copy.deepcopy(self.information['space_directions'])
-        affine=copy.deepcopy(np.array(space_directions))
-        space_origin=np.array(self.information['space_origin'])
-        affine=np.append(affine,[space_origin],axis=0)
-        affine=affine.transpose()
-        affine=np.append(affine,np.array([[0,0, 0, 1]]),axis=0)
-        src_space_elem = space.split('-')
-        target_space_elem = target_space.split('-')
-        diag_elements = [1,1,1,1]
-        for i,v in enumerate(target_space_elem):
-            if v != src_space_elem[i]:
-                diag_elements[i]=-1
-        ijk_to_lps = affine
-        src_to_tgt = np.diag(diag_elements)
-        ijk_to_ras = np.matmul(src_to_tgt, ijk_to_lps)
-        affine=ijk_to_ras
-        return affine
-
-    def getAffineMatrixForSlice(self,column=2): # 0 for x, 1 for y , 2 for z  output 2d affine matrix (3x3)
-        affine=self.getAffineMatrix()
-        new_mat=np.delete(affine,column,axis=0)
-        new_mat=np.transpose(np.delete(np.transpose(new_mat),column,axis=0))
-        return new_mat
+    def removeGradients(self):
+        self.gradients=[]
+        del self.information['modality']
 
     def loadGradients(self,filename):
         self.gradients=yaml.safe_load(open(filename,'r'))
@@ -492,8 +518,7 @@ class DWI:
         num_gradients=len(gradients)
         vol_product=np.ones(self.images.shape[:3],dtype=np.float64)
         for idx,g in enumerate(gradients):
-            if not g['baseline']:
-                vol_product*= self.images[:,:,:,idx]
+            vol_product*= self.images[:,:,:,idx]
         result_volume=pow(vol_product,1.0/num_gradients)
         return result_volume 
 

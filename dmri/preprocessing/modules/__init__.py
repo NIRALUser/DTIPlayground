@@ -91,7 +91,8 @@ def empty_result():
                 "excluded_gradients_original_indexes": [],
                 "output_path": None,
                 "success" : False,
-                "image_information": None
+                "image_information": None,
+                "global_variables": {}
             } 
         }
 
@@ -127,7 +128,6 @@ class DTIPrepModule: #base class
         self.output_root=str(Path(self.output_dir).parent.parent)
         self.computation_dir=Path(output_dir).joinpath("computations")
         self.computation_dir.mkdir(parents=True,exist_ok=True)
-
         inputpath=None
 
         if 'multi_input' in self.template['process_attributes']:
@@ -212,6 +212,12 @@ class DTIPrepModule: #base class
 
     def addOutputFile(self, src_filename, postfix):
         self.output_files.append({'source': src_filename, 'postfix': postfix})
+
+    def addGlobalVariable(self, key, value):
+        self.result['output']['global_variables'][key]=value
+
+    def getGlobalVariables(self):
+        return self.result['output']['global_variables']
 
     def getOutputFiles(self):
         return self.output_files
@@ -312,7 +318,6 @@ class DTIPrepModule: #base class
         gradient_filename=str(Path(self.output_dir).joinpath('output_gradients.yml'))
         image_information_filename=str(Path(self.output_dir).joinpath('output_image_information.yml'))
         self.result['output']['image_object']=id(self.image)
-
         ### if deform_image process type, then forced file loading should be done from the second run in the subsequent process.
         if "deform_image" in self.template['process_attributes']:        
             if  Path(self.output_dir).joinpath('result.yml').exists() and not self.options['overwrite']: ## second run
@@ -355,14 +360,16 @@ class DTIPrepModule: #base class
     def run(self,*args,**kwargs): #wrapper 
         opts=args[0]
         baseline_threshold=opts['baseline_threshold']
-
+        if 'global_vars' in kwargs:
+            self.result['output']['global_variables'].update(kwargs['global_vars'])
         self.image.setB0Threshold(baseline_threshold)
         self.image.getGradients()
         
         res=self.process(*args,**kwargs) ## main computation for user implementation
         ## Post processing
         self.postProcess(res,opts) ## pretty much automatic        
-        return self.result["output"]["success"]
+        #return self.result["output"]["success"]
+        return self.result["output"]
 
     def getResultHistory(self):
         return self.result_history+[self.result]

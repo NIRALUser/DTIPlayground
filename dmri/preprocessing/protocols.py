@@ -88,7 +88,7 @@ def default_pipeline_options():
     return {
                  "options":{
                     "overwrite":False, # if result.yml exists and overwrite is false, module skips overall computation except for postProcess
-                    "recompute":False,
+                    # "recompute":False,
                     "write_image":False, # unless module is forced to write (such as BASELINE_Average, or correcting ones)
                     "skip":False
                     }, 
@@ -107,6 +107,7 @@ class Protocols:
 
         #Image data 
         self.original_image_information=None
+        self.original_image_format='nrrd'
         self.images=[]
         self.image_cache={} # cache for the previous results
 
@@ -116,6 +117,7 @@ class Protocols:
         self.previous_process=None #this is to ensure to access previous results (image and so on)
         self.software_info=None # binary path of softwares (such as fsl)
         self.num_threads=4 # number of threads to use 
+        self.global_variables={} # global variables to track from each module (arbitrary key-value dict)
         #Module related
         self.config,self.environment=load_configurations(self.config_dir)
 
@@ -137,7 +139,8 @@ class Protocols:
             img.setB0Threshold(b0_threshold)
             img.getGradients()
             self.images.append(img)
-        self.original_image_information = self.images[0].information 
+        self.original_image_information = self.images[0].information
+        self.oriiginal_image_format = self.images[0].image_type
 
     def setOutputDirectory(self, output_dir=None):
         if output_dir is None:
@@ -372,14 +375,15 @@ class Protocols:
                     m.postProcess(result_temp,opts)
                     success=True
                 else: # in case overwriting or there is no result.yml file
-                    success=m.run(opts)
+                    outres=m.run(opts,global_vars=self.global_variables)
+                    success=outres['success']
                 if not success:
                     logger("[ERROR] Process failed in {}".format(p),prep.Color.ERROR) 
                     raise Exception("Process failed in {}".format(p))
+                self.global_variables.update(m.getGlobalVariables())
                 self.previous_process=m  #this is for the image id reference
                 self.result_history[image_path] =m.getResultHistory()
                 self.image_cache[image_path]=m.image 
-
                 for intermediary_file in m.getOutputFiles():
                     srcfilepath = intermediary_file['source']
                     postfix = intermediary_file['postfix']
@@ -400,7 +404,7 @@ class Protocols:
                     logger("Preparing final output ... ",prep.Color.PROCESS)
                     stem=Path(output_base).name.split('.')[0]+"_QCed"
                     ext='.nii.gz'
-                    if self.io['output_format'] is None: self.io['output_format']=m.image.image_type
+                    if self.io['output_format'] is None: self.io['output_format']=self.original_image_format
                     if self.io['output_format'] =='nrrd' : ext='.nrrd'
                     final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
                     final_gradients_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_gradients.yml').__str__()

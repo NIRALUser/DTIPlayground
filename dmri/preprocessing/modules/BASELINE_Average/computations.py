@@ -26,7 +26,7 @@ def baseline_average(image_obj, opt,
 
     ## baseline gradients and volum extraction  
     baseline_grads, _=image_obj.getBaselines(b0_threshold=b0Threshold)
-    logger("Found baseline gradients ... ",prep.Color.INFO)
+    logger("Finding baseline gradients : ",prep.Color.INFO)
     for idx,g in enumerate(baseline_grads):
         logger("Gradient.idx {:03d} Original.idx {:03d} Direction {} B-value {:.1f}"
             .format(g['index'],g['original_index'],g['gradient'],g['b_value']),prep.Color.INFO)
@@ -41,7 +41,9 @@ def baseline_average(image_obj, opt,
     ### computation
     if no_baseline:
         logger("[WARNING] There was no baseline found",prep.Color.WARNING)
-        return None,[]
+        b0Threshold = min(list(map(lambda x: x['b_value'], image.getGradients())))
+        #return None,[]
+        output=direct_average(image, averageInterpolationMethod, b0Threshold,stopThreshold)
     elif averageMethod=='DirectAverage' or only_one_baseline:
         if only_one_baseline: logger("Only one baseline was found, averaging method will be changed to DirectAverage",prep.Color.WARNING)
         output=direct_average(image, averageInterpolationMethod, b0Threshold,stopThreshold)

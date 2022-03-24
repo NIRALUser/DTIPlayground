@@ -1,0 +1,16 @@
+name: UTIL_Merge
+caption: UTIL_Merge
+description: Merging two images
+version: "0.1"
+dependency: null 
+module_type: prep
+process_attributes:
+    - deform_image
+    - multi_input
+result: null
+protocol:
+      TestParam: 
+        type: string
+        caption: Test parameter
+        default_value: null
+        description: Test parameter

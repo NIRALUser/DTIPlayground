@@ -346,6 +346,19 @@ class DWI:
     def __len__(self):
         return len(self.gradients)
     
+    @staticmethod
+    def mergeImages(*imgs):
+        merged=copy.deepcopy(imgs[0])
+        num_grads = merged.images.shape[-1]
+        for idx,img in enumerate(imgs):
+            if idx>0:
+                temp_ngrads = img.images.shape[-1]
+                num_grads = num_grads + temp_ngrads
+                merged.images = np.concatenate((merged.images,img.images),axis=-1)
+                merged.gradients = merged.gradients+img.gradients
+        logger('Images merged',prep.Color.OK)
+        return merged
+
     def setImage(self,img, modality='DWMRI', kinds = ['space','space','space','list']):
         self.information['sizes'] = list(img.shape)
         self.information['kinds'] = kinds

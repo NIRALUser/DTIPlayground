@@ -61,7 +61,11 @@ options:
       default_value: false
       caption: Omit Final Output
       description: No final image output (utility purpose)
-
+    output_filename_base:
+      type: string
+      default_value: null
+      caption: Output basename
+      description: Final output base name
   #### Execution related
   execution:
     pipeline:
@@ -95,6 +99,9 @@ options:
         - value: UTIL_Header
           caption: View Header
           description: View header information of the image
+        - value: UTIL_Merge
+          caption: Merge Images
+          description: Merge images to one image
         - value: TEST
           caption: Test Module (Dev)
           description: Not implemented

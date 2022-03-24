@@ -55,14 +55,14 @@ def load_configurations(config_dir:str):
 def after_initialized(func): #decorator for other functions other than command_init
     def wrapper(args):
         home_dir=Path(args.config_dir)
-        if home_dir.exists():
+        if home_dir.exists() and home_dir.joinpath('config.yml').exists() and home_dir.joinpath('environment.yml').exists():
             config_file=home_dir.joinpath('config.yml')
             environment_file=home_dir.joinpath('environment.yml')
             initialize_logger(args)
             return func(args)
         else: 
             # raise Exception("Not initialized, please run init command at the first use")
-            logger("Configuration directory is not found, commencing initialization ...",dmri.common.Color.WARNING)
+            logger("Configuration directory is not found or some files are missing, commencing initialization ...",dmri.common.Color.WARNING)
             command_init(args)
             config_file=home_dir.joinpath('config.yml')
             environment_file=home_dir.joinpath('environment.yml')
@@ -187,6 +187,7 @@ def command_run(args):
         "execution_id":args.execution_id,
         "baseline_threshold" : args.b0_threshold,
         "output_format" : args.output_format,
+        "output_file_base" : args.output_file_base,
         "no_output_image" : args.no_output_image
     }
     if args.output_format is not None:
@@ -228,7 +229,7 @@ def get_args():
     config_dir=Path(os.environ.get('HOME')).joinpath('.niral-dti/dmriprep-'+str(version))
     # ## read template
     module_help_str=None
-    if config_dir.exists():
+    if config_dir.exists() and config_dir.joinpath('config.yml').exists() and config_dir.joinpath('environment.yml').exists():
         config,environment = load_configurations(str(config_dir))
         template_path=config_dir.joinpath(config['protocol_template_path'])
         template=yaml.safe_load(open(template_path,'r'))
@@ -272,6 +273,7 @@ def get_args():
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
     parser_run.add_argument('-i','--input-image-list',help='Input image paths',type=str,nargs='+',required=True)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
+    parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
     parser_run.add_argument('--num-threads',help="Number of threads to use",default=None,type=int,required=False)
     parser_run.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)

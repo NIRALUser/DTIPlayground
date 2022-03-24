@@ -5,12 +5,13 @@ import dmri.common.tools as tools
 from dmri.preprocessing.dwi import DWI
 import yaml
 from pathlib import Path
-
+import importlib
 ###
 import numpy as np
 import ants 
-import antspynet 
+import antspynet
 import nibabel
+
 logger=prep.logger.write
 
 class BRAIN_Mask(prep.modules.DTIPrepModule):

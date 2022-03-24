@@ -59,7 +59,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         self.protocol['configurationFilePath']=self.protocol['configurationFilePath'].replace("$CONFIG_DIR",str(self.config_dir))
         return self.protocol
 
-    def process(self,*args,**kwargs): ## variables : self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
+    def process(self,*args,**kwargs): ## variables : self.images, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         #inputParams=self.getPreviousResult()['output']
         gradient_indexes_to_remove=[]

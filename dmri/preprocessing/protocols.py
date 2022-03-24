@@ -22,7 +22,7 @@ def load_configurations(config_dir:str):
     environment=yaml.safe_load(open(environment_filename,'r'))
     return config,environment
 
-def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules): ## generate sequence using uuid to avoid the issue from redundant module use
+def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules, io_options): ## generate sequence using uuid to avoid the issue from redundant module use
     seq=[]
     after_multi_input=False
     for idx,parr in enumerate(pipeline):
@@ -40,8 +40,8 @@ def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules): ## ge
                 "multi_input":True,
                 "module_name":module_name,
                 "options": options,
-                "image_path": Path(output_dir).joinpath('combined').__str__(),
-                "output_base": Path(output_dir).joinpath('combined').__str__(),
+                "image_path": Path(output_dir).joinpath(io_options['output_filename_base']).__str__(),
+                "output_base": Path(output_dir).joinpath(io_options['output_filename_base']).__str__(),
                "save": idx+1==len(pipeline) ## is it the final stage? (to save the final output)
             }
             ## save previous results
@@ -102,6 +102,7 @@ class Protocols:
         self.rawdata=None
         self.pipeline=None
         self.io={}
+        self.io_options={}
         self.version=None
         self.config_dir=config_dir 
 
@@ -244,6 +245,11 @@ class Protocols:
         self.io['no_output_image']= False
         if 'no_output_image' in options:
             self.io['no_output_image']=options['no_output_image']
+
+        # self.io['output_filename_base'] = getBaseFilename(self.images[0].filename)
+        # if 'output_filename_base' in options:
+        #     if options['output_filename_base']:
+        #         self.io['output_filename_base']=options['output_filename_base']
         if pipeline is not None:
             self.pipeline=self.furnishPipeline(pipeline)
         else:
@@ -309,13 +315,26 @@ class Protocols:
                 logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),prep.Color.WARNING)
                 raise Exception("Module {} is not configured correctly.".format(p))    
 
+    def getBaseFilename(self,org_filename):
+        fname = Path(org_filename).stem
+        potential_kwds=['ap','pa','hf','fh','si','is','lr','rl']
+        potential_kwds += list(map(lambda x: x.upper(),potential_kwds))
+        for kwd in potential_kwds:
+            splitter="_{}".format(kwd)
+            if splitter in fname:
+                return fname.split(splitter)[0]
+        return fname.split('.')[0]
+
     @prep.measure_time
     def runPipeline(self,options={}):
         try:
             if 'execution_id' in options: logger("Execution ID : {}".format(options['execution_id']))
             self.checkRunnable()
             self.processes_history=[]
-            execution_sequence = _generate_exec_seqeunce(self.pipeline,self.image_paths,self.output_dir,self.modules)
+            self.io_options['output_filename_base']=self.getBaseFilename(self.images[0].filename)
+            if options['output_file_base']:
+                self.io_options['output_filename_base']=options['output_file_base']
+            execution_sequence = _generate_exec_seqeunce(self.pipeline,self.image_paths,self.output_dir,self.modules, self.io_options)
             Path(self.output_dir).mkdir(parents=True,exist_ok=True)
             output_dir_map=_generate_output_directories_mapping(self.output_dir,execution_sequence)
             protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()
@@ -412,6 +431,10 @@ class Protocols:
                     
                     if not Path(final_filename).exists() or idx+1==len(execution_sequence):
                         # m.image.writeImage(final_filename,dest_type=m.image.image_type)
+                        # if 'combined_QCed' in stem:
+                        #     if self.io['output_filename_base']:
+                        #         stem=self.io['output_filename_base']+"_QCed"
+                        #         final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
                         m.image.writeImage(final_filename,dest_type=self.io['output_format'])
                         m.image.dumpGradients(final_gradients_filename)
                         m.image.dumpInformation(final_information_filename)

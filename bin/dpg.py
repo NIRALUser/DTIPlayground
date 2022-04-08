@@ -1,10 +1,5 @@
-#!/usr/bin/python3
+#!python
 
-#
-#
-# dtiplayground launcher
-#
-#
 import shutil
 import os 
 import importlib
@@ -18,7 +13,7 @@ sys.path.append(Path(__file__).parent.__str__())
 import dtiplayground.dmri.common 
 import dtiplayground.dmri.common.study as study
 import dtiplayground.dmri.common.study.loaders as study_loaders
-
+from dtiplayground.config import INFO as info
 logger=dtiplayground.dmri.common.logger.write 
 
 
@@ -55,8 +50,8 @@ def command_import(args):
 
 def get_args():
     current_dir=Path(__file__).parent
-    version_info=yaml.safe_load(open(current_dir.joinpath('version.yml'),'r'))
-    version=version_info['dtiplayground']
+    # info=yaml.safe_load(open(current_dir.parent.joinpath('dtiplayground/info.json'),'r'))
+    version=info['dtiplayground']['version']
     logger("VERSION : {}".format(str(version)))
     config_dir=Path(os.environ.get('HOME')).joinpath('.niral-dti')
     uid, ts = dtiplayground.dmri.common.get_uuid(), dtiplayground.dmri.common.get_timestamp()

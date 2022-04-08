@@ -1,10 +1,11 @@
 import sys,os
 from setuptools import setup, find_packages
 import json
+from os.path import join as pjoin, dirname, exists
+from glob import glob
 
-info={}
-with open('info.json') as f:
-    info = json.load(f)
+from dtiplayground.config import INFO as info
+
 using_setuptools = 'setuptools' in sys.modules
 extra_setuptools_args = {}
 
@@ -18,12 +19,19 @@ if using_setuptools:
 
 setup(
     name='dtiplayground',
-    version=info['version'],
+    version=info['dtiplayground']['version'],
     license='MIT',
     author="SK Park, NIRAL, University of North Carolina @ Chapel Hill",
     author_email='scalphunter@gmail.com',
     packages=find_packages('.'),
     package_dir={'': '.'},
+    package_data = {
+    '': ['*.yml','*.yaml','*.json','*.cnf'],
+    },
+    scripts=glob(pjoin('bin', '*')),
+    # data_files=[('', glob(pjoin('dtiplayground/dmri/common/data','*.*'))),
+    #             ('', glob(pjoin('dtiplayground/dmri/preprocessing/templates','*.*'))),
+    #             ],
     url='https://github.com/niraluser/dtiplayground',
     keywords='dtiplayground',
     install_requires=[

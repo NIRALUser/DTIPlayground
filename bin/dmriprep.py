@@ -1,10 +1,5 @@
-#!/usr/bin/python3
+#!python
 
-#
-#
-# prep launcher 
-#
-#
 import shutil
 import os 
 import importlib
@@ -15,7 +10,7 @@ import traceback,time,copy,yaml,sys,uuid
 import sys
 sys.path.append(Path(__file__).parent.parent.__str__())
 import dtiplayground.dmri.common
-
+from dtiplayground.config import INFO as info
 logger=dtiplayground.dmri.common.logger.write 
 
 ### unit functions
@@ -219,8 +214,8 @@ def command_run(args):
 
 def get_args():
     current_dir=Path(__file__).parent
-    info=yaml.safe_load(open(current_dir.parent.joinpath('info.json'),'r'))
-    version=info['dmriprep']
+    # info=yaml.safe_load(open(current_dir.parent.joinpath('dtiplayground/info.json'),'r'))
+    version=info['dmriprep']['version']
     logger("VERSION : {}".format(str(version)))
     config_dir=Path(os.environ.get('HOME')).joinpath('.niral-dti/dmriprep-'+str(version))
     # ## read template

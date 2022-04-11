@@ -8,7 +8,9 @@ import argparse,yaml
 from argparse import RawTextHelpFormatter
 import traceback,time,copy,yaml,sys,uuid
 import sys
-sys.path.append(Path(__file__).parent.parent.__str__())
+sys.path.append('../')
+libdir=Path(__file__).parent.parent.__str__()
+print(libdir)
 import dtiplayground.dmri.common
 from dtiplayground.config import INFO as info
 logger=dtiplayground.dmri.common.logger.write 

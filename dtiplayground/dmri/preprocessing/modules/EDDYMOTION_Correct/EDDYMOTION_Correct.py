@@ -18,10 +18,6 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         super().__init__(config_dir)
 
     def generateDefaultEnvironment(self):
-    #     #find fsl path 
-    #     fsldir, fsl_version=utils.find_fsl(['/NIRAL/tools/FSL/fsl-6.0.3','/dtiplayground-tools/centos7/FSL'])
-    #     res={'fsl_path': fsldir, 'fsl_version' : fsl_version}
-    #     return res
         return super().generateDefaultEnvironment()
     
     def checkDependency(self,environment): #use information in template, check if this module can be processed
@@ -56,14 +52,15 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         self.software_info=protocol_options['software_info']['softwares']
         susceptibility=False
         susceptibility_parameters=None
+        self.qcReport = self.protocol['qcReport']
         if 'susceptibility_parameters' in inputParams:
             susceptibility=True
             susceptibility_parameters=inputParams['susceptibility_parameters']
         res=None
         if susceptibility:
-            res=self.eddy_with_susceptibility(self.image,None,susceptibility_parameters)
+            res=self.eddy_with_susceptibility(self.image,None,susceptibility_parameters, self.qcReport)
         else:
-            res=self.eddy(self.image,None)
+            res=self.eddy(self.image,None, self.qcReport)
 
         ## results
         self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
@@ -108,7 +105,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
     ### scripts
     @measure_time
-    def eddy(self,image,outfilename): #singlefile eddy without susceptibility (topup)
+    def eddy(self,image,outfilename, qcreport=False): #singlefile eddy without susceptibility (topup)
         output_dir=Path(self.output_dir)
 
         ### conversion to nifti 
@@ -178,7 +175,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
             img.writeImage(Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).__str__(),dest_type='nrrd')
 
         logger("Executing eddy_quad for quality assessment...",prep.Color.PROCESS)
-        if not Path(quad_output_dir).exists():
+        if not Path(quad_output_dir).exists() and qcreport:
             output=fsl.eddy_quad(
                         input_base=processed_nifti_base,
                         idx=index_filename,
@@ -187,15 +184,11 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                         bvals=processed_bvals)
 
         self.image=self.loadImage(processed_nifti_nonneg)
-        # self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
-        # self.image.image_type='nrrd'
-        # # if not Path(output_nrrd).exists():
-        # self.writeImage(output_nrrd)
         self.writeImageWithOriginalSpace(output_nrrd,'nrrd')
         return None
 
     @measure_time
-    def eddy_with_susceptibility(self,image,outfilename,params): ## eddy with topup (susceptibility correction process is required before execution)
+    def eddy_with_susceptibility(self,image,outfilename,params, qcreport=False): ## eddy with topup (susceptibility correction process is required before execution)
         logger(yaml.dump(params),prep.Color.DEV)
 
         output_dir=Path(self.output_dir)
@@ -263,7 +256,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
             img.writeImage(Path(output_dir.joinpath("output_eddied_nonneg_dev.nrrd")).__str__(),dest_type='nrrd')
 
         logger("Executing eddy_quad for quality assessment...",prep.Color.PROCESS)
-        if not Path(quad_output_dir).exists():
+        if not Path(quad_output_dir).exists() and qcreport:
             output=fsl.eddy_quad(
                         input_base=processed_nifti_base,
                         idx=index_filename,
@@ -273,9 +266,6 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         self.image=self.loadImage(processed_nifti_nonneg)
         self.image.image_type='nrrd'
-        # self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
-        # # if not Path(output_nrrd).exists():
-        # self.writeImage(output_nrrd)
         self.writeImageWithOriginalSpace(output_nrrd,'nrrd')
         return None
 

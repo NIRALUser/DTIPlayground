@@ -8,10 +8,11 @@ import argparse,yaml
 from argparse import RawTextHelpFormatter
 import traceback,time,copy,yaml,sys,uuid
 import sys
-sys.path.append(Path(__file__).resolve().parent.parent.__str__())
+sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line is for development
 import dtiplayground.dmri.common
 from dtiplayground.config import INFO as info
 logger=dtiplayground.dmri.common.logger.write 
+color= dtiplayground.dmri.common.Color
 
 ### unit functions
 
@@ -69,8 +70,55 @@ def log_off(func):
         return res 
     return wrapper
 
+def search_fsl():
+    fslpath=Path(os.environ['FSLDIR'])
+    if fslpath.exists():
+        logger("FSL directory found : {}".format(os.environ['FSLDIR']), color.OK)
+    else:
+        logger("FSL directory not found for environment variable FSLDIR in: {}".format(os.environ['FSLDIR']), color.ERROR)
+        search_dir = input("Specify the directory of installed FSL [/] :")
+        if not search_dir: 
+            search_dir = '/'
+        search_dir = Path(search_dir)
+        candidates = search_dir.glob("**/bin/fsl")
+        logger("Searching in {}".format(search_dir.__str__()),color.PROCESS)
+        for c in candidates:
+            c = Path(c)
+            if c.__str__().lower().endswith('/bin/fsl'):
+                fslpath = c.resolve().parent.parent
+                logger("Found : {}".format(fslpath.__str__()), color.OK)
+                confirm = input("Is this FSL what you want? [Y/n]")
+                if not confirm: confirm = 'y'
+                if confirm.lower() == 'y':
+                    break
+    return fslpath
 
+def search_niral_tools():
+    pass
+    
 ### command functions
+
+def command_find_tools(args):
+    ## reparametrization
+    home_dir=Path(args.config_dir)
+
+    ## Function begins
+    config_filename=home_dir.joinpath("config.yml")
+    environment_filename=home_dir.joinpath("environment.yml")
+    software_filename=home_dir.joinpath('software_paths.yml')
+    software_info_path=Path(__file__).resolve().parent.parent.joinpath("dtiplayground/dmri/common/data/software_paths.yml")
+    ## load default software paths
+
+    software_paths=yaml.safe_load(open(software_info_path,'r'))
+
+    ## search FSL
+    fslpath = search_fsl()
+    logger("Selected FSL directory is : {}".format(fslpath.__str__()),color.INFO)
+    software_paths['softwares']['FSL']['path']=fslpath.__str__()
+
+    ## search NIRAL
+   
+    return True
 
 def command_init(args):
     ## reparametrization
@@ -94,18 +142,11 @@ def command_init(args):
     yaml.dump(config,open(config_filename,'w'))
     logger("Config file written to : {}".format(str(config_filename)),dtiplayground.dmri.preprocessing.Color.INFO)
     ## copy default software path
-    software_info_path=Path(__file__).parent.parent.joinpath("dtiplayground/dmri/common/data/software_paths.yml")
+    software_info_path=Path(__file__).resolve().parent.parent.joinpath("dtiplayground/dmri/common/data/software_paths.yml")
     software_filename=home_dir.joinpath('software_paths.yml')
     shutil.copy(software_info_path,software_filename)
     logger("Software path file is written to : {}".format(str(software_filename)),dtiplayground.dmri.preprocessing.Color.INFO)
-    ## copy default software path
-    # software_info_path=Path(__file__).parent.joinpath("dmri/common/data/software_paths.yml")
-    # software_filename=home_dir.joinpath('software_paths.yml')
-    # shutil.copy(software_info_path,software_filename)
-    # logger("Software path file is written to : {}".format(str(software_filename)),dtiplayground.dmri.preprocessing.Color.INFO)
-    ## generate tool parameters
 
-    ## make environment file (environment.yml)
     modules=dtiplayground.dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
     environment=dtiplayground.dmri.preprocessing.modules.generate_module_envionrment(modules,str(home_dir))
     yaml.dump(environment,open(environment_filename,'w'))
@@ -213,7 +254,7 @@ def command_run(args):
 ### Arguments 
 
 def get_args():
-    current_dir=Path(__file__).parent
+    current_dir=Path(__file__).resolve().parent
     # info=yaml.safe_load(open(current_dir.parent.joinpath('dtiplayground/info.json'),'r'))
     version=info['dmriprep']['version']
     logger("VERSION : {}".format(str(version)))
@@ -246,6 +287,10 @@ def get_args():
     ## init command
     parser_update=subparsers.add_parser('update',help='Update environment file')
     parser_update.set_defaults(func=command_update)
+
+    ## software find command
+    parser_find_tools=subparsers.add_parser('find-tools',help='Search and update software paths')
+    parser_find_tools.set_defaults(func=command_find_tools)
 
     ## generate-default-protocols
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)

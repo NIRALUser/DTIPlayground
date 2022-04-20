@@ -13,3 +13,9 @@ protocol:
         caption: Susceptibility Correction
         default_value: False 
         description: Correcting susceptibility motion, SUSCEPTIBILITY_Correct module is required to be performed before EDDY 
+      qcReport:
+        type: boolean
+        caption: Generate QC report
+        default_value: False
+        description: Generate QC report from FSL
+        

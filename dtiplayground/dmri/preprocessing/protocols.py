@@ -113,7 +113,7 @@ class Protocols:
         self.image_cache={} # cache for the previous results
 
         #Execution variables
-        self.template_filename=Path(__file__).parent.joinpath("templates/protocol_template.yml")
+        self.template_filename=Path(__file__).resolve().parent.joinpath("templates/protocol_template.yml")
         self.modules=modules
         self.previous_process=None #this is to ensure to access previous results (image and so on)
         self.software_info=None # binary path of softwares (such as fsl)
@@ -153,7 +153,7 @@ class Protocols:
     def setSoftwareInfo(self, paths:object=None):
         softwares=None
         if paths is None:
-            spaths=[Path(self.config_dir).joinpath('software_paths.yml'),Path(__file__).parent.parent.joinpath('common/data/software_paths.yml')]
+            spaths=[Path(self.config_dir).joinpath('software_paths.yml'),Path(__file__).resolve().parent.parent.joinpath('common/data/software_paths.yml')]
             for p in spaths:
                 if Path(p).exists():
                     softwares=yaml.safe_load(open(p,'r'))

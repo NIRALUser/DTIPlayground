@@ -17,7 +17,7 @@ def _load_modules(user_module_paths=[],module_names=None):
 
 def _load_default_modules(module_names=None): # user_modules list of paths of user modules
     modules={}
-    default_module_paths=[Path(__file__).parent]
+    default_module_paths=[Path(__file__).resolve().parent]
     return _load_modules_from_paths(default_module_paths,module_names)
 
 def _load_modules_from_paths(user_module_paths: list,module_names=None): #module names = list of modules to load (if none, load everything)

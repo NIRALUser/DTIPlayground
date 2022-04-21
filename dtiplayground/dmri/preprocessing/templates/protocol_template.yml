@@ -105,6 +105,9 @@ options:
         - value: TEST
           caption: Test Module (Dev)
           description: Not implemented
+        - value: QC_Report
+          caption: QC Report
+          description: Generate report documents
       default_value: ## default elements 
         - SLICE_Check
         - INTERLACE_Check 

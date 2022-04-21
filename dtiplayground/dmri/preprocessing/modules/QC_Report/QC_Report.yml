@@ -1,0 +1,20 @@
+name: QC_Report
+caption: QC_Report
+description: Generating report documents
+version: "0.1"
+dependency: null 
+module_type: prep
+process_attributes:
+    - utility
+result: null
+protocol:
+    generatePDF: 
+        type: bool
+        caption: PDF report
+        default_value: True
+        description: Generate PDF file report
+    generateCSV:
+        type: bool
+        caption: CSV report
+        default_value: True
+        description: Generate CSV file report

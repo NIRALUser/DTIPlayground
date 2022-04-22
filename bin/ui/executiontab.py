@@ -46,10 +46,10 @@ class ExecutionTabCommunicate(QObject):
 class ExecutionTab(QWidget):
   communicate = ExecutionTabCommunicate()
 
-  def __init__(self, protocol_template):
+  def __init__(self, protocol_template, args):
     QWidget.__init__(self)
     self.mulri_input = 0
-    
+    self.args = args
     self.tab = QWidget() 
     self.communicate.call_UpdateNumberOfInputs.connect(self.UpdateNumberOfInputs)
     self.communicate.call_compute.connect(self.Compute)
@@ -329,7 +329,10 @@ class ExecutionTab(QWidget):
       self.input_filename2 = text
 
   def BrowseInputFile(self):
-    #self.output_line.setText("")
+    if self.args.output_directory:
+      self.output_line.setText(self.args.output_directory)
+    else:
+      self.output_line.setText("")
     file_filter = "Image file (*.nrrd *.nii *.nii.gz)"
     file_name = QFileDialog.getOpenFileName(
       parent = self,

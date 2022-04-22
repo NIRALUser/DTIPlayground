@@ -35,7 +35,7 @@ class Widgets(QWidget):
     # instanciation of classes
     
     self.protocol_tab = ProtocolTab(protocol_template, protocol_yml, preferences_yml) #elements related to the protocol tab
-    self.execution_tab = ExecutionTab(protocol_template) #elements related to the execution tab
+    self.execution_tab = ExecutionTab(protocol_template, args) #elements related to the execution tab
     init_module_id = self.protocol_tab.selector.modules_list_widget.count()
     self.protocol = Protocol(protocol_template, protocol_yml, preferences_yml, init_module_id) #functions related to the manipulations of the protocol
 

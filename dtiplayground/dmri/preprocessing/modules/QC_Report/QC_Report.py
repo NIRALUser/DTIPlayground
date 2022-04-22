@@ -4,7 +4,6 @@ import pandas
 import os
 import fnmatch
 import SimpleITK as sitk
-from PyQt5.QtGui import QTransform
 import numpy
 from PIL import Image
 from PIL.ImageQt import ImageQt
@@ -103,7 +102,6 @@ class QC_Report(prep.modules.DTIPrepModule):
                 data.append(image_data)
 
             if len(input_images_directory_list) == 0: #no module before fusionning images
-                print(self.result_history)
                 for input_image in self.result_history[0]["output"]:
                     image_data = {'input_image': input_image["image_path"], 'modules':{}}
                     image_data["number_of_excluded_gradients"] = len(total_excluded_gradients)
@@ -234,13 +232,6 @@ class QC_Report(prep.modules.DTIPrepModule):
 
         # QCed volume gradients
         x, y = 20, 750 
-        text = self.result_history[len(self.result_history)-1]["output"]["image_path"]
-        while len(text) % 90 > 0:
-            can.drawString(x, y, text[:90])
-            text = text[90:]
-            y -=10                
-        can.drawString(x, y, text)
-        y = y - dy
         output_number_gradients = info_display_QCed_gradients[0]
         width = info_display_QCed_gradients[1]
         height = info_display_QCed_gradients[2]
@@ -281,143 +272,103 @@ class QC_Report(prep.modules.DTIPrepModule):
     ## Images
 
     def CreateImages(self):
-        input_image, image_type = self.LoadImage()
+        
+        input_image = sitk.GetImageFromArray(self.source_image.images)
         input_size = list(input_image.GetSize())
-        input_spacing = list(input_image.GetSpacing())
-        if image_type == 'nrrd':
-            input_number_gradients = input_image.GetNumberOfComponentsPerPixel()
-        else: #nifti
-            input_number_gradients = input_size[3]
-        image_info = [input_image, image_type]
+        input_number_gradients = list(self.source_image.images.shape)[3]
+        
         output_images_directory = self.GetOutputImagesDirectory()
-        zoom_factor = self.GetZoom(image_info)
-  
-        for iter_gradients in range(input_number_gradients):  
-            gradient_extractor = sitk.VectorIndexSelectionCastImageFilter()
-            gradient_extractor.SetIndex(iter_gradients)
+        zoom_factor = self.GetZoom(input_size, input_image)
 
-            axial_image = self.AxialView(gradient_extractor, zoom_factor, iter_gradients, image_info)
-            sagittal_image = self.SagittalView(gradient_extractor, zoom_factor, iter_gradients, image_info)
-            coronal_image = self.CoronalView(gradient_extractor, zoom_factor, iter_gradients, image_info)
+        for iter_gradients in range(input_number_gradients):  
+
+            axial_image = self.AxialView(zoom_factor, iter_gradients, input_size, input_image)
+            sagittal_image = self.SagittalView(zoom_factor, iter_gradients, input_size, input_image)
+            coronal_image = self.CoronalView(zoom_factor, iter_gradients, input_size, input_image)
 
             # concatenate
-            width = axial_image.width + sagittal_image.width + coronal_image.width
-            height = max(axial_image.height, sagittal_image.height, coronal_image.height)
+            width = axial_image.height + sagittal_image.width + coronal_image.height
+            height = max(axial_image.width, sagittal_image.height, coronal_image.width)
             dwi_image = Image.new('L', (width, height), 0)
             dwi_image.paste(sagittal_image, (0, 0))
             dwi_image.paste(axial_image, (sagittal_image.width, 0))
-            dwi_image.paste(coronal_image, (sagittal_image.width + axial_image.width, 0))
+            dwi_image.paste(coronal_image, (sagittal_image.width + axial_image.height, 0))
             dwi_image.save(output_images_directory + "/dwi" + str(iter_gradients) + ".jpg")
   
         info_display_QCed_gradients = [input_number_gradients, dwi_image.width, dwi_image.height]
         return info_display_QCed_gradients
 
-
-    def LoadImage(self):      
-        #input_image = sitk.ReadImage(self.result_history[0]["output"][0]["input"]["image_path"])
-        print(self.result_history[len(self.result_history) - 1])
-        input_image_path = self.result_history[len(self.result_history) - 1]["output"]["image_path"]
-        input_image = sitk.ReadImage(input_image_path)
-        if ".nrrd" in input_image_path:
-            image_type = 'nrrd'
-        else:
-            image_type = 'nifti'
-        return input_image, image_type
-
-
     def GetOutputImagesDirectory(self):
         if not os.path.exists(self.output_dir + "/QC_Report_images"):
             os.mkdir(self.output_dir + "/QC_Report_images")
-            print("Directory", str(self.output_dir + "/QC_Report_images"), "created")
-        else:
-            print("Directory", str(self.output_dir + "/QC_Report_images"), "already exists")
         return str(self.output_dir) + "/QC_Report_images"
 
     
-    def GetZoom(self, image_info):
-        gradient_extractor = sitk.VectorIndexSelectionCastImageFilter()
-        gradient_extractor.SetIndex(0)
-        axial_image = self.AxialView(gradient_extractor, 1, 0, image_info)
-        sagittal_image = self.SagittalView(gradient_extractor, 1, 0, image_info)
-        coronal_image = self.CoronalView(gradient_extractor, 1, 0, image_info)
-        width = axial_image.width + sagittal_image.width + coronal_image.width
+    def GetZoom(self, input_size, input_image):
+        
+        axial_image = self.AxialView(1, 0, input_size, input_image)
+        sagittal_image = self.SagittalView(1, 0, input_size, input_image)
+        coronal_image = self.CoronalView(1, 0, input_size, input_image)
+        width = axial_image.height + sagittal_image.width + coronal_image.height
         zoom_factor = round((612 -3*20)/(2*width), 2)
         return zoom_factor
 
 
-    def AxialView(self, gradient_extractor, zoom_factor, iter_gradients, image_info):
-        input_image = image_info[0]
-        image_type = image_info[1]
-        input_size = list(input_image.GetSize())
-        input_spacing = list(input_image.GetSpacing())
+    def AxialView(self, zoom_factor, iter_gradients, input_size, input_image):
 
-        spacing_matrix = QTransform()
-        spacing_matrix.scale(input_spacing[0], input_spacing[1])
-        slice_extractor = sitk.ExtractImageFilter()
-        if image_type == 'nrrd': #nrrd image
-            slice_extractor.SetSize([input_size[0], input_size[1], 0])
-            slice_extractor.SetIndex([0, 0, input_size[2]//2])
-            extracted_slice = slice_extractor.Execute(input_image)
-            gradient = gradient_extractor.Execute(extracted_slice)
-        else: #nifti image
-            slice_extractor.SetSize([input_size[0], input_size[1], 0, 0])
-            slice_extractor.SetIndex([0, 0, input_size[2]//2, iter_gradients])
-            gradient = slice_extractor.Execute(input_image)
-        gradient_array = sitk.GetArrayFromImage(gradient)
-        gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
-        gradient_image = Image.fromarray(gradient_array_normalized)
-        gradient_image = gradient_image.convert("L")
-        gradient_image2 = gradient_image.resize((int(zoom_factor*gradient_image.width), int(zoom_factor*gradient_image.height)))
-        return gradient_image2
-
-    def SagittalView(self, gradient_extractor, zoom_factor, iter_gradients, image_info):
-        input_image = image_info[0]
-        image_type = image_info[1]
-        input_size = list(input_image.GetSize())
-        input_spacing = list(input_image.GetSpacing())
-
-        spacing_matrix = QTransform()
-        spacing_matrix.scale(input_spacing[1], input_spacing[2])
-        slice_extractor = sitk.ExtractImageFilter()
-        if image_type == 'nrrd': #nrrd image
-            slice_extractor.SetSize([0, input_size[1], input_size[2]])
-            slice_extractor.SetIndex([input_size[0]//2, 0, 0])
-            extracted_slice = slice_extractor.Execute(input_image)
-            gradient = gradient_extractor.Execute(extracted_slice)
-        else: #nifti image
-            slice_extractor.SetSize([0, input_size[1], input_size[2], 0])
-            slice_extractor.SetIndex([input_size[0]//2, 0, 0, iter_gradients])
-            gradient = slice_extractor.Execute(input_image)
-        gradient_array = sitk.GetArrayFromImage(gradient)
-        gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
-        gradient_array_normalized = numpy.flipud(gradient_array_normalized)
-        gradient_image = Image.fromarray(gradient_array_normalized)
-        gradient_image = gradient_image.convert("L")
-        gradient_image2 = gradient_image.resize((int(zoom_factor*gradient_image.width), int(zoom_factor*gradient_image.height)))
-        return gradient_image2
-
-    def CoronalView(self, gradient_extractor, zoom_factor, iter_gradients, image_info):
-        input_image = image_info[0]
-        image_type = image_info[1]
-        input_size = list(input_image.GetSize())
-        input_spacing = list(input_image.GetSpacing())
-
-        spacing_matrix = QTransform()
-        spacing_matrix.scale(input_spacing[0], input_spacing[2])
         slice_extractor = sitk.ExtractImageFilter()  
-        if image_type == 'nrrd': #nrrd image  
-            slice_extractor.SetSize([input_size[0], 0, input_size[2]])
-            slice_extractor.SetIndex([0, input_size[1]//2, 0])
-            extracted_slice = slice_extractor.Execute(input_image)
-            gradient = gradient_extractor.Execute(extracted_slice)
-        else: #nifti image
-            slice_extractor.SetSize([input_size[0], 0, input_size[2], 0])
-            slice_extractor.SetIndex([0, input_size[1]//2, 0, iter_gradients])
-            gradient = slice_extractor.Execute(input_image)
+        slice_extractor.SetSize([input_size[0], input_size[1], 0])
+        slice_extractor.SetIndex([0, 0, input_size[2]//2])
+        extracted_slice = slice_extractor.Execute(input_image)
+
+        gradient_extractor = sitk.VectorIndexSelectionCastImageFilter()
+        gradient_extractor.SetIndex(iter_gradients)
+        gradient = gradient_extractor.Execute(extracted_slice)
+        
+        gradient_array = sitk.GetArrayFromImage(gradient)
+        gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
+        gradient_image = Image.fromarray(gradient_array_normalized)
+        gradient_image = gradient_image.convert("L")
+        gradient_image = gradient_image.rotate(90)
+        gradient_image_resized = gradient_image.resize((int(zoom_factor*gradient_image.width), int(zoom_factor*gradient_image.height)))
+        return gradient_image_resized
+
+    def SagittalView(self, zoom_factor, iter_gradients, input_size, input_image):
+        
+        slice_extractor = sitk.ExtractImageFilter()
+        slice_extractor.SetSize([0, input_size[1], input_size[2]])
+        slice_extractor.SetIndex([input_size[0]//2, 0, 0])
+        extracted_slice = slice_extractor.Execute(input_image)
+
+        gradient_extractor = sitk.VectorIndexSelectionCastImageFilter()
+        gradient_extractor.SetIndex(iter_gradients)
+        gradient = gradient_extractor.Execute(extracted_slice)
+        
         gradient_array = sitk.GetArrayFromImage(gradient)
         gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
         gradient_array_normalized = numpy.flipud(gradient_array_normalized)
         gradient_image = Image.fromarray(gradient_array_normalized)
         gradient_image = gradient_image.convert("L")
-        gradient_image2 = gradient_image.resize((int(zoom_factor*gradient_image.width), int(zoom_factor*gradient_image.height)))
-        return gradient_image2
+        gradient_image = gradient_image.rotate(270)
+        gradient_image_resized = gradient_image.resize((int(zoom_factor*gradient_image.width), int(zoom_factor*gradient_image.height)))
+        return gradient_image_resized
+
+    def CoronalView(self, zoom_factor, iter_gradients, input_size, input_image):
+        
+        slice_extractor = sitk.ExtractImageFilter()  
+        slice_extractor.SetSize([input_size[0], 0, input_size[2]])
+        slice_extractor.SetIndex([0, input_size[1]//2, 0])
+        extracted_slice = slice_extractor.Execute(input_image)
+
+        gradient_extractor = sitk.VectorIndexSelectionCastImageFilter()
+        gradient_extractor.SetIndex(iter_gradients)
+        gradient = gradient_extractor.Execute(extracted_slice)
+        
+        gradient_array = sitk.GetArrayFromImage(gradient)
+        gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
+        gradient_array_normalized = numpy.flipud(gradient_array_normalized)
+        gradient_image = Image.fromarray(gradient_array_normalized)
+        gradient_image = gradient_image.convert("L")
+        gradient_image = gradient_image.rotate(90)
+        gradient_image_resized = gradient_image.resize((int(zoom_factor*gradient_image.width), int(zoom_factor*gradient_image.height)))
+        return gradient_image_resized

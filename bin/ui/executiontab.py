@@ -286,8 +286,8 @@ class ExecutionTab(QWidget):
       while os.path.exists(new_outputpath):
         new_outputpath = outputpath + "_" + str(counter)
         counter += 1
-        outputpath = new_outputpath
-      self.output_line.setText(outputpath)
+        
+      self.output_line.setText(new_outputpath)
 
     arguments.append(outputpath)
     if self.output_image_basename.text != '':

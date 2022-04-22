@@ -4,7 +4,6 @@ import pandas
 import os
 import fnmatch
 import SimpleITK as sitk
-from PyQt5.QtGui import QTransform
 import numpy
 from PIL import Image
 from PIL.ImageQt import ImageQt

@@ -21,6 +21,7 @@ class ProtocolCommunicate(QObject):
   call_execute_exclude_gradients_popup = Signal()
   enable_modules_list_widget = Signal(bool)
   enable_exclude_gradients_module = Signal(bool)
+  update_selector_data = Signal(str, int)
 
   def CallClearProtocol(self):
     self.call_clear_protocol.emit()
@@ -54,6 +55,9 @@ class ProtocolCommunicate(QObject):
 
   def EnableExcludeGradientsModule(self, new_state):
     self.enable_exclude_gradients_module.emit(new_state)
+
+  def UpdateSelectorData(self, module_name, new_data):
+    self.update_selector_data.emit(module_name, new_data)
 
 class Protocol():
   communicate = ProtocolCommunicate()
@@ -97,6 +101,8 @@ class Protocol():
         self.utilheader_params[2] = protocol_module[1]
       if protocol_module[0] == "UTIL_Merge":
         self.utilmerge_params[2] = protocol_module[1]
+      if protocol_module[0] == "QC_Report":
+        self.qcreport_params[2] = protocol_module[1]
 
       # modules list
       for template_module in self.protocol_template["options"]["execution"]["pipeline"]["candidates"]:
@@ -135,8 +141,7 @@ class Protocol():
       new_dic_protocol[key] = self.dic_protocol[key]
     self.SetDicProtocol(new_dic_protocol)
 
-  def ModuleAddedToProtocol(self): 
-    
+  def ModuleAddedToProtocol(self):    
     if self.loading_protocol == True:
       self.communicate.GetListWidgetModules()      
     else:
@@ -169,6 +174,8 @@ class Protocol():
         self.dic_protocol[key] = self.utilheader_params
       if module.text() == "Merge Images":
         self.dic_protocol[key] = self.utilmerge_params
+      if module.text() == "QC Report":
+        self.dic_protocol[key] = self.qcreport_params
     self.CheckExcludeInProtocol(exclude_in_protocol)
 
   def ModuleAddedToProtocolDrop(self, list_selected_modules):
@@ -197,9 +204,12 @@ class Protocol():
         self.dic_protocol[current_id] = self.utilheader_default_params
       if module.text() == "Merge Images":
         self.dic_protocol[current_id] = self.utilmerge_default_params
+      if module.text() == "QC Report":
+        self.dic_protocol[current_id] = self.qcreport_default_params
       
       self.communicate.SetModuleData([module, current_id])
       self.module_id += 1
+      self.communicate.UpdateSelectorData(module.text(), self.module_id)
 
     self.CheckExcludeInProtocol(exclude_in_protocol)
 
@@ -257,6 +267,10 @@ class Protocol():
         self.utilmerge_default_params = protocol_yml["pipeline"][ite]
         self.utilmerge_default_params.insert(0, "Merge Images")
 
+      if protocol_yml["pipeline"][ite][0] == "QC_Report":
+        self.qcreport_default_params = protocol_yml["pipeline"][ite]
+        self.qcreport_default_params.insert(0, "QC Report")
+
     self.slicecheck_params = self.slicecheck_default_params.copy()
     self.interlacecheck_params = self.interlacecheck_default_params.copy()
     self.baselineaverage_params = self.baselineaverage_default_params.copy()
@@ -267,6 +281,7 @@ class Protocol():
     self.exclude_params = self.exclude_default_params.copy()
     self.utilheader_params = self.utilheader_default_params.copy()
     self.utilmerge_params = self.utilmerge_default_params.copy()
+    self.qcreport_params = self.qcreport_default_params.copy()
 
 
   def SetDicProtocol(self, new_dic_protocol):
@@ -299,6 +314,8 @@ class Protocol():
       self.utilheader_params = self.utilheader_default_params
     if module_name == "UTIL_Merge":
       self.utilmerge_params = self.utilmerge_default_params
+    if module_name == "QC_Report":
+      self.qcreport_params = self.qcreport_default_params
 
   def RemoveModuleFromDicProtocol(self, item_to_remove_key):
     self.dic_protocol.pop(item_to_remove_key)

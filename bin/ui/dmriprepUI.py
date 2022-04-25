@@ -70,6 +70,7 @@ class Widgets(QWidget):
     self.protocol_tab.details.susceptibility.communicate.call_update_user_preferences_file.connect(self.UpdateUserPreferencesFile)
     self.protocol_tab.details.utilheader.communicate.send_params.connect(self.UpdateModuleParams)
     self.protocol_tab.details.utilmerge.communicate.send_params.connect(self.UpdateModuleParams)
+    self.protocol_tab.details.qcreport.communicate.send_params.connect(self.UpdateModuleParams)
     # Communication from module selector subtab
     self.protocol_tab.selector.communicate.module_added_to_protocol_drop.connect(self.protocol.ModuleAddedToProtocolDrop)
     # Communication from module details subtab
@@ -112,6 +113,7 @@ class Widgets(QWidget):
     self.protocol.communicate.call_execute_exclude_gradients_popup.connect(self.protocol_tab.exclude_popup.exec_)
     self.protocol.communicate.enable_modules_list_widget.connect(self.protocol_tab.selector.EnableModulesListWidget)
     self.protocol.communicate.enable_exclude_gradients_module.connect(self.protocol_tab.selector.EnableExcludeGradientsModule)
+    self.protocol.communicate.update_selector_data.connect(self.protocol_tab.selector.UpdateSelectorData)
 
 
     self.tabs.tabBarClicked.connect(self.MultiInput)
@@ -126,7 +128,6 @@ class Widgets(QWidget):
       if len(args.image) == 1:
         self.execution_tab.input_filename = args.image[0]
         if args.quickview:
-          print("quickview")
           self.protocol.dic_protocol[0] = self.protocol.exclude_default_params
           self.execution_tab.multi_input = 0
           self.execution_tab.Compute([True, True]) #launch QuickView window

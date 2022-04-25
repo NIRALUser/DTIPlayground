@@ -48,7 +48,7 @@ pipeline:
       skip: false
       write_image: false
     protocol:
-      configurationFilePath: /home/jdubos/.niral-dti/dmriprep-0.2.6-beta3/parameters/fsl/fsl_regb02b0.cnf
+      configurationFilePath: /home/jdubos/.niral-dti/dmriprep-0.2.6-beta5/parameters/fsl/fsl_regb02b0.cnf
       phaseEncodingAxis:
       - 1
       phaseEncodingValue: 0.0924
@@ -58,6 +58,7 @@ pipeline:
       skip: false
       write_image: false
     protocol:
+      qcReport: false
       susceptibilityCorrection: false
 - - BRAIN_Mask
   - options:
@@ -98,4 +99,12 @@ pipeline:
       write_image: false
     protocol:
       TestParam: null
+- - QC_Report
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      generateCSV: true
+      generatePDF: true
 version: 0.1

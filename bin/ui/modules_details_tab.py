@@ -16,6 +16,7 @@ import ui.modules_details.susceptibility as susceptibility
 import ui.modules_details.utilheader as utilheader
 import ui.modules_details.nomodule as nomodule
 import ui.modules_details.utilmerge as utilmerge
+import ui.modules_details.qcreport as qcreport
 
 
 class DetailsDisplayCommunicate(QObject):
@@ -69,6 +70,7 @@ class ModuleDetails(QWidget):
     self.utilheader = utilheader.UtilHeader(protocol_template, self.utilheader_yml)
     self.no_module = nomodule.NoModule()
     self.utilmerge = utilmerge.UtilMerge(protocol_template, self.utilmerge_yml)
+    self.qcreport = qcreport.QCReport(protocol_template, self.qcreport_yml)
 
     # add modules to stack
     self.details_stack = QStackedWidget()
@@ -83,6 +85,7 @@ class ModuleDetails(QWidget):
     self.details_stack.addWidget(self.exclude.stack)
     self.details_stack.addWidget(self.utilheader.stack)
     self.details_stack.addWidget(self.utilmerge.stack)
+    self.details_stack.addWidget(self.qcreport.stack)
 
     # layout
     layout_v = QVBoxLayout()
@@ -127,9 +130,12 @@ class ModuleDetails(QWidget):
     filepath = module_dir.joinpath("UTIL_Merge/UTIL_Merge.yml")
     self.utilmerge_yml = yaml.safe_load(open(filepath, 'r'))
 
+    filepath = module_dir.joinpath("QC_Report/QC_Report.yml")
+    self.qcreport_yml = yaml.safe_load(open(filepath, 'r'))
+
     self.modules_yml_list = [self.slicecheck_yml, self.interlacecheck_yml, self.baselineaverage_yml,
       self.susceptibility_yml, self.eddymotion_yml, self.brainmask_yml, self.dtiestimate_yml, self.exclude_yml,
-      self.utilheader_yml, self.utilmerge_yml]
+      self.utilheader_yml, self.utilmerge_yml, self.qcreport_yml]
 
   def DetailsDisplay(self, data):
     module = data[0]
@@ -375,5 +381,25 @@ class ModuleDetails(QWidget):
         self.utilmerge.writeimage.setChecked(False)
       self.utilmerge.testparam.setText(module[2]["protocol"]["TestParam"])
       self.details_stack.setCurrentIndex(10)
+
+    if module[0] == "QC Report":
+      self.qcreport.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.qcreport.overwrite.setChecked(True)
+      else:
+        self.qcreport.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.qcreport.skip.setChecked(True)
+      else:
+        self.qcreport.skip.setChecked(False)
+      if module[2]["protocol"]["generatePDF"] == True:
+        self.qcreport.generatePDF_true.setChecked(True)
+      else: 
+        self.qcreport.generatePDF_false.setChecked(True)
+      if module[2]["protocol"]["generateCSV"] == True:
+        self.qcreport.generateCSV_true.setChecked(True)
+      else:
+        self.qcreport.generateCSV_false.setChecked(False)
+      self.details_stack.setCurrentIndex(11)
 
     self.communicate.SetUpdateModuleDetailsBool(True)

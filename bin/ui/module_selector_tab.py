@@ -81,3 +81,8 @@ class ModuleSelector(QWidget):
       self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].flags() | Qt.ItemIsEnabled)
     else:
       self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].flags() & ~Qt.ItemIsEnabled)
+
+  def UpdateSelectorData(self, module_name, new_data):
+    for module_iter in range(self.modules_list_widget.count()):
+      if self.modules_list_widget.item(module_iter).text() == module_name:
+        self.modules_list_widget.item(module_iter).setData(QtCore.Qt.UserRole, new_data)

@@ -38,6 +38,8 @@ class BrainMask(QWidget):
     self.skip = QCheckBox("Skip")
     self.skip.stateChanged.connect(self.GetParams)
     options_layout.addWidget(self.skip, 0, 1)
+    # write image
+    self.writeimage = QCheckBox("Write Image")
 
     ## Protocol:
     protocol_groupbox = QGroupBox("Protocol:")

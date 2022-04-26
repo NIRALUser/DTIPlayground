@@ -10,12 +10,20 @@ class ModuleSelectorCommunicate(QObject):
 
   set_drop_mode_protocol_list_widget = Signal()
   module_added_to_protocol_drop = Signal(list)
+  call_execute_exclude_gradients_popup = Signal()
+  call_execute_merge_images_popup = Signal()
 
   def SetDropModeProtocolListWidget(self):
     self.set_drop_mode_protocol_list_widget.emit()
 
   def ModuleAddedToProtocolDrop(self, list_modules):
     self.module_added_to_protocol_drop.emit(list_modules)
+
+  def CallExecuteExcludeGradientsPopup(self):
+    self.call_execute_exclude_gradients_popup.emit()
+
+  def CallExecuteMergeImagesPopup(self):
+    self.call_execute_merge_images_popup.emit()
 
 class ModuleSelector(QWidget):
 
@@ -57,14 +65,18 @@ class ModuleSelector(QWidget):
 
   def ModulesMultiSelection(self):
     self.modules_list_widget.blockSignals(True)
-    group_selection_with_exclude = False
+    group_selection_with_special_module = False
     if len(self.modules_list_widget.selectedItems()) > 1:
       for module in self.modules_list_widget.selectedItems():
         if module.text() == "Exclude Gradients":
-          group_selection_with_exclude = True
-          self.exclude_popup.exec_()
+          group_selection_with_special_module = True
+          self.communicate.CallExecuteExcludeGradientsPopup()
           break
-      if group_selection_with_exclude:
+        if module.text() == "Merge Images":
+          group_selection_with_special_module = True
+          self.communicate.CallExecuteMergeImagesPopup()
+          break
+      if group_selection_with_special_module:
         for module in self.modules_list_widget.selectedItems():
           module.setSelected(False)
     self.modules_list_widget.blockSignals(False)
@@ -81,6 +93,12 @@ class ModuleSelector(QWidget):
       self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].flags() | Qt.ItemIsEnabled)
     else:
       self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].flags() & ~Qt.ItemIsEnabled)
+
+  def EnableMergeImagesModule(self, enable):
+    if enable == True:
+      self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].flags() | Qt.ItemIsEnabled)
+    else:
+      self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].flags() & ~Qt.ItemIsEnabled)
 
   def UpdateSelectorData(self, module_name, new_data):
     for module_iter in range(self.modules_list_widget.count()):

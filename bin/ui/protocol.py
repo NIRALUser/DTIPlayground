@@ -19,8 +19,10 @@ class ProtocolCommunicate(QObject):
   get_selected_modules = Signal()
   set_module_data = Signal(list)
   call_execute_exclude_gradients_popup = Signal()
+  call_execute_merge_images_popup = Signal()
   enable_modules_list_widget = Signal(bool)
   enable_exclude_gradients_module = Signal(bool)
+  enable_merge_images_module = Signal(bool)
   update_selector_data = Signal(str, int)
 
   def CallClearProtocol(self):
@@ -50,11 +52,17 @@ class ProtocolCommunicate(QObject):
   def CallExecuteExcludeGradientsPopup(self):
     self.call_execute_exclude_gradients_popup.emit()
 
+  def CallExecuteMergeImagesPopup(self):
+    self.call_execute_merge_images_popup.emit()
+
   def EnableModulesListWidget(self, new_state):
     self.enable_modules_list_widget.emit(new_state)
 
   def EnableExcludeGradientsModule(self, new_state):
     self.enable_exclude_gradients_module.emit(new_state)
+
+  def EnableMergeImagesModule(self, new_state):
+    self.enable_merge_images_module.emit(new_state)
 
   def UpdateSelectorData(self, module_name, new_data):
     self.update_selector_data.emit(module_name, new_data)
@@ -150,6 +158,7 @@ class Protocol():
 
   def ModuleAddedToProtocolLoading(self, list_modules):
     exclude_in_protocol = False
+    merge_in_protocol = False
     for module in list_modules:
       key = module.data(QtCore.Qt.UserRole)
       if module.text() == "Exclude Gradients":
@@ -174,12 +183,15 @@ class Protocol():
         self.dic_protocol[key] = self.utilheader_params
       if module.text() == "Merge Images":
         self.dic_protocol[key] = self.utilmerge_params
+        merge_in_protocol = True
       if module.text() == "QC Report":
         self.dic_protocol[key] = self.qcreport_params
-    self.CheckExcludeInProtocol(exclude_in_protocol)
+
+    self.CheckSpecialModulesInProtocol(exclude_in_protocol, merge_in_protocol)
 
   def ModuleAddedToProtocolDrop(self, list_selected_modules):
     exclude_in_protocol = False
+    merge_in_protocol = False
     for module in list_selected_modules:
       current_id = module.data(QtCore.Qt.UserRole)
       if module.text() == "Exclude Gradients":
@@ -204,6 +216,7 @@ class Protocol():
         self.dic_protocol[current_id] = self.utilheader_default_params
       if module.text() == "Merge Images":
         self.dic_protocol[current_id] = self.utilmerge_default_params
+        merge_in_protocol = True
       if module.text() == "QC Report":
         self.dic_protocol[current_id] = self.qcreport_default_params
       
@@ -211,17 +224,22 @@ class Protocol():
       self.module_id += 1
       self.communicate.UpdateSelectorData(module.text(), self.module_id)
 
-    self.CheckExcludeInProtocol(exclude_in_protocol)
+    self.CheckSpecialModulesInProtocol(exclude_in_protocol, merge_in_protocol)
 
-  def CheckExcludeInProtocol(self, exclude_in_protocol): #if MANUAL_Exclude is selected: show popup + disable selection of other modules
+  def CheckSpecialModulesInProtocol(self, exclude_in_protocol, merge_in_protocol):
     if exclude_in_protocol:
       if self.preferences_yml["showExcludeGradientsPopup"] == True:
         self.communicate.CallExecuteExcludeGradientsPopup()
       self.communicate.EnableModulesListWidget(False)
-      
+    elif merge_in_protocol:
+      if self.preferences_yml["showMergeImagesPopup"] == True:
+        self.communicate.CallExecuteMergeImagesPopup()
+      self.communicate.EnableModulesListWidget(False)
     else:
       self.communicate.EnableModulesListWidget(True)
+      self.communicate.EnableMergeImagesModule(False)
       self.communicate.EnableExcludeGradientsModule(False)
+
     
   def InitializeModulesParameters(self, protocol_yml):
     for ite in range(len(protocol_yml["pipeline"])):

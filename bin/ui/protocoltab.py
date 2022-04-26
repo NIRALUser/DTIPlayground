@@ -97,6 +97,7 @@ class ProtocolTab(QWidget):
     self.ProtocolTab()
     self.selector.communicate.set_drop_mode_protocol_list_widget.connect(lambda: self.protocol_list_widget.setDragDropMode(QAbstractItemView.DropOnly))
     self.ExcludePopup()
+    self.MergePopup()
 
   def ProtocolTab(self):
     
@@ -224,6 +225,8 @@ class ProtocolTab(QWidget):
 
     if self.protocol_list_widget.count() == 0:
       self.selector.EnableExcludeGradientsModule(True)
+      self.selector.EnableMergeImagesModule(True)
+      self.selector.EnableModulesListWidget(True) 
       self.details.details_stack.setCurrentIndex(0)
 
     if len(items) > 0:
@@ -239,6 +242,7 @@ class ProtocolTab(QWidget):
       removed_item = self.protocol_list_widget.takeItem(0)
     self.selector.EnableModulesListWidget(True)  
     self.selector.EnableExcludeGradientsModule(True)
+    self.selector.EnableMergeImagesModule(True)
     self.communicate.SetSusceptibilityParamEddyMotion(False)
     self.communicate.SetDicProtocol({})
 
@@ -267,15 +271,30 @@ class ProtocolTab(QWidget):
     self.exclude_popup = QMessageBox()
     self.exclude_popup.setText("The Exclude Gradients module must run separately.")
     self.exclude_popup.setWindowTitle("DMRIPrep message")
-    self.notshowagain = QCheckBox("Do not show again.")
-    self.notshowagain.stateChanged.connect(self.NotShowAgainPopupStateChanged)
-    self.exclude_popup.setCheckBox(self.notshowagain)
+    self.notshowagain_exclude = QCheckBox("Do not show again.")
+    self.notshowagain_exclude.stateChanged.connect(self.NotShowAgainExcludePopupStateChanged)
+    self.exclude_popup.setCheckBox(self.notshowagain_exclude)
     
-  def NotShowAgainPopupStateChanged(self):
-    if self.notshowagain.isChecked():
+  def NotShowAgainExcludePopupStateChanged(self):
+    if self.notshowagain_exclude.isChecked():
       self.preferences_yml["showExcludeGradientsPopup"] = False
     else:
       self.preferences_yml["showExcludeGradientsPopup"] = True
+    self.communicate.CallUpdateUserPreferencesFile(self.preferences_yml)
+
+  def MergePopup(self):
+    self.merge_popup = QMessageBox()
+    self.merge_popup.setText("The Merge Images module must run separately.")
+    self.merge_popup.setWindowTitle("DMRIPrep message")
+    self.notshowagain_merge = QCheckBox("Do not show again.")
+    self.notshowagain_merge.stateChanged.connect(self.NotShowAgainMergePopupStateChanged)
+    self.merge_popup.setCheckBox(self.notshowagain_merge)
+    
+  def NotShowAgainMergePopupStateChanged(self):
+    if self.notshowagain_merge.isChecked():
+      self.preferences_yml["showMergeImagesPopup"] = False
+    else:
+      self.preferences_yml["showMergeImagesPopup"] = True
     self.communicate.CallUpdateUserPreferencesFile(self.preferences_yml)
 
   def SetDetailsDisplayTab(self):

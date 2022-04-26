@@ -73,6 +73,8 @@ class Widgets(QWidget):
     self.protocol_tab.details.qcreport.communicate.send_params.connect(self.UpdateModuleParams)
     # Communication from module selector subtab
     self.protocol_tab.selector.communicate.module_added_to_protocol_drop.connect(self.protocol.ModuleAddedToProtocolDrop)
+    self.protocol_tab.selector.communicate.call_execute_exclude_gradients_popup.connect(self.protocol_tab.exclude_popup.exec_)
+    self.protocol_tab.selector.communicate.call_execute_merge_images_popup.connect(self.protocol_tab.merge_popup.exec_)
     # Communication from module details subtab
     self.protocol_tab.details.communicate.set_update_module_details.connect(self.SetUpdateModuleDetails)
     self.protocol_tab.details.communicate.call_OrderModulesInProtocolList.connect(self.GetDicProtocolKeys)
@@ -111,8 +113,10 @@ class Widgets(QWidget):
     self.protocol.communicate.get_selected_modules.connect(self.protocol_tab.selector.GetListWidgetSelectedModules)
     self.protocol.communicate.set_module_data.connect(self.protocol_tab.SetModuleData)
     self.protocol.communicate.call_execute_exclude_gradients_popup.connect(self.protocol_tab.exclude_popup.exec_)
+    self.protocol.communicate.call_execute_merge_images_popup.connect(self.protocol_tab.merge_popup.exec_)
     self.protocol.communicate.enable_modules_list_widget.connect(self.protocol_tab.selector.EnableModulesListWidget)
     self.protocol.communicate.enable_exclude_gradients_module.connect(self.protocol_tab.selector.EnableExcludeGradientsModule)
+    self.protocol.communicate.enable_merge_images_module.connect(self.protocol_tab.selector.EnableMergeImagesModule)
     self.protocol.communicate.update_selector_data.connect(self.protocol_tab.selector.UpdateSelectorData)
 
 
@@ -156,7 +160,8 @@ class Widgets(QWidget):
       list_of_dir.remove(user_directory + "/user_preferences.yml")
     latest_dir = max(list_of_dir, key = os.path.getctime)
     default = {"fslConfigurationFilePath": latest_dir + "/parameters/fsl/fsl_regb02b0.cnf",
-      "showExcludeGradientsPopup": True}
+      "showExcludeGradientsPopup": True, 
+      "showMergeImagesPopup": True}
     with open(user_directory + "/user_preferences.yml", 'w')as filename:
       yaml.dump(default, filename)
 

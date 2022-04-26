@@ -74,7 +74,8 @@ class QC_Report(prep.modules.DTIPrepModule):
         else:
             input_images_directory_list = [] 
             for image in self.result_history[0]["output"]:
-                input_images_directory_list.append(str(Path(image["input"]["output_directory"]).parent))
+                if "input" in image:
+                    input_images_directory_list.append(str(Path(image["input"]["output_directory"]).parent))
             for input_image in input_images_directory_list:
                 image_directory_path = str(Path(self.output_dir).parent.parent) + "/" + input_image
                 list_modules_directory = []
@@ -103,8 +104,13 @@ class QC_Report(prep.modules.DTIPrepModule):
 
             if len(input_images_directory_list) == 0: #no module before fusionning images
                 for input_image in self.result_history[0]["output"]:
-                    image_data = {'input_image': input_image["image_path"], 'modules':{}}
-                    image_data["number_of_excluded_gradients"] = len(total_excluded_gradients)
+                    image_data = {'input_image': input_image["output"]["image_path"], 'modules':{}}
+                    image_data["number_of_excluded_gradients"] = 0
+                    # get original number of gradients
+                    for number in input_image["output"]["image_information"]["sizes"]:
+                        if number not in input_image["output"]["image_information"]["image_size"]:
+                            image_data["original_number_of_gradients"] = number
+                    data.append(image_data)
 
             input_image = self.result_history[1]["output"]["image_path"]
             image_data = {'input_image': input_image, 'modules':{}}
@@ -170,16 +176,21 @@ class QC_Report(prep.modules.DTIPrepModule):
     def CreatePDF(self, data, info_display_QCed_gradients):
         temp_file = False  
         eddymotion_in_protocol = False
-        for module in data[0]["modules"].keys():
-            if module == "EDDYMOTION_Correct":
-                eddymotion_in_protocol = True
+        for image in data:
+            for module in image["modules"].keys():
+                if module == "EDDYMOTION_Correct":
+                    eddymotion_in_protocol = True
         if eddymotion_in_protocol:
             eddy_folder_path = Path(self.output_dir).parent
             for dirname in os.listdir(eddy_folder_path):
                 if fnmatch.fnmatch(dirname, "*_EDDYMOTION_Correct"):
                     eddy_report_path = str(eddy_folder_path) + "/" + dirname + "/output_eddied.qc/qc.pdf"
-                    if os.path.isfile(eddy_report_path):
+                    eddy_report_path_abs = os.path.abspath(eddy_report_path)
+                    print(eddy_report_path_abs)
+                    if os.path.isfile(eddy_report_path_abs):
                         temp_file = True
+                        print("file exists !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
+
 
         if temp_file:
             pdf_file = self.output_dir + '/temp_QC_Report.pdf'

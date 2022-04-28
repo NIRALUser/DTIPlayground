@@ -205,6 +205,9 @@ class Widgets(QWidget):
         if self.protocol.dic_protocol[index][1] in module_yml["name"]:
           if "multi_input" in module_yml["process_attributes"]:
             multi_input = 1
+            if self.protocol.dic_protocol[index][0] == "Merge Images":
+              multi_input = 2
+
     self.execution_tab.communicate.NumberOfInputs(multi_input)
 
   def CheckManualExcludeInProtocol(self):
@@ -215,6 +218,7 @@ class Widgets(QWidget):
       if self.protocol_tab.details.exclude.selectionMethod.currentText() == "QuickView":
         computation_details[1] = True
     self.execution_tab.communicate.CallCompute(computation_details)
+
 
   def CheckUnsavedChangesBeforeCompute(self):
     if self.unsaved_changes == True:

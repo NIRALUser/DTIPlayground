@@ -43,6 +43,7 @@ class ExecutionTabCommunicate(QObject):
     self.call_save_protocol.emit()
 
 
+
 class ExecutionTab(QWidget):
   communicate = ExecutionTabCommunicate()
 
@@ -148,36 +149,9 @@ class ExecutionTab(QWidget):
   def UpdateNumberOfInputs(self, multi_input):
     self.multi_input = multi_input
 
-    # remove all rows from QGridLayout input_layout 
-    if self.input_layout.count() <= self.input_layout.columnCount(): #if only one line in input_layout 
-      self.input_layout.removeWidget(self.input_line_label)
-      self.input_line_label.deleteLater()
-      del self.input_line_label
-      self.input_layout.removeWidget(self.input_line)
-      self.input_line.deleteLater()
-      del self.input_line
-      self.input_layout.removeWidget(self.input_browse_button)
-      self.input_browse_button.deleteLater()
-      del self.input_browse_button
-    else: #if more than one line in input_layout
-      self.input_layout.removeWidget(self.input_line_label1)
-      self.input_line_label1.deleteLater()
-      del self.input_line_label1
-      self.input_layout.removeWidget(self.input_line1)
-      self.input_line1.deleteLater()
-      del self.input_line1
-      self.input_layout.removeWidget(self.input_browse_button1)
-      self.input_browse_button1.deleteLater()
-      del self.input_browse_button1
-      self.input_layout.removeWidget(self.input_line_label2)
-      self.input_line_label2.deleteLater()
-      del self.input_line_label2
-      self.input_layout.removeWidget(self.input_line2)
-      self.input_line2.deleteLater()
-      del self.input_line2
-      self.input_layout.removeWidget(self.input_browse_button2)
-      self.input_browse_button2.deleteLater()
-      del self.input_browse_button2
+    # remove all widgets from QGridLayout input_layout 
+    for i in reversed(range(self.input_layout.count())): 
+      self.input_layout.itemAt(i).widget().setParent(None)
       
     # set new input_layout with 1 input file
     if self.multi_input == 0:
@@ -194,7 +168,7 @@ class ExecutionTab(QWidget):
       self.input_layout.addWidget(self.input_browse_button, 0, 2)
       
     # set new input_layout with 2 input files
-    if self.multi_input == 1:
+    if self.multi_input == 1:  
       self.input_line_label1 = QLabel("Direction 1 input image:")
       self.input_layout.addWidget(self.input_line_label1, 0, 0)
       self.input_line1 = QLineEdit()
@@ -217,17 +191,46 @@ class ExecutionTab(QWidget):
       self.input_browse_button2.clicked.connect(self.BrowseButton2)
       self.input_layout.addWidget(self.input_browse_button2, 1, 2)
 
+    # set new input_layout for UTIL_Merge
+    if self.multi_input == 2:
+      self.input_line_label = QLabel("Input images:")
+      self.input_layout.addWidget(self.input_line_label, 0, 0)
+      self.input_list_widget = QListWidget()
+      self.input_list_widget.setFixedHeight(100)
+      self.input_list_widget.setDragDropMode(QAbstractItemView.InternalMove)
+      self.input_list_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)
+      self.input_list_widget.model().rowsMoved.connect(self.UpdateInputList)
+      self.input_layout.addWidget(self.input_list_widget, 0, 1, 4, 1)
+      if hasattr(self, "input_list"):
+        self.AddInputToInputListWidget()
+      self.merge_input_browse_button = QPushButton("Browse")
+      self.input_layout.addWidget(self.merge_input_browse_button, 1, 0)
+      self.merge_input_browse_button.clicked.connect(self.MergeBrowseButton)
+      self.merge_input_remove_button = QPushButton("Remove")
+      self.merge_input_remove_button.clicked.connect(self.RemoveInput)
+      self.input_layout.addWidget(self.merge_input_remove_button, 2, 0)
+      self.merge_input_clear_button = QPushButton("Clear")
+      self.merge_input_clear_button.clicked.connect(self.ClearInput)
+      self.input_layout.addWidget(self.merge_input_clear_button, 3, 0)
+
+    
   def UpdateOutputFilenameBase(self):
-    if self.multi_input == 0:
+    if self.multi_input == 0: # single input
       input_path = self.input_filename
-    else:
+    elif self.multi_input == 1: # multi input (SUSCEPTIBILITY_Correction for now)
       input_path = self.input_filename1
+    elif self.multi_input == 2: # UTIL_Merge
+      if len(self.input_list) > 0: 
+        input_path = self.input_list[0]
+      else:
+        self.output_image_basename.setText("")
+        return
     image = input_path.split("/")[-1]
     basename = image.split(".")[0]
     self.output_image_basename.setText(basename)
 
   def CheckInputFile(self):
-    if (self.multi_input == 0 and self.input_line.text() == "") or (self.multi_input == 1 and (self.input_line1.text() == "" or self.input_line2.text() == "")):
+    if (self.multi_input == 0 and self.input_line.text() == "") or (self.multi_input == 1 and (self.input_line1.text() == "" or self.input_line2.text() == "")) or (self.multi_input == 2 and self.input_list_widget.count() < 2):
       self.no_input_popup.exec_()
     else:
       self.communicate.CheckManualExclude()
@@ -238,7 +241,6 @@ class ExecutionTab(QWidget):
     quickview = computation_details[1] #True if QuickView selected, False if not
     
     if manual_exclude and quickview:
-      print("QuickView")
       self.quickview_window = QuickView(self.input_filename)
       self.quickview_window.show()
 
@@ -257,16 +259,20 @@ class ExecutionTab(QWidget):
     arguments = ["run", "-i"] 
     if self.multi_input == 0:
       arguments.append(self.input_filename)
-    else:
+    elif self.multi_input == 1:
       arguments.append(self.input_filename1)
       arguments.append(self.input_filename2)
+    elif self.multi_input == 2:
+      arguments += self.input_list
     arguments.append("-p")
     arguments.append(protocol)
     arguments.append("-o")
     if self.multi_input == 0:
       inputpath = self.input_filename
-    else:
+    elif self.multi_input == 1:
       inputpath = self.input_filename1
+    elif self.multi_input ==2:
+      inputpath = self.input_list[0]
     if self.output_line.text() != '':
       if str(Path(inputpath).parent) not in self.output_line.text():
         outputpath = str(Path(inputpath).parent) + "/" + self.output_line.text()
@@ -289,7 +295,7 @@ class ExecutionTab(QWidget):
         
       self.output_line.setText(new_outputpath)
 
-    arguments.append(outputpath)
+    arguments.append(new_outputpath)
     if self.output_image_basename.text != '':
       arguments.append("--output-file-base")
       arguments.append(self.output_image_basename.text())
@@ -340,6 +346,49 @@ class ExecutionTab(QWidget):
       filter = file_filter
       )
     return file_name[0]
+
+  def MergeBrowseButton(self):
+    if self.args.output_directory:
+      self.output_line.setText(self.args.output_directory)
+    else:
+      self.output_line.setText("")
+    file_filter = "Image files (*.nrrd *.nii *.nii.gz)"
+    file_names = QFileDialog.getOpenFileNames(
+      parent = self,
+      caption = "Select an input file",
+      filter = file_filter
+      )
+    if len(file_names[0]) != 0:
+      if not hasattr(self, "input_list"):
+        self.input_list = []
+      self.input_list += file_names[0]
+      self.AddInputToInputListWidget()
+      self.UpdateOutputFilenameBase()
+
+  def RemoveInput(self):
+    items = self.input_list_widget.selectedItems()
+    for i in items:
+      removed_item_index = self.input_list_widget.indexFromItem(i).row()
+      removed_item = self.input_list_widget.takeItem(removed_item_index)
+    self.UpdateInputList()
+
+  def UpdateInputList(self):
+    self.input_list = []
+    for i in range(self.input_list_widget.count()):
+      self.input_list.append(self.input_list_widget.item(i).text())
+    self.UpdateOutputFilenameBase()
+
+  def ClearInput(self):
+    if hasattr(self, "input_list"):    
+      for ite in range(self.input_list_widget.count()):
+        removed_item = self.input_list_widget.takeItem(0)
+      self.UpdateInputList()
+
+  def AddInputToInputListWidget(self):
+    for ite in range(self.input_list_widget.count()):
+      removed_item = self.input_list_widget.takeItem(0)
+    for input_filename in self.input_list:
+      self.input_list_widget.addItem(input_filename)
 
   def DisplayOutput(self):
     stdout = self.process.readAllStandardOutput()

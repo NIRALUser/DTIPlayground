@@ -10,10 +10,10 @@ import argparse
 import re
 import glob
 
-from ui.protocoltab import ProtocolTab
-from ui.executiontab import ExecutionTab
-from ui.protocol import Protocol
-from ui.quickview import QuickView
+from dmriprep_ui.protocoltab import ProtocolTab
+from dmriprep_ui.executiontab import ExecutionTab
+from dmriprep_ui.protocol import Protocol
+from dmriprep_ui.quickview import QuickView
 
 class Widgets(QWidget):
     
@@ -29,7 +29,7 @@ class Widgets(QWidget):
     preferences_yml = yaml.safe_load(open(user_directory + "/user_preferences.yml", 'r'))
     
     # Load yml file used to initialize modules
-    def_protocol_path = Path(__file__).parent.joinpath('init_protocol.yml')
+    def_protocol_path = Path(__file__).parent.joinpath('data/init_protocol.yml')
     protocol_yml = yaml.safe_load(open(def_protocol_path.__str__(),'r'))
     
     # instanciation of classes

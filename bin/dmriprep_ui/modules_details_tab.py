@@ -5,18 +5,18 @@ import yaml
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal as Signal
 
-import ui.modules_details.baselineaverage as baselineaverage
-import ui.modules_details.brainmask as brainmask
-import ui.modules_details.dtiestimate as dtiestimate
-import ui.modules_details.eddymotion as eddymotion
-import ui.modules_details.exclude as exclude
-import ui.modules_details.interlacecheck as interlacecheck
-import ui.modules_details.slicecheck as slicecheck
-import ui.modules_details.susceptibility as susceptibility
-import ui.modules_details.utilheader as utilheader
-import ui.modules_details.nomodule as nomodule
-import ui.modules_details.utilmerge as utilmerge
-import ui.modules_details.qcreport as qcreport
+import dmriprep_ui.modules_details.baselineaverage as baselineaverage
+import dmriprep_ui.modules_details.brainmask as brainmask
+import dmriprep_ui.modules_details.dtiestimate as dtiestimate
+import dmriprep_ui.modules_details.eddymotion as eddymotion
+import dmriprep_ui.modules_details.exclude as exclude
+import dmriprep_ui.modules_details.interlacecheck as interlacecheck
+import dmriprep_ui.modules_details.slicecheck as slicecheck
+import dmriprep_ui.modules_details.susceptibility as susceptibility
+import dmriprep_ui.modules_details.utilheader as utilheader
+import dmriprep_ui.modules_details.nomodule as nomodule
+import dmriprep_ui.modules_details.utilmerge as utilmerge
+import dmriprep_ui.modules_details.qcreport as qcreport
 
 
 class DetailsDisplayCommunicate(QObject):

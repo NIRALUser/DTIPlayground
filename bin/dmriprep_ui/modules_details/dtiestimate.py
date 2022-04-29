@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import * 
 
-from ui.modules_details_communicate import ModulesDetailsCommunicate
+from dmriprep_ui.modules_details_communicate import ModulesDetailsCommunicate
 
 class DTIEstimate(QWidget):
   communicate = ModulesDetailsCommunicate()

@@ -8,8 +8,8 @@ import os
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal as Signal
 
-from ui.loadingbutton import LoadingButton
-from ui.quickview import QuickView
+from dmriprep_ui.loadingbutton import LoadingButton
+from dmriprep_ui.quickview import QuickView
 
 class ExecutionTabCommunicate(QObject):
 
@@ -103,7 +103,7 @@ class ExecutionTab(QWidget):
 
     compute_button = LoadingButton("Compute")
     compute_button.clicked.connect(self.CheckInputFile)
-    gif_path = Path(__file__).parent.joinpath('workinprogress.gif')
+    gif_path = Path(__file__).parent.joinpath('data/workinprogress.gif')
     compute_button.setGif(gif_path.__str__())
     layout.addWidget(compute_button, 4, 0, 1, 4)
 
@@ -292,10 +292,10 @@ class ExecutionTab(QWidget):
       while os.path.exists(new_outputpath):
         new_outputpath = outputpath + "_" + str(counter)
         counter += 1
-        
-      self.output_line.setText(new_outputpath)
+      outputpath = new_outputpath
+      self.output_line.setText(outputpath)
 
-    arguments.append(new_outputpath)
+    arguments.append(outputpath)
     if self.output_image_basename.text != '':
       arguments.append("--output-file-base")
       arguments.append(self.output_image_basename.text())

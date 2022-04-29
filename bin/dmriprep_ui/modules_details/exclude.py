@@ -4,7 +4,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import * 
 import re
 
-from ui.modules_details_communicate import ModulesDetailsCommunicate
+from dmriprep_ui.modules_details_communicate import ModulesDetailsCommunicate
 
 class ExcludeGradients(QWidget):
   communicate = ModulesDetailsCommunicate()

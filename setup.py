@@ -17,6 +17,7 @@ if using_setuptools:
         python_requires=">= 3.8",
         )
 
+    
 setup(
     name='dtiplayground',
     version=info['dtiplayground']['version'],
@@ -28,7 +29,7 @@ setup(
     package_data = {
     '': ['*.yml','*.yaml','*.json','*.cnf'],
     },
-    scripts=glob(pjoin('bin', '*')),
+    scripts=glob('bin/dmriprep')+glob('bin/dmriprep-ui')+glob(pjoin('bin', '**/*.py'), recursive=True),
     # data_files=[('', glob(pjoin('dtiplayground/dmri/common/data','*.*'))),
     #             ('', glob(pjoin('dtiplayground/dmri/preprocessing/templates','*.*'))),
     #             ],
@@ -41,6 +42,7 @@ setup(
         'nibabel==3.2.1',
         'tensorflow==2.7.0',
         'antspynet==0.1.2'
-      ],
+       ],
 
-)
+ )
+

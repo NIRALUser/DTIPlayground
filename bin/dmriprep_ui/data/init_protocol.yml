@@ -1,0 +1,110 @@
+io:
+  baseline_threshold: 10
+  no_output_image: false
+  output_directory: null
+  output_filename_base: null
+  output_format: null
+pipeline:
+- - SLICE_Check
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      bSubregionalCheck: false
+      checkTimes: 0
+      correlationDeviationThresholdbaseline: 3.0
+      correlationDeviationThresholdgradient: 3.5
+      headSkipSlicePercentage: 0.1
+      quadFit: true
+      subregionalCheckRelaxationFactor: 1.1
+      tailSkipSlicePercentage: 0.1
+- - INTERLACE_Check
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      correlationDeviationBaseline: 2.5
+      correlationDeviationGradient: 3.0
+      correlationThresholdBaseline: 0.95
+      correlationThresholdGradient: 0.7702
+      rotationThreshold: 0.5
+      translationThreshold: 2.0272108713786
+- - BASELINE_Average
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      averageInterpolationMethod: linear-interpolation
+      averageMethod: BaselineOptimized
+      maxIterations: 2
+      outputDWIFileNameSuffix: null
+      stopThreshold: 0.02
+- - SUSCEPTIBILITY_Correct
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      configurationFilePath: /home/jdubos/.niral-dti/dmriprep-0.2.6-beta5/parameters/fsl/fsl_regb02b0.cnf
+      phaseEncodingAxis:
+      - 1
+      phaseEncodingValue: 0.0924
+- - EDDYMOTION_Correct
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      qcReport: false
+      susceptibilityCorrection: false
+- - BRAIN_Mask
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      averagingMethod: idwi
+      method: antspynet
+      modality: t2
+- - DTI_Estimate
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      correctionMethod: zero
+      method: dipy
+      optimizationMethod: wls
+- - MANUAL_Exclude
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      gradientsToExclude: []
+- - UTIL_Header
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      options: null
+- - UTIL_Merge
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      TestParam: null
+- - QC_Report
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      generateCSV: true
+      generatePDF: true
+version: 0.1

@@ -189,6 +189,8 @@ class QC_Report(prep.modules.DTIPrepModule):
                     print(eddy_report_path_abs)
                     if os.path.isfile(eddy_report_path_abs):
                         temp_file = True
+                        print("file exists !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
+
 
         if temp_file:
             pdf_file = self.output_dir + '/temp_QC_Report.pdf'

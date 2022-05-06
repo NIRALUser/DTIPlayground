@@ -9,6 +9,7 @@ from argparse import RawTextHelpFormatter
 import traceback,time,copy,yaml,sys,uuid
 import sys
 sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line is for development
+import dtiplayground
 import dtiplayground.dmri.common
 from dtiplayground.config import INFO as info
 logger=dtiplayground.dmri.common.logger.write 
@@ -106,7 +107,7 @@ def command_find_tools(args):
     config_filename=home_dir.joinpath("config.yml")
     environment_filename=home_dir.joinpath("environment.yml")
     software_filename=home_dir.joinpath('software_paths.yml')
-    software_info_path=Path(__file__).resolve().parent.parent.joinpath("dtiplayground/dmri/common/data/software_paths.yml")
+    software_info_path=Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/common/data/software_paths.yml")
     ## load default software paths
 
     software_paths=yaml.safe_load(open(software_info_path,'r'))
@@ -142,7 +143,7 @@ def command_init(args):
     yaml.dump(config,open(config_filename,'w'))
     logger("Config file written to : {}".format(str(config_filename)),dtiplayground.dmri.preprocessing.Color.INFO)
     ## copy default software path
-    software_info_path=Path(__file__).resolve().parent.parent.joinpath("dtiplayground/dmri/common/data/software_paths.yml")
+    software_info_path=Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/common/data/software_paths.yml")
     software_filename=home_dir.joinpath('software_paths.yml')
     shutil.copy(software_info_path,software_filename)
     logger("Software path file is written to : {}".format(str(software_filename)),dtiplayground.dmri.preprocessing.Color.INFO)

@@ -21,6 +21,7 @@ if using_setuptools:
 setup(
     name='dtiplayground',
     version=info['dtiplayground']['version'],
+    python_requires=">=3.8",
     license='MIT',
     author="SK Park, NIRAL, University of North Carolina @ Chapel Hill",
     author_email='scalphunter@gmail.com',
@@ -40,8 +41,12 @@ setup(
         'dipy==1.4.0',
         'pyyaml==5.3.1',
         'nibabel==3.2.1',
-        'tensorflow==2.7.0',
-        'antspynet==0.1.2'
+        'tensorflow==2.8.0',
+        'antspynet==0.1.2',
+        'pyqt5',
+        'simpleitk==2.1.1',
+        'reportlab==3.6.6',
+        'pypdf2==1.26.0'
        ],
 
  )

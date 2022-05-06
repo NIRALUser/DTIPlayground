@@ -30,7 +30,7 @@ setup(
     package_data = {
     '': ['*.yml','*.yaml','*.json','*.cnf'],
     },
-    scripts=glob(pjoin('bin', '*')),
+    scripts=glob('bin/dmriprep')+glob('bin/dmriprep-ui')+glob(pjoin('bin', '**/*.py'), recursive=True),
     # data_files=[('', glob(pjoin('dtiplayground/dmri/common/data','*.*'))),
     #             ('', glob(pjoin('dtiplayground/dmri/preprocessing/templates','*.*'))),
     #             ],

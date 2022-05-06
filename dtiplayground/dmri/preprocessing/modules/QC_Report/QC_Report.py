@@ -6,7 +6,6 @@ import fnmatch
 import SimpleITK as sitk
 import numpy
 from PIL import Image
-from PIL.ImageQt import ImageQt
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from PyPDF2 import PdfFileMerger

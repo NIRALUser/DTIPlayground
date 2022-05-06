@@ -12,6 +12,7 @@ import time,traceback ,yaml
 from pathlib import Path
 import os
 import INTERLACE_Check.computations as computations 
+import markdown
 
 logger=prep.logger.write
 
@@ -62,3 +63,26 @@ class INTERLACE_Check(prep.modules.DTIPrepModule):
         self.result['output']['success']=True
         #raise Exception("User Exception for development ...")
         return self.result
+
+    @prep.measure_time
+    def postProcess(self,result_obj,opts):
+        super().postProcess(result_obj, opts)        
+        
+        if self.result['input']['image_path']:
+            input_image = os.path.abspath(self.result['input']['image_path'])
+        else:
+            input_image = None
+
+        with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
+            f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
+            f.write('### {}\n'.format("input image: " + str(input_image)).encode('utf-8'))
+            if len(self.result['output']['excluded_gradients_original_indexes']) == 0:
+                f.write('* {}\n'.format('0 excluded gradients').encode('utf-8'))
+            else:
+                excluded_gradients = str(len(self.result['output']['excluded_gradients_original_indexes'])) + " excluded gradient(s): "
+                for gradient_index in self.result['output']['excluded_gradients_original_indexes'][:-1]:
+                    excluded_gradients = excluded_gradients + str(gradient_index) + ", "
+                excluded_gradients += str(self.result['output']['excluded_gradients_original_indexes'][-1])
+                f.write('* {}\n'.format(excluded_gradients).encode('utf-8'))
+            f.seek(0)
+            markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')

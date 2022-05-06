@@ -330,6 +330,7 @@ class DTIPrepModule: #base class
                 self.result['output']['image_object']=id(self.image)
         ### deform_image ends
 
+
         ### set baseline_threahold
         baseline_threshold=opts['baseline_threshold']
         self.image.setB0Threshold(baseline_threshold)
@@ -354,6 +355,15 @@ class DTIPrepModule: #base class
         for g in b_grads:
             logger("[Gradient.idx {:03d} Original.idx {:03d}] Gradient Dir {} B-Value {:.1f}"
                 .format(g['index'],g['original_index'],g['gradient'],g['b_value']),prep.Color.INFO)
+
+        ## data for QC_report
+        self.result['report_data'] = {'module': self.result['module_name'], 'input_image': None}
+        if self.result['input']['image_path']:
+            self.result['report_data']['input_image'] = os.path.abspath(self.result['input']['image_path'])
+        for number in self.result["input"]["image_information"]["sizes"]:
+            if number not in self.result["input"]["image_information"]["image_size"]:
+                self.result['report_data']['original_number_of_gradients']=number
+
 
 
     @prep.measure_time

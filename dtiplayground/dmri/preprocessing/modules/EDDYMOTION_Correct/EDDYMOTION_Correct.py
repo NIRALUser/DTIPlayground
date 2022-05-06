@@ -10,6 +10,9 @@ import dtiplayground.dmri.common.tools as tools
 logger=prep.logger.write
 from dtiplayground.dmri.common import measure_time
 import shutil
+import pandas
+import os
+import markdown
 
 logger=prep.logger.write
 
@@ -66,6 +69,35 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
         self.result['output']['success']=True
         return self.result
+       
+
+    @prep.measure_time
+    def postProcess(self,result_obj,opts):
+        super().postProcess(result_obj, opts)    
+        path_qc_pdf = os.path.abspath(self.output_dir) + "/output_eddied.qc/qc.pdf"  
+        self.result['report_data']['path_qc_pdf']=path_qc_pdf  
+        
+        if self.result['input']['image_path']:
+            input_image = os.path.abspath(self.result['input']['image_path'])
+        else:
+            input_image = None        
+
+        with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
+            f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
+            f.write('### {}\n'.format("input image: " + str(input_image)).encode('utf-8'))
+            path_rms = self.output_dir + "/output_eddied.eddy_movement_rms"
+            data_rms = pandas.read_csv(path_rms, sep = '  ', engine = 'python', usecols = [1])
+            rmsLargerThan1 = data_rms[data_rms > 1.0].count()[0]
+            rmsLargerThan2 = data_rms[data_rms > 2.0].count()[0]
+            rmsLargerThan3 = data_rms[data_rms > 3.0].count()[0]
+            f.write('* {}\n'.format(str(rmsLargerThan1) + " gradients with RMS movement relative to first volume > 1 mm").encode('utf-8'))
+            f.write('* {}\n'.format(str(rmsLargerThan2) + " gradients with RMS movement relative to first volume > 2 mm").encode('utf-8'))
+            f.write('* {}\n'.format(str(rmsLargerThan3) + " gradients with RMS movement relative to first volume > 3 mm").encode('utf-8'))
+            f.seek(0)
+            markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
+
+        print(self.result)
+        print(self.result_history)
 
 ### User defined methods
     ### fsl parameters

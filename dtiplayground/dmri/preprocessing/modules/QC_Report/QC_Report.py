@@ -6,10 +6,10 @@ import fnmatch
 import SimpleITK as sitk
 import numpy
 from PIL import Image
-from PIL.ImageQt import ImageQt
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from PyPDF2 import PdfFileMerger
+
 
 import dtiplayground.dmri.preprocessing as prep
 
@@ -42,33 +42,16 @@ class QC_Report(prep.modules.DTIPrepModule):
         data = []
 
         # SINGLE INPUT
-        if type(self.result_history[0]["output"]) != list:
-            input_image = self.result_history[0]["output"]["image_path"]
-            image_data = {'input_image': input_image, 'modules':{}}
-            total_excluded_gradients = []     
+        if type(self.result_history[0]["output"]) != list:   
             number_of_modules = (len(self.result_history) - 1)
+            data.append({"number_of_excluded_gradients": 0})
             for i in range(1, number_of_modules + 1):
-                image_data['modules'][self.result_history[i]["module_name"]] =[]
-                # get excluded gradients
-                if self.result_history[i]["module_name"] in ["SLICE_Check", "INTERLACE_Check", "MANUAL_Exclude", "EDDYMOTION_Correct"]:
-                    excluded_gradients = self.result_history[i]["output"]["excluded_gradients_original_indexes"]
-                    image_data['modules'][self.result_history[i]["module_name"]] = excluded_gradients
-                    total_excluded_gradients += excluded_gradients
-                # get rms 
-                if self.result_history[i]["module_name"] == "EDDYMOTION_Correct":
-                    path_rms = str(Path(self.output_dir).parent.parent) + "/" + self.result_history[i]["output"]["output_directory"] + "/output_eddied.eddy_movement_rms"
-                    data_rms = pandas.read_csv(path_rms, sep = '  ', engine = 'python', usecols = [1])
-                    rmsLargerThan1 = data_rms[data_rms > 1.0].count()[0]
-                    rmsLargerThan2 = data_rms[data_rms > 2.0].count()[0]
-                    rmsLargerThan3 = data_rms[data_rms > 3.0].count()[0]
-                    image_data["rms"] = {"largerThan1": rmsLargerThan1, "largerThan2": rmsLargerThan2, "largerThan3": rmsLargerThan3}
-            # get original number of gradients
-            for number in self.result_history[0]["output"]["image_information"]["sizes"]:
-                if number not in self.result_history[0]["output"]["image_information"]["image_size"]:
-                    image_data["original_number_of_gradients"] = number
-            image_data["number_of_excluded_gradients"] = len(total_excluded_gradients)
-            data.append(image_data)
-        
+                module_data = self.result_history[i]["report_data"]
+                if module_data["input_image"] == None:
+                    module_data["input_image"] = data[-1]["input_image"]
+                data.append(module_data)
+                data[0]["number_of_excluded_gradients"] += len(module_data['excluded_gradients'])
+            print(data)
 
         # MULTI INPUT
         else:
@@ -144,12 +127,15 @@ class QC_Report(prep.modules.DTIPrepModule):
     ## CSV
 
     def CreateCSV(self, data):
-        if len(data) == 1:
-            columns = ["image_name", 'original_number_of_gradients', 'number_of_excluded_gradients']
-            values = [data[0]["input_image"], data[0]["original_number_of_gradients"], data[0]["number_of_excluded_gradients"]]
-            if "rms" in data[0]:
+        # SINGLE INPUT
+        columns = ["image_name", 'original_number_of_gradients', 'number_of_excluded_gradients']
+        values = [data[1]["input_image"], data[1]["original_number_of_gradients"], data[0]["number_of_excluded_gradients"]]
+        for module in data[1:]:
+            if "rms" in module:
                 columns += ['rms_larger_than_1', 'rms_larger_than_2', 'rms_larger_than_3']
-                values += [data[0]["rms"]["largerThan1"], data[0]["rms"]["largerThan2"], data[0]["rms"]["largerThan3"]]
+                values += [module["rms"]["largerThan1"], module["rms"]["largerThan2"], module["rms"]["largerThan3"]]
+
+        """
         if len(data) > 1: #3 images due to susceptibility correction module
             columns = ["image_name_1", 'original_number_of_gradients_1', 'number_of_excluded_gradients_1']
             values = [data[0]["input_image"], data[0]["original_number_of_gradients"], data[0]["number_of_excluded_gradients"]]
@@ -166,7 +152,7 @@ class QC_Report(prep.modules.DTIPrepModule):
             if "rms" in data[2]:
                 columns += ['rms_larger_than_1_combined', 'rms_larger_than_2_combined', 'rms_larger_than_3_combined']
                 values += [data[2]["rms"]["largerThan1"], data[2]["rms"]["largerThan2"], data[2]["rms"]["largerThan3"]]
-
+        """
         qc_report = pandas.DataFrame([values], columns = columns)
         path_output_directory = Path(self.output_dir).parent.parent
         qc_report.to_csv(str(path_output_directory) + "/qc_report.csv", index=False)
@@ -176,19 +162,12 @@ class QC_Report(prep.modules.DTIPrepModule):
     def CreatePDF(self, data, info_display_QCed_gradients):
         temp_file = False  
         eddymotion_in_protocol = False
-        for image in data:
-            for module in image["modules"].keys():
-                if module == "EDDYMOTION_Correct":
-                    eddymotion_in_protocol = True
-        if eddymotion_in_protocol:
-            eddy_folder_path = Path(self.output_dir).parent
-            for dirname in os.listdir(eddy_folder_path):
-                if fnmatch.fnmatch(dirname, "*_EDDYMOTION_Correct"):
-                    eddy_report_path = str(eddy_folder_path) + "/" + dirname + "/output_eddied.qc/qc.pdf"
-                    eddy_report_path_abs = os.path.abspath(eddy_report_path)
-                    print(eddy_report_path_abs)
-                    if os.path.isfile(eddy_report_path_abs):
+        for module_data in data[1:]:
+            if module_data["module"] == "EDDYMOTION_Correct":
+                eddymotion_in_protocol = True
+                if os.path.isfile(module_data["path_qc_pdf"]):
                         temp_file = True
+        
 
         if temp_file:
             pdf_file = self.output_dir + '/temp_QC_Report.pdf'
@@ -199,8 +178,8 @@ class QC_Report(prep.modules.DTIPrepModule):
         can = canvas.Canvas(pdf_file, pagesize=letter)
         x, y = 20, 750
         dx, dy = 15, 20
-        for image in data:
-            text = "Image: " + image["input_image"]
+        for module_data in data[1:]:
+            text = "Module: " + module_data["module"]
             while len(text) % 90 > 0:
                 can.drawString(x, y, text[:90])
                 text = text[90:]

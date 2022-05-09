@@ -10,10 +10,10 @@ import argparse
 import re
 import glob
 
-from dmriprep_ui.protocoltab import ProtocolTab
-from dmriprep_ui.executiontab import ExecutionTab
-from dmriprep_ui.protocol import Protocol
-from dmriprep_ui.quickview import QuickView
+from dtiplayground.ui.protocoltab import ProtocolTab
+from dtiplayground.ui.executiontab import ExecutionTab
+from dtiplayground.ui.protocol import Protocol
+from dtiplayground.ui.quickview import QuickView
 
 class Widgets(QWidget):
     

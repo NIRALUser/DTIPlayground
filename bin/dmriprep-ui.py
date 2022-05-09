@@ -9,7 +9,7 @@ import argparse
 
 sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line is for development
 
-from dmriprep_ui.dmriprepwindow import Window
+from dtiplayground.ui.dmriprepwindow import Window
 import dtiplayground.dmri.preprocessing.templates 
 #sys.path.append("/BAND/USERS/skp78-dti/dtiplayground/dtiplayground")
 #sys.path.append("dtiplayground")

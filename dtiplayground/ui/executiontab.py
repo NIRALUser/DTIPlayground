@@ -8,8 +8,8 @@ import os
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal as Signal
 
-from dmriprep_ui.loadingbutton import LoadingButton
-from dmriprep_ui.quickview import QuickView
+from dtiplayground.ui.loadingbutton import LoadingButton
+from dtiplayground.ui.quickview import QuickView
 
 class ExecutionTabCommunicate(QObject):
 

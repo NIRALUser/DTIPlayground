@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import * 
 
-from dmriprep_ui.modules_details_communicate import ModulesDetailsCommunicate
+from dtiplayground.ui.modules_details_communicate import ModulesDetailsCommunicate
 
 class QCReport(QWidget):
   communicate = ModulesDetailsCommunicate()

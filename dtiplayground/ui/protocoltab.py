@@ -6,9 +6,9 @@ import os
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal as Signal
 
-from dmriprep_ui.module_selector_tab import ModuleSelector
-from dmriprep_ui.modules_details_tab import ModuleDetails
-from dmriprep_ui.general_tab import General
+from dtiplayground.ui.module_selector_tab import ModuleSelector
+from dtiplayground.ui.modules_details_tab import ModuleDetails
+from dtiplayground.ui.general_tab import General
 
 class ProtocolTabCommunicate(QObject):
   

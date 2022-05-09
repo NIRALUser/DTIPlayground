@@ -5,18 +5,18 @@ import yaml
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal as Signal
 
-import dmriprep_ui.modules_details.baselineaverage as baselineaverage
-import dmriprep_ui.modules_details.brainmask as brainmask
-import dmriprep_ui.modules_details.dtiestimate as dtiestimate
-import dmriprep_ui.modules_details.eddymotion as eddymotion
-import dmriprep_ui.modules_details.exclude as exclude
-import dmriprep_ui.modules_details.interlacecheck as interlacecheck
-import dmriprep_ui.modules_details.slicecheck as slicecheck
-import dmriprep_ui.modules_details.susceptibility as susceptibility
-import dmriprep_ui.modules_details.utilheader as utilheader
-import dmriprep_ui.modules_details.nomodule as nomodule
-import dmriprep_ui.modules_details.utilmerge as utilmerge
-import dmriprep_ui.modules_details.qcreport as qcreport
+from dtiplayground.ui.modules_details.baselineaverage import BaselineAverage
+from dtiplayground.ui.modules_details.brainmask import BrainMask
+from dtiplayground.ui.modules_details.dtiestimate import DTIEstimate
+from dtiplayground.ui.modules_details.eddymotion import EddyMotion
+from dtiplayground.ui.modules_details.exclude import ExcludeGradients
+from dtiplayground.ui.modules_details.interlacecheck import InterlaceCheck
+from dtiplayground.ui.modules_details.slicecheck import SliceCheck
+from dtiplayground.ui.modules_details.susceptibility import SusceptibilityCorrection
+from dtiplayground.ui.modules_details.utilheader import UtilHeader
+from dtiplayground.ui.modules_details.nomodule import NoModule
+from dtiplayground.ui.modules_details.utilmerge import UtilMerge
+from dtiplayground.ui.modules_details.qcreport import QCReport
 
 
 class DetailsDisplayCommunicate(QObject):
@@ -59,18 +59,18 @@ class ModuleDetails(QWidget):
      
   def ModuleDetails(self, protocol_template, preferences_yml):
     # instanciation of module classes
-    self.baselineaverage = baselineaverage.BaselineAverage(protocol_template, self.baselineaverage_yml)
-    self.brainmask = brainmask.BrainMask(protocol_template, self.brainmask_yml)
-    self.dtiestimate = dtiestimate.DTIEstimate(protocol_template, self.dtiestimate_yml)
-    self.eddymotion = eddymotion.EddyMotion(protocol_template, self.eddymotion_yml)
-    self.exclude = exclude.ExcludeGradients(protocol_template, self.exclude_yml)
-    self.interlacecheck = interlacecheck.InterlaceCheck(protocol_template, self.interlacecheck_yml)
-    self.slicecheck = slicecheck.SliceCheck(protocol_template, self.slicecheck_yml)
-    self.susceptibility = susceptibility.SusceptibilityCorrection(protocol_template, self.susceptibility_yml, preferences_yml)
-    self.utilheader = utilheader.UtilHeader(protocol_template, self.utilheader_yml)
-    self.no_module = nomodule.NoModule()
-    self.utilmerge = utilmerge.UtilMerge(protocol_template, self.utilmerge_yml)
-    self.qcreport = qcreport.QCReport(protocol_template, self.qcreport_yml)
+    self.baselineaverage = BaselineAverage(protocol_template, self.baselineaverage_yml)
+    self.brainmask = BrainMask(protocol_template, self.brainmask_yml)
+    self.dtiestimate = DTIEstimate(protocol_template, self.dtiestimate_yml)
+    self.eddymotion = EddyMotion(protocol_template, self.eddymotion_yml)
+    self.exclude = ExcludeGradients(protocol_template, self.exclude_yml)
+    self.interlacecheck = InterlaceCheck(protocol_template, self.interlacecheck_yml)
+    self.slicecheck = SliceCheck(protocol_template, self.slicecheck_yml)
+    self.susceptibility = SusceptibilityCorrection(protocol_template, self.susceptibility_yml, preferences_yml)
+    self.utilheader = UtilHeader(protocol_template, self.utilheader_yml)
+    self.no_module = NoModule()
+    self.utilmerge = UtilMerge(protocol_template, self.utilmerge_yml)
+    self.qcreport = QCReport(protocol_template, self.qcreport_yml)
 
     # add modules to stack
     self.details_stack = QStackedWidget()

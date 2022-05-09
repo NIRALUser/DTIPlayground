@@ -3,24 +3,24 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import * 
 
-from dmriprep_ui.modules_details_communicate import ModulesDetailsCommunicate
+from dtiplayground.ui.modules_details_communicate import ModulesDetailsCommunicate
 
-class UtilHeader(QWidget):
+class UtilMerge(QWidget):
   communicate = ModulesDetailsCommunicate()
 
-  def __init__(self, protocol_template, utilheader_yml):
+  def __init__(self, protocol_template, utilmerge_yml):
     QWidget.__init__(self)
     self.stack = QWidget()
-    self.UtilHeaderStack(protocol_template, utilheader_yml)
+    self.UtilMergeStack(protocol_template, utilmerge_yml)
 
-  def UtilHeaderStack(self, protocol_template, utilheader_yml):
+  def UtilMergeStack(self, protocol_template, utilmerge_yml):
 
     ## Module
     self.tab_name = QLabel()
 
     ## Description
     for template_ite in range(len(protocol_template["options"]["execution"]["pipeline"]["candidates"])):
-      if protocol_template["options"]["execution"]["pipeline"]["candidates"][template_ite]["value"] == "UTIL_Header":
+      if protocol_template["options"]["execution"]["pipeline"]["candidates"][template_ite]["value"] == "UTIL_Merge":
         description_label = QLabel(protocol_template["options"]["execution"]["pipeline"]["candidates"][template_ite]["description"])
     description_label.setWordWrap(True)
 
@@ -46,11 +46,11 @@ class UtilHeader(QWidget):
     protocol_layout = QFormLayout()
     protocol_groupbox.setLayout(protocol_layout)
     # options
-    self.options = QLineEdit()
-    self.options.setAlignment(Qt.AlignRight)
-    self.options.setStatusTip(utilheader_yml["protocol"]["options"]["description"])
-    protocol_layout.addRow(utilheader_yml["protocol"]["options"]["caption"], self.options)
-    self.options.textChanged.connect(self.GetParams)
+    self.testparam = QLineEdit()
+    self.testparam.setAlignment(Qt.AlignRight)
+    self.testparam.setStatusTip(utilmerge_yml["protocol"]["TestParam"]["description"])
+    protocol_layout.addRow(utilmerge_yml["protocol"]["TestParam"]["caption"], self.testparam)
+    self.testparam.textChanged.connect(self.GetParams)
 
     ## Layout
     layout_v = QVBoxLayout()
@@ -63,15 +63,15 @@ class UtilHeader(QWidget):
 
   def GetParams(self):
     params = [
-      'View Header',
-      'UTIL_Header', 
+      'Merge Images',
+      'UTIL_Merge', 
       {'options': {
         'overwrite': self.overwrite.isChecked(), 
         'skip': self.skip.isChecked(), 
         'write_image': self.writeimage.isChecked()
         },
       'protocol': {
-        'options': self.options.text(), 
+        'TestParam': self.testparam.text(), 
         }
       }
     ]

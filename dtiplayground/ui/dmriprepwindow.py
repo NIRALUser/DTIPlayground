@@ -17,7 +17,7 @@ from PIL.ImageQt import ImageQt
 
 from functools import partial
 
-from dmriprep_ui.dmriprepUI import Widgets
+from dtiplayground.ui.dmriprepUI import Widgets
 
 class Window(QMainWindow):
 

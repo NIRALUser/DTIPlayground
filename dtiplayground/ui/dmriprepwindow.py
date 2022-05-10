@@ -16,7 +16,7 @@ from PIL import Image, ImageEnhance
 from PIL.ImageQt import ImageQt
 
 from functools import partial
-
+from dtiplayground.ui.softwarepaths import SoftwarePaths
 from dtiplayground.ui.dmriprepUI import Widgets
 
 class Window(QMainWindow):
@@ -44,6 +44,12 @@ class Window(QMainWindow):
     saveasAct.setStatusTip('Save protocol file as...')
     saveasAct.triggered.connect(dmriprep.protocol_tab.SaveAs)
 
+    # Configurate software paths
+    configSoftware = QAction('Softwares', self)
+    configSoftware.setStatusTip('Set software paths')
+    self.software_window = SoftwarePaths()
+    configSoftware.triggered.connect(self.ShowSoftwareWindow)
+
     self.statusBar() 
     
     # Menu
@@ -52,5 +58,10 @@ class Window(QMainWindow):
     fileMenu.addAction(saveAct)
     fileMenu.addAction(saveasAct)
     fileMenu.addAction(exitAct)
+    configMenu = menubar.addMenu('Config')
+    configMenu.addAction(configSoftware)
     
     self.show()
+
+  def ShowSoftwareWindow(self): 
+    self.software_window.show()

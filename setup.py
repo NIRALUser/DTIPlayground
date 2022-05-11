@@ -46,7 +46,8 @@ setup(
         'pyqt5',
         'simpleitk==2.1.1',
         'reportlab==3.6.6',
-        'pypdf2==1.26.0'
+        'pypdf2==1.26.0',
+        'markdown==3.3.6'
        ],
 
  )

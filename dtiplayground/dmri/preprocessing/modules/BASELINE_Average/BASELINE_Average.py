@@ -11,6 +11,8 @@ import BASELINE_Average.computations as computations
 import numpy as np
 import time
 from pathlib import Path
+import os
+import markdown
 
 logger=prep.logger.write
 
@@ -65,3 +67,17 @@ class BASELINE_Average(prep.modules.DTIPrepModule):
         self.result['output']['success']=True
         #raise Exception("User Exception for development ...")
         return self.result
+
+    def postProcess(self,result_obj,opts):
+        super().postProcess(result_obj, opts)        
+        
+        if self.result['input']['image_path']:
+            input_image = os.path.abspath(self.result['input']['image_path'])
+        else:
+            input_image = None        
+
+        with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
+            f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
+            f.write('### {}\n'.format("input image: " + str(input_image)).encode('utf-8'))
+            f.seek(0)
+            markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')

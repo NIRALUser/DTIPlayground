@@ -6,6 +6,8 @@ from dtiplayground.dmri.preprocessing.dwi import DWI
 import yaml
 from pathlib import Path
 import copy
+import os
+import markdown
 
 import numpy as np
 import dipy.reconst.dti as dti
@@ -39,6 +41,21 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
                         correctionMethod=self.protocol['correctionMethod'])
         self.result['output']['success']=True
         return self.result
+
+    def postProcess(self,result_obj,opts):
+        super().postProcess(result_obj, opts)        
+        
+        if self.result['input']['image_path']:
+            input_image = os.path.abspath(self.result['input']['image_path'])
+        else:
+            input_image = None        
+
+        with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
+            f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
+            f.write('### {}\n'.format("input image: " + str(input_image)).encode('utf-8'))
+            f.seek(0)
+            markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
+
 
 ### User defined methods
 

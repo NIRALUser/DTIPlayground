@@ -12,10 +12,7 @@ sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line i
 
 from dtiplayground.ui.dmriprepwindow import Window
 import dtiplayground.dmri.preprocessing.templates 
-#sys.path.append("/BAND/USERS/skp78-dti/dtiplayground/dtiplayground")
-#sys.path.append("dtiplayground")
-
-
+import dtiplayground.config as config
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--image", type=str, help="input image path", nargs="+")
@@ -27,10 +24,23 @@ args = parser.parse_args()
 source_template_path=Path(dtiplayground.dmri.preprocessing.__file__).parent.joinpath("templates/protocol_template.yml")
 protocol_template=yaml.safe_load(open(source_template_path,'r'))
 
-user_directory = os.path.expanduser("~/.niral-dti")
-if not os.path.isdir(user_directory):
-    os.system("dmriprep init")
+user_directory = os.path.expanduser("~/.niral-dti/dmriprep-" + config.INFO["dmriprep"]["version"])
+need_init = False
+list_needed_files = [user_directory, 
+                     user_directory + "/config.yml",
+					 user_directory + "/environment.yml",
+					 user_directory + "/log.txt",
+					 user_directory + "/modules", 
+					 user_directory + "/parameters", 
+					 user_directory + "/protocol_template.yml", 
+					 user_directory + "/software_paths.yml"]
 
+for filepath in list_needed_files:
+    if not os.path.exists(filepath):
+    	need_init = True
+
+if need_init:
+	os.system("dmriprep init")
 
 app = QApplication(sys.argv)
 ex = Window(protocol_template, args)

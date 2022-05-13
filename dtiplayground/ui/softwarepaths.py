@@ -29,8 +29,12 @@ class SoftwarePaths(QMainWindow):
             layout.addWidget(path, i, 1, 1, 5)
             self.softwares_dict[list_softwares[i]] = path
 
-        button = QPushButton("Ok")
-        layout.addWidget(button, i+1, 5)
+        button_cancel = QPushButton("Cancel")
+        layout.addWidget(button_cancel, i+1, 5)
+        button_cancel.clicked.connect(lambda: self.close())
+
+        button = QPushButton("Save")
+        layout.addWidget(button, i+1, 4)
         button.clicked.connect(self.UpdatePaths)
 
     def UpdatePaths(self):

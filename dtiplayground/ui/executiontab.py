@@ -49,7 +49,7 @@ class ExecutionTab(QWidget):
 
   def __init__(self, protocol_template, args):
     QWidget.__init__(self)
-    self.mulri_input = 0
+    self.multi_input = 0
     self.args = args
     self.tab = QWidget() 
     self.communicate.call_UpdateNumberOfInputs.connect(self.UpdateNumberOfInputs)
@@ -166,6 +166,7 @@ class ExecutionTab(QWidget):
       self.input_layout.addWidget(self.input_line_label, 0, 0)
       self.input_layout.addWidget(self.input_line, 0, 1)
       self.input_layout.addWidget(self.input_browse_button, 0, 2)
+      self.output_image_basename.setEnabled(False)
       
     # set new input_layout with 2 input files
     if self.multi_input == 1:  
@@ -190,6 +191,7 @@ class ExecutionTab(QWidget):
       self.input_browse_button2 = QPushButton("Browse")
       self.input_browse_button2.clicked.connect(self.BrowseButton2)
       self.input_layout.addWidget(self.input_browse_button2, 1, 2)
+      self.output_image_basename.setEnabled(True)
 
     # set new input_layout for UTIL_Merge
     if self.multi_input == 2:
@@ -212,6 +214,7 @@ class ExecutionTab(QWidget):
       self.merge_input_clear_button = QPushButton("Clear")
       self.merge_input_clear_button.clicked.connect(self.ClearInput)
       self.input_layout.addWidget(self.merge_input_clear_button, 3, 0)
+      self.output_image_basename.setEnabled(True)
 
     
   def UpdateOutputFilenameBase(self):
@@ -304,7 +307,7 @@ class ExecutionTab(QWidget):
       arguments.append(self.threads_line.text())
 
     if self.local_computation.isChecked():
-      self.process.start("dmriprep-dev", arguments)
+      self.process.start("dmriprep", arguments)
     if self.cluster_computation.isChecked():
       arguments[6] = arguments[6].split("/")[-1]
       arguments = ["longleaf.unc.edu", "'", "/proj/NIRAL/containers/dtiplaygroung/dmriprep_longleaf"] + arguments + ["'"]

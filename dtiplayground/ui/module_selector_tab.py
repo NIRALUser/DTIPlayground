@@ -51,6 +51,7 @@ class ModuleSelector(QWidget):
         new_module = QListWidgetItem()
         new_module.setText(module_iterator["caption"])
         new_module.setData(QtCore.Qt.UserRole, module_id)
+        new_module.setToolTip(module_iterator["description"])
         module_id += 1
         self.modules_list_widget.addItem(new_module)
 

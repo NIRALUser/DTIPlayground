@@ -307,7 +307,7 @@ class ExecutionTab(QWidget):
       arguments.append(self.threads_line.text())
 
     if self.local_computation.isChecked():
-      self.process.start("dmriprep-dev", arguments)
+      self.process.start("dmriprep", arguments)
     if self.cluster_computation.isChecked():
       arguments[6] = arguments[6].split("/")[-1]
       arguments = ["longleaf.unc.edu", "'", "/proj/NIRAL/containers/dtiplaygroung/dmriprep_longleaf"] + arguments + ["'"]

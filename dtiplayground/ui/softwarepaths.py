@@ -8,7 +8,7 @@ class SoftwarePaths(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
 
-
+        #self.setFixedWidth(800)
         self.setWindowTitle("Softwares")
         widget = QWidget()
         self.setCentralWidget(widget)
@@ -36,7 +36,7 @@ class SoftwarePaths(QMainWindow):
             self.softwares_dict[list_softwares[i]] = path
 
         button = QPushButton("Ok")
-        layout.addWidget(button, i+1, 1)
+        layout.addWidget(button, i+1, 5)
         button.clicked.connect(self.UpdatePaths)
 
     def UpdatePaths(self):

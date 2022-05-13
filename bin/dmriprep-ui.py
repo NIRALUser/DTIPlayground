@@ -6,6 +6,7 @@ import yaml
 from yaml.loader import SafeLoader
 from PyQt5.QtWidgets import * 
 import argparse
+import os
 
 sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line is for development
 
@@ -13,6 +14,8 @@ from dtiplayground.ui.dmriprepwindow import Window
 import dtiplayground.dmri.preprocessing.templates 
 #sys.path.append("/BAND/USERS/skp78-dti/dtiplayground/dtiplayground")
 #sys.path.append("dtiplayground")
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--image", type=str, help="input image path", nargs="+")
@@ -23,6 +26,11 @@ args = parser.parse_args()
 
 source_template_path=Path(dtiplayground.dmri.preprocessing.__file__).parent.joinpath("templates/protocol_template.yml")
 protocol_template=yaml.safe_load(open(source_template_path,'r'))
+
+user_directory = os.path.expanduser("~/.niral-dti")
+if not os.path.isdir(user_directory):
+    os.system("dmriprep init")
+
 
 app = QApplication(sys.argv)
 ex = Window(protocol_template, args)

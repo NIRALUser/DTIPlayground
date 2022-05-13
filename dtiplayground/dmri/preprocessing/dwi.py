@@ -114,8 +114,13 @@ def _load_nifti_bvecs(filename):
 
 def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     parent_dir=Path(filename).parent
-    if bvals_file is None: bvals_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvals')
-    if bvecs_file is None: bvecs_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvecs')
+    if bvals_file is None: bvals_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bval')
+    if bvecs_file is None: bvecs_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvec')
+
+    if not bvals_file.exists():
+        bvals_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvals')
+    if not bvecs_file.exists():
+        bvecs_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvecs')
     
     loaded_image_object= nib.load(filename)
     header=loaded_image_object.header
@@ -301,8 +306,8 @@ def _write_nifti(image,filename,dtype): #image : DWI
     data,affine,bvals,bvecs=export_to_nifti(image)
     out_dir=Path(filename).parent
     filename_stem=Path(filename).name.split('.')[0]
-    bvals_filename=out_dir.joinpath(filename_stem+".bvals")
-    bvecs_filename=out_dir.joinpath(filename_stem+".bvecs")
+    bvals_filename=out_dir.joinpath(filename_stem+".bval")
+    bvecs_filename=out_dir.joinpath(filename_stem+".bvec")
     data=data.astype(dtype)
     out_image_object=nib.Nifti1Image(data,affine)
     nib.save(out_image_object,str(filename))

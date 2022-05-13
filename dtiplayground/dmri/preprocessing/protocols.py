@@ -79,7 +79,7 @@ def _generate_output_directories_mapping(output_dir,exec_sequence): ## map exec 
         options=execution['options']
         image_path=execution['image_path']
         order=execution['order']
-        module_output_dir=Path(output_dir).joinpath(Path(image_path).stem).joinpath("{:02d}_{}".format(order,m))
+        module_output_dir=Path(output_dir).joinpath(Path(image_path).stem.split('.')[0]).joinpath("{:02d}_{}".format(order,m))
         #module_output_dir.mkdir(parents=True,exist_ok=True)
         module_output_dirs[uid]=str(module_output_dir)
     return module_output_dirs
@@ -141,7 +141,7 @@ class Protocols:
             img.getGradients()
             self.images.append(img)
         self.original_image_information = self.images[0].information
-        self.oriiginal_image_format = self.images[0].image_type
+        self.original_image_format = self.images[0].image_type
 
     def setOutputDirectory(self, output_dir=None):
         if output_dir is None:

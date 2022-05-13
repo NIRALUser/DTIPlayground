@@ -3,12 +3,14 @@ from PyQt5.QtWidgets import *
 from functools import partial
 from dtiplayground.ui.softwarepaths import SoftwarePaths
 from dtiplayground.ui.dmriprepUI import Widgets
+import dtiplayground.config as config
+
 
 class Window(QMainWindow):
 
   def __init__(self, protocol_template, args):
     super().__init__()
-    self.setWindowTitle("DMRIPrep")
+    self.setWindowTitle("DMRIPrep - " + config.INFO["dmriprep"]["version"])
     dmriprep = Widgets(self, protocol_template, args)
     self.setCentralWidget(dmriprep)
 

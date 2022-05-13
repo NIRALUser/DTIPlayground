@@ -5,7 +5,7 @@ import os
 import yaml
 from pathlib import Path
 import glob
-
+import dtiplayground.config as config
 from dtiplayground.ui.protocoltab import ProtocolTab
 from dtiplayground.ui.executiontab import ExecutionTab
 from dtiplayground.ui.protocol import Protocol
@@ -151,11 +151,7 @@ class Widgets(QWidget):
 
   def CreateUserPreferencesFile(self):
     user_directory = os.path.expanduser("~/.niral-dti")
-    list_of_dir = glob.glob(user_directory + "/*")
-    if user_directory + "/user_preferences.yml" in list_of_dir:
-      list_of_dir.remove(user_directory + "/user_preferences.yml")
-    latest_dir = max(list_of_dir, key = os.path.getctime)
-    default = {"fslConfigurationFilePath": latest_dir + "/parameters/fsl/fsl_regb02b0.cnf",
+    default = {"fslConfigurationFilePath": user_directory + "/dmriprep-" + config.INFO["dmriprep"]["version"] + "/parameters/fsl/fsl_regb02b0.cnf",
       "showExcludeGradientsPopup": True, 
       "showMergeImagesPopup": True}
     with open(user_directory + "/user_preferences.yml", 'w')as filename:

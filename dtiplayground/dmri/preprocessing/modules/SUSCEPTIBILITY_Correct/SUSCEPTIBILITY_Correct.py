@@ -148,13 +148,13 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         
         output=fsl.fslmerge(outputfilename,pe_files)
         ## making merged bvals,bvecs
-        bvals_fn=Path(self.output_dir).joinpath(Path(outputfilename).name.split('.')[0]+'.bvals')
-        bvecs_fn=Path(self.output_dir).joinpath(Path(outputfilename).name.split('.')[0]+'.bvecs')
+        bvals_fn=Path(self.output_dir).joinpath(Path(outputfilename).name.split('.')[0]+'.bval')
+        bvecs_fn=Path(self.output_dir).joinpath(Path(outputfilename).name.split('.')[0]+'.bvec')
 
-        input_bvals_fn_0=Path(self.output_dir).joinpath(Path(pe_files[0]).name.split('.')[0]+'.bvals')
-        input_bvecs_fn_0=Path(self.output_dir).joinpath(Path(pe_files[0]).name.split('.')[0]+'.bvecs')
-        input_bvals_fn_1=Path(self.output_dir).joinpath(Path(pe_files[1]).name.split('.')[0]+'.bvals')
-        input_bvecs_fn_1=Path(self.output_dir).joinpath(Path(pe_files[1]).name.split('.')[0]+'.bvecs')
+        input_bvals_fn_0=Path(self.output_dir).joinpath(Path(pe_files[0]).name.split('.')[0]+'.bval')
+        input_bvecs_fn_0=Path(self.output_dir).joinpath(Path(pe_files[0]).name.split('.')[0]+'.bvec')
+        input_bvals_fn_1=Path(self.output_dir).joinpath(Path(pe_files[1]).name.split('.')[0]+'.bval')
+        input_bvecs_fn_1=Path(self.output_dir).joinpath(Path(pe_files[1]).name.split('.')[0]+'.bvec')
         
         with open(bvals_fn,'w') as fw:
             bvals1=open(input_bvals_fn_0,'r').read()
@@ -259,8 +259,8 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
 
         logger("Merging original images ... ",prep.Color.PROCESS)
         merged_image_filename=Path(self.output_dir).joinpath("merged_image.nii.gz").__str__()
-        merged_bvals_filename=Path(self.output_dir).joinpath("merged_image.bvals").__str__()
-        merged_bvecs_filename=Path(self.output_dir).joinpath("merged_image.bvecs").__str__()
+        merged_bvals_filename=Path(self.output_dir).joinpath("merged_image.bval").__str__()
+        merged_bvecs_filename=Path(self.output_dir).joinpath("merged_image.bvec").__str__()
         self.merge_images(merged_image_filename,pe_files,b0_threshold)
 
         ## load merged image into self.image 

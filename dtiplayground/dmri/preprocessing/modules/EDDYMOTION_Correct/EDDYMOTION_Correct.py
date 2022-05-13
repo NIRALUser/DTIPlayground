@@ -110,27 +110,29 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         ### conversion to nifti 
         input_nifti=output_dir.joinpath('input.nii.gz').__str__()
-        input_bvals=output_dir.joinpath('input.bvals').__str__()
-        input_bvecs=output_dir.joinpath('input.bvecs').__str__()
+        input_bvals=output_dir.joinpath('input.bval').__str__()
+        input_bvecs=output_dir.joinpath('input.bvec').__str__()
         output_nifti=output_dir.joinpath('output.nii.gz').__str__()
         binary_mask=output_dir.joinpath('output_mask.nii.gz').__str__()
         processed_nifti=output_dir.joinpath('output_eddied.nii.gz').__str__()
         processed_nifti_base=Path(processed_nifti).parent.joinpath(Path(processed_nifti).name.split('.')[0]).__str__()
         processed_nifti_nonneg=output_dir.joinpath('output_eddied_nonneg.nii.gz').__str__()
-        processed_bvals=output_dir.joinpath('output_eddied.bvals').__str__()
-        processed_bvecs=output_dir.joinpath('output_eddied.bvecs').__str__()
+        processed_bvals=output_dir.joinpath('output_eddied.bval').__str__()
+        processed_bvecs=output_dir.joinpath('output_eddied.bvec').__str__()
         output_nrrd=output_dir.joinpath('output.nrrd').__str__()
         quad_output_dir=output_dir.joinpath('output_eddied.qc').__str__()
-        
+        _average_path=output_dir.joinpath("_average.nii.gz").__str__()
+
         self.writeImage(str(input_nifti),dest_type='nifti')
         img=self.loadImage(input_nifti)
-        img.writeImage(Path(output_dir.joinpath("input_dev.nrrd")).__str__(),dest_type='nrrd')
 
         ### generate mask
         fsl=tools.FSL(self.software_info['FSL']['path'])
         fsl._set_num_threads(self.num_threads)
         fsl.setDevMode(True)
         logger("Generating Mask : {}".format(binary_mask.__str__()))
+
+        output=fsl.fslmaths_ops(input_nifti,_average_path,'mean')
         res=fsl.bet(str(input_nifti),str(output_nifti))
         ouput_nifti=Path(output_nifti).rename(output_dir.joinpath('temp.nii.gz').__str__())
 
@@ -161,8 +163,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         logger("Generating Non negative DWI...to {}".format(str(processed_nifti_nonneg)),prep.Color.PROCESS)
         nonneg_base=Path(processed_nifti_nonneg).name.split('.')[0]
-        processed_nifti_nonneg_bvals=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvals").__str__()
-        processed_nifti_nonneg_bvecs=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvecs").__str__()
+        processed_nifti_nonneg_bvals=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bval").__str__()
+        processed_nifti_nonneg_bvecs=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvec").__str__()
 
         if not Path(processed_nifti_nonneg).exists():
             output=fsl.fslmaths_threshold(processed_nifti,processed_nifti_nonneg,0)
@@ -202,8 +204,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         processed_nifti=output_dir.joinpath('output_eddied.nii.gz').__str__()
         processed_nifti_base=Path(processed_nifti).parent.joinpath(Path(processed_nifti).name.split('.')[0]).__str__()
         processed_nifti_nonneg=output_dir.joinpath('output_eddied_nonneg.nii.gz').__str__()
-        processed_bvals=output_dir.joinpath('output_eddied.bvals').__str__()
-        processed_bvecs=output_dir.joinpath('output_eddied.bvecs').__str__()
+        processed_bvals=output_dir.joinpath('output_eddied.bval').__str__()
+        processed_bvecs=output_dir.joinpath('output_eddied.bvec').__str__()
         output_nrrd=output_dir.joinpath('output.nrrd').__str__()
         quad_output_dir=output_dir.joinpath('output_eddied.qc').__str__()
 
@@ -243,8 +245,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
         logger("Generating Non negative DWI...",prep.Color.PROCESS)
         nonneg_base=Path(processed_nifti_nonneg).name.split('.')[0]
-        processed_nifti_nonneg_bvals=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvals").__str__()
-        processed_nifti_nonneg_bvecs=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvecs").__str__()
+        processed_nifti_nonneg_bvals=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bval").__str__()
+        processed_nifti_nonneg_bvecs=Path(processed_nifti_nonneg).parent.joinpath(nonneg_base+".bvec").__str__()
 
         if not Path(processed_nifti_nonneg).exists():
             output=fsl.fslmaths_threshold(processed_nifti,processed_nifti_nonneg,0)

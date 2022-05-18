@@ -11,6 +11,7 @@ from reportlab.lib.pagesizes import letter
 from PyPDF2 import PdfFileMerger
 import markdown
 
+
 import dtiplayground.dmri.preprocessing as prep
 
 logger=prep.logger.write
@@ -28,7 +29,11 @@ class QC_Report(prep.modules.DTIPrepModule):
         super().process()
         inputParams=self.getPreviousResult()['output']
         # << TODOS>>
-        self.MergeReports()
+        global_report = self.MergeReports()        
+        
+        info_display_QCed_gradients = self.CreateImages()
+        global_report = self.AddGradientImagesToReport(global_report, info_display_QCed_gradients[0])
+        self.GenerateReportFiles(global_report)
 
         """
         data = self.GetData()
@@ -63,8 +68,20 @@ class QC_Report(prep.modules.DTIPrepModule):
                 with open(module['report']['module_report_paths'], 'r') as f:
                     text = f.read()
                     global_report += text
-        print(global_report)
+        return(global_report)
 
+    def AddGradientImagesToReport(self, global_report, number_of_gradients):
+        global_report += "\n"
+        for gradient_index in range(number_of_gradients):
+            image_path = self.output_dir + "/QC_Report_images/dwi" + str(gradient_index) + ".jpg"
+            global_report += "![DWI" + str(gradient_index) + "](" + image_path + ")"
+        return(global_report)
+
+
+    def GenerateReportFiles(self, global_report):
+        with open(self.output_dir + '/report.md', 'bw+') as f:
+            f.write(global_report.encode('utf-8'))
+        markdown.markdownFromFile(input=self.output_dir+"/report.md", output=self.output_dir+"/report.html")
 
     def GetData(self):
         data = []

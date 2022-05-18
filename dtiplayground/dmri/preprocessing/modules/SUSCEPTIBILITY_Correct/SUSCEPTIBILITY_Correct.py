@@ -83,12 +83,31 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         super().postProcess(result_obj, opts)
         if self.result['input'][0]["output"]['image_path']:
             input_image_1 = os.path.abspath(self.result['input'][0]["output"]['image_path'])
-        else:
-            input_image_1 = None 
-        if self.result['input'][1]["output"]['image_path']:
             input_image_2 = os.path.abspath(self.result['input'][1]["output"]['image_path'])
         else:
-            input_image_2 = None        
+            input_image_1 = None
+            input_image_2 = None
+            input_directory = self.result_history[0]["output"][0]["input"]["output_directory"]
+            list_report_paths_1 = []
+            list_report_paths_2 = []
+            while input_image_1 == None:
+                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
+                input_image_1 = previous_result["input"]["image_path"]
+                list_report_paths_1 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_1
+                if "output_directory" in previous_result["input"]:
+                    input_directory = previous_result["input"]["output_directory"]
+        
+            input_directory = self.result_history[0]["output"][1]["input"]["output_directory"]
+            while input_image_2 == None:
+                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
+                input_image_2 = previous_result["input"]["image_path"]
+                list_report_paths_2 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_2
+                if "output_directory" in previous_result["input"]:
+                    input_directory = previous_result["input"]["output_directory"]
+                
+            self.result['report']['module_report_paths'] = [list_report_paths_1, list_report_paths_2, os.path.abspath(self.output_dir) + '/report.md']
+            input_image_1 = os.path.abspath(input_image_1)
+            input_image_2 = os.path.abspath(input_image_2)
 
         with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
             f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))

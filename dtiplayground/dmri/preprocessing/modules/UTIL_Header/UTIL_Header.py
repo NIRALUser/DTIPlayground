@@ -27,11 +27,19 @@ class UTIL_Header(prep.modules.DTIPrepModule):
         
         if self.result['input']['image_path']:
             input_image = os.path.abspath(self.result['input']['image_path'])
+        elif type(self.result_history[0]["output"]) == dict: #single input
+            input_image = os.path.abspath(self.result_history[0]["output"]["image_path"])
         else:
-            input_image = None        
+            input_image = None
+            input_directory = self.result["input"]["output_directory"]
+            while input_image == None:
+                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
+                input_image = previous_result["input"]["image_path"]
+                if "output_directory" in previous_result["input"]:
+                    input_directory = previous_result["input"]["output_directory"]     
 
         with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
             f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
-            f.write('### {}\n'.format("input image: " + str(input_image)).encode('utf-8'))
+            f.write('### {}\n'.format("input image: " + str(os.path.abspath(input_image))).encode('utf-8'))
             f.seek(0)
             markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')

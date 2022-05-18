@@ -9,6 +9,7 @@ from PIL import Image
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from PyPDF2 import PdfFileMerger
+import markdown
 
 import dtiplayground.dmri.preprocessing as prep
 
@@ -27,15 +28,43 @@ class QC_Report(prep.modules.DTIPrepModule):
         super().process()
         inputParams=self.getPreviousResult()['output']
         # << TODOS>>
+        self.MergeReports()
+
+        """
         data = self.GetData()
         if self.protocol["generateCSV"] == True:
             self.CreateCSV(data)
         if self.protocol["generatePDF"] == True:
             info_display_QCed_gradients = self.CreateImages()
             self.CreatePDF(data, info_display_QCed_gradients)
-
+        """
         self.result['output']['success']=True
         return self.result
+
+    def MergeReports(self):
+        global_report = ""
+        for module in self.result_history[1:]:
+            if module["module_name"] == "SUSCEPTIBILITY_Correct":
+                for report_file in module['report']['module_report_paths'][0]:
+                    with open(report_file, 'r') as f:
+                        text = f.read()
+                        global_report += text
+                global_report += "* * * * \n"
+                for report_file in module['report']['module_report_paths'][1]:
+                    with open(report_file, 'r') as f:
+                        text = f.read()
+                        global_report += text
+                global_report += "* * * * \n"
+                with open(module['report']['module_report_paths'][2], 'r') as f:
+                    text = f.read()
+                    global_report += text
+
+            else:
+                with open(module['report']['module_report_paths'], 'r') as f:
+                    text = f.read()
+                    global_report += text
+        print(global_report)
+
 
     def GetData(self):
         data = []

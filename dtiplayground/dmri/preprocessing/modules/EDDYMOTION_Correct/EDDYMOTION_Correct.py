@@ -81,13 +81,21 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         self.result['report_data']['path_qc_pdf']=path_qc_pdf  
         
         if self.result['input']['image_path']:
-            input_image = os.path.abspath(self.result['input']['image_path'])
+            input_image = self.result['input']['image_path']
+        elif type(self.result_history[0]["output"]) == dict: #single input
+            input_image = self.result_history[0]["output"]["image_path"]
         else:
-            input_image = None        
+            input_image = None
+            input_directory = self.result["input"]["output_directory"]
+            while input_image == None:
+                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
+                input_image = previous_result["input"]["image_path"]
+                if "output_directory" in previous_result["input"]:
+                    input_directory = previous_result["input"]["output_directory"]      
 
         with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
             f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
-            f.write('### {}\n'.format("input image: " + str(input_image)).encode('utf-8'))
+            f.write('### {}\n'.format("input image: " + str(os.path.abspath(input_image))).encode('utf-8'))
             path_rms = self.output_dir + "/output_eddied.eddy_movement_rms"
             data_rms = pandas.read_csv(path_rms, sep = '  ', engine = 'python', usecols = [1])
             rmsLargerThan1 = data_rms[data_rms > 1.0].count()[0]

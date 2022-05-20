@@ -426,8 +426,8 @@ class Protocols:
                     if self.io['output_format'] is None: self.io['output_format']=self.original_image_format
                     if self.io['output_format'] =='nrrd' : ext='.nrrd'
                     final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
-                    final_gradients_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_gradients.yml').__str__()
-                    final_information_filename=Path(self.output_dir).joinpath(Path(output_base).stem).joinpath('output_image_information.yml').__str__()
+                    final_gradients_filename=Path(self.output_dir).joinpath(Path(output_base).stem.split('.')[0]).joinpath('output_gradients.yml').__str__()
+                    final_information_filename=Path(self.output_dir).joinpath(Path(output_base).stem.split('.')[0]).joinpath('output_image_information.yml').__str__()
                     
                     if not Path(final_filename).exists() or idx+1==len(execution_sequence):
                         # m.image.writeImage(final_filename,dest_type=m.image.image_type)

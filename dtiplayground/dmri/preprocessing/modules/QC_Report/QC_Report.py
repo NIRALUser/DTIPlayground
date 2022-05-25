@@ -14,6 +14,7 @@ import markdown
 from pdf2image import convert_from_path
 
 
+
 import dtiplayground.dmri.preprocessing as prep
 
 logger=prep.logger.write
@@ -91,7 +92,7 @@ class QC_Report(prep.modules.DTIPrepModule):
                 if module['report']['csv_data']['number_of_excluded_gradients']:
                     number_of_excluded_gradients += module['report']['csv_data']['number_of_excluded_gradients']
 
-        global_report += "### Total: \n"
+        global_report += "## Total: \n"
         if number_of_excluded_gradients == 0:
             global_report += "* 0 gradient excluded or corrected out of " + str(number_input_gradients) + "\n"
         elif number_of_excluded_gradients == 1:
@@ -104,8 +105,9 @@ class QC_Report(prep.modules.DTIPrepModule):
         return(global_report, number_input_gradients, number_of_excluded_gradients)
 
 
+
     def AddGradientImagesToReport(self, global_report, number_of_gradients):
-        global_report += "\n"
+        global_report += "\n## QCed volume DWIs: \n"
         for gradient_index in range(number_of_gradients):
             image_path = self.output_dir + "/QC_Report_images/dwi" + str(gradient_index) + ".jpg"
             html = "<figure><img src="+image_path+" alt='DWI "+str(gradient_index)+"' style='width:48%'><figcaption>DWI "+str(gradient_index)+"</figcaption></figure>"
@@ -152,24 +154,20 @@ class QC_Report(prep.modules.DTIPrepModule):
         input_number_gradients = list(self.source_image.images.shape)[3]
         
         output_images_directory = self.GetOutputImagesDirectory()
-        #for iter_gradients in range(input_number_gradients):  
-        for iter_gradients in range(3):  
+        for iter_gradients in range(input_number_gradients):  
 
             axial_image = self.AxialView(iter_gradients, input_size, input_image)
             sagittal_image = self.SagittalView(iter_gradients, input_size, input_image)
             coronal_image = self.CoronalView(iter_gradients, input_size, input_image)
 
             # concatenate
-            width = axial_image.height + sagittal_image.width + coronal_image.height
-            height = max(axial_image.width, sagittal_image.height, coronal_image.width)
+            width = axial_image.width + sagittal_image.width + coronal_image.width
+            height = max(axial_image.height, sagittal_image.height, coronal_image.height)
             dwi_image = Image.new('L', (width, height), 0)
             dwi_image.paste(sagittal_image, (0, 0))
             dwi_image.paste(axial_image, (sagittal_image.width, 0))
-            dwi_image.paste(coronal_image, (sagittal_image.width + axial_image.height, 0))
+            dwi_image.paste(coronal_image, (sagittal_image.width + axial_image.width, 0))
             dwi_image.save(output_images_directory + "/dwi" + str(iter_gradients) + ".jpg")
-            axial_image.save(output_images_directory + "/axial" + str(iter_gradients) + ".jpg")
-            sagittal_image.save(output_images_directory + "/sagittal" + str(iter_gradients) + ".jpg")
-            coronal_image.save(output_images_directory + "/coronal" + str(iter_gradients) + ".jpg")
   
         info_display_QCed_gradients = [input_number_gradients, dwi_image.width, dwi_image.height]
         return info_display_QCed_gradients
@@ -180,7 +178,6 @@ class QC_Report(prep.modules.DTIPrepModule):
         return str(self.output_dir) + "/QC_Report_images"
 
     def SagittalView(self, iter_gradients, input_size, input_image):
-        print(input_size)
         slice_extractor = sitk.ExtractImageFilter()  
         slice_extractor.SetSize([input_size[0], input_size[1], 0])
         slice_extractor.SetIndex([0, 0, input_size[2]//2])
@@ -194,8 +191,11 @@ class QC_Report(prep.modules.DTIPrepModule):
         gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
         gradient_image = Image.fromarray(gradient_array_normalized)
         gradient_image = gradient_image.convert("L")
-        #gradient_image = gradient_image.rotate(90)
-        return gradient_image
+        dimension = max(gradient_image.height, gradient_image.width)
+        square_image = Image.new('L', (dimension, dimension), 0)
+        square_image.paste(gradient_image, ((dimension-gradient_image.width)//2, (dimension-gradient_image.height)//2))
+        square_image = square_image.rotate(90)
+        return square_image
 
     def AxialView(self, iter_gradients, input_size, input_image):
         
@@ -210,11 +210,13 @@ class QC_Report(prep.modules.DTIPrepModule):
         
         gradient_array = sitk.GetArrayFromImage(gradient)
         gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
-        gradient_array_normalized = numpy.flipud(gradient_array_normalized)
         gradient_image = Image.fromarray(gradient_array_normalized)
         gradient_image = gradient_image.convert("L")
-        gradient_image = gradient_image.rotate(270)
-        return gradient_image
+        dimension = max(gradient_image.height, gradient_image.width)
+        square_image = Image.new('L', (dimension, dimension), 0)
+        square_image.paste(gradient_image, ((dimension-gradient_image.width)//2, (dimension-gradient_image.height)//2))
+        square_image = square_image.rotate(270)
+        return square_image
 
     def CoronalView(self, iter_gradients, input_size, input_image):
         
@@ -229,8 +231,10 @@ class QC_Report(prep.modules.DTIPrepModule):
         
         gradient_array = sitk.GetArrayFromImage(gradient)
         gradient_array_normalized = (gradient_array - numpy.min(gradient_array)) * round(255 / numpy.max(gradient_array), 3)
-        gradient_array_normalized = numpy.flipud(gradient_array_normalized)
         gradient_image = Image.fromarray(gradient_array_normalized)
         gradient_image = gradient_image.convert("L")
-        gradient_image = gradient_image.rotate(90)
-        return gradient_image
+        dimension = max(gradient_image.height, gradient_image.width)
+        square_image = Image.new('L', (dimension, dimension), 0)
+        square_image.paste(gradient_image, ((dimension-gradient_image.width)//2, (dimension-gradient_image.height)//2))
+        square_image = square_image.rotate(90)
+        return square_image

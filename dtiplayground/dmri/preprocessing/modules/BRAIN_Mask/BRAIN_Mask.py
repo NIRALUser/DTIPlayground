@@ -40,9 +40,11 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
 
     def postProcess(self,result_obj,opts):
         super().postProcess(result_obj, opts)     
-        
         if self.result['input']['image_path']:
             input_image = self.result['input']['image_path']
+            for number in self.result['input']['image_information']['sizes']:
+                if number not in self.result['input']['image_information']['image_size']:
+                    self.result['report']['csv_data']['original_number_of_gradients'] = number
         elif type(self.result_history[0]["output"]) == dict: #single input
             input_image = self.result_history[0]["output"]["image_path"]
         else:
@@ -54,14 +56,15 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
                 if "output_directory" in previous_result["input"]:
                     input_directory = previous_result["input"]["output_directory"]
 
-
-
         with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
             f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
             f.write('### {}\n'.format("input image: " + str(os.path.abspath(input_image))).encode('utf-8'))
             f.seek(0)
             markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
-
+  
+        self.result['report']['csv_data']['image_name'] = str(os.path.abspath(input_image))
+        with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
+            yaml.dump(self.result,f)
 
 ### User defined methods
     def mask_antspynet(self,params):

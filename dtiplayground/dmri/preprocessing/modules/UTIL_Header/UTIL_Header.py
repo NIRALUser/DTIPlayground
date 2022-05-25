@@ -24,9 +24,11 @@ class UTIL_Header(prep.modules.DTIPrepModule):
     
     def postProcess(self,result_obj,opts):
         super().postProcess(result_obj, opts)        
-        
         if self.result['input']['image_path']:
             input_image = os.path.abspath(self.result['input']['image_path'])
+            for number in self.result['input']['image_information']['sizes']:
+                if number not in self.result['input']['image_information']['image_size']:
+                    self.result['report']['csv_data']['original_number_of_gradients'] = number
         elif type(self.result_history[0]["output"]) == dict: #single input
             input_image = os.path.abspath(self.result_history[0]["output"]["image_path"])
         else:
@@ -43,3 +45,6 @@ class UTIL_Header(prep.modules.DTIPrepModule):
             f.write('### {}\n'.format("input image: " + str(os.path.abspath(input_image))).encode('utf-8'))
             f.seek(0)
             markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
+        self.result['report']['csv_data']['image_name'] = str(os.path.abspath(input_image))
+        with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
+            yaml.dump(self.result,f)

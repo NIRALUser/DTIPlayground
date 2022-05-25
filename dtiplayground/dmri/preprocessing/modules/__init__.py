@@ -343,7 +343,14 @@ class DTIPrepModule: #base class
         ### deform_image ends
 
         ## data for report
-        self.result['report'] = {'module_report_paths': os.path.abspath(self.output_dir) + '/report.md', 'eddymotion_pdf_path': None}
+        self.result['report'] = {'module_report_paths': os.path.abspath(self.output_dir) + '/report.md',
+                                 'csv_data': {'image_name': None,
+                                              'original_number_of_gradients': None,
+                                              'number_of_excluded_gradients': None,
+                                              'rms_gt_1': None,
+                                              'rms_gt_2': None,
+                                              'rms_gt_3': None}, 
+                                 'eddymotion_pdf_path': None}
         
 
         ### set baseline_threahold

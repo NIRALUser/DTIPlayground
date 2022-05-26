@@ -96,14 +96,14 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             input_directory = self.result_history[0]["output"][0]["input"]["output_directory"]
             list_report_paths_1 = []
             list_report_paths_2 = []
-            self.result['report']['csv_data']['number_of_excluded_gradients'] = [None, None, None]
+            self.result['report']['csv_data']['excluded_gradients'] = [None, None, None]
             while input_image_1 == None:
                 previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
                 input_image_1 = previous_result["input"]["image_path"]
-                if previous_result['report']['csv_data']['number_of_excluded_gradients']:
-                    if not self.result['report']['csv_data']['number_of_excluded_gradients'][0]:
-                        self.result['report']['csv_data']['number_of_excluded_gradients'][0] = 0
-                    self.result['report']['csv_data']['number_of_excluded_gradients'][0] += previous_result['report']['csv_data']['number_of_excluded_gradients']
+                if previous_result['report']['csv_data']['excluded_gradients']:
+                    if not self.result['report']['csv_data']['excluded_gradients'][0]:
+                        self.result['report']['csv_data']['excluded_gradients'][0] = []
+                    self.result['report']['csv_data']['excluded_gradients'][0] += previous_result['report']['csv_data']['excluded_gradients']
                 list_report_paths_1 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_1
                 if "output_directory" in previous_result["input"]:
                     input_directory = previous_result["input"]["output_directory"]
@@ -115,10 +115,10 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             while input_image_2 == None:
                 previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
                 input_image_2 = previous_result["input"]["image_path"]
-                if previous_result['report']['csv_data']['number_of_excluded_gradients']:
-                    if not self.result['report']['csv_data']['number_of_excluded_gradients'][1]:
-                        self.result['report']['csv_data']['number_of_excluded_gradients'][1] = 0
-                    self.result['report']['csv_data']['number_of_excluded_gradients'][1] += previous_result['report']['csv_data']['number_of_excluded_gradients']
+                if previous_result['report']['csv_data']['excluded_gradients']:
+                    if not self.result['report']['csv_data']['excluded_gradients'][1]:
+                        self.result['report']['csv_data']['excluded_gradients'][1] = []
+                    self.result['report']['csv_data']['excluded_gradients'][1] += previous_result['report']['csv_data']['excluded_gradients']
                 list_report_paths_2 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_2
                 if "output_directory" in previous_result["input"]:
                     input_directory = previous_result["input"]["output_directory"]

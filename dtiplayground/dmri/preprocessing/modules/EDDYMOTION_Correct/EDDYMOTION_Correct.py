@@ -114,7 +114,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
             markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
         
         self.result['report']['csv_data']['image_name'] = str(os.path.abspath(input_image))
-        self.result['report']['csv_data']['number_of_excluded_gradients'] = len(self.result['output']['excluded_gradients_original_indexes'])
+        self.result['report']['csv_data']['excluded_gradients'] = self.result['output']['excluded_gradients_original_indexes']
         self.result['report']['csv_data']['rms_gt_1'] = int(rmsLargerThan1)
         self.result['report']['csv_data']['rms_gt_2'] = int(rmsLargerThan2)
         self.result['report']['csv_data']['rms_gt_3'] = int(rmsLargerThan3)

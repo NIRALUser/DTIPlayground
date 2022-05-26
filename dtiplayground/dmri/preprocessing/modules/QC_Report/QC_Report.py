@@ -35,13 +35,15 @@ class QC_Report(prep.modules.DTIPrepModule):
         global_report = ""
         if self.protocol["generatePDF"] == True:
             global_report = self.MergeReports(global_report)
-            global_report, number_input_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)          
+            global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)          
             info_display_QCed_gradients = self.CreateImages()
+            if number_of_excluded_gradients != 0:
+                global_report = self.AddExcludedGradientsImagesToReport(global_report, excluded_gradients)
             global_report = self.AddGradientImagesToReport(global_report, info_display_QCed_gradients[0])
             self.GenerateReportFiles(global_report)
         if self.protocol["generateCSV"] == True:
             if self.protocol['generatePDF'] == False:
-                global_report, number_input_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)
+                global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)
             self.CreateCSV(number_input_gradients, number_of_excluded_gradients)
 
         self.result['output']['success']=True
@@ -63,11 +65,11 @@ class QC_Report(prep.modules.DTIPrepModule):
                 with open(module['report']['module_report_paths'][2], 'r') as f:
                     text = f.read()
                     global_report += text
-
             else:
                 with open(module['report']['module_report_paths'], 'r') as f:
                     text = f.read()
                     global_report += text
+        global_report += "* * * * \n"
         return(global_report)
 
     def AddGeneralInfo(self, global_report):
@@ -78,21 +80,31 @@ class QC_Report(prep.modules.DTIPrepModule):
 
         if single_input:
             number_input_gradients = self.result_history[1]['report']['csv_data']['original_number_of_gradients']
-            number_of_excluded_gradients = 0
+            excluded_gradients = []
+            for module in self.result_history[1:]:
+                if module['report']['csv_data']['excluded_gradients']:
+                    excluded_gradients += module['report']['csv_data']['excluded_gradients']
 
         else: #SUSCEPTIBILITY_Correct in protocol
-            number_input_gradients = self.result_history[1]['report']['csv_data']['image_name'][0] + self.result_history[1]['report']['csv_data']['image_name'][1]
-            number_of_excluded_gradients = 0
-            if self.result_history[1]['report']['csv_data']['number_of_excluded_gradients'][0]:
-                number_of_excluded_gradients += self.result_history[1]['report']['csv_data']['number_of_excluded_gradients'][0]
-            if self.result_history[1]['report']['csv_data']['number_of_excluded_gradients'][1]:
-                number_of_excluded_gradients += self.result_history[1]['report']['csv_data']['number_of_excluded_gradients'][1]
-
-        for module in self.result_history[1:]:
-                if module['report']['csv_data']['number_of_excluded_gradients']:
-                    number_of_excluded_gradients += module['report']['csv_data']['number_of_excluded_gradients']
-
+            number_input_gradients = self.result_history[1]['report']['csv_data']['original_number_of_gradients'][0] + self.result_history[1]['report']['csv_data']['original_number_of_gradients'][1]
+            excluded_gradients = [[], [], []]
+            if self.result_history[1]['report']['csv_data']['excluded_gradients'][0]:
+                excluded_gradients[0] = self.result_history[1]['report']['csv_data']['excluded_gradients'][0]
+            if self.result_history[1]['report']['csv_data']['excluded_gradients'][1]:
+                excluded_gradients [1] = self.result_history[1]['report']['csv_data']['excluded_gradients'][1]
+            if self.result_history[1]['report']['csv_data']['excluded_gradients'][2]:
+                excluded_gradients [2] = self.result_history[1]['report']['csv_data']['excluded_gradients'][2]
+            for module in self.result_history[2:]:
+                if module['report']['csv_data']['excluded_gradients']:
+                    excluded_gradients[2] += module['report']['csv_data']['excluded_gradients']
+        
         global_report += "## Total: \n"
+        if len(excluded_gradients) == 0:
+            number_of_excluded_gradients = 0
+        elif type(excluded_gradients[0]) == list:
+            number_of_excluded_gradients = len(excluded_gradients[0])+len(excluded_gradients[1])+len(excluded_gradients[2])
+        else:
+            number_of_excluded_gradients = len(excluded_gradients)
         if number_of_excluded_gradients == 0:
             global_report += "* 0 gradient excluded or corrected out of " + str(number_input_gradients) + "\n"
         elif number_of_excluded_gradients == 1:
@@ -100,9 +112,28 @@ class QC_Report(prep.modules.DTIPrepModule):
         else:
             global_report += "* " + str(number_of_excluded_gradients) + " gradients excluded or corrected out of " + str(number_input_gradients) + "\n"
         global_report += "* " + str(round((number_input_gradients - number_of_excluded_gradients)/number_input_gradients*100, 2)) + "% of original gradients are preserved \n"
-
+        global_report += "* * * * \n"
             
-        return(global_report, number_input_gradients, number_of_excluded_gradients)
+        return(global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients)
+
+
+    def AddExcludedGradientsImagesToReport(self, global_report, excluded_gradients):
+        global_report += "\n## Excluded DWIs:\n"
+        image_path = self.result_history[1]['report']['csv_data']['image_name']
+        if type(excluded_gradients[0]) == int:
+            excluded_gradients = [excluded_gradients]
+            image_path = [image_path]
+        for image_index in range(len(image_path)):
+            if len(excluded_gradients[image_index]) != 0:
+                images = self.CreateImagesOfExcludedGradients(image_path[image_index], excluded_gradients[image_index])
+                global_report += "####" + str(image_path[image_index]) + "\n"
+                for gradient_index in range(len(excluded_gradients[image_index])):
+                    global_report += "![DWI" + str(excluded_gradients[image_index][gradient_index]) + "](" + images[gradient_index] + " 'DWI " + str(excluded_gradients[image_index][gradient_index]) + "')\n"
+                    #html = "<figure><img src="+image_path[image_index]+" alt='DWI "+str(gradient_index)+"' style='width:48%'><figcaption>DWI "+str(gradient_index)+"</figcaption></figure>"
+                    #global_report += html
+        global_report += "\n* * * * \n"
+        return(global_report)
+
 
 
 
@@ -157,8 +188,11 @@ class QC_Report(prep.modules.DTIPrepModule):
         for iter_gradients in range(input_number_gradients):  
 
             axial_image = self.AxialView(iter_gradients, input_size, input_image)
+            axial_image = axial_image.rotate(270)
             sagittal_image = self.SagittalView(iter_gradients, input_size, input_image)
+            sagittal_image = sagittal_image.rotate(90)
             coronal_image = self.CoronalView(iter_gradients, input_size, input_image)
+            coronal_image = coronal_image.rotate(90)
 
             # concatenate
             width = axial_image.width + sagittal_image.width + coronal_image.width
@@ -171,6 +205,30 @@ class QC_Report(prep.modules.DTIPrepModule):
   
         info_display_QCed_gradients = [input_number_gradients, dwi_image.width, dwi_image.height]
         return info_display_QCed_gradients
+
+    def CreateImagesOfExcludedGradients(self, image_path, excluded_gradients):
+        input_image = sitk.ReadImage(image_path)
+        input_size = list(input_image.GetSize())
+        dwi_images_list = []
+        output_images_directory = self.GetOutputImagesDirectory()
+        for iter_gradients in excluded_gradients:  
+            axial_image = self.AxialView(iter_gradients, input_size, input_image)
+            axial_image = axial_image.rotate(180)
+            sagittal_image = self.SagittalView(iter_gradients, input_size, input_image)
+            coronal_image = self.CoronalView(iter_gradients, input_size, input_image)
+            coronal_image = coronal_image.rotate(180)
+
+            # concatenate
+            width = axial_image.width + sagittal_image.width + coronal_image.width
+            height = max(axial_image.height, sagittal_image.height, coronal_image.height)
+            dwi_image = Image.new('L', (width, height), 0)
+            dwi_image.paste(sagittal_image, (0, 0))
+            dwi_image.paste(axial_image, (sagittal_image.width, 0))
+            dwi_image.paste(coronal_image, (sagittal_image.width + axial_image.width, 0))
+            dwi_image.save(output_images_directory + "/excluded_dwi" + str(iter_gradients) + ".jpg")
+            dwi_images_list += [output_images_directory + "/excluded_dwi" + str(iter_gradients) + ".jpg"]
+
+        return dwi_images_list
 
     def GetOutputImagesDirectory(self):
         if not os.path.exists(self.output_dir + "/QC_Report_images"):
@@ -194,7 +252,6 @@ class QC_Report(prep.modules.DTIPrepModule):
         dimension = max(gradient_image.height, gradient_image.width)
         square_image = Image.new('L', (dimension, dimension), 0)
         square_image.paste(gradient_image, ((dimension-gradient_image.width)//2, (dimension-gradient_image.height)//2))
-        square_image = square_image.rotate(90)
         return square_image
 
     def AxialView(self, iter_gradients, input_size, input_image):
@@ -215,7 +272,6 @@ class QC_Report(prep.modules.DTIPrepModule):
         dimension = max(gradient_image.height, gradient_image.width)
         square_image = Image.new('L', (dimension, dimension), 0)
         square_image.paste(gradient_image, ((dimension-gradient_image.width)//2, (dimension-gradient_image.height)//2))
-        square_image = square_image.rotate(270)
         return square_image
 
     def CoronalView(self, iter_gradients, input_size, input_image):
@@ -236,5 +292,4 @@ class QC_Report(prep.modules.DTIPrepModule):
         dimension = max(gradient_image.height, gradient_image.width)
         square_image = Image.new('L', (dimension, dimension), 0)
         square_image.paste(gradient_image, ((dimension-gradient_image.width)//2, (dimension-gradient_image.height)//2))
-        square_image = square_image.rotate(90)
         return square_image

@@ -10,8 +10,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from PyPDF2 import PdfFileMerger
 import markdown
-#import pdfkit
 from pdf2image import convert_from_path
+from xhtml2pdf import pisa
 
 
 
@@ -40,7 +40,14 @@ class QC_Report(prep.modules.DTIPrepModule):
             if number_of_excluded_gradients != 0:
                 global_report = self.AddExcludedGradientsImagesToReport(global_report, excluded_gradients)
             global_report = self.AddGradientImagesToReport(global_report, info_display_QCed_gradients[0])
-            self.GenerateReportFiles(global_report)
+            html_path = self.GenerateReportFiles(global_report)
+            with open(html_path, "r", encoding="utf-8") as f:
+                html_data = f.read()
+            pdf_path = self.output_dir + '/report.pdf'
+            result_file = open(pdf_path, "w+b")
+            pisa.CreatePDF(html_data, dest=result_file)
+            result_file.close()
+
         if self.protocol["generateCSV"] == True:
             if self.protocol['generatePDF'] == False:
                 global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)
@@ -173,8 +180,7 @@ class QC_Report(prep.modules.DTIPrepModule):
         with open(self.output_dir + '/report.md', 'bw+') as f:
             f.write(global_report.encode('utf-8'))
         markdown.markdownFromFile(input=self.output_dir+"/report.md", output=str(Path(self.output_dir).parent.parent)+"/report.html")
-        #pdfkit.from_file(self.output_dir+"/report.html", self.output_dir+"/report.pdf")
-
+        return(str(Path(self.output_dir).parent.parent)+"/report.html")
 
     ## Images
 

@@ -140,6 +140,9 @@ MIT
 
 ### Change Log
 
+##### 2022-06-03
+- dmriprep - Bug fix in UI (Exclude gradients module with manual selection)
+
 ##### 2022-01-26
 - dmriprep - Minor bug fix (conversion related)
 - dmriprep - Intermediary files can be exported during computation (in module level)

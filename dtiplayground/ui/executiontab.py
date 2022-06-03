@@ -34,7 +34,7 @@ class ExecutionTabCommunicate(QObject):
     self.call_compute.emit(computation_details)
 
   def CallWriteProtocolYML(self, temp_path):
-    self.call_write_protoocl_yml(temp_path)
+    self.call_write_protocol_yml.emit(temp_path)
 
   def CheckUnsavedChangesAndStartCompute(self):
     self.check_unsaved_changes.emit()
@@ -248,17 +248,18 @@ class ExecutionTab(QWidget):
       self.quickview_window.show()
 
     if manual_exclude and not quickview: #update dic_protocol, write temp protocol, start compute temp protocol
-      if not os.path.exists("temp_dmriprep_ui"):
+      if os.path.exists("temp_dmriprep_ui"):
+        print("Directory 'temp_dmriprep_ui' already exists")        
+      else:
         os.mkdir("temp_dmriprep_ui")
         print("Directory 'temp_dmriprep_ui' created")
-      else:
-        print("Directory 'temp_dmriprep_ui' already exists")
       self.communicate.CallWriteProtocolYML("temp_dmriprep_ui/protocol.yml")
       self.StartComputation("temp_dmriprep_ui/protocol.yml")
     if not manual_exclude and not quickview: 
       self.communicate.CheckUnsavedChangesAndStartCompute()
 
   def StartComputation(self, protocol):
+    print(protocol)
     arguments = ["run", "-i"] 
     if self.multi_input == 0:
       arguments.append(self.input_filename)

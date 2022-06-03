@@ -204,11 +204,12 @@ class Widgets(QWidget):
 
   def CheckManualExcludeInProtocol(self):
     computation_details = [False, False]
-    key = list(self.protocol.dic_protocol.keys())[0]
-    if self.protocol.dic_protocol[key][1] == "MANUAL_Exclude":
-      computation_details[0] = True
-      if self.protocol_tab.details.exclude.selectionMethod.currentText() == "QuickView":
-        computation_details[1] = True
+    if len(self.protocol.dic_protocol) > 0:
+      key = list(self.protocol.dic_protocol.keys())[0]
+      if self.protocol.dic_protocol[key][1] == "MANUAL_Exclude":
+        computation_details[0] = True
+        if self.protocol_tab.details.exclude.selectionMethod.currentText() == "QuickView":
+          computation_details[1] = True
     self.execution_tab.communicate.CallCompute(computation_details)
 
 

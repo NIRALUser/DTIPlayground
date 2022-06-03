@@ -249,7 +249,7 @@ class ExecutionTab(QWidget):
 
     if manual_exclude and not quickview: #update dic_protocol, write temp protocol, start compute temp protocol
       if os.path.exists("temp_dmriprep_ui"):
-        print("Directory 'temp_dmriprep_ui' already exists")pwd        
+        print("Directory 'temp_dmriprep_ui' already exists")   
       else:
         os.mkdir("temp_dmriprep_ui")
         print("Directory 'temp_dmriprep_ui' created")

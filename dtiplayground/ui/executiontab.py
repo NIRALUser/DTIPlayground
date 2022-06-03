@@ -249,7 +249,7 @@ class ExecutionTab(QWidget):
 
     if manual_exclude and not quickview: #update dic_protocol, write temp protocol, start compute temp protocol
       if os.path.exists("temp_dmriprep_ui"):
-        print("Directory 'temp_dmriprep_ui' already exists")        
+        print("Directory 'temp_dmriprep_ui' already exists")pwd        
       else:
         os.mkdir("temp_dmriprep_ui")
         print("Directory 'temp_dmriprep_ui' created")
@@ -259,7 +259,6 @@ class ExecutionTab(QWidget):
       self.communicate.CheckUnsavedChangesAndStartCompute()
 
   def StartComputation(self, protocol):
-    print(protocol)
     arguments = ["run", "-i"] 
     if self.multi_input == 0:
       arguments.append(self.input_filename)

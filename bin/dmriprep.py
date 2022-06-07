@@ -277,8 +277,7 @@ def get_args():
     parser=argparse.ArgumentParser(prog="dmriprep",
                                    formatter_class=RawTextHelpFormatter,
                                    description="dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.",
-                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
-    #parser.add_argument('command',help='command',type=str)
+                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Johanna Dubos (johannadubos32@gmail.com) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
     subparsers=parser.add_subparsers(help="Commands")
     
     ## init command
@@ -311,7 +310,7 @@ def get_args():
     parser_run.add_argument('-i','--input-image-list',help='Input image paths',type=str,nargs='+',required=True)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
-    parser_run.add_argument('--num-threads',help="Number of threads to use",default=None,type=int,required=False)
+    parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
     parser_run.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output  (NRRD | NIFTI)',type=str)
@@ -327,24 +326,15 @@ def get_args():
     parser.add_argument('--execution-id',help='execution id',default=uid,type=str)
     parser.add_argument('--no-log-timestamp',help='Remove timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
-    
+    parser.add_argument('-v','--version', help="Show version", default=False,action="store_true")
 
     ## if no parameter is furnished, exit with printing help
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args=parser.parse_args()
-
-    ## system log
-    # sys_log_dir=Path(args.system_log_dir)
-    # sys_log_dir.mkdir(parents=True,exist_ok=True)
-    # env=os.environ
-    
-    # sys_logfilename='dmriprep_'+env['USER']+"_"+ts+"_"+args.execution_id+".txt"
-    # sys_logfile=sys_log_dir.joinpath(sys_logfilename)
-    # dtiplayground.dmri.common.logger.addLogfile(sys_logfile.__str__(),mode='w')
-    # dtiplayground.dmri.common.logger("Execution ID : {}".format(args.execution_id))
-    # dtiplayground.dmri.common.logger("Execution Command : "+" ".join(sys.argv))
+    if args.version:
+        sys.exit(1)
 
     return args 
 

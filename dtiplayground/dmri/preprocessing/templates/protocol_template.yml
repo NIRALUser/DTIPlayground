@@ -117,4 +117,5 @@ options:
         # - BRAIN_Mask
         # - DTI_Estimate
         # - MANUAL_Exclude
+        - QC_Report
       description: Pipeline queue which executes as first in first processed.

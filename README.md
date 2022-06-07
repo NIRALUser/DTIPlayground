@@ -6,7 +6,29 @@ DTI Playground are python based NIRAL pipeline software including DMRIPrep (dmri
 
 dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.
 
-#### CLI Mode :
+#### Installation (Mac/Linux/Windows-WSL)
+
+We recommend users to make a virtual environment first using python >= 3.8.6
+
+```
+$ python -m venv $HOME/dtiplayground-env
+$ source $HOME/dtiplayground-env/bin/activate
+(dtiplayground_env) $ pip install dtiplayground
+$ dmriprep -v
+```
+
+For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
+
+#### GUI Mode (Mac/Linux):
+
+When a user fun dmriprep-ui first time, it automatically initialize.
+```
+$ dmriprep-ui
+```
+
+#### CLI Mode (Mac/Linux/Windows-WSL):
+
+For windows users, install WSL2 and linux packages with python >=3.8.6. 
 
 1. **init** - Initialize configuration (default: `$HOME/.niral-dti/dmriprep-<version>`)
 
@@ -134,9 +156,6 @@ MIT
 ### Todos
 
 - Server mode - Flask 
-- GUI client (Single page web app) - Vuejs, React, ...
-- Native GUI client (qt)
-- Multi threading
 
 ### Change Log
 

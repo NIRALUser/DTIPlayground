@@ -24,6 +24,7 @@ class ProtocolCommunicate(QObject):
   enable_exclude_gradients_module = Signal(bool)
   enable_merge_images_module = Signal(bool)
   update_selector_data = Signal(str, int)
+  enable_eddymotion_param = Signal(bool)
 
   def CallClearProtocol(self):
     self.call_clear_protocol.emit()
@@ -66,6 +67,9 @@ class ProtocolCommunicate(QObject):
 
   def UpdateSelectorData(self, module_name, new_data):
     self.update_selector_data.emit(module_name, new_data)
+
+  def EnableEddyMotionParam(self, value):
+    self.enable_eddymotion_param.emit(value)
 
 class Protocol():
   communicate = ProtocolCommunicate()
@@ -165,7 +169,7 @@ class Protocol():
         exclude_in_protocol = True
         self.dic_protocol[key] = self.exclude_params
       if module.text() == "Susceptibility correction":
-        self.eddymotion_params[2]['protocol']['susceptibilityCorrection'] = True 
+        self.communicate.EnableEddyMotionParam(True)
         self.dic_protocol[key] = self.susceptibility_params
       if module.text() == "Slicewise Check":
         self.dic_protocol[key] = self.slicecheck_params
@@ -199,7 +203,7 @@ class Protocol():
         self.dic_protocol[current_id] = self.exclude_default_params
       if module.text() == "Susceptibility correction":
         self.dic_protocol[current_id] = self.susceptibility_default_params
-        self.eddymotion_params[2]['protocol']['susceptibilityCorrection'] = True        
+        self.communicate.EnableEddyMotionParam(True)
       if module.text() == "Slicewise Check":
         self.dic_protocol[current_id] = self.slicecheck_default_params
       if module.text() == "Interlace Correlation Check":
@@ -338,5 +342,3 @@ class Protocol():
   def RemoveModuleFromDicProtocol(self, item_to_remove_key):
     self.dic_protocol.pop(item_to_remove_key)
     
-  def SetSusceptibilityParamEddyMotion(self, value):
-    self.eddymotion_params[2]['protocol']['susceptibilityCorrection'] = value

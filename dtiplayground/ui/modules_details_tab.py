@@ -266,10 +266,22 @@ class ModuleDetails(QWidget):
         self.eddymotion.writeimage.setChecked(True)
       else:
         self.eddymotion.writeimage.setChecked(False)
-      if module[2]["protocol"]["susceptibilityCorrection"] == True:
-        self.eddymotion.susceptibilityCorrection_true.setChecked(True)
+      if module[2]["protocol"]["estimateMoveBySusceptibility"] == True:
+        self.eddymotion.estimateMoveBySusceptibility_true.setChecked(True)
       else:
-        self.eddymotion.susceptibilityCorrection_false.setChecked(True)
+        self.eddymotion.estimateMoveBySusceptibility_false.setChecked(True)
+      if module[2]["protocol"]["interpolateBadData"] == True:
+        self.eddymotion.interpolateBadData_true.setChecked(True)
+      else:
+        self.eddymotion.interpolateBadData_false.setChecked(True)
+      if module[2]["protocol"]["dataIsShelled"] == True:
+        self.eddymotion.dataIsShelled_true.setChecked(True)
+      else:
+        self.eddymotion.dataIsShelled_false.setChecked(True)
+      if module[2]["protocol"]["qcReport"] == True:
+        self.eddymotion.qcReport_true.setChecked(True)
+      else:
+        self.eddymotion.qcReport_false.setChecked(True)
       self.details_stack.setCurrentIndex(5)
 
     if module[0] == "Brain Masking":

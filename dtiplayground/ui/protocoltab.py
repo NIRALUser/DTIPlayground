@@ -21,7 +21,7 @@ class ProtocolTabCommunicate(QObject):
   call_set_default_protocol = Signal(str)
   call_read_protocol = Signal(str)
   call_remove_module_from_dic_protocol = Signal (int)
-  set_susceptibility_param_eddymotion = Signal(bool)
+  enable_eddymotion_param = Signal(bool)
   set_dic_protocol = Signal(dict)
   call_no_unsaved_modif = Signal()
   call_write_protocol_yml = Signal(str)
@@ -55,8 +55,8 @@ class ProtocolTabCommunicate(QObject):
   def CallRemoveModuleFromDicProtocol(self, key):
     self.call_remove_module_from_dic_protocol.emit(key)
 
-  def SetSusceptibilityParamEddyMotion(self, value):
-    self.set_susceptibility_param_eddymotion.emit(value)
+  def EnableEddyMotionParam(self, value):
+    self.enable_eddymotion_param.emit(value)
 
   def SetDicProtocol(self, new_dic_protocol):
     self.set_dic_protocol.emit(new_dic_protocol)
@@ -221,7 +221,7 @@ class ProtocolTab(QWidget):
       if removed_item.text() == "Exclude Gradients":
         self.selector.EnableModulesListWidget(True)
       if removed_item.text() == "Susceptibility correction":
-        self.communicate.SetSusceptibilityParamEddyMotion(False)
+        self.communicate.EnableEddyMotionParam(False)
 
     if self.protocol_list_widget.count() == 0:
       self.selector.EnableExcludeGradientsModule(True)
@@ -243,7 +243,7 @@ class ProtocolTab(QWidget):
     self.selector.EnableModulesListWidget(True)  
     self.selector.EnableExcludeGradientsModule(True)
     self.selector.EnableMergeImagesModule(True)
-    self.communicate.SetSusceptibilityParamEddyMotion(False)
+    self.communicate.EnableEddyMotionParam(False)
     self.communicate.SetDicProtocol({})
 
   def SaveAs(self):

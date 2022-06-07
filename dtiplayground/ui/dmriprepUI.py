@@ -93,7 +93,7 @@ class Widgets(QWidget):
     self.protocol_tab.communicate.call_set_default_protocol.connect(self.protocol.SettingDefaultProtocol)
     self.protocol_tab.communicate.call_read_protocol.connect(self.protocol.ReadProtocol)
     self.protocol_tab.communicate.call_remove_module_from_dic_protocol.connect(self.protocol.RemoveModuleFromDicProtocol)
-    self.protocol_tab.communicate.set_susceptibility_param_eddymotion.connect(self.protocol.SetSusceptibilityParamEddyMotion)
+    self.protocol_tab.communicate.enable_eddymotion_param.connect(self.EnableEddymotionParam)
     self.protocol_tab.communicate.set_dic_protocol.connect(self.protocol.SetDicProtocol)
     self.protocol_tab.communicate.call_no_unsaved_modif.connect(self.NoUnsavedModif)
     self.protocol_tab.communicate.call_write_protocol_yml.connect(self.protocol.WriteProtocolYML)
@@ -114,6 +114,7 @@ class Widgets(QWidget):
     self.protocol.communicate.enable_exclude_gradients_module.connect(self.protocol_tab.selector.EnableExcludeGradientsModule)
     self.protocol.communicate.enable_merge_images_module.connect(self.protocol_tab.selector.EnableMergeImagesModule)
     self.protocol.communicate.update_selector_data.connect(self.protocol_tab.selector.UpdateSelectorData)
+    self.protocol.communicate.enable_eddymotion_param.connect(self.EnableEddymotionParam)
 
 
     self.tabs.tabBarClicked.connect(self.MultiInput)
@@ -264,3 +265,7 @@ class Widgets(QWidget):
     for module_index in range(len(self.protocol.dic_protocol)): 
       list_new_keys.append(self.protocol_tab.protocol_list_widget.item(module_index).data(QtCore.Qt.UserRole))
     self.protocol.OrderModulesInProtocolList(list_new_keys)
+
+  def EnableEddymotionParam(self, value):
+    self.protocol_tab.details.eddymotion.estimateMoveBySusceptibility_true.setEnabled(value)
+    self.protocol_tab.details.eddymotion.estimateMoveBySusceptibility_false.setEnabled(value)

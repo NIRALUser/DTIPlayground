@@ -45,20 +45,61 @@ class EddyMotion(QWidget):
     protocol_groupbox = QGroupBox("Protocol:")
     protocol_layout = QFormLayout()
     protocol_groupbox.setLayout(protocol_layout)
-    # susceptibilityCorrection
-    self.susceptibilityCorrection_true = QRadioButton("True")
-    self.susceptibilityCorrection_false = QRadioButton("False")
-    susceptibilityCorrection_layout = QHBoxLayout()
-    susceptibilityCorrection_layout.addWidget(self.susceptibilityCorrection_true)
-    susceptibilityCorrection_layout.addWidget(self.susceptibilityCorrection_false)
-    susceptibilityCorrection_buttongroup = QButtonGroup()
-    susceptibilityCorrection_buttongroup.addButton(self.susceptibilityCorrection_true)
-    susceptibilityCorrection_buttongroup.addButton(self.susceptibilityCorrection_false)
-    self.susceptibilityCorrection_true.toggled.connect(self.GetParams)
-    self.susceptibilityCorrection_true.setStatusTip(eddymotion_yml["protocol"]["susceptibilityCorrection"]["description"])
-    self.susceptibilityCorrection_false.setStatusTip(eddymotion_yml["protocol"]["susceptibilityCorrection"]["description"])
-    protocol_layout.addRow(eddymotion_yml["protocol"]["susceptibilityCorrection"]["caption"], susceptibilityCorrection_layout)
-    
+    # estimateMoveBySusceptibility
+    self.estimateMoveBySusceptibility_true = QRadioButton("True")
+    self.estimateMoveBySusceptibility_false = QRadioButton("False")
+    estimateMoveBySusceptibility_layout = QHBoxLayout()
+    estimateMoveBySusceptibility_layout.addWidget(self.estimateMoveBySusceptibility_true)
+    estimateMoveBySusceptibility_layout.addWidget(self.estimateMoveBySusceptibility_false)
+    self.estimateMoveBySusceptibility_buttongroup = QButtonGroup()
+    self.estimateMoveBySusceptibility_buttongroup.addButton(self.estimateMoveBySusceptibility_true)
+    self.estimateMoveBySusceptibility_buttongroup.addButton(self.estimateMoveBySusceptibility_false)
+    self.estimateMoveBySusceptibility_true.toggled.connect(self.GetParams)
+    self.estimateMoveBySusceptibility_true.setStatusTip(eddymotion_yml["protocol"]["estimateMoveBySusceptibility"]["description"])
+    self.estimateMoveBySusceptibility_false.setStatusTip(eddymotion_yml["protocol"]["estimateMoveBySusceptibility"]["description"])
+    protocol_layout.addRow(eddymotion_yml["protocol"]["estimateMoveBySusceptibility"]["caption"], estimateMoveBySusceptibility_layout)
+    self.estimateMoveBySusceptibility_true.setEnabled(False)
+    self.estimateMoveBySusceptibility_false.setEnabled(False)
+    # interpolateBadData
+    self.interpolateBadData_true = QRadioButton("True")
+    self.interpolateBadData_false = QRadioButton("False")
+    interpolateBadData_layout = QHBoxLayout()
+    interpolateBadData_layout.addWidget(self.interpolateBadData_true)
+    interpolateBadData_layout.addWidget(self.interpolateBadData_false)
+    self.interpolateBadData_buttongroup = QButtonGroup()
+    self.interpolateBadData_buttongroup.addButton(self.interpolateBadData_true)
+    self.interpolateBadData_buttongroup.addButton(self.interpolateBadData_false)
+    self.interpolateBadData_true.toggled.connect(self.GetParams)
+    self.interpolateBadData_true.setStatusTip(eddymotion_yml["protocol"]["interpolateBadData"]["description"])
+    self.interpolateBadData_false.setStatusTip(eddymotion_yml["protocol"]["interpolateBadData"]["description"])
+    protocol_layout.addRow(eddymotion_yml["protocol"]["interpolateBadData"]["caption"], interpolateBadData_layout)
+    # dataIsShelled
+    self.dataIsShelled_true = QRadioButton("True")
+    self.dataIsShelled_false = QRadioButton("False")
+    dataIsShelled_layout = QHBoxLayout()
+    dataIsShelled_layout.addWidget(self.dataIsShelled_true)
+    dataIsShelled_layout.addWidget(self.dataIsShelled_false)
+    self.dataIsShelled_buttongroup = QButtonGroup()
+    self.dataIsShelled_buttongroup.addButton(self.dataIsShelled_true)
+    self.dataIsShelled_buttongroup.addButton(self.dataIsShelled_false)
+    self.dataIsShelled_true.toggled.connect(self.GetParams)
+    self.dataIsShelled_true.setStatusTip(eddymotion_yml["protocol"]["dataIsShelled"]["description"])
+    self.dataIsShelled_false.setStatusTip(eddymotion_yml["protocol"]["dataIsShelled"]["description"])
+    protocol_layout.addRow(eddymotion_yml["protocol"]["dataIsShelled"]["caption"], dataIsShelled_layout)
+    # qcReport
+    self.qcReport_true = QRadioButton("True")
+    self.qcReport_false = QRadioButton("False")
+    qcReport_layout = QHBoxLayout()
+    qcReport_layout.addWidget(self.qcReport_true)
+    qcReport_layout.addWidget(self.qcReport_false)
+    self.qcReport_buttongroup = QButtonGroup()
+    self.qcReport_buttongroup.addButton(self.qcReport_true)
+    self.qcReport_buttongroup.addButton(self.qcReport_false)
+    self.qcReport_true.toggled.connect(self.GetParams)
+    self.qcReport_true.setStatusTip(eddymotion_yml["protocol"]["qcReport"]["description"])
+    self.qcReport_false.setStatusTip(eddymotion_yml["protocol"]["qcReport"]["description"])
+    protocol_layout.addRow(eddymotion_yml["protocol"]["qcReport"]["caption"], qcReport_layout)
+
     ## Layout
     layout_v = QVBoxLayout()
     layout_v.addWidget(self.tab_name)
@@ -78,7 +119,10 @@ class EddyMotion(QWidget):
         'write_image': self.writeimage.isChecked()
         }, 
       'protocol': {
-        'susceptibilityCorrection': self.susceptibilityCorrection_true.isChecked()
+        'estimateMoveBySusceptibility': self.estimateMoveBySusceptibility_true.isChecked(),
+        'interpolateBadData': self.interpolateBadData_true.isChecked(),
+        'dataIsShelled': self.dataIsShelled_true.isChecked(),
+        'qcReport': self.qcReport_true.isChecked()
         }
       }
     ]

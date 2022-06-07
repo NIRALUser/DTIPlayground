@@ -140,6 +140,9 @@ MIT
 
 ### Change Log
 
+##### 2022-06-07
+- dmriprep - Change EDDYMOTION_Correction parameters
+
 ##### 2022-06-03
 - dmriprep - Bug fix in UI (Exclude gradients module with manual selection)
 

@@ -30,7 +30,7 @@ pipeline:
       correlationThresholdBaseline: 0.95
       correlationThresholdGradient: 0.7702
       rotationThreshold: 0.5
-      translationThreshold: 2.0272108713786
+      translationThreshold: 2.176943
 - - BASELINE_Average
   - options:
       overwrite: false
@@ -48,7 +48,7 @@ pipeline:
       skip: false
       write_image: false
     protocol:
-      configurationFilePath: /home/jdubos/.niral-dti/dmriprep-0.2.6-beta5/parameters/fsl/fsl_regb02b0.cnf
+      configurationFilePath: /home/jdubos/.niral-dti/dmriprep-0.3.4/parameters/fsl/fsl_regb02b0.cnf
       phaseEncodingAxis:
       - 1
       phaseEncodingValue: 0.0924
@@ -58,8 +58,10 @@ pipeline:
       skip: false
       write_image: false
     protocol:
+      dataIsShelled: true
+      estimateMoveBySusceptibility: true
+      interpolateBadData: true
       qcReport: false
-      susceptibilityCorrection: false
 - - BRAIN_Mask
   - options:
       overwrite: false

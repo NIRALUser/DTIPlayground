@@ -114,12 +114,12 @@ class FSL(ExternalToolWrapper):
                     estimate_move_by_susceptibility:bool = False,  # susceptibility correction
                     topup=None, # topuped file (if susceptibility_correct==True)
                     data_is_shelled=True,
+                    repol=True,
                     verbose=True
                     ):
         binary_name='eddy_openmp'
         arguments=[]
-        if estimate_move_by_susceptibility:  # susceptibility correction 
-            if topup is None: raise Exception("Topup cannot be none with estimate_move_by_susceptibility True")
+        if topup is not None:  # susceptibility correction 
             arguments=[
                 '--imain={}'.format(imain),
                 '--mask={}'.format(mask),
@@ -128,9 +128,10 @@ class FSL(ExternalToolWrapper):
                 '--bvals={}'.format(bvals),
                 '--bvecs={}'.format(bvecs),
                 '--out={}'.format(out),
-                '--topup={}'.format(topup),
-                '--estimate_move_by_susceptibility'
+                '--topup={}'.format(topup)
             ]
+            if estimate_move_by_susceptibility:
+                arguments.append('--estimate_move_by_susceptibility')
         else: ## singlefile eddy correction without susceptibility
             arguments=[
                 '--imain={}'.format(imain),
@@ -143,6 +144,7 @@ class FSL(ExternalToolWrapper):
             ]
         if data_is_shelled: arguments.append('--data_is_shelled')
         if verbose : arguments.append('--verbose')
+        if repol: arguments.append('--repol')
 
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)
@@ -152,6 +154,7 @@ class FSL(ExternalToolWrapper):
         binary=Path(self.binary_path).joinpath('bin').joinpath(binary_name).__str__()
         command=[binary]+self.getArguments()
         if arguments is not None: command=[binary]+arguments
+        logger("{}".format(command))
         output=sp.run(command,capture_output=True,text=True,stdin=stdin)
         if self.dev_mode:
             logger("{}\n{} {}".format(output.args,output.stdout,output.stderr))
@@ -163,6 +166,7 @@ class FSL(ExternalToolWrapper):
         binary=Path(self.binary_path).joinpath('bin').joinpath(binary_name).__str__()
         command=[binary]+self.getArguments()
         if arguments is not None: command=[binary]+arguments
+        logger("{}".format(command))
         if stdin is None:
             pipe_output=sp.Popen(command,stdout=sp.PIPE)
         else:

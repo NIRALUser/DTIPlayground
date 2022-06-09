@@ -8,11 +8,26 @@ module_type: prep
 process_attributes:
     - deform_image
 protocol:
-      susceptibilityCorrection:
+      # susceptibilityCorrection:
+      #   type: boolean
+      #   caption: Susceptibility Correction
+      #   default_value: False 
+      #   description: Correcting susceptibility motion, SUSCEPTIBILITY_Correct module is required to be performed before EDDY 
+      estimateMoveBySusceptibility:
         type: boolean
-        caption: Susceptibility Correction
-        default_value: False 
-        description: Correcting susceptibility motion, SUSCEPTIBILITY_Correct module is required to be performed before EDDY 
+        caption: Estimate move by susceptibility
+        default_value: True
+        description: Estimate move by susceptibility
+      interpolateBadData:
+        type: boolean
+        caption: Interpolate bad data
+        default_value: True
+        description: Interpolate bad data (--repol)
+      dataIsShelled:
+        type: boolean
+        caption: Data is shelled
+        default_value: True
+        description: If the data is shelled, check this to be true
       qcReport:
         type: boolean
         caption: Generate QC report

@@ -1,6 +1,6 @@
 # DTI Playground 
 
-DTI Playground are python based NIRAL pipeline software including DMRIPrep (dmriprep), DTIAtlasBuilder (dmriatlasbuilder), DTIFiberAnalyzer (dmrifiberanalyzer)
+DTI Playground are python based NIRAL pipeline software including DMRIPrep (dmriprep), DTIAtlasBuilder (dmriatlasbuilder), DTIFiberAnalyzer (dmrifiberanalyzer), AutoTract
 
 ### DMRIPrep Usage (dmriprep)
 
@@ -18,10 +18,27 @@ $ dmriprep -v
 ```
 
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
+**FSL should be installed and environment variable 'FSL' needs to be set to the corresponding directory before initialization.**
+
+**install-tools** - Install DTIPlayground Tools (docker & docker-compose required)
+
+**Note** : Build tested only on CentOS7 for now. However, it would work on most of linux systems. You don't need to install this tools everytime you upgrade dtiplayground.
+```
+$ dmriprep install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only]
+```
+Default output directory is $HOME/.niral-dti/dtiplayground-tools if output directory option is omitted
+If `--clean-install` option is present, it removes existing software packages and temporary files first.
+If `--no-remove` option is present, it doesn't remove temporary build files after installation
+If `--nofsl` option is present, it will not install FSL.
+If `--install-only` option is present, it will not update software path file of the configuration of the current version.
+
+Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of the tools including root path of the packages, and automatically changes software paths for the current version of dmriprep unless `--install-only` option is present.
+
+**NOTE** Once FSL is installed, some of tools in FSL has hard coded path in the script, which means that once FSL directory is moved or copied to different directory, some of functions will not work (e.g. eddy_quad). You need to re-install FSL in that case. But changing directory of FSL doesn't affect the functions of DTIPlayground so far. 
 
 #### GUI Mode (Mac/Linux):
 
-When a user fun dmriprep-ui first time, it automatically initialize.
+When a user run dmriprep-ui first time, it automatically initialize.
 ```
 $ dmriprep-ui
 ```
@@ -41,6 +58,11 @@ If you want to set different directory other than default one :
     $ dmriprep --config-dir my/config/dir init 
 ```
 Once run, `config.yml` and `environment.yml` will be in the directory. 
+
+You can manually specify the tool directory (which is generate by `install-tools` command) by `--tools-dir` option.
+```
+    $ dmriprep init --tools-dir <path/to/tool_dir>
+```
 
 2. **update** - Update if `config.yml` has been changed (e.g. in case of adding user module directory).
 Changing `config.yml` file should be followed by updating `environment.yml` with running update command :
@@ -78,6 +100,46 @@ To run with existing protocol file:
 ```
     $ dmriprep_slurm <<same options as dmriprep>>
 ```
+
+### Development of a new module
+
+#### Adding a module
+
+Once initialized, users can add their custom module from scratch or existing system/user modules by following command
+```
+$ dmriprep add-module <module-name> [--base-module <base-module-name>] [--edit]
+```
+Following command will generate initial skeletal files of module
+```
+$ dmriprep add-module HELLO_World 
+```
+Then you can test if the module can be loaded properly with
+```
+$ dmriprep update
+```
+You can use your module right in protocol file.
+
+if `-b` , `--base-module` is specified, new model will copy existing code and data from the base module.
+e.g.
+```
+$ dmriprep add-module MYFIRST_Module -b SLICE_Check
+```
+MYFIRST_Module will have same codes and data (module definition yaml file) from SLICE_Check module with new classname and filenames.
+
+#### Removing user module
+User module can be removed by
+```
+$ dmriprep remove-module <module-name>
+```
+e.g.
+```
+$ dmriprep remove-module MYFIRST_Module
+```
+
+**NOTE** System module cannot be removed by this command. Only user module can be removed.
+
+#### Modules in other directory
+You can just copy module directory to `$HOME/.niral-dti/modules/dmriprep` and check with `$ dmriprep update` command. Same applies for removal of user modules.
 
 ### Supported Images
 
@@ -158,6 +220,15 @@ MIT
 - Server mode - Flask 
 
 ### Change Log
+
+##### 2022-06-19
+- dmriprep - module commands added. add-module, remove-module
+- dmriprep - FSL installation
+- dmriprep - global variables in .niral-dti directory storing global information such as FSL/DTIPlaygroundTools paths
+
+##### 2022-06-17
+- dmriprep - installation of dtiplayground tools
+- dmriprep - software path generation modified for the tools
 
 ##### 2022-06-07
 - dmriprep - Change EDDYMOTION_Correction parameters

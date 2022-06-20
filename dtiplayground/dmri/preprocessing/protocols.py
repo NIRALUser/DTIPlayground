@@ -22,7 +22,7 @@ def load_configurations(config_dir:str):
     environment=yaml.safe_load(open(environment_filename,'r'))
     return config,environment
 
-def _generate_exec_seqeunce(pipeline,image_paths:list,output_dir,modules, io_options): ## generate sequence using uuid to avoid the issue from redundant module use
+def _generate_exec_sequence(pipeline,image_paths:list,output_dir,modules, io_options): ## generate sequence using uuid to avoid the issue from redundant module use
     seq=[]
     after_multi_input=False
     for idx,parr in enumerate(pipeline):
@@ -334,7 +334,7 @@ class Protocols:
             self.io_options['output_filename_base']=self.getBaseFilename(self.images[0].filename)
             if options['output_file_base']:
                 self.io_options['output_filename_base']=options['output_file_base']
-            execution_sequence = _generate_exec_seqeunce(self.pipeline,self.image_paths,self.output_dir,self.modules, self.io_options)
+            execution_sequence = _generate_exec_sequence(self.pipeline,self.image_paths,self.output_dir,self.modules, self.io_options)
             Path(self.output_dir).mkdir(parents=True,exist_ok=True)
             output_dir_map=_generate_output_directories_mapping(self.output_dir,execution_sequence)
             protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()

@@ -8,14 +8,59 @@ import argparse,yaml
 from argparse import RawTextHelpFormatter
 import traceback,time,copy,yaml,sys,uuid
 import sys
+import subprocess
+import re
 sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line is for development
 import dtiplayground
 import dtiplayground.dmri.common
 from dtiplayground.config import INFO as info
+
 logger=dtiplayground.dmri.common.logger.write 
 color= dtiplayground.dmri.common.Color
 
 ### unit functions
+
+def resolve_softwarepaths(spathobj, globalvars):
+    if 'dtiplayground-tools' in globalvars:
+        p = Path(globalvars['dtiplayground-tools']['path'])
+        if p.exists():
+            os.environ['DTIPLAYGROUNDTOOLS'] = p.resolve().__str__()
+
+    if 'fsl' in globalvars:
+        p = Path(globalvars['fsl']['path'])
+        if p.exists():
+            os.environ['FSL'] = p.resolve().__str__()
+
+    if  'DTIPLAYGROUNDTOOLS' not in os.environ:
+        os.environ['DTIPLAYGROUNDTOOLS']=os.path.expandvars("$HOME/.niral/dtiplayground-tools")
+        tooldir=os.environ['DTIPLAYGROUNDTOOLS']
+        if Path(tooldir).exists():
+            logger("DTI Playground tools directory found at {}".format(tooldir), dtiplayground.dmri.preprocessing.Color.OK)
+        else:
+            logger("DTI Playground tools directory is set to {}".format(tooldir), dtiplayground.dmri.preprocessing.Color.WARNING)
+            logger("DTI Playground tools directory not found, please install toolkits or specify software paths manually", dtiplayground.dmri.preprocessing.Color.WARNING)
+    else:
+        tooldir=os.environ['DTIPLAYGROUNDTOOLS']
+        if Path(os.environ['DTIPLAYGROUNDTOOLS']).exists():
+            
+            logger("DTI playground tools are found in {}".format(tooldir),dtiplayground.dmri.preprocessing.Color.OK)
+        else:
+            logger("DTI playground tools are not found in {}".format(tooldir),dtiplayground.dmri.preprocessing.Color.ERROR)
+    if 'FSL' not in os.environ:
+        logger("FSL directory is not set in environment variable FSL",dtiplayground.dmri.preprocessing.Color.WARNING)
+        logger("Make sure FSL directory is set in the software paths",dtiplayground.dmri.preprocessing.Color.WARNING)
+    else:
+        if Path(os.environ['FSL']).exists():
+            logger("FSL directory is found at {}".format(os.environ['FSL']),dtiplayground.dmri.preprocessing.Color.OK)
+        else:
+            logger("FSL directory is set in environment variable FSL, but doesn't exist",dtiplayground.dmri.preprocessing.Color.WARNING)
+    
+    sp = spathobj['softwares']
+    for k,v in sp.items():
+        resolved_path = os.path.expandvars(v['path'])
+        sp[k]['path'] = resolved_path
+    spathobj['softwares'] = sp
+    return spathobj
 
 def initialize_logger(args):
     ## default log setting
@@ -97,6 +142,14 @@ def search_fsl():
 def search_niral_tools():
     pass
     
+def update_software_paths(args, globalvars):
+    home_dir=Path(args.config_dir)
+    software_info_path=Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/common/data/software_paths.yml")
+    software_paths=yaml.safe_load(open(software_info_path,'r'))
+    software_paths=resolve_softwarepaths(software_paths, globalvars)
+    software_filename=home_dir.joinpath('software_paths.yml')
+    yaml.dump(software_paths, open(software_filename,'w'))
+
 ### command functions
 
 def command_find_tools(args):
@@ -121,19 +174,148 @@ def command_find_tools(args):
    
     return True
 
+def command_install_tools(args):
+    ## reparametrization
+    home_dir=Path(args.config_dir).resolve()
+    home_dir.parent.mkdir(parents=True,exist_ok=True)
+    # globalvars_fn = Path(os.path.expandvars("$HOME/.niral-dti/global_variables.yml"))
+    globalvars_fn = home_dir.parent.joinpath('global_variables.yml')
+    Path(globalvars_fn).parent.mkdir(parents=True,exist_ok=True)
+    globalvars = {}
+    if globalvars_fn.exists():
+        globalvars = yaml.safe_load(open(globalvars_fn,'r'))
+
+    rootdir = Path(os.path.expandvars(args.output_dir)).resolve()
+    rootdir.mkdir(parents=True,exist_ok=True)
+    tempdir = rootdir.joinpath('temp-dtiplayground-tools')
+    outputdir = rootdir.joinpath('dtiplayground-tools')
+    fsldir = rootdir.joinpath('FSL')
+    clean_install = args.clean_install
+    leave_files_after_installation = args.no_remove
+    no_fsl = args.no_fsl
+    install_only = args.install_only
+    ### Clean install preparations
+    if clean_install:
+        logger("Removing temporary, existing packages (dtiplayground-tools only) directories ...")
+        if tempdir.exists():
+            shutil.rmtree(tempdir)
+        if outputdir.exists():
+            shutil.rmtree(outputdir)
+        logger("Removing files finished")
+
+    ### FSL
+    if not no_fsl and not fsldir.exists():
+        fslinstaller_fn=Path(__file__).resolve().parent.joinpath('fslinstaller.py')
+        command=['/usr/bin/python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] ### python2 is needed
+        subprocess.run(command)
+        info = {
+            'version' : open(fsldir.joinpath('etc/fslversion'),'r').read().strip()
+        }
+        globalvars['fsl']={
+            'path' : fsldir.resolve().__str__(),
+            'info' : info
+        }
+        yaml.dump(info, open(fsldir,'w'))
+    else:
+        if fsldir.exists():
+            info = {
+                'version' : open(fsldir.joinpath('etc/fslversion'),'r').read().strip()
+            }
+            yaml.dump(info, open(fsldir,'w'))
+            globalvars['fsl']={
+                'path' : fsldir.resolve().__str__(),
+                'info' : info
+            }            
+
+    ### DTI playground tools (build with docker, centos7 for now)
+    tempdir.mkdir(parents=True,exist_ok=True)
+    os.chdir(tempdir)
+    srcdir = tempdir.joinpath('dtiplaygroundtools')
+    info={}
+    if not outputdir.exists():
+        if not srcdir.exists():
+            logger("Fetching source code ...")
+            fetch_dtiplaygroundtools = ["git","clone","https://github.com/niraluser/dtiplaygroundtools.git"]
+            subprocess.run(fetch_dtiplaygroundtools)
+            logger("Source codes downloaded")
+        
+        os.chdir(srcdir.joinpath('dockerfiles'))
+        build_command = ['./build.sh']
+        logger("Building software packages ... ")
+        subprocess.run(build_command)
+        tar_filename = srcdir.joinpath('dist/dtiplayground-tools.tar.gz')
+        untar_command = ['tar','xvfz',tar_filename.resolve().__str__(), '-C', rootdir.resolve().__str__()]
+        logger("Installing softwares to the output directory {}".format(outputdir.resolve().__str__()))
+        subprocess.run(untar_command)
+        ### read version info
+        info={}
+        info_fn = outputdir.joinpath('info.yml')
+        if info_fn.exists():
+            info = yaml.safe_load(open(info_fn,'r'))
+
+    else:
+        info = yaml.safe_load(open(outputdir.joinpath('info.yml'),'r'))
+    globalvars['dtiplayground-tools']={
+        'path' : outputdir.resolve().__str__(),
+        'info' : info
+    }
+
+    if not leave_files_after_installation:
+        logger("Removing temporary files ...")
+        shutil.rmtree(tempdir)
+        logger("Removing temporary files finished")
+
+    logger("Saving tool information to {}".format(globalvars_fn.__str__()))
+    yaml.dump(globalvars, open(globalvars_fn,'w'))
+    if home_dir.joinpath('software_paths').exists() and not install_only:
+        update_software_paths(args, globalvars)
+    logger("Installation completed")
+    return True
+
+
 def command_init(args):
     ## reparametrization
     home_dir=Path(args.config_dir)
 
     ## Function begins
     home_dir.mkdir(parents=True,exist_ok=True)
-    user_module_dir=home_dir.joinpath('modules').absolute()
+    tools_dir = None
+    if args.tools_dir is not None:
+        tools_dir = Path(args.tools_dir)
+    user_module_dir=home_dir.parent.joinpath('modules/dmriprep').absolute()
     user_module_dir.mkdir(parents=True,exist_ok=True)
     user_tools_param_dir=home_dir.joinpath('parameters').absolute()
     user_tools_param_dir.mkdir(parents=True,exist_ok=True)
     template_filename=home_dir.joinpath("protocol_template.yml").absolute()
     source_template_path=Path(dtiplayground.dmri.preprocessing.__file__).parent.joinpath("templates/protocol_template.yml")
     protocol_template=yaml.safe_load(open(source_template_path,'r'))
+    globalvars_fn=home_dir.parent.joinpath('global_variables.yml')
+    globalvars = {}
+
+    if globalvars_fn.exists():
+        globalvars = yaml.safe_load(open(globalvars_fn,'r'))
+
+    if tools_dir is not None:
+        if tools_dir.exists():
+            dptdir = tools_dir.joinpath('dtiplayground-tools')
+            fsldir = tools_dir.joinpath('FSL')
+            globalvars.update({
+                "dtiplayground-tools" :{
+                    "path" : dptdir.resolve().__str__(),
+                    "info" : yaml.safe_load(open(dptdir.joinpath('info.yml'),'r'))
+                },
+                "fsl" : {
+                    "path" : fsldir.resolve().__str__(),
+                    "info" : {
+                        "verson" : open(fsldir.joinpath('etc/fslversion'),'r').read().strip()
+                    }
+                }
+            })
+            yaml.dump(globalvars, open(globalvars_fn,'w'))
+        else:
+            logger("Couldn't find tool directory {}".format(str(tools_dir)),dtiplayground.dmri.preprocessing.Color.ERROR)
+            exit(1)
+
     initialize_logger(args)
     config_filename=home_dir.joinpath("config.yml")
     environment_filename=home_dir.joinpath("environment.yml")
@@ -143,9 +325,8 @@ def command_init(args):
     yaml.dump(config,open(config_filename,'w'))
     logger("Config file written to : {}".format(str(config_filename)),dtiplayground.dmri.preprocessing.Color.INFO)
     ## copy default software path
-    software_info_path=Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/common/data/software_paths.yml")
     software_filename=home_dir.joinpath('software_paths.yml')
-    shutil.copy(software_info_path,software_filename)
+    update_software_paths(args, globalvars)
     logger("Software path file is written to : {}".format(str(software_filename)),dtiplayground.dmri.preprocessing.Color.INFO)
 
     modules=dtiplayground.dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
@@ -174,6 +355,116 @@ def command_update(args):
     yaml.dump(environment,open(environment_filename,'w'))
     logger("Environment file written to : {}".format(str(environment_filename)),dtiplayground.dmri.preprocessing.Color.INFO)
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),dtiplayground.dmri.preprocessing.Color.OK)
+    return True
+
+def check_if_module_exists(args,module_name):
+    home_dir=Path(args.config_dir)
+    config_filename=home_dir.joinpath("config.yml")
+    environment_filename=home_dir.joinpath("environment.yml")
+    config=yaml.safe_load(open(config_filename,'r'))
+    module_name = args.name
+    system_module_root_dir = Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/preprocessing/modules")
+    user_module_root_dir = Path(config['user_module_directories'][0])
+    if system_module_root_dir.joinpath(module_name).exists():
+        return True
+    if user_module_root_dir.joinpath(module_name).exists():
+        return True
+    return False 
+
+@after_initialized
+def command_add_module(args):
+    home_dir=Path(args.config_dir)
+    config_filename=home_dir.joinpath("config.yml")
+    environment_filename=home_dir.joinpath("environment.yml")
+    config=yaml.safe_load(open(config_filename,'r'))
+    module_name = args.name
+    system_module_root_dir = Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/preprocessing/modules")
+    user_module_root_dir = Path(config['user_module_directories'][0])
+    module_dir = user_module_root_dir.joinpath(module_name)
+    base_module_name = args.base_module
+
+    if check_if_module_exists(args, module_name):
+        logger("Module {} exists in {} or {}".format(module_name, user_module_root_dir.__str__(), system_module_root_dir.__str__()), dtiplayground.dmri.preprocessing.Color.ERROR)
+        return False
+
+    if base_module_name is None: ### NEW module 
+        logger("Making directories and files ... ", dtiplayground.dmri.preprocessing.Color.PROCESS)
+        module_dir.mkdir(parents=True,exist_ok=False)
+        module_template_fn =Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/preprocessing/templates/module_template.py")
+        module_template = open(module_template_fn,'r').read()
+        module_data_fn = module_template_fn.parent.joinpath('module_template.yml')
+        module_data = open(module_data_fn,'r').read()
+
+        ### replacing variable
+        regex=r"@MODULENAME@"
+        module_py = re.sub(regex,module_name,module_template,0)
+        module_yml = re.sub(regex,module_name,module_data,0)
+        ### write down files into user module dir
+
+        init_fn = module_dir.joinpath("__init__.py")
+        with open(init_fn,'w') as f:
+            f.write("")
+        out_py_fn = module_dir.joinpath("{}.py".format(module_name))
+        with open(out_py_fn,'w') as f:
+            f.write(module_py)
+        out_yml_fn = module_dir.joinpath("{}.yml".format(module_name))
+        with open(out_yml_fn,'w') as f:
+            f.write(module_yml)
+        logger("Module is added, please implement the module {} in {}".format(module_name, module_dir.__str__()), dtiplayground.dmri.preprocessing.Color.OK)
+    else: ### copy base module to new one (new name)
+        base_module_dir= None
+        if system_module_root_dir.joinpath(base_module_name).exists():
+            base_module_dir = system_module_root_dir.joinpath(base_module_name)
+            logger("Module {} found in system module directory".format(base_module_name),dtiplayground.dmri.preprocessing.Color.OK)
+        elif user_module_root_dir.joinpath(base_module_name).exists():
+            base_module_dir = user_module_root_dir.joinpath(base_module_name)
+            logger("Module {} found in user module directory".format(base_module_name),dtiplayground.dmri.preprocessing.Color.OK)
+        else:
+            logger("Module {} NOT found in either system or user module directory".format(base_module_name),dtiplayground.dmri.preprocessing.Color.ERROR)
+            return False
+
+        logger("Generating {} at {}".format(module_name, module_dir.__str__()),dtiplayground.dmri.preprocessing.Color.PROCESS)
+        shutil.copytree(base_module_dir, module_dir)
+        if module_dir.joinpath('__pycache__').exists():
+            shutil.rmtree(module_dir.joinpath('__pycache__'))
+        flist = list(filter(lambda x: '__pycache__' not in x.__str__(), module_dir.glob("**/*")))
+        for fn in flist: ### changing module name in contents (may not perfect)
+            out_content=None
+            with open(fn,'r') as f:
+                ### change class name to new module name
+                content = f.read()
+                out_content = content.replace(base_module_name, module_name)
+                out_content = out_content.replace(base_module_name.replace("_"," "), module_name.replace("_"," "))
+            with open(fn,'w') as f:
+                f.write(out_content)
+
+            nameparts = fn.name.split('.')
+            if nameparts[0] == base_module_name:
+                nameparts[0] = module_name
+            out_fn = ".".join(nameparts)
+            fn.rename(module_dir.joinpath(out_fn))
+        logger("Module {} cloned from {} has been generated at {}".format(module_name, base_module_name, module_dir.__str__()),dtiplayground.dmri.preprocessing.Color.OK)
+        if args.edit:
+            command=["vi",module_dir.joinpath("{}.py".format(module_name))]
+            subprocess.run(command)
+    return True
+
+@after_initialized
+def command_remove_module(args):
+    home_dir=Path(args.config_dir)
+    config_filename=home_dir.joinpath("config.yml")
+    environment_filename=home_dir.joinpath("environment.yml")
+    config=yaml.safe_load(open(config_filename,'r'))
+    module_name = args.name
+    module_root_dir = Path(config['user_module_directories'][0])
+    module_dir = module_root_dir.joinpath(module_name)
+    if module_dir.exists():
+        logger("Removing the module : {} at {}".format(module_name, module_dir.__str__()), dtiplayground.dmri.preprocessing.Color.PROCESS)
+        shutil.rmtree(module_dir)
+        logger("Module {} has been successfully removed".format(module_name), dtiplayground.dmri.preprocessing.Color.OK)
+    else:
+        logger("There is no such module in {}".format(module_root_dir.__str__()), dtiplayground.dmri.preprocessing.Color.ERROR)
+
     return True
 
 @after_initialized
@@ -282,15 +573,38 @@ def get_args():
     
     ## init command
     parser_init=subparsers.add_parser('init',help='Initialize configurations')
+    parser_init.add_argument('--tools-dir', help="Initialize with specific tool directory", default=None)
     parser_init.set_defaults(func=command_init)
 
-    ## init command
+    ## update command
     parser_update=subparsers.add_parser('update',help='Update environment file')
     parser_update.set_defaults(func=command_update)
+
+    ## add new module
+    parser_new_module=subparsers.add_parser('add-module', help='Add new module to user module directory')
+    parser_new_module.add_argument('name', help="Module name")
+    parser_new_module.add_argument('-b','--base-module', help="Fork from an existing module with new name", default=None, required=False)
+    parser_new_module.add_argument('-e','--edit', help="Run vi editor after generating module", default=False, action="store_true")
+    parser_new_module.set_defaults(func=command_add_module)
+
+
+    ## remove user module 
+    parser_remove_module=subparsers.add_parser('remove-module', help='Remove a user module from user module directory')
+    parser_remove_module.add_argument('name', help="Module name")
+    parser_remove_module.set_defaults(func=command_remove_module)
 
     ## software find command
     parser_find_tools=subparsers.add_parser('find-tools',help='Search and update software paths')
     parser_find_tools.set_defaults(func=command_find_tools)
+
+    ## software install command
+    parser_install_tools=subparsers.add_parser('install-tools',help='Install DTIPlaygroundTools')
+    parser_install_tools.add_argument('-o','--output-dir', help="output directory", default="$HOME/.niral-dti")
+    parser_install_tools.add_argument('-c','--clean-install', help="Remove existing files", default=False, action="store_true")
+    parser_install_tools.add_argument('--no-remove', help="Do not remove source and build files after installation", default=False,action="store_true")
+    parser_install_tools.add_argument('--no-fsl', help="Do not install FSL", default=False, action="store_true")
+    parser_install_tools.add_argument('--install-only', help="Do not update current software paths", default=False, action="store_true")
+    parser_install_tools.set_defaults(func=command_install_tools)
 
     ## generate-default-protocols
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)

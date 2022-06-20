@@ -318,14 +318,14 @@ def command_install_tools(args):
             'path' : fsldir.resolve().__str__(),
             'info' : info
         }
-        yaml.dump(info, open(fsldir,'w'))
+        yaml.dump(info, open(fsldir.joinpath('info.yml'),'w'))
     else:
         if fsldir.exists():
             info = {
                 'name': 'fsl',
                 'version' : open(fsldir.joinpath('etc/fslversion'),'r').read().strip()
             }
-            yaml.dump(info, open(fsldir,'w'))
+            yaml.dump(info, open(fsldir.joinpath('info.yml'),'w'))
             globalvars['fsl']={
                 'path' : fsldir.resolve().__str__(),
                 'info' : info

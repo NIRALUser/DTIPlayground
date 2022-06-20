@@ -2,7 +2,7 @@
 
 DTI Playground are python based NIRAL pipeline software including DMRIPrep (dmriprep), DTIAtlasBuilder (dmriatlasbuilder), DTIFiberAnalyzer (dmrifiberanalyzer), AutoTract
 
-## DMRIPrep Usage (dmriprep)
+## DMRIPrep (dmriprep)
 
 dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.
 
@@ -77,7 +77,7 @@ The first thing to do QC is to generate default protocol file that has pipeline 
 ```
     $ dmriprep [base options] make-protocols -i IMAGE_FILENAME [-o OUTPUT_FILENAME_] [-d MODULE1 MODULE2 ... ]
 ```
-if `"-o"` option is omitted, the output protocol will be printed on terminal.`"-d"` option specifies the list of modules for the QC, with which command will generate the default pipeline and protocols of the sequence. Same module can be used redundantly. If `"-d"` option is not specified, the default pipeline will be generated from the file `protocol_template.yml` . You can change the default pipeline in `protocol_template.yml` file
+if `-o` option is omitted, the output protocol will be printed on terminal.`-d` option specifies the list of modules for the QC, with which command will generate the default pipeline and protocols of the sequence. Same module can be used redundantly. If `-d` option is not specified, the default pipeline will be generated from the file `protocol_template.yml` . You can change the default pipeline in `protocol_template.yml` file
 
 4. **run** - Running pipeline 
 To run with default protocol generated from `protocol_template.yml`:
@@ -85,14 +85,14 @@ To run with default protocol generated from `protocol_template.yml`:
 ```
     $ dmriprep [base options] run -i IMAGE_FILES -o OUTPUT_DIR -d [ MODULE1 MODULE2 ... ]
 ```
-`"-d"` option (default protocol) works as described in **make-protocols** command. But you need to specify `"-d"` for the default pipeline from the template.  If `"-o"` option is omitted, default directory will be set to `Image filename_QC`. IMAGE_FILES may be a list of files to process. In case of susceptibility correction, IMAGE_FILES needs to have counterparts for the polarities. `dmriprep` automatically process qc for all the input images before the susceptibility correction stage.
+`-d` option (default protocol) works as described in **make-protocols** command. But you need to specify `"-d"` for the default pipeline from the template.  If `-o` option is omitted, default directory will be set to `Image filename_QC`. IMAGE_FILES may be a list of files to process. In case of susceptibility correction, IMAGE_FILES needs to have counterparts for the polarities. `dmriprep` automatically process qc for all the input images before the susceptibility correction stage.
 
 To run with existing protocol file:
 ```
     $ dmriprep run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
 ```
 
-`"-p"` option cannot be used with `"-d"` option.
+`-p` option cannot be used with `-d` option.
 
 #### In SLURM cluster with singularity
 
@@ -146,11 +146,11 @@ You can just copy module directory to `$HOME/.niral-dti/modules/dmriprep` and ch
 - NRRD 
 - NIFTI
 
-## DTIAtlasBuilder Usage (dtiab)
+## DTIAtlasBuilder (dtiab)
 
 DTIAtlasBuilder is a software to make an atlas from multiple diffusion weighted images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
 
-## DTIFiberAnalyzer Usage (dtifa)
+## DTIFiberAnalyzer (dtifa)
 
 DTIFiberAnalyzer performs statistical computation over the extracted fibers. This enables researchers to get the information of the fiber images easily and fast.
 

@@ -47,7 +47,8 @@ setup(
         'simpleitk==2.1.1',
         'reportlab==3.6.6',
         'pypdf2==1.26.0',
-        'markdown==3.3.6'
+        'markdown==3.3.6',
+        'xhtml2pdf==0.2.7'
        ],
 
  )

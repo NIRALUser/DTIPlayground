@@ -6,11 +6,8 @@ import fnmatch
 import SimpleITK as sitk
 import numpy
 from PIL import Image
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from PyPDF2 import PdfFileMerger
 import markdown
-from pdf2image import convert_from_path
+from markdown import extensions
 from xhtml2pdf import pisa
 
 
@@ -43,7 +40,7 @@ class QC_Report(prep.modules.DTIPrepModule):
             html_path = self.GenerateReportFiles(global_report)
             with open(html_path, "r", encoding="utf-8") as f:
                 html_data = f.read()
-            pdf_path = self.output_dir + '/report.pdf'
+            pdf_path = str(Path(self.output_dir).parent.parent)+"/report.pdf"
             result_file = open(pdf_path, "w+b")
             pisa.CreatePDF(html_data, dest=result_file)
             result_file.close()
@@ -133,11 +130,18 @@ class QC_Report(prep.modules.DTIPrepModule):
         for image_index in range(len(image_path)):
             if len(excluded_gradients[image_index]) != 0:
                 images = self.CreateImagesOfExcludedGradients(image_path[image_index], excluded_gradients[image_index])
-                global_report += "####" + str(image_path[image_index]) + "\n"
+                global_report += "#### " + str(image_path[image_index]) + "\n"
+                global_report += "<table><tbody>\n"
                 for gradient_index in range(len(excluded_gradients[image_index])):
-                    global_report += "![DWI" + str(excluded_gradients[image_index][gradient_index]) + "](" + images[gradient_index] + " 'DWI " + str(excluded_gradients[image_index][gradient_index]) + "')\n"
+                    if gradient_index % 2 == 0:
+                        global_report += "<tr>\n"
+                    global_report += "<td><figure><img src="+str(images[gradient_index])+" alt='DWI "+str(excluded_gradients[image_index][gradient_index])+"' width='260'><figcaption>DWI "+str(excluded_gradients[image_index][gradient_index])+"</figcaption></figure></td>\n"
+        
                     #html = "<figure><img src="+image_path[image_index]+" alt='DWI "+str(gradient_index)+"' style='width:48%'><figcaption>DWI "+str(gradient_index)+"</figcaption></figure>"
                     #global_report += html
+                    if gradient_index % 2 != 0:
+                        global_report += "</tr>\n"
+                global_report += "</tbody></table>\n"
         global_report += "\n* * * * \n"
         return(global_report)
 
@@ -146,11 +150,16 @@ class QC_Report(prep.modules.DTIPrepModule):
 
     def AddGradientImagesToReport(self, global_report, number_of_gradients):
         global_report += "\n## QCed volume DWIs: \n"
-        for gradient_index in range(number_of_gradients):
-            image_path = self.output_dir + "/QC_Report_images/dwi" + str(gradient_index) + ".jpg"
-            html = "<figure><img src="+image_path+" alt='DWI "+str(gradient_index)+"' style='width:48%'><figcaption>DWI "+str(gradient_index)+"</figcaption></figure>"
-            global_report += html
-            #global_report += "![DWI" + str(gradient_index) + "](" + image_path + " 'DWI " + str(gradient_index) + "')"
+        global_report += "<table><tbody>\n"
+        for gradient_index in range(number_of_gradients):  
+            if gradient_index % 2 == 0:
+                global_report += "<tr>\n"     
+            global_report += "<td><figure><img src="+self.output_dir+"/QC_Report_images/dwi"+str(gradient_index)+".jpg alt='DWI "+str(gradient_index)+"' width='260'><figcaption aligh='center'>DWI "+str(gradient_index)+"</figcaption></figure></td>\n"      
+            if gradient_index % 2 != 0:
+                global_report += "</tr>\n"
+        global_report += "</tbody></table>\n"
+            
+        #global_report += "![DWI" + str(gradient_index) + "](" + image_path + " 'DWI " + str(gradient_index) + "')"
         return(global_report)
 
     def CreateCSV(self, number_input_gradients, number_of_excluded_gradients):
@@ -179,13 +188,15 @@ class QC_Report(prep.modules.DTIPrepModule):
     def GenerateReportFiles(self, global_report):
         with open(self.output_dir + '/report.md', 'bw+') as f:
             f.write(global_report.encode('utf-8'))
-        markdown.markdownFromFile(input=self.output_dir+"/report.md", output=str(Path(self.output_dir).parent.parent)+"/report.html")
-        return(str(Path(self.output_dir).parent.parent)+"/report.html")
+        markdown.markdownFromFile(input=self.output_dir+"/report.md", output=self.output_dir+"/report.html")
+        return(self.output_dir + "/report.html")
 
     ## Images
 
     def CreateImages(self):
         
+        target_space = self.getSourceImageInformation()['space']
+        self.source_image.setSpaceDirection(target_space=target_space)
         input_image = sitk.GetImageFromArray(self.source_image.images)
         input_size = list(input_image.GetSize())
         input_number_gradients = list(self.source_image.images.shape)[3]

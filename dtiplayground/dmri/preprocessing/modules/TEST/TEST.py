@@ -11,18 +11,17 @@ logger=prep.logger.write
 
 class TEST(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
-        super().__init__(config_dir)
+        super().__init__(config_dir,*args,**kwargs)
         
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         ## todos
         return self.protocol
 
-    def process(self,*args,**kwargs): ## variables : self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
+    def process(self,*args,**kwargs): ## variables : self.global_variables, self.softwares, self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
         sourceImageInformation=self.getSourceImageInformation()
-        print(sourceImageInformation)
         # << TODOS>>
         protocol_options=args[0]
         self.num_threads=protocol_options['software_info']['parameters']['num_max_threads']
@@ -66,3 +65,8 @@ class TEST(prep.modules.DTIPrepModule):
         img.writeImage(temp_nrrd_path,dest_type='nrrd')
 
         return res 
+
+    def global_variable_test(self, params, options):
+        print(self.global_variables)
+        return True
+

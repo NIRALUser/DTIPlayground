@@ -93,6 +93,9 @@ options:
         - value: DTI_Estimate
           caption: Estimate DTI 
           description: Estimation of DTI scalars by DIPY or dtiestim
+        - value: DTI_Register
+          caption: Register DTI (ANTs) 
+          description: Register DTI Image using DTI-Reg with ANTs libs
         - value: MANUAL_Exclude
           caption: Exclude Gradients
           description: Manual Exclusion of Gradient volume

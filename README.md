@@ -222,6 +222,11 @@ MIT
 
 ### Change Log
 
+##### 2022-07-06
+- dmriprep - **New Module** DTI_Register module added for DTI registration (for tractography), it uses DTIReg with ANTS
+- dmriprep - software path related enhancement, each module can access to software path information more intuitively using self.softwares variable
+- dmriprep - yaml.dump replaced by yaml.safe_dump for potential exception handling
+
 ##### 2022-06-19
 - dmriprep - module commands added. add-module, remove-module
 - dmriprep - FSL installation

@@ -16,7 +16,7 @@ logger=prep.logger.write
 
 class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
-        super().__init__(config_dir)
+        super().__init__(config_dir,*args,**kwargs)
 
 
     def install(self,install_dir,*args,**kwargs):
@@ -29,10 +29,6 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         shutil.copy(source_path,dest_path)
 
     def generateDefaultEnvironment(self):
-        #find fsl path 
-        # fsldir, fsl_version=utils.find_fsl(['/NIRAL/tools/FSL/fsl-6.0.3', '/dtiplayground-tools/centos7/FSL'])
-        # res={'fsl_path': fsldir, 'fsl_version' : fsl_version}
-        # return res
         return super().generateDefaultEnvironment()
     
     def checkDependency(self,environment): #use information in template, check if this module can be processed
@@ -59,7 +55,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         self.protocol['configurationFilePath']=self.protocol['configurationFilePath'].replace("$CONFIG_DIR",str(self.config_dir))
         return self.protocol
 
-    def process(self,*args,**kwargs): ## variables : self.images, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
+    def process(self,*args,**kwargs): ## variables : self.global_variables, self.softwares, self.output_dir, self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         #inputParams=self.getPreviousResult()['output']
         gradient_indexes_to_remove=[]

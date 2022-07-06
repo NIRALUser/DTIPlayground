@@ -14,5 +14,6 @@ protocol:
         default_value: 
           - name: image_io_test
             options: null 
-
+          - name: global_variable_test
+            options: null
         description: List of test functions

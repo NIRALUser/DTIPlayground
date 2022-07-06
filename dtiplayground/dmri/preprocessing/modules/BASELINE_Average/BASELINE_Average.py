@@ -17,7 +17,7 @@ logger=prep.logger.write
 
 class BASELINE_Average(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
-        super().__init__(config_dir)
+        super().__init__(config_dir,*args,**kwargs)
         
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)

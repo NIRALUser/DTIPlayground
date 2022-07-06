@@ -45,28 +45,34 @@ def _load_nrrd(filename):
             space_directions.append(header['space directions'].tolist()[idx])
         else:
             grad_size=header['sizes'][idx]
-    # img_size.append(grad_size)
 
-    # print(img_size)
     info={
         'space':header['space'],
         'dimension': int(header['dimension']),
-        'sizes': img_size, #header['sizes'],
+        'sizes': list(map(int, img_size)), #header['sizes'],
         'original_kinds': header['kinds'],
         'original_kinds_space' : kinds,
-        'image_size' : img_size[:3],
+        'image_size' : list(map(int,img_size[:3])),
         # 'b_value':float(header['DWMRI_b-value']),
         'space_directions': space_directions,
-        'measurement_frame':header['measurement frame'].tolist(),
         'space_origin':header['space origin'].tolist(),
         #'original_centerings': header['centerings'],
         'endian' : header['endian'],
-        'type' : header['type'],
-        'modality': header['modality']
+        'type' : header['type']
     }
+    if 'measurement_frame' in header:
+        info['measurement_frame'] = header['measurement_frame'].tolist()
+    else:
+        info['measurement_frame'] =  np.identity(3).tolist()
+    if 'modality' in header:
+        info['modality'] = header['modality']
+    else:
+        info['modality'] = None
+
     if 'DWMRI_b-value' in header:
         info['b_value'] = float(header['DWMRI_b-value'])
-    #print(info)
+    else:
+        info['b_value'] = None
     if 'centerings' in header:
         info['original_centerings']=header['centerings']
     else:
@@ -133,10 +139,9 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     bvecs=[]
     gradients=[]
     max_bval=0.0
-    #bvpairs=list(zip(open(bvals_file,'r').readlines(),open(bvecs_file,'r').readlines()))
+
     if image_dim == 4:
         tmp_bvals=list(open(bvals_file,'r').read().split())
-        #tmp_bvecs=list(chunks(open(bvecs_file,'r').read().split(),3))
         tmp_bvecs=_load_nifti_bvecs(bvecs_file)
         bvpairs=list(zip(tmp_bvals,tmp_bvecs))
         normalized_vecs=[]
@@ -144,7 +149,6 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         
         for idx,bv in enumerate(bvpairs):
             bval,bvec = bv
-            #normalized_vecs.append(np.array(list(map(lambda x: float(x), bvec.split()))).tolist())
             normalized_vecs.append(list(map(lambda x :float(x),bvec)))
             bvals.append(float(bval))
 
@@ -173,7 +177,6 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     mat=np.array(affine)
 
     space='left-posterior-superior'
-    # space='right-anterior-superior'
 
     space_directions=mat.transpose()[:3,:3]
     space_origin=mat.transpose()[3,:3]
@@ -257,7 +260,7 @@ def export_to_nrrd(image): #image : DWI
         new_header['modality']=info['modality']
     else:
         new_header['modality']=None
-    if info['dimension'] == 4 and info['modality'] != 'DTI':
+    if info['dimension'] == 4 and info['modality'] != 'DTI' and info['b_value'] is not None:
         new_header['modality']="DWMRI"
         new_header['DWMRI_b-value']=info['b_value']
 
@@ -387,16 +390,14 @@ class DWI:
 
     @prep.measure_time
     def loadImage(self,filename,filetype=None):
+        print(self.filename)
         if '.nrrd' in filename.lower(): self.image_type='nrrd'
         if '.nii' in filename.lower(): self.image_type='nifti'
         if filetype is not None:
             self.image_type=filetype
         self.images,self.gradients,self.information ,self.original_data = _load_dwi(filename,self.image_type)
         self.images = self.images.astype(float)
-        #self.update_information()
         logger("Image - {} loaded".format(self.filename),prep.Color.OK,terminal_only=True)
-        #logger(yaml.dump(self.information),prep.Color.INFO)
-        #if prep._debug: logger(yaml.dump(self.information))
 
 
     def getAffineMatrix(self):
@@ -492,7 +493,7 @@ class DWI:
 
     def dumpInformation(self,filename):
         info=self.information
-        yaml.dump(info,open(filename,'w'))       
+        yaml.safe_dump(info,open(filename,'w'))       
 
     def dumpGradients(self,filename):
         grad=self.getGradients()
@@ -506,7 +507,7 @@ class DWI:
                  "baseline" : bool(g['baseline'])
             }
             out_grad.append(temp)
-        yaml.dump(out_grad,open(filename,'w'))
+        yaml.safe_dump(out_grad,open(filename,'w'))
 
     def isGradientBaseline(self,gradient_index:int):
         return self.getGradients()[gradient_index]['baseline']

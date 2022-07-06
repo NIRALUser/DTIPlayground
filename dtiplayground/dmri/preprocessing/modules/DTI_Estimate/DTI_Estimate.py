@@ -18,14 +18,14 @@ logger=prep.logger.write
 
 class DTI_Estimate(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
-        super().__init__(config_dir)
+        super().__init__(config_dir,*args,**kwargs)
         
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         ## todos
         return self.protocol
 
-    def process(self,*args,**kwargs): ## variables : self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
+    def process(self,*args,**kwargs): ## variables : self.global_variables, self.softwares, self.output_dir, self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
         # << TODOS>>

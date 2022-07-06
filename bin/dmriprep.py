@@ -762,6 +762,7 @@ def get_args():
 args=get_args()
 if hasattr(args,'num_threads'):
     os.environ['OMP_NUM_THREADS']=str(args.num_threads) ## this should go before loading any dipy function. 
+    os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(args.num_threads) ## for ANTS threading
 
 import dtiplayground.dmri.preprocessing
 import dtiplayground.dmri.preprocessing.modules

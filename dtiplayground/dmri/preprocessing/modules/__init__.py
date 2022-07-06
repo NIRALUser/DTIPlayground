@@ -9,18 +9,18 @@ import os
 logger=prep.logger.write
 
 @prep.measure_time
-def _load_modules(user_module_paths=[],module_names=None):
-    modules=_load_default_modules(module_names)
-    usermodules= _load_modules_from_paths(user_module_paths,module_names)
+def _load_modules(user_module_paths=[],module_names=None, **options):
+    modules=_load_default_modules(module_names, **options)
+    usermodules= _load_modules_from_paths(user_module_paths,module_names, **options)
     modules.update(usermodules)
     return modules
 
-def _load_default_modules(module_names=None): # user_modules list of paths of user modules
+def _load_default_modules(module_names=None, **options): # user_modules list of paths of user modules
     modules={}
     default_module_paths=[Path(__file__).resolve().parent]
-    return _load_modules_from_paths(default_module_paths,module_names)
+    return _load_modules_from_paths(default_module_paths,module_names, **options)
 
-def _load_modules_from_paths(user_module_paths: list,module_names=None): #module names = list of modules to load (if none, load everything)
+def _load_modules_from_paths(user_module_paths: list,module_names=None, **options): #module names = list of modules to load (if none, load everything)
     modules={}
     mods=[]
     for pth in map(lambda x: str(x),user_module_paths):  ## path objects to string array
@@ -52,7 +52,8 @@ def _load_modules_from_paths(user_module_paths: list,module_names=None): #module
                                 "template" : template,
                                 "template_path" : template_path,
                                 "valid" : False,
-                                "validity_message" : None 
+                                "validity_message" : None,
+                                "options" : options
                                 } 
     return modules 
 
@@ -117,6 +118,11 @@ class DTIPrepModule: #base class
         self.computation_dir=None ## computation files 
         self.options={} ## this is pipeline option, not protocol. It should not affect the way of computing, only does to the behaviour of execution
         self.output_files = []
+        self.software_info = {}
+        self.softwares = {}
+        if 'software_info' in kwargs:
+            self.software_info= kwargs['software_info']
+            self.softwares = self.software_info['softwares']
         ## loading template file (yml)
         self.loadTemplate()
 
@@ -172,7 +178,7 @@ class DTIPrepModule: #base class
         else:
             #inputpath=Path(self.result_history[0]["output"]["image_path"]).absolute()
             previous_result=self.getPreviousResult()
-            logger(yaml.dump(previous_result))
+            logger(yaml.safe_dump(previous_result))
             if previous_result["output"]["image_object"] is not None:
                 self.source_image=prep.object_by_id(previous_result["output"]["image_object"])
                 self.image=copy.deepcopy(self.source_image)
@@ -337,9 +343,9 @@ class DTIPrepModule: #base class
 
         self.result['output']['success']=True
         self.result['output']['image_information']=self.image.information
-        outstr=yaml.dump(self.result)
+        outstr=yaml.safe_dump(self.result)
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
-            yaml.dump(self.result,f)
+            yaml.safe_dump(self.result,f)
         self.image.dumpGradients(gradient_filename)
         self.image.dumpInformation(image_information_filename)
 
@@ -362,6 +368,7 @@ class DTIPrepModule: #base class
         baseline_threshold=opts['baseline_threshold']
         if 'global_vars' in kwargs:
             self.result['output']['global_variables'].update(kwargs['global_vars'])
+            self.global_variables = kwargs['global_vars']
         self.image.setB0Threshold(baseline_threshold)
         self.image.getGradients()
         

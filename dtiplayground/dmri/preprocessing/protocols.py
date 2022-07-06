@@ -48,7 +48,6 @@ def _generate_exec_sequence(pipeline,image_paths:list,output_dir,modules, io_opt
             if idx>0 and not after_multi_input:
                 for idx2,ip in enumerate(image_paths):
                     seq[-idx2-1]['save']=True
-            #seq.append([uid]+parr+[ip])
             seq.append(execution)
             after_multi_input=True
         else:
@@ -64,7 +63,6 @@ def _generate_exec_sequence(pipeline,image_paths:list,output_dir,modules, io_opt
                     "output_base": ip,
                     "save": idx+1==len(pipeline)  ## is it the final stage? (to save the final output)
                 }
-                #seq.append([uid]+parr+[ip])
                 seq.append(execution)
     return seq 
 
@@ -80,7 +78,6 @@ def _generate_output_directories_mapping(output_dir,exec_sequence): ## map exec 
         image_path=execution['image_path']
         order=execution['order']
         module_output_dir=Path(output_dir).joinpath(Path(image_path).stem.split('.')[0]).joinpath("{:02d}_{}".format(order,m))
-        #module_output_dir.mkdir(parents=True,exist_ok=True)
         module_output_dirs[uid]=str(module_output_dir)
     return module_output_dirs
 
@@ -182,7 +179,7 @@ class Protocols:
 
     def writeProtocols(self,filename):
         self.rawdata=self.getProtocols()
-        yaml.dump(self.rawdata,open(filename,'w'))
+        yaml.safe_dump(self.rawdata,open(filename,'w'))
 
 
     def loadProtocols(self,filename):
@@ -201,11 +198,12 @@ class Protocols:
             return True
         except Exception as e:
             logger("Exception occurred : {}".format(str(e)))
+            traceback.print_exc()
             return False
 
-    def loadModules(self,pipeline:list,user_module_paths:list):
+    def loadModules(self,pipeline:list,user_module_paths:list, **options):
         mod_names=[x for x in pipeline]
-        modules=prep.modules._load_modules(user_module_paths=user_module_paths,module_names=mod_names)
+        modules=prep.modules._load_modules(user_module_paths=user_module_paths,module_names=mod_names, **options)
         modules=prep.modules.check_module_validity(modules, self.environment, self.config_dir)
         self.modules=modules
 
@@ -245,11 +243,6 @@ class Protocols:
         self.io['no_output_image']= False
         if 'no_output_image' in options:
             self.io['no_output_image']=options['no_output_image']
-
-        # self.io['output_filename_base'] = getBaseFilename(self.images[0].filename)
-        # if 'output_filename_base' in options:
-        #     if options['output_filename_base']:
-        #         self.io['output_filename_base']=options['output_filename_base']
         if pipeline is not None:
             self.pipeline=self.furnishPipeline(pipeline)
         else:
@@ -265,8 +258,12 @@ class Protocols:
             else:
                 mod_name , _ = parr
             module_names.append(mod_name)
-        self.loadModules(module_names,user_module_paths=self.config['user_module_directories'])
-
+        opts={
+                "software_info": self.getSoftwareInfo()
+             }
+        if 'baseline_threshold' in self.io:
+            opts['baseline_threshold'] = self.io['baseline_threshold']
+        self.loadModules(module_names,user_module_paths=self.config['user_module_directories'],**opts)
         new_pipeline=[]
         for idx,parr in enumerate(pipeline):
             mod_name = None
@@ -276,7 +273,7 @@ class Protocols:
                 mod_name , _ = parr
             default_options=default_pipeline_options()
 
-            default_protocol=getattr(self.modules[mod_name]['module'],mod_name)(str(self.config_dir)).generateDefaultProtocol(self.images[0])
+            default_protocol=getattr(self.modules[mod_name]['module'],mod_name)(str(self.config_dir), **opts).generateDefaultProtocol(self.images[0])
             default_options['protocol'].update(default_protocol)
             if not isinstance(parr, list):
                 new_pipeline.append([parr,default_options])
@@ -306,7 +303,7 @@ class Protocols:
     def checkPipeline(self):
         if self.pipeline is None:
             logger("[ERROR] Protocols are not set.",prep.Color.ERROR)
-            raise Exception("Image is not set")
+            raise Exception("Pipe line error")
     def checkDependencies(self):
         for parr in self.pipeline:
             p, options = parr 
@@ -342,8 +339,8 @@ class Protocols:
             self.writeProtocols(protocol_filename)
             ## print pipeline
             logger("PIPELINE",prep.Color.INFO)
-            logger(yaml.dump(self.io),prep.Color.DEV)
-            logger(yaml.dump(self.pipeline),prep.Color.DEV)
+            logger(yaml.safe_dump(self.io),prep.Color.DEV)
+            logger(yaml.safe_dump(self.pipeline),prep.Color.DEV)
             ## run pipeline
             opts={
                     "software_info": self.getSoftwareInfo(),
@@ -368,12 +365,12 @@ class Protocols:
                 logger("-----------------------------------------------",prep.Color.BOLD)
                 Path(output_dir_map[uid]).mkdir(parents=True,exist_ok=True)
                 logger("Output directory : {}\n".format(str(output_dir_map[uid])),prep.Color.DEV)
-                m=getattr(self.modules[p]['module'], p)(self.config_dir)
+                m=getattr(self.modules[p]['module'], p)(self.config_dir, **opts)
                 m.setOptionsAndProtocol(options)
 
-                logger(yaml.dump(m.getTemplate()['process_attributes']),prep.Color.DEV)
-                logger(yaml.dump(m.getOptions()),prep.Color.DEV)
-                logger(yaml.dump(m.getProtocol()),prep.Color.DEV)
+                logger(yaml.safe_dump(m.getTemplate()['process_attributes']),prep.Color.DEV)
+                logger(yaml.safe_dump(m.getOptions()),prep.Color.DEV)
+                logger(yaml.safe_dump(m.getProtocol()),prep.Color.DEV)
                 if m.getOptions()['skip']:
                     forced_overwrite=True 
                     logger("SKIPPING THIS",prep.Color.INFO)
@@ -430,16 +427,11 @@ class Protocols:
                     final_information_filename=Path(self.output_dir).joinpath(Path(output_base).stem.split('.')[0]).joinpath('output_image_information.yml').__str__()
                     
                     if not Path(final_filename).exists() or idx+1==len(execution_sequence):
-                        # m.image.writeImage(final_filename,dest_type=m.image.image_type)
-                        # if 'combined_QCed' in stem:
-                        #     if self.io['output_filename_base']:
-                        #         stem=self.io['output_filename_base']+"_QCed"
-                        #         final_filename=Path(self.output_dir).joinpath(stem).__str__()+ext
                         m.image.writeImage(final_filename,dest_type=self.io['output_format'])
                         m.image.dumpGradients(final_gradients_filename)
                         m.image.dumpInformation(final_information_filename)
 
-            logger(yaml.dump(execution_sequence),prep.Color.INFO)
+            logger(yaml.safe_dump(execution_sequence),prep.Color.INFO)
             return self.result_history
 
         except Exception as e:
@@ -449,5 +441,5 @@ class Protocols:
             return None
         finally:
             with open(Path(self.output_dir).joinpath('result_history.yml'),'w') as f:
-                yaml.dump(self.result_history,f)
+                yaml.safe_dump(self.result_history,f)
 

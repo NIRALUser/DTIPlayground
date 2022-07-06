@@ -4,7 +4,10 @@ class DTIReg(ExternalToolWrapper):
     def __init__(self,binary_path):
         super().__init__(binary_path)
 
-    
+    def execute_with_args(self,args,**kwargs):
+        self.setArguments(args)
+        return self.execute(args)
+
     def compute_global_deformation_fields(self,
                                             fixed_volume,
                                             moving_volume,

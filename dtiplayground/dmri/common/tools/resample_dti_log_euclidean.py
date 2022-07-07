@@ -1,8 +1,9 @@
 from dtiplayground.dmri.common.tools.base import ExternalToolWrapper
 
 class ResampleDTIlogEuclidean(ExternalToolWrapper):
-    def __init__(self,binary_path):
-        super().__init__(binary_path)
+    def __init__(self,binary_path= None, **kwargs):
+        super().__init__(binary_path, **kwargs)
+
 
     def filter_dti(self, inputfile, outputfile,correction='zero'):
         arguments=[inputfile,outputfile,'--correction',correction]

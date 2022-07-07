@@ -1,8 +1,8 @@
 from dtiplayground.dmri.common.tools.base import ExternalToolWrapper
 
 class BRAINSFit(ExternalToolWrapper):
-    def __init__(self,binary_path):
-        super().__init__(binary_path)
+    def __init__(self,binary_path= None, **kwargs):
+        super().__init__(binary_path, **kwargs)
 
     
     def affine_registration(self,

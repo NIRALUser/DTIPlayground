@@ -1,8 +1,9 @@
 from dtiplayground.dmri.common.tools.base import ExternalToolWrapper
 
 class UNU(ExternalToolWrapper):
-    def __init__(self,binary_path):
-        super().__init__(binary_path)
+    def __init__(self,binary_path= None, **kwargs):
+        super().__init__(binary_path, **kwargs)
+
 
     def convert_to_float(self,input_file,output_file):
         arguments=[

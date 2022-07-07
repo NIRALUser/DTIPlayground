@@ -8,7 +8,7 @@ import os
 logger=dtiplayground.dmri.common.logger.write
 
 class FSL(ExternalToolWrapper):
-    def __init__(self,binary_path): ## binary_path in this class is binary dir e.g. $FSLHOME 
+    def __init__(self,binary_path= None, **kwargs): ## binary_path in this class is binary dir e.g. $FSLHOME 
         self.binary_path=binary_path
         self.arguments=[]
         self.fslhome=binary_path

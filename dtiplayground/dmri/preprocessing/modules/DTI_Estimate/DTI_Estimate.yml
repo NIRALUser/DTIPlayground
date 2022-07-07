@@ -4,6 +4,9 @@ description: Estimate DTI
 version: "0.1"
 dependency: []
 result: null
+global_variables:
+  dti_path: null
+  
 module_type: prep
 process_attributes:
     - utility

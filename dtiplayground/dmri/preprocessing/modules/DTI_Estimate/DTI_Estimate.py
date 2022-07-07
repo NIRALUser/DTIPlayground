@@ -124,7 +124,7 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         temp_dti_image.setSpaceDirection(target_space=sp_dir)
         temp_dti_image.writeImage(dti_filename,dest_type='nrrd',dtype="float32")
         self.addOutputFile(dti_filename, 'DTI')
-        self.addGlobalVariable('dti_image',dti_filename)
+        self.addGlobalVariable('dti_path',dti_filename)
         # retrieve outputs
         evals = fitted.evals
         evecs = fitted.evecs
@@ -175,5 +175,5 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
 
         dtiestim.estimate(input_image_path, output_tensor_path,options)
         self.addOutputFile(output_tensor_path, 'DTI')
-        self.addGlobalVariable('dti_image',output_tensor_path)
+        self.addGlobalVariable('dti_path',output_tensor_path)
         return None

@@ -386,6 +386,7 @@ def command_init(args):
     tools_dir = None
     if args.tools_dir is not None:
         tools_dir = Path(args.tools_dir)
+
     user_module_dir=home_dir.parent.joinpath('modules/dmriprep').absolute()
     user_module_dir.mkdir(parents=True,exist_ok=True)
     user_tools_param_dir=home_dir.joinpath('parameters').absolute()
@@ -574,9 +575,10 @@ def command_remove_module(args):
 
 def parse_global_variables(global_vars: list):
     gv = {}
-    n_vars = int(len(global_vars)/2)
-    for i in range(n_vars):
-        gv[global_vars[i]]=global_vars[i+1]
+    if global_vars is not None:
+        n_vars = int(len(global_vars)/2)
+        for i in range(n_vars):
+            gv[global_vars[i*2]]=global_vars[i*2+1]
     return gv
 
 @after_initialized
@@ -687,7 +689,6 @@ def get_args():
     
     ## init command
     parser_init=subparsers.add_parser('init',help='Initialize configurations')
-    parser_init.add_argument('--tools-dir', help="Initialize with specific tool directory", default=None)
     parser_init.set_defaults(func=command_init)
 
     ## update command
@@ -758,7 +759,7 @@ def get_args():
     parser.add_argument('--no-log-timestamp',help='Remove timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
     parser.add_argument('-v','--version', help="Show version", default=False,action="store_true")
-
+    parser.add_argument('--tools-dir', help="Initialize with specific tool directory", default=None)
     ## if no parameter is furnished, exit with printing help
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)

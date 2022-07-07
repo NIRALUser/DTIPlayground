@@ -1,8 +1,8 @@
 from dtiplayground.dmri.common.tools.base import ExternalToolWrapper
 
 class DTIReg(ExternalToolWrapper):
-    def __init__(self,binary_path):
-        super().__init__(binary_path)
+    def __init__(self,binary_path= None, **kwargs):
+        super().__init__(binary_path, **kwargs)
 
     def execute_with_args(self,args,**kwargs):
         self.setArguments(args)

@@ -29,7 +29,7 @@ def measure_time(func):  ## decorator
     return wrapper 
 
 class ExternalToolWrapper(object):
-    def __init__(self,binary_path):
+    def __init__(self,binary_path = None, **kwargs):
         self.binary_path=binary_path
         self.arguments=[]
         self.dev_mode=False

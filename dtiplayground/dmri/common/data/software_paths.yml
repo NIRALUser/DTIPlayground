@@ -18,6 +18,8 @@ softwares:
     path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/dtiaverage
   dtiestim:
     path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/dtiestim
+  fiberprocess:
+    path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/fiberprocess
   BRAINSFit: 
     path: ${DTIPLAYGROUNDTOOLS}/BRAINSTools/bin/BRAINSFit
   GreedyAtlas: 
@@ -27,9 +29,11 @@ softwares:
   ITKTransformTools: 
     path: ${DTIPLAYGROUNDTOOLS}/ITKTransformTools/bin/ITKTransformTools
   ANTs:
-    path: ${DTIPLAYGROUNDTOOLS}/ANTs
+    path: ${DTIPLAYGROUNDTOOLS}/ANTs/bin
   FSL: 
     path: ${FSL}
+  niral_utilities:
+    path: ${DTIPLAYGROUNDTOOLS}/niral_utilities/bin
 
 # softwares_alt:
 #   ImageMath : 

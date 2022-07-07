@@ -28,8 +28,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
 
         # << TODOS>>
         self.dtiImagePath = None
-        if 'dti_image' in self.global_variables:
-            self.dtiImagePath=self.global_variables['dti_image']
+        if 'dti_path' in self.global_variables:
+            self.dtiImagePath=self.global_variables['dti_path']
         self.register(**self.protocol)
 
         logger(yaml.dump(self.image.information))
@@ -73,7 +73,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
             self.writeImageWithOriginalSpace(inputImagePath,'nrrd',dtype='float')
 
         os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(nbThreads)
-        ANTsPath=Path(protocol['ANTsPath']).joinpath('bin/ANTS').__str__()
+        ANTsPath=Path(protocol['ANTsPath']).joinpath('ANTS').__str__()
         logger("Executing DTI Reg for registration",prep.Color.PROCESS)
         args = ['--fixedVolume',refImagePath,
                 '--movingVolume',inputImagePath,
@@ -99,8 +99,9 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.result['output']['registered_dti_image'] = registeredImagePath
         self.addGlobalVariable('displacement_field_path',displacementFieldPath)
         self.addGlobalVariable('inverse_displacement_field_path',inv_displacementFieldPath)
-        self.addGlobalVariable('registered_dti_image',registeredImagePath)
-        self.addGlobalVariable('reference_dti_image',refImagePath)
+        # self.addGlobalVariable('registered_dti_path',registeredImagePath)
+        self.addGlobalVariable('reference_dti_path',refImagePath)
+        self.addGlobalVariable('dti_path',registeredImagePath) #update dti_path with registered image
 
         # if self.protocol['useRegistered']:
         #    self.loadImage(registeredImagePath) 

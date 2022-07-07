@@ -3,10 +3,16 @@ caption: DTI Register
 description: Register DTI to the fixed volume using DTIReg
 version: "0.1"
 dependency: []
-result: 
+result: null
+commandline_variables:
+  reference_dti: null
+
+global_variables: 
+  dti_path: null
   displacement_field_path: null
   inverse_displacement_field_path: null
-
+  registered_dti_path: null
+  reference_dti_path: null
 module_type: prep
 process_attributes:
     - utility
@@ -21,10 +27,6 @@ protocol:
             caption: ANTs
             description: Use ANTs to register
         description: Method to register DTI (ANTs)
-      # useRegistered: ## if this is true, the registered image will be passed to the next pipeline. If not, the original image will be passed.
-      #   type: boolean
-      #   caption: Use Registered Image
-      #   default_value: True
       referenceImage:
         type: string
         caption: Reference Image Path 

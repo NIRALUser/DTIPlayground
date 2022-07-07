@@ -572,6 +572,13 @@ def command_remove_module(args):
 
     return True
 
+def parse_global_variables(global_vars: list):
+    gv = {}
+    n_vars = int(len(global_vars)/2)
+    for i in range(n_vars):
+        gv[global_vars[i]]=global_vars[i+1]
+    return gv
+
 @after_initialized
 @log_off
 def command_make_protocols(args):
@@ -583,7 +590,8 @@ def command_make_protocols(args):
         "output_path" : args.output,
         "baseline_threshold" : args.b0_threshold,
         "output_format" : args.output_format,
-        "no_output_image" : args.no_output_image
+        "no_output_image" : args.no_output_image,
+        "global_variables" : parse_global_variables(args.global_variables)
     }
     if options['output_path'] is not None:
         dtiplayground.dmri.common.logger.setVerbosity(True)
@@ -591,7 +599,7 @@ def command_make_protocols(args):
     config,environment = load_configurations(options['config_dir'])
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
     template=yaml.safe_load(open(template_path,'r'))
-    proto=dtiplayground.dmri.preprocessing.protocols.Protocols(options['config_dir'])
+    proto=dtiplayground.dmri.preprocessing.protocols.Protocols(options['config_dir'],global_vars=options['global_variables'])
     proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
     if options['module_list'] is not None and  len(options['module_list'])==0:
             options['module_list']=None
@@ -617,7 +625,8 @@ def command_run(args):
         "baseline_threshold" : args.b0_threshold,
         "output_format" : args.output_format,
         "output_file_base" : args.output_file_base,
-        "no_output_image" : args.no_output_image
+        "no_output_image" : args.no_output_image,
+        "global_variables" : parse_global_variables(args.global_variables)
     }
     if args.output_format is not None:
         options['output_format']=args.output_format.lower()
@@ -625,7 +634,7 @@ def command_run(args):
     config,environment = load_configurations(options['config_dir'])
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
     template=yaml.safe_load(open(template_path,'r'))
-    proto=dtiplayground.dmri.preprocessing.protocols.Protocols(options['config_dir'])
+    proto=dtiplayground.dmri.preprocessing.protocols.Protocols(options['config_dir'], global_vars=options['global_variables'])
     proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
     if options['output_dir'] is None:
         raise Exception("Output directory is missing")
@@ -715,6 +724,7 @@ def get_args():
     ## generate-default-protocols
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
     parser_make_protocols.add_argument('-i','--input-images',help='Input image paths',type=str,nargs='+',required=True)
+    parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
     parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
                                         help='Default protocols with specified list of modules, only works with default protocols. Example : -d DIFFUSION_Check SLICE_Check',
@@ -728,6 +738,7 @@ def get_args():
     ## run command
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
     parser_run.add_argument('-i','--input-image-list',help='Input image paths',type=str,nargs='+',required=True)
+    parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
     parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)

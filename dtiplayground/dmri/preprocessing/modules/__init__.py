@@ -120,9 +120,12 @@ class DTIPrepModule: #base class
         self.output_files = []
         self.software_info = {}
         self.softwares = {}
+        self.global_variables={}
         if 'software_info' in kwargs:
             self.software_info= kwargs['software_info']
             self.softwares = self.software_info['softwares']
+        if 'global_variables' in kwargs:
+            self.global_variables.update(kwargs['global_variables'])
         ## loading template file (yml)
         self.loadTemplate()
 
@@ -222,6 +225,9 @@ class DTIPrepModule: #base class
     def addGlobalVariable(self, key, value):
         self.result['output']['global_variables'][key]=value
 
+    def updateGlobalVariable(self, global_vars):
+        self.result['output']['global_variables'].update(global_vars)
+        
     def getGlobalVariables(self):
         return self.result['output']['global_variables']
 
@@ -368,7 +374,7 @@ class DTIPrepModule: #base class
         baseline_threshold=opts['baseline_threshold']
         if 'global_vars' in kwargs:
             self.result['output']['global_variables'].update(kwargs['global_vars'])
-            self.global_variables = kwargs['global_vars']
+            self.global_variables.update(kwargs['global_vars'])
         self.image.setB0Threshold(baseline_threshold)
         self.image.getGradients()
         

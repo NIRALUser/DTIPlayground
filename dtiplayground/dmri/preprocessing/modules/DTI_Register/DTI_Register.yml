@@ -10,7 +10,7 @@ result:
 module_type: prep
 process_attributes:
     - utility
-    - deform_image
+    - indentity
 protocol:
       method: 
         type: list
@@ -21,10 +21,10 @@ protocol:
             caption: ANTs
             description: Use ANTs to register
         description: Method to register DTI (ANTs)
-      useRegistered: ## if this is true, the registered image will be passed to the next pipeline. If not, the original image will be passed.
-        type: boolean
-        caption: Use Registered Image
-        default_value: True
+      # useRegistered: ## if this is true, the registered image will be passed to the next pipeline. If not, the original image will be passed.
+      #   type: boolean
+      #   caption: Use Registered Image
+      #   default_value: True
       referenceImage:
         type: string
         caption: Reference Image Path 

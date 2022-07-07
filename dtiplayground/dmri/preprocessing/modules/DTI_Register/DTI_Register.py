@@ -14,6 +14,9 @@ class DTI_Register(prep.modules.DTIPrepModule):
         super().generateDefaultProtocol(image_obj)
         self.protocol['ANTsPath'] = self.protocol['ANTsPath'].replace('$ANTSDIR', self.softwares['ANTs']['path'])
         ## todos
+        if 'reference_dti' in self.global_variables:
+            ref_dti_path = Path(self.global_variables['reference_dti'])
+            self.protocol['referenceImage'] = ref_dti_path.resolve().__str__()
         return self.protocol
 
     def process(self,*args,**kwargs): ## variables : self.global_variables, self.softwares, self.output_dir, self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
@@ -24,6 +27,9 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.baseline_threshold=protocol_options['baseline_threshold']
 
         # << TODOS>>
+        self.dtiImagePath = None
+        if 'dti_image' in self.global_variables:
+            self.dtiImagePath=self.global_variables['dti_image']
         self.register(**self.protocol)
 
         logger(yaml.dump(self.image.information))
@@ -47,7 +53,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
             raise Exception("File not found")
         inputImagePath = output_dir.joinpath('input.nrrd').__str__()
         registeredImagePath = output_dir.joinpath('registered.nrrd').__str__()
-        outputImagePath = output_dir.joinpath('output.nrrd').__str__()
+        # outputImagePath = output_dir.joinpath('output.nrrd').__str__()
         displacementFieldPath = output_dir.joinpath('displacementField.nrrd').__str__()
         inv_displacementFieldPath = output_dir.joinpath('inverse_displacementField.nrrd').__str__()
         outputDirectory = output_dir.__str__()
@@ -61,7 +67,10 @@ class DTI_Register(prep.modules.DTIPrepModule):
         gaussianSigma = self.protocol['gaussianSigma']
         
         ## saving input
-        self.writeImageWithOriginalSpace(inputImagePath,'nrrd',dtype='float')
+        if self.dtiImagePath is not None:
+            inputImagePath = self.dtiImagePath
+        else:
+            self.writeImageWithOriginalSpace(inputImagePath,'nrrd',dtype='float')
 
         os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(nbThreads)
         ANTsPath=Path(protocol['ANTsPath']).joinpath('bin/ANTS').__str__()
@@ -87,11 +96,17 @@ class DTI_Register(prep.modules.DTIPrepModule):
         dtireg.execute_with_args(args)
         self.result['output']['displacement_field_path'] = displacementFieldPath
         self.result['output']['inverse_displacement_field_path'] = inv_displacementFieldPath
+        self.result['output']['registered_dti_image'] = registeredImagePath
         self.addGlobalVariable('displacement_field_path',displacementFieldPath)
         self.addGlobalVariable('inverse_displacement_field_path',inv_displacementFieldPath)
+        self.addGlobalVariable('registered_dti_image',registeredImagePath)
+        self.addGlobalVariable('reference_dti_image',refImagePath)
 
-        if self.protocol['useRegistered']:
-           self.loadImage(registeredImagePath) 
+        # if self.protocol['useRegistered']:
+        #    self.loadImage(registeredImagePath) 
+        self.addOutputFile(registeredImagePath, 'DTI_Registered')
+        self.addOutputFile(displacementFieldPath, 'DTI_DisplacementField')
+        self.addOutputFile(inv_displacementFieldPath, 'DTI_Inverse_DisplacementField')
 
-        self.writeImageWithOriginalSpace(outputImagePath,'nrrd',dtype='float')
+        #self.writeImageWithOriginalSpace(outputImagePath,'nrrd',dtype='float')
         return True 

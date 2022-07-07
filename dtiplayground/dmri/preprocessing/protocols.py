@@ -116,6 +116,8 @@ class Protocols:
         self.software_info=None # binary path of softwares (such as fsl)
         self.num_threads=4 # number of threads to use 
         self.global_variables={} # global variables to track from each module (arbitrary key-value dict)
+        if 'global_vars' in kwargs:
+            self.global_variables.update(kwargs['global_vars'])
         #Module related
         self.config,self.environment=load_configurations(self.config_dir)
 
@@ -259,7 +261,8 @@ class Protocols:
                 mod_name , _ = parr
             module_names.append(mod_name)
         opts={
-                "software_info": self.getSoftwareInfo()
+                "software_info": self.getSoftwareInfo(),
+                "global_variables" : self.global_variables
              }
         if 'baseline_threshold' in self.io:
             opts['baseline_threshold'] = self.io['baseline_threshold']
@@ -322,6 +325,16 @@ class Protocols:
                 return fname.split(splitter)[0]
         return fname.split('.')[0]
 
+    def loadGlobalVariables(self):
+        gv_filename=Path(self.output_dir).joinpath('global_variables.yml')
+        if gv_filename.exists():
+            return yaml.safe_load(open(gv_filename,'r'))
+        else:
+            return {}
+    def writeGlobalVariables(self):
+        gv_filename=Path(self.output_dir).joinpath('global_variables.yml')
+        yaml.safe_dump(self.global_variables,open(gv_filename,'w'))
+
     @prep.measure_time
     def runPipeline(self,options={}):
         try:
@@ -344,9 +357,11 @@ class Protocols:
             ## run pipeline
             opts={
                     "software_info": self.getSoftwareInfo(),
-                    "baseline_threshold" : self.io['baseline_threshold']
+                    "baseline_threshold" : self.io['baseline_threshold'],
+                    "global_variables" : self.global_variables
                  }
             forced_overwrite=False
+            self.global_variables.update(self.loadGlobalVariables())
             for idx,execution in enumerate(execution_sequence):
                 # uid, p, options=parr 
                 uid=execution['id']
@@ -397,6 +412,7 @@ class Protocols:
                     logger("[ERROR] Process failed in {}".format(p),prep.Color.ERROR) 
                     raise Exception("Process failed in {}".format(p))
                 self.global_variables.update(m.getGlobalVariables())
+                self.writeGlobalVariables()
                 self.previous_process=m  #this is for the image id reference
                 self.result_history[image_path] =m.getResultHistory()
                 self.image_cache[image_path]=m.image 

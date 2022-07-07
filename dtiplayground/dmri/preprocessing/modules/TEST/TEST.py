@@ -67,6 +67,6 @@ class TEST(prep.modules.DTIPrepModule):
         return res 
 
     def global_variable_test(self, params, options):
-        print(self.global_variables)
+        print(yaml.dump(self.global_variables))
         return True
 

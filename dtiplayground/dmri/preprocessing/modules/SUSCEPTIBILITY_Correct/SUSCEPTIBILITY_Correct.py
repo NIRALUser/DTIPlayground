@@ -66,10 +66,6 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
 
         res=None
         output_image_file=Path(self.output_dir).joinpath('output.nrrd')
-        # if Path(output_image_file).exists() and not self.options['recompute']:
-        #     logger("Computing ommited",prep.Color.INFO)
-        #     self.loadImage(output_image_file)
-        # else:
         logger("Running topup ...",prep.Color.PROCESS)
         self.run_topup( phaseEncodingAxis=self.protocol['phaseEncodingAxis'],
                         phaseEncodingValue=self.protocol['phaseEncodingValue'],
@@ -201,14 +197,6 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         return indices 
 
     def get_phase_axis(self,phaseEncodingAxis):
-        # if phaseEncodingAxis[0].lower() in ['ap','pa','hf','fh']:
-        #     return 1 
-        # elif phaseEncodingAxis[0].lower() in ['rl','lr']:
-        #     return 0
-        # elif phaseEncodingAxis[0].lower() in ['si','is']:
-        #     return 2
-        # else:
-        #     raise Exception("Unknown phase encoding direction")
         return phaseEncodingAxis[0]
 
     def zero_padding_odd_sizes(self):
@@ -234,7 +222,6 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         
         fsl=tools.FSL(self.software_info['FSL']['path'])
         fsl._set_num_threads(self.num_threads)
-        #logger("Number of thread to use : {}".format(self.num_threads))
         fsl.setDevMode(True) 
 
         ## auto zero padding if image dimension has odd number of element (even size of image sizes is only acceptable)
@@ -304,7 +291,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             "topup_path" : _out_path_prep,
             "index_path" : _index_path
         }
+        self.updateGlobalVariable(susceptibility_parameters)
+
         self.result['output']['susceptibility_parameters']=susceptibility_parameters
-        # self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
-        # self.writeImage(output_nrrd)
         self.writeImageWithOriginalSpace(output_nrrd,'nrrd')

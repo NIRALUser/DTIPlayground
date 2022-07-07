@@ -6,6 +6,7 @@ dependency: null
 module_type: prep
 process_attributes:
     - utility
+    - identity
 result: null
 protocol:
     generatePDF: 

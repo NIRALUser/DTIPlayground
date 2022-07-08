@@ -40,7 +40,7 @@ class QC_Report(prep.modules.DTIPrepModule):
             html_path = self.GenerateReportFiles(global_report)
             with open(html_path, "r", encoding="utf-8") as f:
                 html_data = f.read()
-            pdf_path = str(Path(self.output_dir).parent.parent)+"/report.pdf"
+            pdf_path = str(Path(self.output_dir).parent.parent)+"/QC_report.pdf"
             result_file = open(pdf_path, "w+b")
             pisa.CreatePDF(html_data, dest=result_file)
             result_file.close()
@@ -183,7 +183,7 @@ class QC_Report(prep.modules.DTIPrepModule):
 
         qc_report = pandas.DataFrame([values], columns = columns)
         path_output_directory = Path(self.output_dir).parent.parent
-        qc_report.to_csv(str(path_output_directory) + "/qc_report.csv", index=False)
+        qc_report.to_csv(str(path_output_directory) + "/QC_report.csv", index=False)
 
     def GenerateReportFiles(self, global_report):
         with open(self.output_dir + '/report.md', 'bw+') as f:

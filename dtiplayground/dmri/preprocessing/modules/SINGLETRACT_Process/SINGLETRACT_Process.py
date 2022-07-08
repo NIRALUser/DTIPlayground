@@ -94,12 +94,9 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
         self.addGlobalVariable('labelmap_path', dilatedLabelmapFile)
         dilatedLabelmapImage = prep.dwi.DWI(dilatedLabelmapFile)
 
-        print(dilatedLabelmap.information)
-        print(dilatedLabelmap.images.shape)
-
     ## Tractography ...
         tensorImage = prep.dwi.DWI(inputDTI)
-        tractography.compute(tensorImage, dilatedLabelmapImage, output_dir = self.output_dir)
+        tractography.compute(tensorImage, dilatedLabelmapImage, output_dir = self.output_dir, scalar='fa' )
         return res 
 
 

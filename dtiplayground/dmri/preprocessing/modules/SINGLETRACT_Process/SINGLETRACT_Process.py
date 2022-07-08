@@ -6,6 +6,9 @@ logger=prep.logger.write
 
 import dtiplayground.dmri.common.tools as tools 
 
+###
+import SINGLETRACT_Process.tractography as tractography
+
 class SINGLETRACT_Process(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
@@ -69,27 +72,34 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
         self.addGlobalVariable('reference_tract_path', outputFiberTract) ## update tract path to the updated one
 
     ## Dilation and voxelization of the mapped reference tracts , getting labelmap
-        labelMap = Path(self.output_dir).joinpath('labelmap.nrrd').__str__()
-        arguments = ['--voxelize', labelMap,
+        labelMapFile = Path(self.output_dir).joinpath('labelmap.nrrd').__str__()
+        arguments = ['--voxelize', labelMapFile,
                      '--fiber_file', outputFiberTract,
                      '-T', inputDTI]
         fiberprocess = tools.FiberProcess(softwares=self.softwares)
         fiberprocess.dev_mode = True
         fiberprocess.execute(arguments=arguments)
-        self.addGlobalVariable('labelmap_path', labelMap)
-        ## Dilation and voxelization of the reference tracts
-        dilatedLabelmap = Path(self.output_dir).joinpath('labelmap_dilated.nrrd').__str__()
+        self.addGlobalVariable('labelmap_path', labelMapFile)
+
+    ## Dilation and voxelization of the reference tracts
+        dilatedLabelmapFile = Path(self.output_dir).joinpath('labelmap_dilated.nrrd').__str__()
         dilationRadius = self.protocol['dilationRadius']
         imagemath = tools.ImageMath(softwares=self.softwares)
         imagemath.dev_mode=True
-        arguments = [labelMap,
+        arguments = [labelMapFile,
                      '-dilate', str(dilationRadius)+',1',
-                     '-outfile', dilatedLabelmap
+                     '-outfile', dilatedLabelmapFile
                      ]
         imagemath.execute(arguments=arguments)
-    ## Tractography ...
+        self.addGlobalVariable('labelmap_path', dilatedLabelmapFile)
+        dilatedLabelmapImage = prep.dwi.DWI(dilatedLabelmapFile)
 
-    
+        print(dilatedLabelmap.information)
+        print(dilatedLabelmap.images.shape)
+
+    ## Tractography ...
+        tensorImage = prep.dwi.DWI(inputDTI)
+        tractography.compute(tensorImage, dilatedLabelmapImage, output_dir = self.output_dir)
         return res 
 
 

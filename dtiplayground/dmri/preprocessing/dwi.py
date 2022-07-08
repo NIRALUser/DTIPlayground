@@ -367,6 +367,13 @@ class DWI:
         logger('Images merged',prep.Color.OK)
         return merged
 
+    def updateImage3D(self, img):
+        self.images = img
+        self.information['sizes'] = list(img.shape)
+        self.information['dimension'] = len(img.shape)
+        self.information['kinds'] = ['domain','domain','domain']
+        self.information['original_kinds'] = ['domain','domain','domain']
+
     def setImage(self,img, modality='DWMRI', kinds = ['space','space','space','list']):
         self.information['sizes'] = list(img.shape)
         self.information['kinds'] = kinds

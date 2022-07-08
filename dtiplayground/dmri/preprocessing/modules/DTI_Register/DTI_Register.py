@@ -52,7 +52,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
             logger("Reference image doesn't exist. Please check the file {} exists.".format(refImagePath),prep.Color.ERROR)
             raise Exception("File not found")
         inputImagePath = output_dir.joinpath('input.nrrd').__str__()
-        registeredImagePath = output_dir.joinpath('registered.nrrd').__str__()
+        registeredImagePath = output_dir.joinpath('registered_dti.nrrd').__str__()
         # outputImagePath = output_dir.joinpath('output.nrrd').__str__()
         displacementFieldPath = output_dir.joinpath('displacementField.nrrd').__str__()
         inv_displacementFieldPath = output_dir.joinpath('inverse_displacementField.nrrd').__str__()

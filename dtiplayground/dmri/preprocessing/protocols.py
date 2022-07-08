@@ -420,9 +420,14 @@ class Protocols:
                     srcfilepath = intermediary_file['source']
                     postfix = intermediary_file['postfix']
                     output_stem = Path(output_base).name.split('.')[0]+"_{}".format(postfix)
-                    ext=".nii.gz"
+
+                    ext=Path(srcfilepath).suffix
                     if ".nrrd" in srcfilepath.lower():
                         ext=".nrrd"
+                    elif ".nii.gz" in srcfilepath.lower():
+                        ext=".nii.gz"
+                    else:
+                        ext=Path(srcfilepath).suffix
                     filename="{}{}".format(output_stem,ext)
                     output_path = Path(self.output_dir).joinpath(filename)
                     logger("Saving intermediary files from {} to {}".format(srcfilepath, output_path),prep.Color.PROCESS)

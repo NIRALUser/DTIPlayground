@@ -40,10 +40,12 @@ class QC_Report(prep.modules.DTIPrepModule):
             html_path = self.GenerateReportFiles(global_report)
             with open(html_path, "r", encoding="utf-8") as f:
                 html_data = f.read()
-            pdf_path = str(Path(self.output_dir).parent.parent)+"/QC_report.pdf"
+            #pdf_path = str(Path(self.output_dir).parent.parent)+"/QC_report.pdf"
+            pdf_path = self.output_dir+"/QC_report.pdf"
             result_file = open(pdf_path, "w+b")
             pisa.CreatePDF(html_data, dest=result_file)
             result_file.close()
+            self.addOutputFile(pdf_path, QC_report)
 
         if self.protocol["generateCSV"] == True:
             if self.protocol['generatePDF'] == False:

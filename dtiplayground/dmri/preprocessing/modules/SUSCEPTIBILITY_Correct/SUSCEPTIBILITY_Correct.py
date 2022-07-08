@@ -11,6 +11,8 @@ from dtiplayground.dmri.common import measure_time
 import dtiplayground.dmri.common.tools as tools 
 import shutil
 import copy
+import os
+import markdown
 logger=prep.logger.write
 
 
@@ -76,6 +78,70 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
         self.result['output']['success']=True
         return self.result
+
+    def postProcess(self, result_obj, opts):
+        super().postProcess(result_obj, opts)
+        if self.result['input'][0]["output"]['image_path']:
+            input_image_1 = os.path.abspath(self.result['input'][0]["output"]['image_path'])
+            input_image_2 = os.path.abspath(self.result['input'][1]["output"]['image_path'])
+            for number_1 in self.result['input'][0]['image_information']['sizes']:
+                if number_1 not in self.result['input'][0]['image_information']['image_size']:
+                    self.result['report']['csv_data']['original_number_of_gradients'] = [number_1]
+            for number_2 in self.result['input'][1]['image_information']['sizes']:
+                if number_2 not in self.result['input'][1]['image_information']['image_size']:
+                    self.result['report']['csv_data']['original_number_of_gradients'] += [number_2]
+        else:
+            input_image_1 = None
+            input_image_2 = None
+            input_directory = self.result_history[0]["output"][0]["output"]["output_directory"]
+            self.result['report']['csv_data']['original_number_of_gradients'] = [None, None]
+            list_report_paths_1 = []
+            list_report_paths_2 = []
+            self.result['report']['csv_data']['excluded_gradients'] = [None, None, None]
+            while input_image_1 == None:
+                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
+                input_image_1 = previous_result["input"]["image_path"]
+                if previous_result['report']['csv_data']['excluded_gradients']:
+                    if not self.result['report']['csv_data']['excluded_gradients'][0]:
+                        self.result['report']['csv_data']['excluded_gradients'][0] = []
+                    self.result['report']['csv_data']['excluded_gradients'][0] += previous_result['report']['csv_data']['excluded_gradients']
+                list_report_paths_1 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_1
+                if "output_directory" in previous_result["input"]:
+                    input_directory = previous_result["input"]["output_directory"]
+                for number_1 in previous_result['input']['image_information']['sizes']:
+                    if number_1 not in previous_result['input']['image_information']['image_size']:
+                        self.result['report']['csv_data']['original_number_of_gradients'][0] = number_1
+                print("input_image_1:", input_image_1)
+        
+            input_directory = self.result_history[0]["output"][1]["output"]["output_directory"]
+            while input_image_2 == None:
+                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
+                input_image_2 = previous_result["input"]["image_path"]
+                if previous_result['report']['csv_data']['excluded_gradients']:
+                    if not self.result['report']['csv_data']['excluded_gradients'][1]:
+                        self.result['report']['csv_data']['excluded_gradients'][1] = []
+                    self.result['report']['csv_data']['excluded_gradients'][1] += previous_result['report']['csv_data']['excluded_gradients']
+                list_report_paths_2 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_2
+                if "output_directory" in previous_result["input"]:
+                    input_directory = previous_result["input"]["output_directory"]
+                for number_2 in previous_result['input']['image_information']['sizes']:
+                    if number_2 not in previous_result['input']['image_information']['image_size']:
+                        self.result['report']['csv_data']['original_number_of_gradients'][1] = number_2
+                print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
+                
+            self.result['report']['module_report_paths'] = [list_report_paths_1, list_report_paths_2, os.path.abspath(self.output_dir) + '/report.md']
+            input_image_1 = os.path.abspath(input_image_1)
+            input_image_2 = os.path.abspath(input_image_2)
+
+
+        with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
+            f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
+            f.write('### {}\n'.format("input image 1: " + str(input_image_1)).encode('utf-8'))
+            f.write('### {}\n'.format("input image 2: " + str(input_image_2)).encode('utf-8'))
+            f.seek(0)
+            markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
+
+        self.result['report']['csv_data']['image_name'] = [input_image_1, input_image_2, os.path.abspath(self.result['output']['image_path'])]
 
 ### User defined methods
 ### scripts

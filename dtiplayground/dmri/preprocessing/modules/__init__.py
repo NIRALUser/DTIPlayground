@@ -342,6 +342,17 @@ class DTIPrepModule: #base class
                 self.result['output']['image_object']=id(self.image)
         ### deform_image ends
 
+        ## data for report
+        self.result['report'] = {'module_report_paths': os.path.abspath(self.output_dir) + '/report.md',
+                                 'csv_data': {'image_name': None,
+                                              'original_number_of_gradients': None,
+                                              'excluded_gradients': None,
+                                              'rms_gt_1': None,
+                                              'rms_gt_2': None,
+                                              'rms_gt_3': None}, 
+                                 'eddymotion_pdf_path': None}
+        
+
         ### set baseline_threahold
         baseline_threshold=opts['baseline_threshold']
         self.image.setB0Threshold(baseline_threshold)
@@ -366,6 +377,9 @@ class DTIPrepModule: #base class
         for g in b_grads:
             logger("[Gradient.idx {:03d} Original.idx {:03d}] Gradient Dir {} B-Value {:.1f}"
                 .format(g['index'],g['original_index'],g['gradient'],g['b_value']),prep.Color.INFO)
+
+        
+
 
 
     @prep.measure_time

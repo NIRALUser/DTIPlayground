@@ -1,10 +1,10 @@
 
 INFO = {
   "dtiplayground": { 
-    "version" : "0.3.7a"
+    "version" : "0.3.7a1"
   },
   "dmriprep": {
-    "version" : "0.3.7a"
+    "version" : "0.3.7a1"
 
   },
   "dtiatlasbuilder": {

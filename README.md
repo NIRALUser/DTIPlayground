@@ -222,6 +222,9 @@ MIT
 
 ### Change Log
 
+##### 2022-07-08
+- dmriprep - update QC_Report, pdf and csv outputs directly in output directory
+
 ##### 2022-07-06
 - dmriprep - **New Module** DTI_Register module added for DTI registration (for tractography), it uses DTIReg with ANTS
 - dmriprep - software path related enhancement, each module can access to software path information more intuitively using self.softwares variable

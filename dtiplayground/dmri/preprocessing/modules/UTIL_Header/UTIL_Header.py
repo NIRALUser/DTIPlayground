@@ -3,6 +3,7 @@ import dtiplayground.dmri.preprocessing as prep
 import yaml
 import os
 import markdown
+from pathlib import Path 
 logger=prep.logger.write
 
 class UTIL_Header(prep.modules.DTIPrepModule):

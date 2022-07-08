@@ -18,7 +18,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
             ref_dti_path = Path(self.global_variables['reference_dti'])
             self.protocol['referenceImage'] = ref_dti_path.resolve().__str__()
         return self.protocol
-
+        
+    @prep.measure_time
     def process(self,*args,**kwargs): ## variables : self.global_variables, self.softwares, self.output_dir, self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']

@@ -22,7 +22,8 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
             self.protocol['referenceTractFile'] = Path(self.global_variables['reference_tract']).resolve().__str__()
         ## todos
         return self.protocol
-
+        
+    @prep.measure_time
     def process(self,*args,**kwargs): ## variables : self.global_variables, self.softwares, self.output_dir, self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']

@@ -96,7 +96,7 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
 
     ## Tractography ...
         tensorImage = prep.dwi.DWI(inputDTI)
-        tractography.compute(tensorImage, dilatedLabelmapImage, output_dir = self.output_dir, scalar='fa' )
+        tractography.compute(tensorImage, dilatedLabelmapImage, output_dir = self.output_dir, scalar=protocol['scalar'] )
         return res 
 
 

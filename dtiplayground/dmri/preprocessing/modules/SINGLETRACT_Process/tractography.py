@@ -40,7 +40,7 @@ def compute(tensorImage, labelmapImage, output_dir, scalar='fa' , axis=0):
     
 
     img = tensorImage.images
-    logger("Computing {}...".format(scalar_function_map[scalar]['message'],prep.Color.PROCESS)
+    logger("Computing {}...".format(scalar_function_map[scalar]['message']),prep.Color.PROCESS)
     img_scalar = np.apply_along_axis(scalar_function_map[scalar]['func'], axis, img)
     labelimg = labelmapImage.images
     print(img.shape)

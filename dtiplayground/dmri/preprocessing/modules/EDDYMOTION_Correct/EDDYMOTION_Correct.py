@@ -76,45 +76,23 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         self.result['output']['success']=True
         return self.result
 
-    def postProcess(self,result_obj,opts):
-        super().postProcess(result_obj, opts)    
+    def makeReport(self):
+        super().makeReport()    
         path_qc_pdf = os.path.abspath(self.output_dir) + "/output_eddied.qc/qc.pdf"  
         if os.path.exists(path_qc_pdf):
-            self.result['report']['path_qc_pdf']=path_qc_pdf  
-        
-        if self.result['input']['image_path']:
-            input_image = self.result['input']['image_path']
-            for number in self.result['input']['image_information']['sizes']:
-                if number not in self.result['input']['image_information']['image_size']:
-                    self.result['report']['csv_data']['original_number_of_gradients'] = number
-            self.result['report']['csv_data']
-        elif type(self.result_history[0]["output"]) == dict: #single input
-            input_image = self.result_history[0]["output"]["image_path"]
-        else:
-            input_image = None
-            input_directory = self.result["input"]["output_directory"]
-            while input_image == None:
-                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
-                input_image = previous_result["input"]["image_path"]
-                if "output_directory" in previous_result["input"]:
-                    input_directory = previous_result["input"]["output_directory"]      
+            self.result['report']['path_qc_pdf']=path_qc_pdf   
 
-        with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
-            f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
-            f.write('### {}\n'.format("input image: " + str(os.path.abspath(input_image))).encode('utf-8'))
+        with open(os.path.abspath(self.output_dir) + '/report.md', 'a') as f:
             path_rms = self.output_dir + "/output_eddied.eddy_movement_rms"
             data_rms = pandas.read_csv(path_rms, sep = '  ', engine = 'python', usecols = [1])
             rmsLargerThan1 = data_rms[data_rms > 1.0].count()[0]
             rmsLargerThan2 = data_rms[data_rms > 2.0].count()[0]
             rmsLargerThan3 = data_rms[data_rms > 3.0].count()[0]
-            f.write('* {}\n'.format(str(rmsLargerThan1) + " gradients with RMS movement relative to first volume > 1 mm").encode('utf-8'))
-            f.write('* {}\n'.format(str(rmsLargerThan2) + " gradients with RMS movement relative to first volume > 2 mm").encode('utf-8'))
-            f.write('* {}\n'.format(str(rmsLargerThan3) + " gradients with RMS movement relative to first volume > 3 mm").encode('utf-8'))
+            f.write('* ' + str(rmsLargerThan1) + " gradients with RMS movement relative to first volume > 1 mm\n")
+            f.write('* ' + str(rmsLargerThan2) + " gradients with RMS movement relative to first volume > 2 mm\n")
+            f.write('* ' + str(rmsLargerThan3) + " gradients with RMS movement relative to first volume > 3 mm\n")
             f.seek(0)
-            markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
         
-        self.result['report']['csv_data']['image_name'] = str(os.path.abspath(input_image))
-        self.result['report']['csv_data']['excluded_gradients'] = self.result['output']['excluded_gradients_original_indexes']
         self.result['report']['csv_data']['rms_gt_1'] = int(rmsLargerThan1)
         self.result['report']['csv_data']['rms_gt_2'] = int(rmsLargerThan2)
         self.result['report']['csv_data']['rms_gt_3'] = int(rmsLargerThan3)

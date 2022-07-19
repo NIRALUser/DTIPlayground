@@ -397,7 +397,7 @@ class DWI:
 
     @prep.measure_time
     def loadImage(self,filename,filetype=None):
-        print(self.filename)
+        # print(self.filename)
         if '.nrrd' in filename.lower(): self.image_type='nrrd'
         if '.nii' in filename.lower(): self.image_type='nifti'
         if filetype is not None:

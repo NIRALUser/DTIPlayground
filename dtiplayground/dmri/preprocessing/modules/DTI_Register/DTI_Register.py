@@ -100,9 +100,9 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.result['output']['registered_dti_image'] = registeredImagePath
         self.addGlobalVariable('displacement_field_path',displacementFieldPath)
         self.addGlobalVariable('inverse_displacement_field_path',inv_displacementFieldPath)
-        # self.addGlobalVariable('registered_dti_path',registeredImagePath)
+        self.addGlobalVariable('registered_dti_path',registeredImagePath)
         self.addGlobalVariable('reference_dti_path',refImagePath)
-        self.addGlobalVariable('dti_path',registeredImagePath) #update dti_path with registered image
+        self.addGlobalVariable('dti_path',inputImagePath) #update dti_path with registered image
 
         # if self.protocol['useRegistered']:
         #    self.loadImage(registeredImagePath) 

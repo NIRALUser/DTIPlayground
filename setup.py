@@ -39,6 +39,7 @@ setup(
     install_requires=[
         'pynrrd==0.4.2',
         'dipy==1.4.0',
+        'fury==0.7.0',
         'pyyaml==5.3.1',
         'nibabel==3.2.1',
         'tensorflow==2.8.0',

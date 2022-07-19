@@ -51,7 +51,6 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
             inputDTI = self.global_variables['dti_path']
         else:
             self.writeImageWithOriginalSpace(inputDTI,'nrrd',dtype='float')
-
         inputFiberFile = protocol['referenceTractFile']
         displacementField = protocol['displacementFieldFile']
         if not displacementField:
@@ -61,7 +60,7 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
 
         outputFiberTract = Path(self.output_dir).joinpath('registered_ref_tract.vtk').__str__()
         
-    ## Register reference tract with the displacement field 
+    # Register reference tract with the displacement field 
         niralutils = tools.NIRALUtilities(softwares=self.softwares)
         niralutils.dev_mode=True
         arguments = ['--polydata_input', inputFiberFile,
@@ -69,7 +68,7 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
                      '-D', displacementField,
                      '--inverty',
                      '--invertx']
-        output=niralutils.polydatatransform(arguments)
+        if self.overwriteFile(outputFiberTract) : output=niralutils.polydatatransform(arguments)
         self.addGlobalVariable('reference_tract_path', outputFiberTract) ## update tract path to the updated one
 
     ## Dilation and voxelization of the mapped reference tracts , getting labelmap
@@ -79,7 +78,7 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
                      '-T', inputDTI]
         fiberprocess = tools.FiberProcess(softwares=self.softwares)
         fiberprocess.dev_mode = True
-        fiberprocess.execute(arguments=arguments)
+        if self.overwriteFile(labelMapFile) : fiberprocess.execute(arguments=arguments)
         self.addGlobalVariable('labelmap_path', labelMapFile)
 
     ## Dilation and voxelization of the reference tracts
@@ -91,13 +90,15 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
                      '-dilate', str(dilationRadius)+',1',
                      '-outfile', dilatedLabelmapFile
                      ]
-        imagemath.execute(arguments=arguments)
+        if self.overwriteFile(dilatedLabelmapFile) : imagemath.execute(arguments=arguments)
         self.addGlobalVariable('labelmap_path', dilatedLabelmapFile)
+        labelMapImage = prep.dwi.DWI(labelMapFile)
         dilatedLabelmapImage = prep.dwi.DWI(dilatedLabelmapFile)
+        dipyLabelMap = labelMapImage.images + dilatedLabelmapImage.images
 
     ## Tractography ...
         tensorImage = prep.dwi.DWI(inputDTI)
-        tractography.compute(tensorImage, dilatedLabelmapImage, output_dir = self.output_dir, scalar=protocol['scalar'] )
+        tractography.compute(tensorImage, self.image, dipyLabelMap, self.output_dir )
         return res 
 
 

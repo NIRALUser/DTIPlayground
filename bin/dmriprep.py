@@ -607,7 +607,7 @@ def command_make_protocols(args):
             options['module_list']=None
     proto.makeDefaultProtocols(options['module_list'],template=template,options=options)
     outstr=yaml.dump(proto.getProtocols())
-    print(outstr)
+    # print(outstr)
     if options['output_path'] is not None:
         open(options['output_path'],'w').write(outstr)
         logger("Protocol file has been writte to : {}".format(options['output_path']),color.OK)

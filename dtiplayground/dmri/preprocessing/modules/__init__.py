@@ -310,6 +310,8 @@ class DTIPrepModule: #base class
     def generateDefaultEnvironment(self):
         return None
 
+    def overwriteFile(self, filename):
+        return (not Path(filename).exists()) or self.options['overwrite']
 
     def process(self,*args,**kwargs): ## returns new result array (User implementation), returns output result
         #anything common

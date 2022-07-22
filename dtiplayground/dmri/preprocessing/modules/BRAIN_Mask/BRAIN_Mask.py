@@ -8,7 +8,7 @@ from pathlib import Path
 import importlib
 ###
 import numpy as np
-import ants 
+#import ants 
 import nibabel
 
 logger=prep.logger.write
@@ -31,7 +31,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         self.software_info=protocol_options['software_info']['softwares']
         self.baseline_threshold=protocol_options['baseline_threshold']
         res=self.run_mask(method=self.protocol['method'],
-                          modality=self.protocol['modality'],
+                          #modality=self.protocol['modality'],
                           averagingMethod=self.protocol['averagingMethod'])
         self.result['output']['success']=True
         return self.result
@@ -126,7 +126,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         res=None
         return res
 
-    def run_mask(self,method, modality,averagingMethod):
+    def run_mask(self, method, averagingMethod): #run_mask(self,method, modality,averagingMethod)
         res=None 
         params={}
         logger("Mask is being computed ... ",prep.Color.PROCESS)
@@ -139,7 +139,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         elif method=='antspynet':
             params={
                 'image': self.image,
-                'modality': modality,
+                #'modality': modality,
                 'averagingMethod': averagingMethod
             }
             res=self.mask_antspynet(params)

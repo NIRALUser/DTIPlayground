@@ -79,8 +79,17 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         self.result['output']['success']=True
         return self.result
 
-    def postProcess(self, result_obj, opts):
-        super().postProcess(result_obj, opts)
+    def makeReport(self):
+        self.result['report'] = {'module_report_paths': os.path.abspath(self.output_dir) + '/report.md',
+                                 'csv_data': {'image_name': None,
+                                              'original_number_of_gradients': None,
+                                              'excluded_gradients': None,
+                                              'rms_gt_1': None,
+                                              'rms_gt_2': None,
+                                              'rms_gt_3': None}, 
+                                 'eddymotion_pdf_path': None}
+
+        
         if self.result['input'][0]["output"]['image_path']:
             input_image_1 = os.path.abspath(self.result['input'][0]["output"]['image_path'])
             input_image_2 = os.path.abspath(self.result['input'][1]["output"]['image_path'])

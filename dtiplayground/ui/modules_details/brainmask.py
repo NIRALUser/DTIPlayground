@@ -11,6 +11,7 @@ class BrainMask(QWidget):
   def __init__(self, protocol_template, brainmask_yml):
     QWidget.__init__(self)
     self.brainmask_yml = brainmask_yml
+    self.method_it = 0
     self.averagingmethod_it = 0
     self.stack = QWidget()
     self.BrainMaskStack(protocol_template)
@@ -72,16 +73,16 @@ class BrainMask(QWidget):
     modality_buttongroup = QButtonGroup()
     modality_buttongroup.addButton(self.modality_t2)
     modality_buttongroup.addButton(self.modality_fa)
-    protocol_sublayout2.addWidget(self.modality_label)
-    protocol_sublayout2.addWidget(self.modality_fa)
-    protocol_sublayout2.addWidget(self.modality_t2)
-    self.method.currentTextChanged.connect(self.DisplayModality)  
-    self.GetModalityIt()
+    #protocol_sublayout2.addWidget(self.modality_label)
+    #protocol_sublayout2.addWidget(self.modality_fa)
+    #protocol_sublayout2.addWidget(self.modality_t2)
+    #self.method.currentTextChanged.connect(self.DisplayModality)  
+    #self.GetModalityIt()
     self.modality_t2.toggled.connect(self.GetModalityIt)
     self.modality_t2.toggled.connect(self.GetParams)
-    self.modality_label.setStatusTip(self.brainmask_yml["protocol"]["modality"]["description"])
-    self.modality_t2.setToolTip(self.brainmask_yml["protocol"]["modality"]["candidates"][0]["description"])
-    self.modality_fa.setToolTip(self.brainmask_yml["protocol"]["modality"]["candidates"][1]["description"])
+    #self.modality_label.setStatusTip(self.brainmask_yml["protocol"]["modality"]["description"])
+    #self.modality_t2.setToolTip(self.brainmask_yml["protocol"]["modality"]["candidates"][0]["description"])
+    #self.modality_fa.setToolTip(self.brainmask_yml["protocol"]["modality"]["candidates"][1]["description"])
 
     ## Layout
     protocol_layout.addLayout(protocol_sublayout1)
@@ -133,7 +134,7 @@ class BrainMask(QWidget):
       'protocol': {
         'averagingMethod': self.brainmask_yml["protocol"]["averagingMethod"]["candidates"][self.averagingmethod_it]["value"],
         'method': self.brainmask_yml["protocol"]["method"]["candidates"][self.method_it]["value"], 
-        'modality': self.brainmask_yml["protocol"]["modality"]["candidates"][self.modality_it]["value"]
+        #'modality': self.brainmask_yml["protocol"]["modality"]["candidates"][self.modality_it]["value"]
         }
       }
     ]

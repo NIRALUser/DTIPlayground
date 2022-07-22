@@ -222,6 +222,9 @@ MIT
 
 ### Change Log
 
+##### 2022-07-22
+- dmriprep - Remove option to use ANTsPyNet in BRAIN_Mask module
+
 ##### 2022-07-08
 - dmriprep - update QC_Report, pdf and csv outputs directly in output directory
 

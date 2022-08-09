@@ -39,13 +39,13 @@ def _load_nrrd(filename):
     img_size=list(header['sizes'])
     space_directions=[]
     grad_size=None
+    space_matrix = np.zeros((3,3))
     for idx,k in enumerate(kinds):
         if k: 
             # img_size.append(list(header['sizes'].tolist()))
             space_directions.append(header['space directions'].tolist()[idx])
         else:
             grad_size=header['sizes'][idx]
-
     info={
         'space':header['space'],
         'dimension': int(header['dimension']),
@@ -91,6 +91,9 @@ def _load_nrrd(filename):
         info['image_size']=list(data.shape[0:3])
     ### extracting gradients
     gradients=[]
+    measurement_frame = np.identity(3)
+    if 'measurement_frame' in header:
+        measurement_frame = header['measurement_frame']
     for k,v in header.items():
         if 'DWMRI_gradient' in k:
             idx=int(k.split('_')[2])
@@ -101,7 +104,11 @@ def _load_nrrd(filename):
                 unit_vec=(vec/normalize_term)
             else:
                 unit_vec=vec 
-            gradients.append({'index':idx,'gradient':vec.tolist(),'b_value':bval,'unit_gradient':unit_vec.tolist(),'original_index':idx})
+            nifti_vec = np.matmul(np.matmul(np.array(space_directions) , measurement_frame) , unit_vec)
+            normalize_term=np.sqrt(np.sum(nifti_vec**2))
+            nifti_grad = nifti_vec / normalize_term
+            nifti_grad[1] = -nifti_grad[1] # flipping y axis
+            gradients.append({'index':idx,'gradient':vec.tolist(),'b_value':bval,'unit_gradient':unit_vec.tolist(),'original_index':idx, 'nifti_gradient':nifti_grad.tolist()})
     gradients=sorted(gradients,key=lambda x: x['index'])
     return data,gradients,info , (org_data,header)
 
@@ -160,7 +167,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
                               'gradient': denormalized_vec.tolist(),
                               'b_value': bvals[idx],
                               'unit_gradient': vec,
-                              'original_index':idx})
+                              'original_index':idx,
+                              'gradient_source':'nifti'})
 
     ## move gradient index to the first (same to nrrd format)
     
@@ -292,12 +300,21 @@ def export_to_nrrd(image): #image : DWI
     return new_data,new_header 
 
 
+def flipY(x):
+    return [x[0],-x[1],x[2]]
+
+
 def export_to_nifti(image): # image DWI
     affine=image.getAffineMatrixForNifti()
+    rotation = affine[0:3,0:3]
+    measurement_frame = image.information['measurement_frame']
     img=image.images 
     gradients=image.getGradients()
     bvals=["{:d}\n".format(int(x['b_value'])) for x in gradients]
     bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),x['unit_gradient']))+"\n" for x in gradients]
+    if image.image_type == 'nrrd':
+        bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),flipY(x['unit_gradient'])))+"\n" for x in gradients]
+        
     return img,affine, bvals, bvecs
 
 def _write_nrrd(image,filename,dtype): 

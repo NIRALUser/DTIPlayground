@@ -69,8 +69,8 @@ pipeline:
       write_image: false
     protocol:
       averagingMethod: idwi
-      method: antspynet
-      modality: t2
+      method: fsl
+      #modality: t2
 - - DTI_Estimate
   - options:
       overwrite: false

@@ -304,10 +304,10 @@ class ModuleDetails(QWidget):
         if ite1["value"] == averagingmethod:
           self.brainmask.averagingmethod.setCurrentText(ite1["caption"])
           self.brainmask.GetAveragingMethodIt(ite1["caption"])
-      if module[2]["protocol"]["modality"] == "t2":
-        self.brainmask.modality_t2.setChecked(True)
-      if module[2]["protocol"]["modality"] == "fa":
-        self.brainmask.modality_fa.setChecked(True)
+      #if module[2]["protocol"]["modality"] == "t2":
+      #  self.brainmask.modality_t2.setChecked(True)
+      #if module[2]["protocol"]["modality"] == "fa":
+      #  self.brainmask.modality_fa.setChecked(True)
       self.details_stack.setCurrentIndex(6)
 
     if module[0] == "Estimate DTI":

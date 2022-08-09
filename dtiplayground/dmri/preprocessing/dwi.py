@@ -107,8 +107,13 @@ def _load_nrrd(filename):
             nifti_vec = np.matmul(np.matmul(np.array(space_directions) , measurement_frame) , unit_vec)
             normalize_term=np.sqrt(np.sum(nifti_vec**2))
             nifti_grad = nifti_vec / normalize_term
-            nifti_grad[1] = -nifti_grad[1] # flipping y axis
-            gradients.append({'index':idx,'gradient':vec.tolist(),'b_value':bval,'unit_gradient':unit_vec.tolist(),'original_index':idx, 'nifti_gradient':nifti_grad.tolist()})
+            # nifti_grad[1] = -nifti_grad[1] # flipping y axis
+            gradients.append({'index':idx,
+                              'gradient':vec.tolist(),
+                              'b_value':bval,
+                              'unit_gradient':unit_vec.tolist(),
+                              'original_index':idx,
+                              'nifti_gradient':nifti_grad.tolist()})
     gradients=sorted(gradients,key=lambda x: x['index'])
     return data,gradients,info , (org_data,header)
 
@@ -168,7 +173,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
                               'b_value': bvals[idx],
                               'unit_gradient': vec,
                               'original_index':idx,
-                              'gradient_source':'nifti'})
+                              'nifti_gradient':vec})
 
     ## move gradient index to the first (same to nrrd format)
     
@@ -311,10 +316,7 @@ def export_to_nifti(image): # image DWI
     img=image.images 
     gradients=image.getGradients()
     bvals=["{:d}\n".format(int(x['b_value'])) for x in gradients]
-    bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),x['unit_gradient']))+"\n" for x in gradients]
-    if image.image_type == 'nrrd':
-        bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),flipY(x['unit_gradient'])))+"\n" for x in gradients]
-        
+    bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),x['nifti_gradient']))+"\n" for x in gradients]
     return img,affine, bvals, bvecs
 
 def _write_nrrd(image,filename,dtype): 

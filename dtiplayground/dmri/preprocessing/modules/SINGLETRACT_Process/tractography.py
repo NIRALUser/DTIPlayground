@@ -122,8 +122,8 @@ def peaks_from_dti(tensorfit,sphere, relative_peak_threshold,
 @prep.measure_time
 def compute(*args,**kwargs):
     
-    localTractography(*args)
-    # dMaxTractography(*args)
+    #localTractography(*args)
+    dMaxTractography(*args)
     #probTractography(*args)
     exit(0)
 
@@ -181,7 +181,7 @@ def dMaxTractography(tensorfit, dwi_image, dipyLabelmap, output_dir,**kwargs):
 
     data = dwi_image.images
     affine = dwi_image.getAffineMatrixForNifti()
-    bvecs = [x['unit_gradient'] for x in dwi_image.getGradients()]
+    bvecs = [x['nifti_gradient'] for x in dwi_image.getGradients()]
     bvals = [x['b_value'] for x in dwi_image.getGradients()]
     gtab = gradient_table(bvals,bvecs)
 

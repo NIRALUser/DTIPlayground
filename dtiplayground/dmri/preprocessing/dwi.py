@@ -106,7 +106,11 @@ def _load_nrrd(filename):
                 unit_vec=vec 
             nifti_vec = np.matmul(np.matmul(np.array(space_directions) , measurement_frame) , unit_vec)
             normalize_term=np.sqrt(np.sum(nifti_vec**2))
-            nifti_grad = nifti_vec / normalize_term
+            if normalize_term>0:
+                nifti_grad = nifti_vec / normalize_term
+            else:
+                nifti_grad = nifti_vec
+
             # nifti_grad[1] = -nifti_grad[1] # flipping y axis
             gradients.append({'index':idx,
                               'gradient':vec.tolist(),

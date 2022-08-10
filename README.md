@@ -222,6 +222,9 @@ MIT
 
 ### Change Log
 
+##### 2022-08-10
+- dmriprep - **New Module** BRAIN_Tractography module for generating a tractogram of the whole brain using DIPY
+
 ##### 2022-07-22
 - dmriprep - Remove option to use ANTsPyNet in BRAIN_Mask module
 

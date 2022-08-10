@@ -89,7 +89,10 @@ options:
           description: Eddymotion correction for both standalone single file process and phase encoded inputs with topup parameter generated in SUSCEPTIBILITY_Correct module.
         - value: BRAIN_Mask
           caption: Brain Masking
-          description: Brain masking using antspynet, fsl bet
+          description: Brain masking using fsl bet #or antspynet
+        - value: BRAIN_Tractography
+          caption: Brain Tractography
+          description: Generate tractogram of the whole brain.
         - value: DTI_Estimate
           caption: Estimate DTI 
           description: Estimation of DTI scalars by DIPY or dtiestim

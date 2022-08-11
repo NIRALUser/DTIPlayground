@@ -126,6 +126,10 @@ $ dmriprep add-module MYFIRST_Module -b SLICE_Check
 ```
 MYFIRST_Module will have same codes and data (module definition yaml file) from SLICE_Check module with new classname and filenames.
 
+#### Developer
+
+Once module is developed and tested in the user module directory, one can just move that directory in `dtiplayground/dmri/preprocessing/modules` and commit. Make sure the custom module is not existing both in system module directory and user module directory.
+
 #### Removing user module
 User module can be removed by
 ```
@@ -221,6 +225,10 @@ MIT
 - Server mode - Flask 
 
 ### Change Log
+
+##### 2022-08-11
+- dmriprep - Bug fixed : Conversion between NRRD and NIFTI now includes space direction conversion as well as measurement frame
+- dmriprep - Bug fixed : B value rounding issue resolved
 
 ##### 2022-08-10
 - dmriprep - **New Module** BRAIN_Tractography module for generating a tractogram of the whole brain using DIPY

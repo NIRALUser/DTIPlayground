@@ -1,0 +1,22 @@
+name: IDENTITY_Process
+caption: IDENTITY_Process 
+description: Just pass image to the next module
+version: "0.1"
+dependency: []
+result: null
+command_line_variables: null
+global_variables: null
+
+module_type: prep
+process_attributes:
+    - utility  
+    - indentity ## this means input image will be passed to the next module without changing anything.
+protocol:
+      options: 
+        type: string
+        caption: Option
+        default_value: null
+        description: NA
+
+
+        

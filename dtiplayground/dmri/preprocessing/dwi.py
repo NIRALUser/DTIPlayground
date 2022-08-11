@@ -23,6 +23,12 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm == 0: 
+       return v
+    return v / norm
+
 def _load_nrrd(filename):
     org_data,header = nrrd.read(filename)
     
@@ -93,7 +99,7 @@ def _load_nrrd(filename):
     gradients=[]
     measurement_frame = np.identity(3)
     if 'measurement_frame' in header:
-        measurement_frame = header['measurement_frame']
+        measurement_frame = np.array(header['measurement_frame']).transpose()
     for k,v in header.items():
         if 'DWMRI_gradient' in k:
             idx=int(k.split('_')[2])
@@ -104,7 +110,7 @@ def _load_nrrd(filename):
                 unit_vec=(vec/normalize_term)
             else:
                 unit_vec=vec 
-            nifti_vec = np.matmul(np.matmul(np.array(space_directions) , measurement_frame) , unit_vec)
+            nifti_vec = np.matmul(np.matmul(np.array(space_directions).transpose() , measurement_frame) , unit_vec)
             normalize_term=np.sqrt(np.sum(nifti_vec**2))
             if normalize_term>0:
                 nifti_grad = nifti_vec / normalize_term
@@ -155,7 +161,13 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     bvecs=[]
     gradients=[]
     max_bval=0.0
+    affine=loaded_image_object.affine 
+    ijk_to_lps = affine
+    lps_to_ras = np.diag([-1, -1, 1, 1]) # ras to lps 
+    ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
+    affine=ijk_to_ras
 
+    inv_space_mat = np.linalg.inv(affine[0:3,0:3].astype('float64'))
     if image_dim == 4:
         tmp_bvals=list(open(bvals_file,'r').read().split())
         tmp_bvecs=_load_nifti_bvecs(bvecs_file)
@@ -171,23 +183,17 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
 
         max_bval=np.max(bvals)
         for idx,vec in enumerate(normalized_vecs):
-            denormalized_vec=np.array(vec)*np.sqrt((bvals[idx]/max_bval))
+            unit_vec = normalize(np.matmul(inv_space_mat, np.array(vec))) # for nifti -> nrrd transform on the gradients
+            denormalized_vec=np.array(unit_vec)*np.sqrt((bvals[idx]/max_bval))
             gradients.append({'index':int(idx),
                               'gradient': denormalized_vec.tolist(),
                               'b_value': bvals[idx],
-                              'unit_gradient': vec,
+                              'unit_gradient': unit_vec.tolist(),
                               'original_index':idx,
                               'nifti_gradient':vec})
 
     ## move gradient index to the first (same to nrrd format)
     
-
-    affine=loaded_image_object.affine 
-    ijk_to_lps = affine
-    lps_to_ras = np.diag([-1, -1, 1, 1]) # ras to lps 
-    ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
-    affine=ijk_to_ras
-
     data=org_data.copy()
 
     ## extract header info
@@ -319,7 +325,7 @@ def export_to_nifti(image): # image DWI
     measurement_frame = image.information['measurement_frame']
     img=image.images 
     gradients=image.getGradients()
-    bvals=["{:d}\n".format(int(x['b_value'])) for x in gradients]
+    bvals=["{:d}\n".format(int(round(x['b_value']))) for x in gradients]
     bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),x['nifti_gradient']))+"\n" for x in gradients]
     return img,affine, bvals, bvecs
 
@@ -506,7 +512,7 @@ class DWI:
 
         for idx,e in enumerate(self.gradients):
             self.gradients[idx]['index']=idx
-            self.gradients[idx]['baseline']=bool(int(e['b_value'])<=b0_threshold)
+            self.gradients[idx]['baseline']=bool(int(round(e['b_value']))<=b0_threshold)
 
         return self.gradients
 

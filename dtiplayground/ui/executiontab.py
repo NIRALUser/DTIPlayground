@@ -88,12 +88,12 @@ class ExecutionTab(QWidget):
     layout.addWidget(output_line_label, 2, 0)
     layout.addWidget(self.output_line, 2, 1, 1, 5)
 
-    layout.addWidget(QLabel("Computation:"), 3, 0)
-    self.cluster_computation = QRadioButton("Cluster / Slurm")
-    layout.addWidget(self.cluster_computation, 3, 1)
-    self.local_computation = QRadioButton("Local")
-    self.local_computation.setChecked(True)
-    layout.addWidget(self.local_computation, 3, 2)
+    #layout.addWidget(QLabel("Computation:"), 3, 0)
+    #self.cluster_computation = QRadioButton("Cluster / Slurm")
+    #layout.addWidget(self.cluster_computation, 3, 1)
+    #self.local_computation = QRadioButton("Local")
+    #self.local_computation.setChecked(True)
+    #layout.addWidget(self.local_computation, 3, 2)
 
     self.threads_line = QLineEdit()
     self.threads_line.setValidator(QIntValidator())
@@ -306,12 +306,14 @@ class ExecutionTab(QWidget):
       arguments.append("--num-threads")
       arguments.append(self.threads_line.text())
 
-    if self.local_computation.isChecked():
-      self.process.start("dmriprep", arguments)
-    if self.cluster_computation.isChecked():
-      arguments[6] = arguments[6].split("/")[-1]
-      arguments = ["longleaf.unc.edu", "'", "/proj/NIRAL/containers/dtiplaygroung/dmriprep_longleaf"] + arguments + ["'"]
-      self.process.start("ssh", arguments)
+    self.process.start("dmriprep", arguments)
+
+    #if self.local_computation.isChecked():
+    #  self.process.start("dmriprep", arguments)
+    #if self.cluster_computation.isChecked():
+    #  arguments[6] = arguments[6].split("/")[-1]
+    #  arguments = ["longleaf.unc.edu", "'", "/proj/NIRAL/containers/dtiplaygroung/dmriprep_longleaf"] + arguments + ["'"]
+    #  self.process.start("ssh", arguments)
 
   def UnsavedPopupClicked(self, i):
     if i.text() == "Save":

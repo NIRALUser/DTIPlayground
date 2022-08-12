@@ -30,7 +30,7 @@ pipeline:
       correlationThresholdBaseline: 0.95
       correlationThresholdGradient: 0.7702
       rotationThreshold: 0.5
-      translationThreshold: 2.176943
+      translationThreshold: 2.0272108713786
 - - BASELINE_Average
   - options:
       overwrite: false
@@ -48,7 +48,7 @@ pipeline:
       skip: false
       write_image: false
     protocol:
-      configurationFilePath: /home/jdubos/.niral-dti/dmriprep-0.3.4/parameters/fsl/fsl_regb02b0.cnf
+      configurationFilePath: null
       phaseEncodingAxis:
       - 1
       phaseEncodingValue: 0.0924
@@ -71,6 +71,25 @@ pipeline:
       averagingMethod: idwi
       method: fsl
       #modality: t2
+- - BRAIN_Tractography
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      whiteMatterMaskThreshold: manual
+      thresholdLow: 0.4
+      thresholdUp: 0.98
+      method: csa
+      shOrder: 4
+      relativePeakThreshold: 0.9
+      minPeakSeparationAngle: 25
+      stoppingCriterionThreshold: 0.3
+      vtk42: false
+      removeShortTracts: false
+      shortTractsThreshold: 100
+      removeLongTracts: false
+      longTractsThreshold: 100
 - - DTI_Estimate
   - options:
       overwrite: false
@@ -80,6 +99,33 @@ pipeline:
       correctionMethod: zero
       method: dipy
       optimizationMethod: wls
+- - DTI_Register
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      ANTsIterations: 100x50x25
+      ANTsMethod: useScalar-ANTS
+      ANTsPath: null
+      gaussianSigma: 3
+      method: ANTs
+      referenceImage: null
+      registrationType: GreedyDiffeo
+      similarityMetric: CC
+      similarityParameter: 4
+- - SINGLETRACT_Process
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      NIRALUtilitiesPath: null
+      dilationRadius: 2
+      displacementFieldFile: null
+      method: NIRAL
+      referenceTractFile: null
+      scalar: fa
 - - MANUAL_Exclude
   - options:
       overwrite: false

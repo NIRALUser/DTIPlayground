@@ -227,6 +227,9 @@ MIT
 
 ### Change Log
 
+##### 2022-08-12
+- dmriprep - add BRAIN_Tractography, DTI_Register and SINGLETRACT_Process in UI
+
 ##### 2022-08-11 (0.3.8b4)
 - dmriprep - Bug fixed : Conversion between NRRD and NIFTI now includes space direction conversion as well as measurement frame
 - dmriprep - Bug fixed : B value rounding issue resolved

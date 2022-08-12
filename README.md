@@ -160,9 +160,9 @@ DTIFiberAnalyzer performs statistical computation over the extracted fibers. Thi
 
 ### Developement 
 
-#### Author
+#### Authors
 
-- SK Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
+- Sang Kyoon Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
 - Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
 
 #### References
@@ -171,7 +171,8 @@ DTIFiberAnalyzer performs statistical computation over the extracted fibers. Thi
 
 #### Acknowlegements
 
-DTI Toolkits are funded by National Institute of Health (NIH)
+This software has been supported by the following NIH grants: R01HDO55741, U54HDO79124, R01EB021391,
+P50HD103573.
 
 #### LICENSE
 
@@ -226,11 +227,11 @@ MIT
 
 ### Change Log
 
-##### 2022-08-11
+##### 2022-08-11 (0.3.8b4)
 - dmriprep - Bug fixed : Conversion between NRRD and NIFTI now includes space direction conversion as well as measurement frame
 - dmriprep - Bug fixed : B value rounding issue resolved
 
-##### 2022-08-10
+##### 2022-08-10 (0.3.8b3)
 - dmriprep - **New Module** BRAIN_Tractography module for generating a tractogram of the whole brain using DIPY
 
 ##### 2022-07-22

@@ -296,6 +296,7 @@ def command_install_tools(args):
     leave_files_after_installation = args.no_remove
     no_fsl = args.no_fsl
     install_only = args.install_only
+    build=args.build
     ### Clean install preparations
     if clean_install:
         logger("Removing temporary, existing packages (dtiplayground-tools only) directories ...")
@@ -337,25 +338,39 @@ def command_install_tools(args):
     srcdir = tempdir.joinpath('dtiplaygroundtools')
     info={}
     if not outputdir.exists():
-        if not srcdir.exists():
-            logger("Fetching source code ...")
-            fetch_dtiplaygroundtools = ["git","clone","https://github.com/niraluser/dtiplaygroundtools.git"]
-            subprocess.run(fetch_dtiplaygroundtools)
-            logger("Source codes downloaded")
-        
-        os.chdir(srcdir.joinpath('dockerfiles'))
-        build_command = ['./build.sh']
-        logger("Building software packages ... ")
-        subprocess.run(build_command)
-        tar_filename = srcdir.joinpath('dist/dtiplayground-tools.tar.gz')
-        untar_command = ['tar','xvfz',tar_filename.resolve().__str__(), '-C', rootdir.resolve().__str__()]
-        logger("Installing softwares to the output directory {}".format(outputdir.resolve().__str__()))
-        subprocess.run(untar_command)
-        ### read version info
-        info={}
-        info_fn = outputdir.joinpath('info.yml')
-        if info_fn.exists():
-            info = yaml.safe_load(open(info_fn,'r'))
+        if build:
+            if not srcdir.exists():
+                logger("Fetching source code ...")
+                fetch_dtiplaygroundtools = ["git","clone","https://github.com/niraluser/dtiplaygroundtools.git"]
+                subprocess.run(fetch_dtiplaygroundtools)
+                logger("Source codes downloaded")
+            
+            os.chdir(srcdir.joinpath('dockerfiles'))
+            build_command = ['./build.sh']
+            logger("Building software packages ... ")
+            subprocess.run(build_command)
+            tar_filename = srcdir.joinpath('dist/dtiplayground-tools.tar.gz')
+            untar_command = ['tar','xvfz',tar_filename.resolve().__str__(), '-C', rootdir.resolve().__str__()]
+            logger("Installing softwares to the output directory {}".format(outputdir.resolve().__str__()))
+            subprocess.run(untar_command)
+            ### read version info
+            info_fn = outputdir.joinpath('info.yml')
+            if info_fn.exists():
+                info = yaml.safe_load(open(info_fn,'r'))
+        else: # prebuilt package (default)
+            tar_filename = outputdir.joinpath('dtiplayground-tools.tar.gz')
+            if not tar_filename.exists():
+                remote_package = "https://github.com/NIRALUser/DTIPlaygroundTools/releases/download/v0.0.1/dtiplayground-tools.tar.gz"
+                fetch_package = ['wget',remote_package,'-P',outputdir.resolve().__str__()]
+                subprocess.run(fetch_package)
+            untar_command = ['tar','xvfz',tar_filename.resolve().__str__(), '-C', rootdir.resolve().__str__()]
+            logger("Installing softwares to the output directory {}".format(outputdir.resolve().__str__()))
+            subprocess.run(untar_command)
+            info_fn = outputdir.joinpath('info.yml')
+            if info_fn.exists():
+                info = yaml.safe_load(open(info_fn,'r'))
+            logger("Removing temporary files ...")
+            tar_filename.unlink()
 
     else:
         info = yaml.safe_load(open(outputdir.joinpath('info.yml'),'r'))
@@ -717,6 +732,7 @@ def get_args():
     parser_install_tools=subparsers.add_parser('install-tools',help='Install DTIPlaygroundTools')
     parser_install_tools.add_argument('-o','--output-dir', help="output directory", default="$HOME/.niral-dti")
     parser_install_tools.add_argument('-c','--clean-install', help="Remove existing files", default=False, action="store_true")
+    parser_install_tools.add_argument('-b','--build', help="Build DTIPlaygroundTools", default=False, action="store_true")
     parser_install_tools.add_argument('--no-remove', help="Do not remove source and build files after installation", default=False,action="store_true")
     parser_install_tools.add_argument('--no-fsl', help="Do not install FSL", default=False, action="store_true")
     parser_install_tools.add_argument('--install-only', help="Do not update current software paths", default=False, action="store_true")

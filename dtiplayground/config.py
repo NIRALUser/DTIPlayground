@@ -4,8 +4,7 @@ INFO = {
     "version" : "0.3.8b5"
   },
   "dmriprep": {
-    "version" : "0.3.8b5"
-
+    "version" : "0.3.9b1"
   },
   "dtiatlasbuilder": {
     "version" : "0.1.0"

@@ -24,13 +24,14 @@ For Windows users, install WSL and linux distribution (tested with ubuntu 20.04,
 
 **Note** : Build tested only on CentOS7 for now. However, it would work on most of linux systems. You don't need to install this tools everytime you upgrade dtiplayground.
 ```
-$ dmriprep install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only]
+$ dmriprep install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only] [--build]
 ```
 Default output directory is `$HOME/.niral-dti/dtiplayground-tools` if output directory option is omitted
 - If `--clean-install` option is present, it removes existing software packages and temporary files first.
 - If `--no-remove` option is present, it doesn't remove temporary build files after installation
 - If `--nofsl` option is present, it will not install FSL.
 - If `--install-only` option is present, it will not update software path file of the configuration of the current version.
+- If `--build` option is present, it will build dtiplyaground tools (not FSL) from the source repository using docker
 
 Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of the tools including root path of the packages, and automatically changes software paths for the current version of dmriprep unless `--install-only` option is present.
 
@@ -226,6 +227,10 @@ MIT
 - Server mode - Flask 
 
 ### Change Log
+
+##### 2022-08-12 (0.3.9b1)
+- dmriprep -Bug fixed : dmriprep-ui forced initialization fixed
+- dmriprep - **install-tools** command will download prebuilt binaries instead of building by default. 
 
 ##### 2022-08-11 (0.3.8b4)
 - dmriprep - Bug fixed : Conversion between NRRD and NIFTI now includes space direction conversion as well as measurement frame

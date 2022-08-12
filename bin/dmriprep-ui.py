@@ -28,19 +28,18 @@ user_directory = os.path.expanduser("~/.niral-dti/dmriprep-" + config.INFO["dmri
 need_init = False
 list_needed_files = [user_directory, 
                      user_directory + "/config.yml",
-					 user_directory + "/environment.yml",
-					 user_directory + "/log.txt",
-					 user_directory + "/modules", 
-					 user_directory + "/parameters", 
-					 user_directory + "/protocol_template.yml", 
-					 user_directory + "/software_paths.yml"]
+                     user_directory + "/environment.yml",
+                     user_directory + "/log.txt",
+                     user_directory + "/parameters", 
+                     user_directory + "/protocol_template.yml", 
+                     user_directory + "/software_paths.yml"]
 
 for filepath in list_needed_files:
     if not os.path.exists(filepath):
-    	need_init = True
+        need_init = True
 
 if need_init:
-	os.system("dmriprep init")
+    os.system("dmriprep init")
 
 app = QApplication(sys.argv)
 ex = Window(protocol_template, args)

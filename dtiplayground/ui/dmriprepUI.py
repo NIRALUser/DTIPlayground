@@ -67,6 +67,9 @@ class Widgets(QWidget):
     self.protocol_tab.details.utilheader.communicate.send_params.connect(self.UpdateModuleParams)
     self.protocol_tab.details.utilmerge.communicate.send_params.connect(self.UpdateModuleParams)
     self.protocol_tab.details.qcreport.communicate.send_params.connect(self.UpdateModuleParams)
+    self.protocol_tab.details.dtiregister.communicate.send_params.connect(self.UpdateModuleParams)
+    self.protocol_tab.details.singletract.communicate.send_params.connect(self.UpdateModuleParams)
+    self.protocol_tab.details.braintractography.communicate.send_params.connect(self.UpdateModuleParams)
     # Communication from module selector subtab
     self.protocol_tab.selector.communicate.module_added_to_protocol_drop.connect(self.protocol.ModuleAddedToProtocolDrop)
     self.protocol_tab.selector.communicate.call_execute_exclude_gradients_popup.connect(self.protocol_tab.exclude_popup.exec_)
@@ -212,7 +215,6 @@ class Widgets(QWidget):
         if self.protocol_tab.details.exclude.selectionMethod.currentText() == "QuickView":
           computation_details[1] = True
     self.execution_tab.communicate.CallCompute(computation_details)
-
 
   def CheckUnsavedChangesBeforeCompute(self):
     if self.unsaved_changes == True:

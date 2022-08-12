@@ -5,7 +5,8 @@ from PyQt5.QtCore import *
 import yaml
 from PyQt5.QtCore import QObject
 from PyQt5.QtCore import pyqtSignal as Signal
-
+import os
+import dtiplayground.config as config
 
 class ProtocolCommunicate(QObject):
 
@@ -115,6 +116,13 @@ class Protocol():
         self.utilmerge_params[2] = protocol_module[1]
       if protocol_module[0] == "QC_Report":
         self.qcreport_params[2] = protocol_module[1]
+      if protocol_module[0] == "DTI_Register":
+        self.dtiregister_params[2] = protocol_module[1]
+      if protocol_module[0] == "SINGLETRACT_Process DTI":
+        self.singletract_params[2] = protocol_module[1]
+      if protocol_module[0] == "BRAIN_Tractography":
+        self.braintractography_params[2] = protocol_module[1]
+
 
       # modules list
       for template_module in self.protocol_template["options"]["execution"]["pipeline"]["candidates"]:
@@ -134,6 +142,10 @@ class Protocol():
     }
     
     for module in self.dic_protocol.keys():
+      if self.dic_protocol[module][1] == "DTI_Register":
+        software_paths_filepath = os.path.expanduser("~/.niral-dti/dmriprep-" + config.INFO["dmriprep"]["version"] + "/software_paths.yml")
+        software_paths_yml = yaml.safe_load(open(software_paths_filepath, 'r'))
+        self.dic_protocol[module][2]['protocol']['ANTsPath'] = software_paths_yml['softwares']['ANTs']['path']
       protocol["pipeline"].append(self.dic_protocol[module][1:])
 
     protocol["version"] = self.protocol_template["version"]
@@ -190,6 +202,12 @@ class Protocol():
         merge_in_protocol = True
       if module.text() == "QC Report":
         self.dic_protocol[key] = self.qcreport_params
+      if module.text() == "Register DTI (ANTs)":
+        self.dic_protocol[key] = self.dtiregister_params
+      if module.text() == "SINGLETRACT_Process DTI":
+        self.dic_protocol[key] = self.singletract_params
+      if module.text() == "Brain Tractography":
+        self.dic_protocol[key] = self.braintractography_params
 
     self.CheckSpecialModulesInProtocol(exclude_in_protocol, merge_in_protocol)
 
@@ -223,6 +241,13 @@ class Protocol():
         merge_in_protocol = True
       if module.text() == "QC Report":
         self.dic_protocol[current_id] = self.qcreport_default_params
+      if module.text() == "Register DTI (ANTs)":
+        self.dic_protocol[current_id] = self.dtiregister_default_params
+      if module.text() == "SINGLETRACT_Process DTI":
+        self.dic_protocol[current_id] = self.singletract_default_params
+      if module.text() == "Brain Tractography":
+        self.dic_protocol[current_id] = self.braintractography_default_params
+
       
       self.communicate.SetModuleData([module, current_id])
       self.module_id += 1
@@ -293,6 +318,18 @@ class Protocol():
         self.qcreport_default_params = protocol_yml["pipeline"][ite]
         self.qcreport_default_params.insert(0, "QC Report")
 
+      if protocol_yml['pipeline'][ite][0] == 'DTI_Register':
+        self.dtiregister_default_params = protocol_yml['pipeline'][ite]
+        self.dtiregister_default_params.insert(0, 'Register DTI (ANTs)')
+      
+      if protocol_yml['pipeline'][ite][0] == "SINGLETRACT_Process":
+        self.singletract_default_params = protocol_yml['pipeline'][ite]
+        self.singletract_default_params.insert(0, 'SINGLETRACT_Process DTI')
+
+      if protocol_yml['pipeline'][ite][0] == "BRAIN_Tractography":
+        self.braintractography_default_params = protocol_yml['pipeline'][ite]
+        self.braintractography_default_params.insert(0, "Brain Tractography")
+
     self.slicecheck_params = self.slicecheck_default_params.copy()
     self.interlacecheck_params = self.interlacecheck_default_params.copy()
     self.baselineaverage_params = self.baselineaverage_default_params.copy()
@@ -304,6 +341,9 @@ class Protocol():
     self.utilheader_params = self.utilheader_default_params.copy()
     self.utilmerge_params = self.utilmerge_default_params.copy()
     self.qcreport_params = self.qcreport_default_params.copy()
+    self.dtiregister_params = self.dtiregister_default_params.copy()
+    self.singletract_params = self.singletract_default_params.copy()
+    self.braintractography_params = self.braintractography_default_params.copy()
 
 
   def SetDicProtocol(self, new_dic_protocol):
@@ -338,6 +378,12 @@ class Protocol():
       self.utilmerge_params = self.utilmerge_default_params
     if module_name == "QC_Report":
       self.qcreport_params = self.qcreport_default_params
+    if module_name == "DTI_Register":
+      self.dtiregister_params = self.dtiregister_default_params
+    if module_name == "SINGLETRACT_Process":
+      self.singletract_params = self.singletract_default_params
+    if module_name == "BRAIN_Tractography":
+      self.braintractography_params = self.brainmask_default_params
 
   def RemoveModuleFromDicProtocol(self, item_to_remove_key):
     self.dic_protocol.pop(item_to_remove_key)

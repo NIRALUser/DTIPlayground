@@ -161,11 +161,6 @@ class QuickView(QMainWindow):
     self.options_layout.addWidget(self.contrast_slidebar)
     self.options_layout.addStretch(1)
 
-    apply_button = QPushButton("&Apply")
-    apply_button.setShortcut('Enter')
-    apply_button.clicked.connect(self.RemoveImages)
-    self.options_layout.addWidget(apply_button)
-
   def LoadImage(self):
     print("image", self.image_name)
     self.input_image = sitk.ReadImage(self.image_name)

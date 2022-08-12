@@ -7,16 +7,20 @@ from PyQt5.QtCore import pyqtSignal as Signal
 
 from dtiplayground.ui.modules_details.baselineaverage import BaselineAverage
 from dtiplayground.ui.modules_details.brainmask import BrainMask
+from dtiplayground.ui.modules_details.braintractography import BrainTractography
 from dtiplayground.ui.modules_details.dtiestimate import DTIEstimate
+from dtiplayground.ui.modules_details.dtiregister import DTIRegister
 from dtiplayground.ui.modules_details.eddymotion import EddyMotion
 from dtiplayground.ui.modules_details.exclude import ExcludeGradients
 from dtiplayground.ui.modules_details.interlacecheck import InterlaceCheck
+from dtiplayground.ui.modules_details.nomodule import NoModule
+from dtiplayground.ui.modules_details.qcreport import QCReport
+from dtiplayground.ui.modules_details.singletract import Singletract
 from dtiplayground.ui.modules_details.slicecheck import SliceCheck
 from dtiplayground.ui.modules_details.susceptibility import SusceptibilityCorrection
 from dtiplayground.ui.modules_details.utilheader import UtilHeader
-from dtiplayground.ui.modules_details.nomodule import NoModule
 from dtiplayground.ui.modules_details.utilmerge import UtilMerge
-from dtiplayground.ui.modules_details.qcreport import QCReport
+
 
 
 class DetailsDisplayCommunicate(QObject):
@@ -61,16 +65,19 @@ class ModuleDetails(QWidget):
     # instanciation of module classes
     self.baselineaverage = BaselineAverage(protocol_template, self.baselineaverage_yml)
     self.brainmask = BrainMask(protocol_template, self.brainmask_yml)
+    self.braintractography = BrainTractography(protocol_template, self.braintractography_yml)
     self.dtiestimate = DTIEstimate(protocol_template, self.dtiestimate_yml)
+    self.dtiregister = DTIRegister(protocol_template, self.dtiregister_yml)
     self.eddymotion = EddyMotion(protocol_template, self.eddymotion_yml)
     self.exclude = ExcludeGradients(protocol_template, self.exclude_yml)
     self.interlacecheck = InterlaceCheck(protocol_template, self.interlacecheck_yml)
+    self.no_module = NoModule()
+    self.qcreport = QCReport(protocol_template, self.qcreport_yml)
+    self.singletract = Singletract(protocol_template, self.singletract_yml)
     self.slicecheck = SliceCheck(protocol_template, self.slicecheck_yml)
     self.susceptibility = SusceptibilityCorrection(protocol_template, self.susceptibility_yml, preferences_yml)
-    self.utilheader = UtilHeader(protocol_template, self.utilheader_yml)
-    self.no_module = NoModule()
+    self.utilheader = UtilHeader(protocol_template, self.utilheader_yml)    
     self.utilmerge = UtilMerge(protocol_template, self.utilmerge_yml)
-    self.qcreport = QCReport(protocol_template, self.qcreport_yml)
 
     # add modules to stack
     self.details_stack = QStackedWidget()
@@ -86,6 +93,9 @@ class ModuleDetails(QWidget):
     self.details_stack.addWidget(self.utilheader.stack)
     self.details_stack.addWidget(self.utilmerge.stack)
     self.details_stack.addWidget(self.qcreport.stack)
+    self.details_stack.addWidget(self.dtiregister.stack)
+    self.details_stack.addWidget(self.singletract.stack)
+    self.details_stack.addWidget(self.braintractography.stack)
 
     # layout
     layout_v = QVBoxLayout()
@@ -133,9 +143,19 @@ class ModuleDetails(QWidget):
     filepath = module_dir.joinpath("QC_Report/QC_Report.yml")
     self.qcreport_yml = yaml.safe_load(open(filepath, 'r'))
 
+    filepath = module_dir.joinpath("DTI_Register/DTI_Register.yml")
+    self.dtiregister_yml = yaml.safe_load(open(filepath, 'r'))
+
+    filepath = module_dir.joinpath("SINGLETRACT_Process/SINGLETRACT_Process.yml")
+    self.singletract_yml = yaml.safe_load(open(filepath, 'r'))
+
+    filepath = module_dir.joinpath("BRAIN_Tractography/BRAIN_Tractography.yml")
+    self.braintractography_yml = yaml.safe_load(open(filepath, 'r'))
+
     self.modules_yml_list = [self.slicecheck_yml, self.interlacecheck_yml, self.baselineaverage_yml,
       self.susceptibility_yml, self.eddymotion_yml, self.brainmask_yml, self.dtiestimate_yml, self.exclude_yml,
-      self.utilheader_yml, self.utilmerge_yml, self.qcreport_yml]
+      self.utilheader_yml, self.utilmerge_yml, self.qcreport_yml, self.dtiregister_yml, self.singletract_yml,
+      self.braintractography_yml]
 
   def DetailsDisplay(self, data):
     module = data[0]
@@ -414,4 +434,114 @@ class ModuleDetails(QWidget):
         self.qcreport.generateCSV_false.setChecked(False)
       self.details_stack.setCurrentIndex(11)
 
+    if module[0] == "Register DTI (ANTs)":
+      self.dtiregister.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.dtiregister.overwrite.setChecked(True)
+      else:
+        self.dtiregister.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.dtiregister.skip.setChecked(True)
+      else:
+        self.dtiregister.skip.setChecked(False)
+      if module[2]["options"]["write_image"] == True:
+        self.dtiregister.writeimage.setChecked(True)
+      else:
+        self.dtiregister.writeimage.setChecked(False)
+      method = module[2]["protocol"]["method"]
+      for ite1 in self.dtiregister_yml["protocol"]["method"]["candidates"]:
+        if ite1["value"] == method:
+          self.dtiregister.method.setCurrentText(ite1["caption"])
+          self.dtiregister.GetMethodIt(ite1["caption"])
+      self.dtiregister.referenceImage.setText(module[2]['protocol']['referenceImage'])
+      self.dtiregister.ANTsPath.setText(module[2]['protocol']['ANTsPath'])
+      self.dtiregister.ANTsMethod.setText(module[2]['protocol']['ANTsMethod'])
+      registrationType = module[2]["protocol"]["registrationType"]
+      for ite1 in self.dtiregister_yml["protocol"]["registrationType"]["candidates"]:
+        if ite1["value"] == registrationType:
+          self.dtiregister.registrationType.setCurrentText(ite1["caption"])
+          self.dtiregister.GetRegistrationTypeIt(ite1["caption"])
+      similarityMetric = module[2]["protocol"]["similarityMetric"]
+      for ite1 in self.dtiregister_yml["protocol"]["similarityMetric"]["candidates"]:
+        if ite1["value"] == similarityMetric:
+          self.dtiregister.similarityMetric.setCurrentText(ite1["caption"])
+          self.dtiregister.GetSimilarityMetricIt(ite1["caption"])      
+      self.dtiregister.similarityParameter.setValue(module[2]["protocol"]["similarityParameter"])
+      self.dtiregister.ANTsIterations.setText(module[2]['protocol']['ANTsIterations'])
+      self.dtiregister.gaussianSigma.setValue(module[2]["protocol"]["gaussianSigma"])
+      self.details_stack.setCurrentIndex(12)
+
+    if module[0] == "SINGLETRACT_Process DTI":
+      self.singletract.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.singletract.overwrite.setChecked(True)
+      else:
+        self.singletract.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.singletract.skip.setChecked(True)
+      else:
+        self.singletract.skip.setChecked(False)
+      if module[2]["options"]["write_image"] == True:
+        self.singletract.writeimage.setChecked(True)
+      else:
+        self.singletract.writeimage.setChecked(False)
+      method = module[2]["protocol"]["method"]
+      for ite1 in self.singletract_yml["protocol"]["method"]["candidates"]:
+        if ite1["value"] == method:
+          self.singletract.method.setCurrentText(ite1["caption"])
+          self.singletract.GetMethodIt(ite1["caption"])
+      scalar = module[2]["protocol"]["scalar"]
+      for ite1 in self.singletract_yml["protocol"]["scalar"]["candidates"]:
+        if ite1["value"] == scalar:
+          self.singletract.scalar.setCurrentText(ite1["caption"])
+          self.singletract.GetScalarIt(ite1["caption"])
+      self.singletract.NIRALUtilitiesPath.setText(module[2]['protocol']['NIRALUtilitiesPath'])
+      self.singletract.referenceTractFile.setText(module[2]['protocol']['referenceTractFile'])
+      self.singletract.dilationRadius.setValue(module[2]['protocol']['dilationRadius'])
+      self.details_stack.setCurrentIndex(13)
+    
+    if module[0] == "Brain Tractography":
+      self.singletract.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.braintractography.overwrite.setChecked(True)
+      else:
+        self.braintractography.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.braintractography.skip.setChecked(True)
+      else:
+        self.braintractography.skip.setChecked(False)
+      whiteMatterMaskThreshold = module[2]["protocol"]["whiteMatterMaskThreshold"]
+      for ite1 in self.braintractography_yml["protocol"]["whiteMatterMaskThreshold"]["candidates"]:
+        if ite1["value"] == whiteMatterMaskThreshold:
+          self.braintractography.whiteMatterMaskThreshold.setCurrentText(ite1["caption"])
+          self.braintractography.GetWhiteMatterMaskThresholdIt(ite1["caption"])
+      self.braintractography.thresholdLow.setValue(module[2]['protocol']['thresholdLow'])
+      self.braintractography.thresholdUp.setValue(module[2]['protocol']['thresholdUp'])
+      method = module[2]["protocol"]["method"]
+      for ite1 in self.braintractography_yml["protocol"]["method"]["candidates"]:
+        if ite1["value"] == method:
+          self.braintractography.method.setCurrentText(ite1["caption"])
+          self.braintractography.GetMethodIt(ite1["caption"])
+      self.braintractography.shOrder.setValue(module[2]['protocol']['shOrder'])
+      self.braintractography.relativePeakThreshold.setValue(module[2]['protocol']['relativePeakThreshold'])
+      self.braintractography.minPeakSeparationAngle.setValue(module[2]['protocol']['minPeakSeparationAngle'])
+      self.braintractography.stoppingCriterionThreshold.setValue(module[2]['protocol']['stoppingCriterionThreshold'])
+      if module[2]["protocol"]["vtk42"] == True:
+        self.braintractography.vtk42_true.setChecked(True)
+      else:
+        self.braintractography.vtk42_false.setChecked(True)
+      if module[2]["protocol"]["removeShortTracts"] == True:
+        self.braintractography.removeShortTracts.setChecked(True)
+      else:
+        self.braintractography.removeShortTracts.setChecked(False)
+      self.braintractography.shortTractsThreshold.setValue(module[2]['protocol']['shortTractsThreshold'])
+      if module[2]["protocol"]["removeLongTracts"] == True:
+        self.braintractography.removeLongTracts.setChecked(True)
+      else:
+        self.braintractography.removeLongTracts.setChecked(False)
+      self.braintractography.longTractsThreshold.setValue(module[2]['protocol']['longTractsThreshold'])
+      self.details_stack.setCurrentIndex(14)
+
     self.communicate.SetUpdateModuleDetailsBool(True)
+
+

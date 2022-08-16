@@ -1,12 +1,14 @@
 
-import dtiplayground.dmri.preprocessing as prep
+# import dtiplayground.dmri.preprocessing as prep
 import dtiplayground.dmri.common.dwi as dwi
+import dtiplayground.dmri.common.module as module
+import dtiplayground.dmri.common as common
 
 import shutil
 import yaml,sys,traceback,time
 from pathlib import Path
 
-logger=prep.logger.write
+logger=common.logger.write
 
 def _load_protocol(filename):
     return yaml.safe_load(open(filename,'r'))
@@ -33,7 +35,7 @@ def _generate_exec_sequence(pipeline,image_paths:list,output_dir,modules, io_opt
             if(not is_single_input_allowed):
                 raise Exception("Multi_input module needs at least 2 input images. in {}".format(module_name))
         if ((is_multi_input and (len(image_paths)>=2)) or after_multi_input) :
-            uid=prep.get_uuid()
+            uid=common.get_uuid()
             execution={
                 "order": idx,
                 "id":uid,
@@ -52,7 +54,7 @@ def _generate_exec_sequence(pipeline,image_paths:list,output_dir,modules, io_opt
             after_multi_input=True
         else:
             for ip in image_paths:
-                uid=prep.get_uuid()
+                uid=common.get_uuid()
                 execution={
                     "order": idx,
                     "id":uid,
@@ -131,7 +133,7 @@ class Protocols:
         self.image_paths=list(map(lambda x:str(Path(x).absolute()),image_paths))
         #print(self.image_paths)
         for ip in self.image_paths:
-            logger("Loading original image : {}".format(str(ip)),prep.Color.PROCESS)
+            logger("Loading original image : {}".format(str(ip)),common.Color.PROCESS)
             img=dwi.DWI(str(ip))
             self.result_history[ip]=[{"output":{"image_path": str(Path(ip).absolute()),
                                              "image_information": img.information,
@@ -205,8 +207,9 @@ class Protocols:
 
     def loadModules(self,pipeline:list,user_module_paths:list, **options):
         mod_names=[x for x in pipeline]
-        modules=prep.modules._load_modules(user_module_paths=user_module_paths,module_names=mod_names, **options)
-        modules=prep.modules.check_module_validity(modules, self.environment, self.config_dir)
+        system_module_paths = [Path(__file__).resolve().parent.joinpath('modules')]
+        modules=module._load_modules(system_module_paths = system_module_paths, user_module_paths=user_module_paths,module_names=mod_names, **options)
+        modules=module.check_module_validity(modules, self.environment, self.config_dir)
         self.modules=modules
 
         return self.modules 
@@ -226,7 +229,7 @@ class Protocols:
 
     def makeDefaultProtocols(self,pipeline=None,template=None,options={}):
         self.checkImage()
-        logger("Default protocols are being generated using image information",prep.Color.PROCESS)
+        logger("Default protocols are being generated using image information",common.Color.PROCESS)
         if template==None:
             template=yaml.safe_load(open(self.template_filename,'r'))
 
@@ -249,7 +252,7 @@ class Protocols:
             self.pipeline=self.furnishPipeline(pipeline)
         else:
             self.pipeline=self.furnishPipeline(template['options']['execution']['pipeline']['default_value'])
-        logger("Default protocols are generated.",prep.Color.OK)
+        logger("Default protocols are generated.",common.Color.OK)
 
     def furnishPipeline(self,pipeline):
         self.checkImage()
@@ -294,25 +297,25 @@ class Protocols:
 
 
     def checkRunnable(self):
-        logger("Checking runability ...",prep.Color.PROCESS)
+        logger("Checking runability ...",common.Color.PROCESS)
         self.checkImage()
         self.checkPipeline()
         self.checkDependencies()
 
     def checkImage(self):
          if len(self.images) ==0: 
-            logger("[ERROR] Image is not loaded.",prep.Color.ERROR)
+            logger("[ERROR] Image is not loaded.",common.Color.ERROR)
             raise Exception("Image is not set")       
     def checkPipeline(self):
         if self.pipeline is None:
-            logger("[ERROR] Protocols are not set.",prep.Color.ERROR)
+            logger("[ERROR] Protocols are not set.",common.Color.ERROR)
             raise Exception("Pipe line error")
     def checkDependencies(self):
         for parr in self.pipeline:
             p, options = parr 
             if not self.modules[p]['valid']: 
                 msg=self.modules[p]['validity_message']
-                logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),prep.Color.WARNING)
+                logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),common.Color.WARNING)
                 raise Exception("Module {} is not configured correctly.".format(p))    
 
     def getBaseFilename(self,org_filename):
@@ -335,7 +338,7 @@ class Protocols:
         gv_filename=Path(self.output_dir).joinpath('global_variables.yml')
         yaml.safe_dump(self.global_variables,open(gv_filename,'w'))
 
-    @prep.measure_time
+    @common.measure_time
     def runPipeline(self,options={}):
         try:
             if 'execution_id' in options: logger("Execution ID : {}".format(options['execution_id']))
@@ -348,12 +351,12 @@ class Protocols:
             Path(self.output_dir).mkdir(parents=True,exist_ok=True)
             output_dir_map=_generate_output_directories_mapping(self.output_dir,execution_sequence)
             protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()
-            logger("Writing protocol file to : {}".format(protocol_filename),prep.Color.PROCESS)
+            logger("Writing protocol file to : {}".format(protocol_filename),common.Color.PROCESS)
             self.writeProtocols(protocol_filename)
             ## print pipeline
-            logger("PIPELINE",prep.Color.INFO)
-            logger(yaml.safe_dump(self.io),prep.Color.DEV)
-            logger(yaml.safe_dump(self.pipeline),prep.Color.DEV)
+            logger("PIPELINE",common.Color.INFO)
+            logger(yaml.safe_dump(self.io),common.Color.DEV)
+            logger(yaml.safe_dump(self.pipeline),common.Color.DEV)
             ## run pipeline
             opts={
                     "software_info": self.getSoftwareInfo(),
@@ -374,21 +377,21 @@ class Protocols:
                 if image_path not in self.result_history:
                     self.result_history[image_path]=[]
                 bt=time.time()
-                logger("-----------------------------------------------",prep.Color.BOLD)
-                logger("Processing [{0}/{1}] : {2}".format(idx+1,len(execution_sequence),p),prep.Color.BOLD)
-                logger("Filename: {}".format(image_path),prep.Color.BOLD)    
-                logger("-----------------------------------------------",prep.Color.BOLD)
+                logger("-----------------------------------------------",common.Color.BOLD)
+                logger("Processing [{0}/{1}] : {2}".format(idx+1,len(execution_sequence),p),common.Color.BOLD)
+                logger("Filename: {}".format(image_path),common.Color.BOLD)    
+                logger("-----------------------------------------------",common.Color.BOLD)
                 Path(output_dir_map[uid]).mkdir(parents=True,exist_ok=True)
-                logger("Output directory : {}\n".format(str(output_dir_map[uid])),prep.Color.DEV)
+                logger("Output directory : {}\n".format(str(output_dir_map[uid])),common.Color.DEV)
                 m=getattr(self.modules[p]['module'], p)(self.config_dir, **opts)
                 m.setOptionsAndProtocol(options)
 
-                logger(yaml.safe_dump(m.getTemplate()['process_attributes']),prep.Color.DEV)
-                logger(yaml.safe_dump(m.getOptions()),prep.Color.DEV)
-                logger(yaml.safe_dump(m.getProtocol()),prep.Color.DEV)
+                logger(yaml.safe_dump(m.getTemplate()['process_attributes']),common.Color.DEV)
+                logger(yaml.safe_dump(m.getOptions()),common.Color.DEV)
+                logger(yaml.safe_dump(m.getProtocol()),common.Color.DEV)
                 if m.getOptions()['skip']:
                     forced_overwrite=True 
-                    logger("SKIPPING THIS",prep.Color.INFO)
+                    logger("SKIPPING THIS",common.Color.INFO)
                     continue
 
                 m.initialize(self.result_history,image_path,output_dir=output_dir_map[uid])
@@ -402,14 +405,14 @@ class Protocols:
 
                 if resultfile_path.exists() and not m.getOptions()['overwrite'] and not forced_overwrite:
                     result_temp=yaml.safe_load(open(resultfile_path,'r'))
-                    logger("Result file exists, just post-processing ...",prep.Color.INFO+prep.Color.BOLD)
+                    logger("Result file exists, just post-processing ...",common.Color.INFO+common.Color.BOLD)
                     m.postProcess(result_temp,opts)
                     success=True
                 else: # in case overwriting or there is no result.yml file
                     outres=m.run(opts,global_vars=self.global_variables)
                     success=outres['success']
                 if not success:
-                    logger("[ERROR] Process failed in {}".format(p),prep.Color.ERROR) 
+                    logger("[ERROR] Process failed in {}".format(p),common.Color.ERROR) 
                     raise Exception("Process failed in {}".format(p))
                 self.global_variables.update(m.getGlobalVariables())
                 self.writeGlobalVariables()
@@ -430,15 +433,15 @@ class Protocols:
                         ext=Path(srcfilepath).suffix
                     filename="{}{}".format(output_stem,ext)
                     output_path = Path(self.output_dir).joinpath(filename)
-                    logger("Saving intermediary files from {} to {}".format(srcfilepath, output_path),prep.Color.PROCESS)
+                    logger("Saving intermediary files from {} to {}".format(srcfilepath, output_path),common.Color.PROCESS)
                     shutil.copy(srcfilepath, output_path)
 
                 et=time.time()-bt
                 self.result_history[image_path][-1]['processing_time']=et                   
-                logger("[{}] Processed time : {:.2f}s".format(p,et),prep.Color.DEV)
+                logger("[{}] Processed time : {:.2f}s".format(p,et),common.Color.DEV)
                 if save and not self.io['no_output_image']: ### for the last, dump image and informations
                     ## Save final Qced image
-                    logger("Preparing final output ... ",prep.Color.PROCESS)
+                    logger("Preparing final output ... ",common.Color.PROCESS)
                     stem=Path(output_base).name.split('.')[0]+"_QCed"
                     ext='.nii.gz'
                     if self.io['output_format'] is None: self.io['output_format']=self.original_image_format
@@ -452,13 +455,13 @@ class Protocols:
                         m.image.dumpGradients(final_gradients_filename)
                         m.image.dumpInformation(final_information_filename)
 
-            logger(yaml.safe_dump(execution_sequence),prep.Color.INFO)
+            logger(yaml.safe_dump(execution_sequence),common.Color.INFO)
             return self.result_history
 
         except Exception as e:
-            logger("Exception occurred in runPipeline {}".format(str(e)),prep.Color.ERROR)
+            logger("Exception occurred in runPipeline {}".format(str(e)),common.Color.ERROR)
             tbstr=traceback.format_exc()
-            logger(tbstr,prep.Color.ERROR)
+            logger(tbstr,common.Color.ERROR)
             return None
         finally:
             with open(Path(self.output_dir).joinpath('result_history.yml'),'w') as f:

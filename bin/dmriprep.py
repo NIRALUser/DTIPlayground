@@ -13,6 +13,7 @@ import re
 sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line is for development
 import dtiplayground
 import dtiplayground.dmri.common
+import dtiplayground.dmri.common.module
 from dtiplayground.config import INFO as info
 
 logger=dtiplayground.dmri.common.logger.write 
@@ -449,9 +450,9 @@ def command_init(args):
     software_filename=home_dir.joinpath('software_paths.yml')
     update_software_paths(args, globalvars)
     logger("Software path file is written to : {}".format(str(software_filename)),color.INFO)
-
-    modules=dtiplayground.dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
-    environment=dtiplayground.dmri.preprocessing.modules.generate_module_envionrment(modules,str(home_dir))
+    system_module_paths = [Path(dtiplayground.__file__).resolve().parent.joinpath('dmri/preprocessing/modules')]
+    modules=dtiplayground.dmri.common.module.load_modules(system_module_paths = system_module_paths, user_module_paths=config['user_module_directories'])
+    environment=dtiplayground.dmri.common.module.generate_module_envionrment(modules,str(home_dir))
     yaml.dump(environment,open(environment_filename,'w'))
     logger("Environment file written to : {}".format(str(environment_filename)),color.INFO)
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),color.OK)
@@ -471,8 +472,9 @@ def command_update(args):
     ## load config_file
     config=yaml.safe_load(open(config_filename,'r'))
     ## make environment file (environment.yml)
-    modules=dtiplayground.dmri.preprocessing.modules.load_modules(user_module_paths=config['user_module_directories'])
-    environment=dtiplayground.dmri.preprocessing.modules.generate_module_envionrment(modules,str(home_dir))
+    system_module_paths = [Path(dtiplayground.__file__).resolve().parent.joinpath('dmri/preprocessing/modules')]
+    modules=dtiplayground.dmri.common.module.load_modules(system_module_paths = system_module_paths,user_module_paths=config['user_module_directories'])
+    environment=dtiplayground.dmri.common.module.generate_module_envionrment(modules,str(home_dir))
     yaml.dump(environment,open(environment_filename,'w'))
     logger("Environment file written to : {}".format(str(environment_filename)),color.INFO)
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),color.OK)

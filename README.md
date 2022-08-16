@@ -227,6 +227,9 @@ MIT
 
 ### Change Log
 
+##### 2022-08-16
+- dmriprep - dwi module moved to common namespace (dtiplayground.dmri.common.dwi)
+
 ##### 2022-08-12
 - dmriprep - add BRAIN_Tractography, DTI_Register and SINGLETRACT_Process in UI
 

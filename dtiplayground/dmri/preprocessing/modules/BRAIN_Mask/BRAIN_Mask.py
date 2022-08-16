@@ -2,7 +2,7 @@
 
 import dtiplayground.dmri.preprocessing as prep
 import dtiplayground.dmri.common.tools as tools
-from dtiplayground.dmri.preprocessing.dwi import DWI
+from dtiplayground.dmri.common.dwi import DWI
 import yaml
 from pathlib import Path
 import importlib

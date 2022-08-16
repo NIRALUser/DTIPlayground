@@ -1,6 +1,6 @@
   
 import dtiplayground.dmri.preprocessing as prep
-from dtiplayground.dmri.preprocessing.dwi import DWI
+from dtiplayground.dmri.common.dwi import DWI
 import yaml
 from pathlib import Path
 import os

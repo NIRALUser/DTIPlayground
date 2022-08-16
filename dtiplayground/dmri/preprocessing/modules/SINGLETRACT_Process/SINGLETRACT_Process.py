@@ -5,6 +5,7 @@ from pathlib import Path
 logger=prep.logger.write
 
 import dtiplayground.dmri.common.tools as tools 
+import dtiplayground.dmri.common as common
 
 ###
 import SINGLETRACT_Process.tractography as tractography
@@ -92,12 +93,12 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
                      ]
         if self.overwriteFile(dilatedLabelmapFile) : imagemath.execute(arguments=arguments)
         self.addGlobalVariable('labelmap_path', dilatedLabelmapFile)
-        labelMapImage = prep.dwi.DWI(labelMapFile)
-        dilatedLabelmapImage = prep.dwi.DWI(dilatedLabelmapFile)
+        labelMapImage = common.dwi.DWI(labelMapFile)
+        dilatedLabelmapImage = common.dwi.DWI(dilatedLabelmapFile)
         dipyLabelMap = labelMapImage.images + dilatedLabelmapImage.images
 
     ## Tractography ...
-        tensorImage = prep.dwi.DWI(inputDTI)
+        tensorImage = common.dwi.DWI(inputDTI)
         tractography.compute(tensorImage, self.image, dipyLabelMap, self.output_dir )
         return res 
 

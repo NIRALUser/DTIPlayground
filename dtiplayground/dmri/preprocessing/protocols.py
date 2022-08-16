@@ -1,6 +1,6 @@
 
 import dtiplayground.dmri.preprocessing as prep
-import dtiplayground.dmri.preprocessing.dwi as dwi
+import dtiplayground.dmri.common.dwi as dwi
 
 import shutil
 import yaml,sys,traceback,time

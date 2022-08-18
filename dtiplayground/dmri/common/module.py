@@ -18,9 +18,6 @@ def _load_modules(system_module_paths=[],user_module_paths=[],module_names=None,
 
 def _load_default_modules( system_module_paths: list, module_names=None, **options): # user_modules list of paths of user modules
     modules={}
-    #system_path = Path(__file__).resolve().parent.parent.joinpath('preprocessing/modules')
-    # default_module_paths=[system_module_path]
-    # print(default_module_paths)
     return _load_modules_from_paths(system_module_paths,module_names, **options)
 
 def _load_modules_from_paths(user_module_paths: list,module_names=None, **options): #module names = list of modules to load (if none, load everything)

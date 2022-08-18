@@ -6,10 +6,10 @@ INFO = {
   "dmriprep": {
     "version" : "0.4.0b2"
   },
-  "dtiatlasbuilder": {
+  "dmriatlas": {
     "version" : "0.1.0"
   },
-  "autotract" : {
+  "dmriautotract" : {
     "version" : "0.0.1"
   }
 }

@@ -1,9 +1,10 @@
-import dtiplayground.dmri.preprocessing as base
+import dtiplayground.dmri.tractography as base
 import dtiplayground.dmri.common as common
+
 import yaml
 logger=common.logger.write
 
-class @MODULENAME@(base.modules.DTIPrepModule):
+class IDENTITY_Process(base.modules.DTITractographyModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir)
         
@@ -16,6 +17,7 @@ class @MODULENAME@(base.modules.DTIPrepModule):
         super().process()
         inputParams=self.getPreviousResult()['output']
         # << TODOS>>
+
 
         self.result['output']['success']=True
         return self.result

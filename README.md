@@ -2,10 +2,6 @@
 
 DTI Playground are python based NIRAL pipeline software including DMRIPrep (dmriprep), DTIAtlasBuilder (dmriatlasbuilder), DTIFiberAnalyzer (dmrifiberanalyzer), AutoTract
 
-## DMRIPrep (dmriprep)
-
-dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.
-
 #### Installation (Mac/Linux/Windows-WSL)
 
 We recommend users to make a virtual environment first using python >= 3.8.6
@@ -35,6 +31,12 @@ Default output directory is `$HOME/.niral-dti/dtiplayground-tools` if output dir
 Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of the tools including root path of the packages, and automatically changes software paths for the current version of dmriprep unless `--install-only` option is present.
 
 **NOTE** Once FSL is installed, some of tools in FSL has hard coded path in the script, which means that once FSL directory is moved or copied to different directory, some of functions will not work (e.g. eddy_quad). You need to re-install FSL in that case. But changing directory of FSL doesn't affect the functions of DTIPlayground so far. 
+
+
+## DMRIPrep (dmriprep)
+
+dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.
+
 
 #### GUI Mode (Mac/Linux):
 
@@ -94,12 +96,27 @@ To run with existing protocol file:
 
 `-p` option cannot be used with `-d` option.
 
-#### In SLURM cluster with singularity
 
-`dmriprep_slurm` is a wrapper script for dmriprep under singularity container. Usage is same. Users can change slurm resource parameter in the script.
+## DMRIAutoTract (dmriautotract)
+
+`dmriautotract` is a tool that performs automatic tractography from the diffusion weighted image. 
+
+
+#### GUI Mode (Mac/Linux):
+
+Currently GUI for dmritract is not available
+
+#### CLI Mode (Mac/Linux/Windows-WSL):
+
+The usage is same as DMRIPrep. Only difference is that DMRITract uses different set of modules.
+
+To run with existing protocol file:
 ```
-    $ dmriprep_slurm <<same options as dmriprep>>
+    $ dmritautoract run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
 ```
+
+`-p` option cannot be used with `-d` option.
+
 
 ### Development of a new module
 

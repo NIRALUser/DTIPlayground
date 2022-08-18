@@ -3,7 +3,7 @@ caption: BRAIN_Tractography
 description: Custom module
 version: "0.1"
 dependency: []
-module_type: prep
+module_type: tractography
 process_attributes:
     - utility
 result: null

@@ -1,0 +1,60 @@
+name: SINGLETRACT_Process
+caption: SINGLETRACT_Process 
+description: Transform polydata using niral untilities
+version: "0.1"
+dependency: []
+result: null
+command_line_variables:
+    reference_tract: null 
+global_variables: null
+
+module_type: tractography
+process_attributes:
+    - utility  
+    - indentity ## this means input image will be passed to the next module without changing anything.
+protocol:
+      method: 
+        type: list
+        caption: Method
+        default_value: NIRAL
+        candidates:
+          - value: NIRAL
+            caption: NIRAL
+            description: Use NIRAL tools
+          - value: dipy
+            caption: DIPY
+            description: Use DIPY for tractography
+        description: Method for single tractography
+      scalar:
+        type: list
+        caption: Scalar type
+        default_value: fa
+        candidates:
+            - value : fa
+              caption: Fractional Anisotropy
+              description: Use Fractional Anistropy
+            - value : ga
+              caption: Geodesic Anisotropy
+              description: Use Geodesic Anistropy
+      NIRALUtilitiesPath:
+        type: string
+        caption: NIRAL Utilities Binary Path
+        default_value: $NIRALUTILS
+        description: Binary directory which has niral utilities binary
+      referenceTractFile:
+        type: string
+        caption: Reference Tract File
+        default_value: null
+        description: Path of the reference tract file (.vtk)
+      displacementFieldFile:
+        type: string
+        caption: Displacement Field Path
+        default_value: null
+        description: Path of the displacement file for transform
+      dilationRadius:
+        type: number
+        caption: Dilation Radius
+        default_value: 2
+        description: Dilation radius
+
+        

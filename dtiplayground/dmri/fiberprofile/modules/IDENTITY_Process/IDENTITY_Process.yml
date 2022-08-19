@@ -1,0 +1,15 @@
+name: IDENTITY_Process
+caption: IDENTITY_Process
+description: Custom module
+version: "0.1"
+dependency: []
+module_type: fiberprofile
+process_attributes:
+    - utility
+result: null
+protocol: #define protocol parameters here
+    options: 
+        type: string
+        caption: Options
+        default_value: null
+        description: List of Options

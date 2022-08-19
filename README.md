@@ -97,28 +97,7 @@ To run with existing protocol file:
 `-p` option cannot be used with `-d` option.
 
 
-## DMRIAutoTract (dmriautotract)
-
-`dmriautotract` is a tool that performs automatic tractography from the diffusion weighted image. 
-
-
-#### GUI Mode (Mac/Linux):
-
-Currently GUI for dmritract is not available
-
-#### CLI Mode (Mac/Linux/Windows-WSL):
-
-The usage is same as DMRIPrep. Only difference is that DMRITract uses different set of modules.
-
-To run with existing protocol file:
-```
-    $ dmritautoract run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
-```
-
-`-p` option cannot be used with `-d` option.
-
-
-### Development of a new module
+### Development of a new module 
 
 #### Adding a module
 
@@ -162,18 +141,57 @@ $ dmriprep remove-module MYFIRST_Module
 #### Modules in other directory
 You can just copy module directory to `$HOME/.niral-dti/modules/dmriprep` and check with `$ dmriprep update` command. Same applies for removal of user modules.
 
+## DMRIAutoTract (dmriautotract)
+
+`dmriautotract` is a tool that performs automatic tractography from the diffusion weighted image. 
+
+
+#### GUI Mode (Mac/Linux):
+
+Currently GUI for dmritract is not available
+
+#### CLI Mode (Mac/Linux/Windows-WSL):
+
+The usage is same as DMRIPrep. Only difference is that DMRITract uses different set of modules.
+
+To run with existing protocol file:
+```
+    $ dmritautoract run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
+```
+
+`-p` option cannot be used with `-d` option.
+
+## DMRIFiberProfile (dmrifiberprofile)
+
+`dmrifiberprofile` performs statistical computation over the extracted fibers. This enables researchers to get the information of the fiber images easily and fast.
+
+#### GUI Mode (Mac/Linux):
+
+Currently GUI for dmrifiberprofile is not available
+
+#### CLI Mode (Mac/Linux/Windows-WSL):
+
+The usage is same as DMRIPrep. Only difference is that DMRIFiberProfile uses different set of modules.
+
+To run with existing protocol file:
+```
+    $ dmrifiberprofile run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
+```
+
+`-p` option cannot be used with `-d` option.
+
+## DMRIAtlas (dmriatlas)
+
+DMRIAtlas is a software to make an atlas from multiple diffusion weighted images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
+
+
+
+
 ### Supported Images
 
 - NRRD 
 - NIFTI
 
-## DTIAtlasBuilder (dtiab)
-
-DTIAtlasBuilder is a software to make an atlas from multiple diffusion weighted images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
-
-## DTIFiberAnalyzer (dtifa)
-
-DTIFiberAnalyzer performs statistical computation over the extracted fibers. This enables researchers to get the information of the fiber images easily and fast.
 
 ### Developement 
 
@@ -197,52 +215,47 @@ MIT
 
 #### Requirements
 
-##### Application required
+##### Application dependencies
 
 [GENERAL]
 - Python >= 3.8.6
-- Singularity (only for dmriprep_singularity)
+- CMake >= 3.10.0 (required for some dependencies)
+- FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction. SUSCEPTIBILITY_Correct, EDDYMOTION_Correct)
+- DTIPlaygroundTools 
 
-[DMRIPrep]
+[DTIPlayground]
 - Python Libraries
-    - SimpleITK==2.1.1
+    - simpleitk==2.1.1
     - pynrrd==0.4.2
     - dipy==1.4.0 (INTERLACE_Check, BASELINE_Average)
     - pyyaml==5.3.1
     - nibabel==3.2.1
-    - tensorflow==2.7.0 (For antspynet)
-    - antspynet==0.1.2 (For BRAIN_Mask module)
-- External Packages
-    - FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction. SUSCEPTIBILITY_Correct, EDDYMOTION_Correct)
+    - tensorflow==2.8.0 (For antspynet)
+    - antspynet==0.1.8 (For BRAIN_Mask module)
+    - pandas==1.4.3
+    - fury==0.7.0
+    - reportlab==3.6.6
+    - pypdf2==1.26.0
+    - markdown==3.3.6
+    - xhtml2pdf==0.2.7
 
 [DMRIPrepUI]
 - Python Libraries
     - PyQt5==5.9.2
 
-[DTIAtlasbuilder]
-- Python Libraries
-    - pyyaml==5.3.1
-- Binaries
-    - DTI-Reg
-    - dtiprocess
-    - dtiaverage
-    - unu
-    - ImageMath
-    - ResampleDTIlogEuclidean
-    - GreedyAtlas
-    - BRAINSFit
-    - ITKTransformTools
-
-[DTIFiberAnalyzer]
-- Python Libraries
-    - pyyaml==5.3.1
-
 
 ### Todos
 
 - Server mode - Flask 
+- Multi node computing with Kubernetes
 
 ### Change Log
+
+##### 2022-08-19
+- dmriprep - v0.4.1 Release
+- dmriautotract - Initialized
+- dmrifiberprofile - Initialized
+- dmriatlas - name changed
 
 ##### 2022-08-16
 - dmriprep - dwi module moved to common namespace (dtiplayground.dmri.common.dwi)

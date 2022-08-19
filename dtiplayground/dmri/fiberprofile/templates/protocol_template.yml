@@ -1,0 +1,81 @@
+##  DMRIFIBERPROFILE Application Data
+##
+##  types : boolean, string, integer, float, file, directory, list, queue , matrix, object-array
+##  default ui : boolean - checkbox
+##               string,integer,float - input
+##               list - combobox
+##               file,directory - browse with input
+##               queue - listbox
+##               matrix - edittable table
+##               object-array - ? (maybe sub dialog)
+##  Written by SK Park, NIRAL, UNC SOM, 2022
+
+version: 0.1
+options:
+
+  ### Template metadata
+  system:
+    available_types: 
+      - boolean
+      - integer
+      - float
+      - string
+      - file
+      - directory 
+      - list
+      - queue
+      - matrix
+      - object-array 
+
+  ### settings template
+  settings: null # TBD
+
+  ### io template
+  io:
+    output_directory: 
+      type: directory # file dialog for ui
+      caption: Output Directory
+      default_value: null
+      description: Output directory storing the results and generated files 
+    output_format:
+      type: list
+      caption: Output image type
+      default_value: null
+      candidates:
+        - value: null
+          caption: Same as input
+          description: Same file format will be used for the final output.
+        - value: nrrd
+          caption: NRRD file
+          description: NRRD file type for final output
+        - value: nifti
+          caption: NIFTI file
+          description: NIFTI file type for final output
+    baseline_threshold:
+      type: float
+      caption: B0 Threshold 
+      description: B0 Threshold value (default - 10.0)
+      default_value: 10.0
+    no_output_image:
+      type: boolean
+      default_value: false
+      caption: Omit Final Output
+      description: No final image output (utility purpose)
+    output_filename_base:
+      type: string
+      default_value: null
+      caption: Output basename
+      description: Final output base name
+  #### Execution related
+  execution:
+    pipeline:
+      type: queue
+      caption: Pipeline Queue
+      candidates: ## add elements from below list, each one is a key for a protocol
+        - value: IDENTITY_Process
+          caption: Identity Process
+          description: Just pass image to the next module
+      default_value: ## default elements 
+        - IDENTITY_Process
+
+      description: Pipeline queue which executes as first in first processed.

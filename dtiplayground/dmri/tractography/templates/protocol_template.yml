@@ -1,4 +1,4 @@
-##  DMRITRACT Application Data
+##  DMRIAUTOTRACT Application Data
 ##
 ##  types : boolean, string, integer, float, file, directory, list, queue , matrix, object-array
 ##  default ui : boolean - checkbox
@@ -75,7 +75,14 @@ options:
         - value: IDENTITY_Process
           caption: Identity Process
           description: Just pass image to the next module
+        - value: BRAIN_Tractography
+          caption: Brain tractography
+          description: Whole brain tractography for reference
+        - value: SINGLETRACT_Process
+          caption: Singletract Process
+          description: Single ROI tractography with registration
       default_value: ## default elements 
         - IDENTITY_Process
+        - BRAIN_Tractography
 
       description: Pipeline queue which executes as first in first processed.

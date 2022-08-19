@@ -672,9 +672,9 @@ def command_run(args):
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
     dtiplayground.dmri.common.logger.setLogfile(logfilename)  
-    logger("\r----------------------------------- QC Begins ----------------------------------------\n")
+    logger("\r----------------------------------- Automatic tractography Begins ----------------------------------------\n")
     res=proto.runPipeline(options=options)
-    logger("\r----------------------------------- QC Done ----------------------------------------\n")
+    logger("\r----------------------------------- Automatic tractography Done ----------------------------------------\n")
     return res 
 ### Arguments 
 
@@ -750,7 +750,7 @@ def get_args():
                                         default=None,nargs='*')
     parser_make_protocols.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
-    parser_make_protocols.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
+    parser_make_protocols.add_argument('--no-output-image',help="No output image file will be generated",default=False,action='store_true')
     parser_make_protocols.set_defaults(func=command_make_protocols)
         
 
@@ -761,7 +761,7 @@ def get_args():
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
     parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
-    parser_run.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
+    parser_run.add_argument('--no-output-image',help="No output output image file will be generated",default=False,action='store_true')
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output  (NRRD | NIFTI)',type=str)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()

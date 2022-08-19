@@ -44,6 +44,7 @@ setup(
         'nibabel==3.2.1',
         #'tensorflow==2.8.0',
         #'antspynet==0.1.2',
+        'pandas==1.4.3',
         'pyqt5',
         'simpleitk==2.1.1',
         'reportlab==3.6.6',

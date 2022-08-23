@@ -8,7 +8,7 @@ from pathlib import Path
 import importlib
 ###
 import numpy as np
-#import ants 
+import ants 
 import nibabel
 
 logger=prep.logger.write

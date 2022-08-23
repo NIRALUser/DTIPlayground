@@ -1,3 +1,4 @@
+cmake==3.24.1
 pynrrd==0.4.2
 dipy==1.4.0
 fury==0.7.0
@@ -10,3 +11,6 @@ pypdf2==1.26.0
 markdown==3.3.6
 xhtml2pdf==0.2.7
 pandas==1.4.3
+tensorflow==2.8.0
+antspyx==0.3.2
+antspynet==0.1.8

@@ -231,7 +231,7 @@ MIT
     - pyyaml==5.3.1
     - nibabel==3.2.1
     - tensorflow==2.8.0 (For antspynet)
-    - antspynet==0.1.8 (For BRAIN_Mask module)
+    - antspynet==0.1.2 (For BRAIN_Mask module)
     - pandas==1.4.3
     - fury==0.7.0
     - reportlab==3.6.6

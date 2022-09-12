@@ -19,7 +19,7 @@ from dipy.tracking import utils
 from dipy.tracking.local_tracking import LocalTracking 
 from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
 from dipy.tracking.streamline import Streamlines
-
+import vtk
 from pathlib import Path
 
 logger=prep.logger.write
@@ -96,16 +96,16 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         sft = StatefulTractogram(streamlines, img, Space.RASMM)
         tract_path = Path(self.output_dir).joinpath('tractogram.vtk').__str__()
         save_vtk(sft, tract_path, bbox_valid_check=False)
-        if self.protocol['vtk42'] == True:
-            reader = vtk.vtkPolyDataReader()
-            reader.SetFileName(tract_path)
-            reader.Update()
-            tract_path = Path(self.output_dir).joinpath('tractogram_42.vtk').__str__()
-            writer = vtkPolyDataReader()
-            writer.SetFileVersion(42)
-            writer.SetFileName(tract_path)
-            writer.SetInputConnection(reader.GetOutputPort())
-            writer.Write()
+        # if self.protocol['vtk42'] == True:
+        #     reader = vtk.vtkPolyDataReader()
+        #     reader.SetFileName(tract_path)
+        #     reader.Update()
+        #     tract_path = Path(self.output_dir).joinpath('tractogram_42.vtk').__str__()
+        #     writer = vtk.vtkPolyDataReader()
+        #     writer.SetFileVersion(42)
+        #     writer.SetFileName(tract_path)
+        #     writer.SetInputConnection(reader.GetOutputPort())
+        #     writer.Write()
 
 
         self.addOutputFile(tract_path, "tractogram")

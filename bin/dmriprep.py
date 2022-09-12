@@ -760,7 +760,7 @@ def get_args():
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
-    parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
+    parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=1,type=int,required=False)
     parser_run.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output  (NRRD | NIFTI)',type=str)

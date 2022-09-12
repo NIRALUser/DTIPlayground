@@ -31,7 +31,6 @@ class SINGLETRACT_Process(prep.modules.DTIPrepModule):
         protocol_options=args[0]
         self.num_threads=protocol_options['software_info']['parameters']['num_max_threads']
         self.baseline_threshold=protocol_options['baseline_threshold']
-
         # << TODOS>>
         if self.protocol['method'] == 'NIRAL':
             res = self.singletract_niral(**self.protocol)

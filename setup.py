@@ -45,11 +45,13 @@ setup(
         'antspynet==0.1.8',
         'pandas==1.4.3',
         'pyqt5',
-        'simpleitk==2.1.1',
+        # 'simpleitk==2.1.1',
+        'simpleitk',
         'reportlab==3.6.6',
         'pypdf2==1.26.0',
         'markdown==3.3.6',
-        'xhtml2pdf==0.2.7'
+        'xhtml2pdf==0.2.7',
+        'vtk==9.1.0'
        ],
 
  )

@@ -176,6 +176,7 @@ def localTractography(tensorImage, dwi_image, dipyLabelmap, output_dir,**kwargs)
 @prep.measure_time
 def dMaxTractography(tensorfit, dwi_image, dipyLabelmap, output_dir,**kwargs):
 
+
     output_peaks_file = Path(output_dir).joinpath('peaks.pkl').__str__()
     output_sl_file = Path(output_dir).joinpath('streamlines.vtk').__str__()
 
@@ -217,7 +218,7 @@ def probTractography(tensorfit, dwi_image, dipyLabelmap, output_dir,**kwargs):
 
     data = dwi_image.images
     affine = dwi_image.getAffineMatrixForNifti()
-    bvecs = [x['unit_gradient'] for x in dwi_image.getGradients()]
+    bvecs = [x['nifti_gradient'] for x in dwi_image.getGradients()]
     bvals = [x['b_value'] for x in dwi_image.getGradients()]
     gtab = gradient_table(bvals,bvecs)
 

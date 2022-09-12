@@ -31,9 +31,6 @@ setup(
     '': ['*.yml','*.yaml','*.json','*.cnf'],
     },
     scripts=glob(pjoin('bin', '*')),
-    # data_files=[('', glob(pjoin('dtiplayground/dmri/common/data','*.*'))),
-    #             ('', glob(pjoin('dtiplayground/dmri/preprocessing/templates','*.*'))),
-    #             ],
     url='https://github.com/niraluser/dtiplayground',
     keywords=['dtiplayground','dmriprep','dmriatlas','dmriautotract','dmrifiberprofile','nrrd','nifti','dwi','dti','qc','quality control'],
     install_requires=[

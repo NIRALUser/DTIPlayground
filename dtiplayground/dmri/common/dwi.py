@@ -109,7 +109,7 @@ def _load_nrrd(filename):
                 unit_vec=(vec/normalize_term)
             else:
                 unit_vec=vec 
-            nifti_vec = np.matmul(np.matmul(np.array(space_directions).transpose() , measurement_frame) , unit_vec)
+            nifti_vec = np.matmul(np.matmul(np.array(space_directions), measurement_frame) , unit_vec) ## ROI
             normalize_term=np.sqrt(np.sum(nifti_vec**2))
             if normalize_term>0:
                 nifti_grad = nifti_vec / normalize_term
@@ -166,7 +166,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
     affine=ijk_to_ras
 
-    inv_space_mat = np.linalg.inv(affine[0:3,0:3].astype('float64'))
+    inv_space_mat = np.linalg.inv(affine[0:3,0:3].astype('float64').transpose())
     if image_dim == 4:
         tmp_bvals=list(open(bvals_file,'r').read().split())
         tmp_bvecs=_load_nifti_bvecs(bvecs_file)

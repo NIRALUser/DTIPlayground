@@ -147,14 +147,18 @@ class DTIPlaygroundModule: #base class
             
             for idx,previous_result in enumerate(previous_outputs):
                 if previous_result["output"]["image_object"] is not None:
+                    # self.source_image=common.object_by_id(previous_result["output"]["image_object"])
+                    # self.images.append(copy.deepcopy(self.source_image))
                     self.source_image=common.object_by_id(previous_result["output"]["image_object"])
-                    self.images.append(copy.deepcopy(self.source_image))
+                    self.images.append(self.source_image)
                     logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.source_image)),common.Color.OK)
                 else:
                     logger("Loading image from the file : {}".format(previous_result['output']['image_path']),common.Color.PROCESS)
                     src_image_filename=Path(self.output_root).joinpath(previous_result['output']['image_path']).__str__()
+                    # self.source_image=self.loadImage(src_image_filename)
+                    # self.images.append(copy.deepcopy(self.source_image))
                     self.source_image=self.loadImage(src_image_filename)
-                    self.images.append(copy.deepcopy(self.source_image))
+                    self.images.append(self.source_image)
                         ## gradient information update
                     prev_output_dir=Path(self.output_root).joinpath(previous_result['output']['output_directory'])
                     prev_gradient_filename=prev_output_dir.joinpath('output_gradients.yml').__str__()
@@ -183,14 +187,18 @@ class DTIPlaygroundModule: #base class
             previous_result=self.getPreviousResult()
             logger(yaml.safe_dump(previous_result))
             if previous_result["output"]["image_object"] is not None:
+                # self.source_image=common.object_by_id(previous_result["output"]["image_object"])
+                # self.image=copy.deepcopy(self.source_image)
                 self.source_image=common.object_by_id(previous_result["output"]["image_object"])
-                self.image=copy.deepcopy(self.source_image)
+                self.image=self.source_image
                 logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.source_image)),common.Color.OK)
             else:
                 logger("Loading image from the file : {}".format(previous_result['output']['image_path']),common.Color.PROCESS)
                 src_image_filename=Path(self.output_root).joinpath(previous_result['output']['image_path']).__str__()
+                # self.source_image=self.loadImage(src_image_filename)
+                # self.image=copy.deepcopy(self.source_image)
                 self.source_image=self.loadImage(src_image_filename)
-                self.image=copy.deepcopy(self.source_image)
+                self.image=self.source_image
                     ## gradient information update
                 prev_output_dir=Path(self.output_root).joinpath(previous_result['output']['output_directory'])
                 prev_gradient_filename=prev_output_dir.joinpath('output_gradients.yml').__str__()

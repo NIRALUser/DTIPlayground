@@ -88,7 +88,7 @@ def _load_nrrd(filename):
     else:
         info["thicknesses"] = None
 
-    data=org_data.copy()
+    data=org_data
     ### move axis to match nifti
     if 'DWMRI_b-value' in header: ## only for the dwmri images
         data=np.moveaxis(data,grad_axis,-1)
@@ -193,7 +193,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
 
     ## move gradient index to the first (same to nrrd format)
     
-    data=org_data.copy()
+    data=org_data
 
     ## extract header info
     mat=np.array(affine)

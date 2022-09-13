@@ -16,17 +16,18 @@ $ dmriprep -v
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
 **FSL should be installed and environment variable 'FSL' needs to be set to the corresponding directory before initialization.**
 
-**install-tools** - Install DTIPlayground Tools (docker & docker-compose required)
+**install-tools** - Install DTIPlayground Tools (docker & docker-compose required if custom build is needed)
 
 **Note** : Build tested only on CentOS7 for now. However, it would work on most of linux systems. You don't need to install this tools everytime you upgrade dtiplayground.
 ```
-$ dmriprep install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only]
+$ dmriprep install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only] [--build]
 ```
 Default output directory is `$HOME/.niral-dti/dtiplayground-tools` if output directory option is omitted
 - If `--clean-install` option is present, it removes existing software packages and temporary files first.
 - If `--no-remove` option is present, it doesn't remove temporary build files after installation
 - If `--nofsl` option is present, it will not install FSL.
 - If `--install-only` option is present, it will not update software path file of the configuration of the current version.
+- If `--build` option is present, it will build DTIPlaygroundTools with docker (docker required)
 
 Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of the tools including root path of the packages, and automatically changes software paths for the current version of dmriprep unless `--install-only` option is present.
 
@@ -81,7 +82,7 @@ The first thing to do QC is to generate default protocol file that has pipeline 
 ```
 if `-o` option is omitted, the output protocol will be printed on terminal.`-d` option specifies the list of modules for the QC, with which command will generate the default pipeline and protocols of the sequence. Same module can be used redundantly. If `-d` option is not specified, the default pipeline will be generated from the file `protocol_template.yml` . You can change the default pipeline in `protocol_template.yml` file
 
-4. **run** - Running pipeline 
+4. **run** - Run pipeline 
 To run with default protocol generated from `protocol_template.yml`:
 
 ```
@@ -96,6 +97,7 @@ To run with existing protocol file:
 
 `-p` option cannot be used with `-d` option.
 
+**[NOTE]** when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
 
 ### Development of a new module 
 
@@ -141,7 +143,7 @@ $ dmriprep remove-module MYFIRST_Module
 #### Modules in other directory
 You can just copy module directory to `$HOME/.niral-dti/modules/dmriprep` and check with `$ dmriprep update` command. Same applies for removal of user modules.
 
-## DMRIAutoTract (dmriautotract)
+## DMRIAutoTract (dmriautotract) - *UNDER DEVELOPMENT*
 
 `dmriautotract` is a tool that performs automatic tractography from the diffusion weighted image. 
 
@@ -161,7 +163,7 @@ To run with existing protocol file:
 
 `-p` option cannot be used with `-d` option.
 
-## DMRIFiberProfile (dmrifiberprofile)
+## DMRIFiberProfile (dmrifiberprofile) - *UNDER DEVELOPMENT*
 
 `dmrifiberprofile` performs statistical computation over the extracted fibers. This enables researchers to get the information of the fiber images easily and fast.
 
@@ -180,7 +182,7 @@ To run with existing protocol file:
 
 `-p` option cannot be used with `-d` option.
 
-## DMRIAtlas (dmriatlas)
+## DMRIAtlas (dmriatlas) - *UNDER DEVELOPMENT*
 
 DMRIAtlas is a software to make an atlas from multiple diffusion weighted images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
 
@@ -218,22 +220,23 @@ MIT
 ##### Application dependencies
 
 [GENERAL]
-- Python >= 3.8.6
-- CMake >= 3.10.0 (required for some dependencies)
-- FSL >= 6.0 (Required for the eddy tools which perform eddymotion/suceptibility correction. SUSCEPTIBILITY_Correct, EDDYMOTION_Correct)
+- Python >= 3.8.6 and development packages (e.g. python-dev or python-devel)
+
+[POST INSTALLATION (OPTION)] : below tools can be installed using `$ dmriprep install-tools` command
+- FSL >= 6.0 
 - DTIPlaygroundTools 
 
 [DTIPlayground]
 - Python Libraries
-    - simpleitk==2.1.1
+    - simpleitk>=2.1.1
     - pynrrd==0.4.2
-    - dipy==1.4.0 (INTERLACE_Check, BASELINE_Average)
+    - dipy==1.4.0 
     - pyyaml==5.3.1
     - nibabel==3.2.1
     - tensorflow==2.8.0 (For antspynet)
-    - antspynet==0.1.2 (For BRAIN_Mask module)
+    - antspyx==0.3.2 (This should be installed due to compiling error in more recent versions)
+    - antspynet==0.1.8 (For BRAIN_Mask module)
     - pandas==1.4.3
-    - fury==0.7.0
     - reportlab==3.6.6
     - pypdf2==1.26.0
     - markdown==3.3.6
@@ -250,6 +253,13 @@ MIT
 - Multi node computing with Kubernetes
 
 ### Change Log
+
+##### 2022-09-13
+- dmriprep - v0.4.3b8
+- dmriprep - Bug fixed : Affine matrix transposition bug fixed
+- dmriprep - Memory usage: redundancy and inefficient memory management has been improved
+- dmriprep - Dependency removal: fury is removed from dependency
+- dmriprep - DTIPlayground tools installation without compile
 
 ##### 2022-08-19
 - dmriprep - v0.4.1 Release

@@ -19,7 +19,6 @@ from dipy.tracking import utils
 from dipy.tracking.local_tracking import LocalTracking 
 from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
 from dipy.tracking.streamline import Streamlines
-import vtk
 from pathlib import Path
 
 logger=prep.logger.write
@@ -38,15 +37,28 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         inputParams=self.getPreviousResult()['output']
         # << TODOS>>
         # create nifti files in output_dir
+
+## old
         input_dwi = Path(self.output_dir).joinpath('input.nii.gz').__str__()
         self.writeImageWithOriginalSpace(input_dwi,'nifti',dtype='float')
         input_bval = input_dwi.replace('.nii.gz', '.bval')
         input_bvec = input_dwi.replace('.nii.gz', '.bvec')
 
-        # load files
-        data, affine, img = load_nifti(input_dwi, return_img=True)
-        bvals, bvecs = read_bvals_bvecs(input_bval, input_bvec)
-        gradient_tab = gradient_table(bvals, bvecs)
+        import nibabel as nib
+        img = nib.load(input_dwi)
+        # # load files
+        # data, affine, img = load_nifti(input_dwi, return_img=True)
+        # bvals, bvecs = read_bvals_bvecs(input_bval, input_bvec)
+        # gradient_tab = gradient_table(bvals, bvecs)
+## old ends
+## new code
+        data = self.image.images
+        affine = self.image.getAffineMatrixForNifti()
+        bvecs = [x['nifti_gradient'] for x in self.image.getGradients()]
+        bvals = [x['b_value'] for x in self.image.getGradients()]
+        gradient_tab = gradient_table(bvals,bvecs)
+
+## new code ends
 
         # get brain mask
         masked_data, brainmask = median_otsu(data, vol_idx=[0], numpass=1)

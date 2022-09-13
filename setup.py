@@ -37,7 +37,8 @@ setup(
         'cmake==3.24.1',
         'pynrrd==0.4.2',
         'dipy==1.4.0',
-        'fury==0.7.0',
+        # 'fury==0.7.0',
+        # 'fury',
         'pyyaml==5.3.1',
         'nibabel==3.2.1',
         'tensorflow==2.8.0',
@@ -50,8 +51,7 @@ setup(
         'reportlab==3.6.6',
         'pypdf2==1.26.0',
         'markdown==3.3.6',
-        'xhtml2pdf==0.2.7',
-        'vtk==9.1.0'
+        'xhtml2pdf==0.2.7'
        ],
 
  )

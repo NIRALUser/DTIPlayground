@@ -34,24 +34,25 @@ setup(
     url='https://github.com/niraluser/dtiplayground',
     keywords=['dtiplayground','dmriprep','dmriatlas','dmriautotract','dmrifiberprofile','nrrd','nifti','dwi','dti','qc','quality control'],
     install_requires=[
-        'cmake==3.24.1',
-        'pynrrd==0.4.2',
-        'dipy==1.4.0',
+        'cmake>=3.24.1',
+        'pynrrd>=0.4.2',
+        'dipy>=1.4.0',
         # 'fury==0.7.0',
         # 'fury',
-        'pyyaml==5.3.1',
-        'nibabel==3.2.1',
+        'pyyaml>=5.3.1',
+        'nibabel>=3.2.1',
         'tensorflow==2.8.0',
         'antspyx==0.3.2', #0.3.3 and above has some build issue
         'antspynet==0.1.8',
-        'pandas==1.4.3',
+        'pandas>=1.4.3',
         'pyqt5',
         # 'simpleitk==2.1.1',
-        'simpleitk',
-        'reportlab==3.6.6',
-        'pypdf2==1.26.0',
-        'markdown==3.3.6',
-        'xhtml2pdf==0.2.7'
+        'simpleitk>=2.1.1',
+        'reportlab>=3.6.6',
+        'pypdf2>=1.26.0',
+        'markdown>=3.3.6',
+        'xhtml2pdf>=0.2.7',
+        'fury>=0.7.0'
        ],
 
  )

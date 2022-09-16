@@ -385,7 +385,6 @@ class Pipeline:
                 logger("Output directory : {}\n".format(str(output_dir_map[uid])),common.Color.DEV)
                 m=getattr(self.modules[p]['module'], p)(self.config_dir, **opts)
                 m.setOptionsAndProtocol(options)
-
                 logger(yaml.safe_dump(m.getTemplate()['process_attributes']),common.Color.DEV)
                 logger(yaml.safe_dump(m.getOptions()),common.Color.DEV)
                 logger(yaml.safe_dump(m.getProtocol()),common.Color.DEV)

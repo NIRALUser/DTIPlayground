@@ -516,12 +516,15 @@ def command_add_module(args):
         module_template_fn =Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/preprocessing/templates/module_template.py")
         module_template = open(module_template_fn,'r').read()
         module_data_fn = module_template_fn.parent.joinpath('module_template.yml')
+        module_readme_fn = module_template_fn.parent.joinpath('module_template.md')
         module_data = open(module_data_fn,'r').read()
-
+        module_readme = open(module_readme_fn,'r').read()
         ### replacing variable
         regex=r"@MODULENAME@"
         module_py = re.sub(regex,module_name,module_template,0)
         module_yml = re.sub(regex,module_name,module_data,0)
+        module_md = re.sub(regex,module_name, module_readme, 0)
+
         ### write down files into user module dir
 
         init_fn = module_dir.joinpath("__init__.py")
@@ -533,6 +536,10 @@ def command_add_module(args):
         out_yml_fn = module_dir.joinpath("{}.yml".format(module_name))
         with open(out_yml_fn,'w') as f:
             f.write(module_yml)
+        out_md_fn = module_dir.joinpath("README.md")
+        with open(out_md_fn,'w') as f:
+            f.write(module_md)
+        
         logger("Module is added, please implement the module {} in {}".format(module_name, module_dir.__str__()), color.OK)
     else: ### copy base module to new one (new name)
         base_module_dir= None

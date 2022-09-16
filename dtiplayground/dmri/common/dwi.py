@@ -98,7 +98,7 @@ def _load_nrrd(filename):
     gradients=[]
     measurement_frame = np.identity(3)
     if 'measurement_frame' in header:
-        measurement_frame = np.array(header['measurement_frame']).transpose()
+        measurement_frame = np.array(header['measurement_frame'])#.transpose() ?
     for k,v in header.items():
         if 'DWMRI_gradient' in k:
             idx=int(k.split('_')[2])
@@ -166,7 +166,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
     affine=ijk_to_ras
 
-    inv_space_mat = np.linalg.inv(affine[0:3,0:3].astype('float64').transpose())
+    inv_space_mat = np.linalg.inv(affine[0:3,0:3].astype('float64'))#.transpose()
     if image_dim == 4:
         tmp_bvals=list(open(bvals_file,'r').read().split())
         tmp_bvecs=_load_nifti_bvecs(bvecs_file)
@@ -200,9 +200,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
 
     space='left-posterior-superior'
 
-    space_directions=mat.transpose()[:3,:3]
-    space_origin=mat.transpose()[3,:3]
-
+    space_directions=mat[:3,:3] ## transpose for taking row vectors, not column vectors
+    space_origin=mat[3,:3] ## column to row vector
     endian="little"
     if header.endianness != '<' :
         endian='big'
@@ -435,25 +434,51 @@ class DWI:
         logger("Image - {} loaded".format(self.filename),common.Color.OK,terminal_only=True)
 
 
-    def getAffineMatrix(self):
-        affine=np.transpose(np.append(self.information['space_directions'],
-                                     np.expand_dims(self.information['space_origin'],0),
-                                     axis=0))
-        affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
-        return affine 
+    # def getAffineMatrix(self):
+    #     affine=np.transpose(np.append(self.information['space_directions'],
+    #                                  np.expand_dims(self.information['space_origin'],0),
+    #                                  axis=0))
+    #     affine=np.append(affine,np.array([[0,0,0,1]]),axis=0)
+    #     return affine 
 
     def getAffineMatrixForNifti(self):
         return self.getAffineMatrixBySpace('right-anterior-superior')
 
+    # def getAffineMatrixBySpace(self,target_space="right-anterior-superior"): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
+    #     space=self.information['space']
+    #     space_directions=copy.deepcopy(self.information['space_directions'])
+    #     affine=copy.deepcopy(np.array(space_directions))
+    #     # affine=self.getAffineMatrix()
+    #     space_origin=np.array(self.information['space_origin'])
+    #     affine=np.append(affine,[space_origin],axis=0)
+    #     affine=affine.transpose()
+    #     affine=np.append(affine,np.array([[0,0, 0, 1]]),axis=0)
+    #     print(affine)
+    #     src_space_elem = space.split('-')
+    #     target_space_elem = target_space.split('-')
+    #     diag_elements = [1,1,1,1]
+    #     for i,v in enumerate(target_space_elem):
+    #         if v != src_space_elem[i]:
+    #             diag_elements[i]=-1
+    #     ijk_to_lps = affine
+    #     src_to_tgt = np.diag(diag_elements)
+    #     ijk_to_ras = np.matmul(src_to_tgt, ijk_to_lps)
+    #     affine=ijk_to_ras
+    #     return affine
+
     def getAffineMatrixBySpace(self,target_space="right-anterior-superior"): #target_space left/right, posterior/anterior, inferior/superior e.g. lef-posterior-superior
         space=self.information['space']
         space_directions=copy.deepcopy(self.information['space_directions'])
-        affine=copy.deepcopy(np.array(space_directions))
+        spdir=copy.deepcopy(np.array(space_directions))
         # affine=self.getAffineMatrix()
         space_origin=np.array(self.information['space_origin'])
-        affine=np.append(affine,[space_origin],axis=0)
-        affine=affine.transpose()
-        affine=np.append(affine,np.array([[0,0, 0, 1]]),axis=0)
+        affine=np.zeros((4,4))
+        affine[0:3,0:3] = spdir
+        affine[3,0:4] = np.array([[0,0, 0, 1]])
+        affine[0:3,3] = np.array([space_origin])
+        # affine=np.append(affine,[space_origin],axis=0)
+        # affine=affine.transpose()
+        # affine=np.append(affine,np.array([[0,0, 0, 1]]),axis=0)
         src_space_elem = space.split('-')
         target_space_elem = target_space.split('-')
         diag_elements = [1,1,1,1]
@@ -466,21 +491,21 @@ class DWI:
         affine=ijk_to_ras
         return affine
 
-    def getAffineMatrixForSlice(self,column=2): # 0 for x, 1 for y , 2 for z  output 2d affine matrix (3x3)
-        affine=self.getAffineMatrix()
-        new_mat=np.delete(affine,column,axis=0)
-        new_mat=np.transpose(np.delete(np.transpose(new_mat),column,axis=0))
-        return new_mat
+    # def getAffineMatrixForSlice(self,column=2): # 0 for x, 1 for y , 2 for z  output 2d affine matrix (3x3)
+    #     affine=self.getAffineMatrix()
+    #     new_mat=np.delete(affine,column,axis=0)
+    #     new_mat=np.transpose(np.delete(np.transpose(new_mat),column,axis=0))
+    #     return new_mat
 
     def setSpaceDirection(self, target_space=None):
         if not target_space:
             return
         affine = self.getAffineMatrixBySpace(target_space=target_space)
-        at=affine.transpose()
+        at=affine#.transpose()
         self.information['space_directions']=at[:3,:3].tolist()
-        self.information['space_origin']=at[3,:3].tolist()
+        self.information['space_origin']=at[:3,3].tolist()
         self.information['space']=target_space
-
+        
     def setB0Threshold(self,b0_threshold):
         self.b0_threshold=b0_threshold
 

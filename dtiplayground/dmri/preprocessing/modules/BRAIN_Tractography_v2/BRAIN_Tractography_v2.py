@@ -1,5 +1,3 @@
-import dtiplayground.dmri.preprocessing as prep
-import dtiplayground.dmri.common as common
 import matplotlib.pyplot as plt
 import numpy
 import os
@@ -24,10 +22,14 @@ from dipy.io.vtk import save_vtk_streamlines, load_vtk_streamlines
 
 from pathlib import Path
 
-logger=prep.logger.write
+import dtiplayground.dmri.preprocessing as prep
+import dtiplayground.dmri.common as common
+import dtiplayground.dmri.common.tools as tools 
+
+logger=common.logger.write
 color = common.Color
 
-class BRAIN_Tractography(prep.modules.DTIPrepModule):
+class BRAIN_Tractography_v2(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
         
@@ -58,6 +60,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 ## new code
         data = self.image.images
         affine = self.image.getAffineMatrixForNifti()
+        # affine=img.affine
         bvecs = [x['nifti_gradient'] for x in self.image.getGradients()]
         bvals = [x['b_value'] for x in self.image.getGradients()]
         gradient_tab = gradient_table(bvals,bvecs)
@@ -66,8 +69,14 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
         # get brain mask
         masked_data, brainmask = median_otsu(data, vol_idx=[0], numpass=1)
-
+        if self.protocol['referenceTractFile'] is not None:
+            logger("Partial tractography mode",color.INFO)
+            dilated_mask = self.RegisterSingleTract(**self.protocol)
+            brainmask = brainmask * dilated_mask
+        else:
+            logger("No reference tracts are set, whole brain tractography mode is set",color.INFO)
         # get FA
+        
         dti_model = dti.TensorModel(gradient_tab)
         dti_fit = dti_model.fit(masked_data, mask=brainmask)
         fa = dti_fit.fa
@@ -94,14 +103,16 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         elif self.protocol['method'] == 'opdt':
             peaks = self.GeneratePeaksOPDT(gradient_tab, masked_data)
 
+        logger("Method: {} was selected".format(self.protocol['method']),color.INFO)
         # generate seeds
         seeds = utils.seeds_from_mask(WM_mask, affine, density=[1, 1, 1])
 
         # generate tracts
+        logger("Generating streamlines ...",color.PROCESS)
         stopping_criterion = ThresholdStoppingCriterion(fa, self.protocol['stoppingCriterionThreshold'])
         streamlines_generator = LocalTracking(peaks, stopping_criterion, seeds, affine=affine, step_size=.3)
         streamlines = Streamlines(streamlines_generator)
-
+        logger("Streamlines generated.",color.OK)
         # filter tracts
         if self.protocol['removeShortTracts'] == True:
             streamlines = self.RemoveShortTracts(streamlines, self.protocol['shortTractsThreshold'])
@@ -109,28 +120,15 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
             streamlines = self.RemoveLongTracts(streamlines, self.protocol['longTractsThreshold'])
 
         # save tracts
-        sft = StatefulTractogram(streamlines, img, Space.RASMM)
+        # sft = StatefulTractogram(streamlines, img, Space.RASMM)
+        sft = StatefulTractogram(streamlines, img, Space.VOXMM)
         tract_path = Path(self.output_dir).joinpath('tractogram.vtk').__str__()
         # save_vtk(sft, tract_path, bbox_valid_check=False)
-        logger("Saving streamlines ...",prep.Color.PROCESS)
         save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=True)
-        logger("Tractogram generation completed",prep.Color.OK)
-        # if self.protocol['vtk42'] == True:
-        #     reader = vtk.vtkPolyDataReader()
-        #     reader.SetFileName(tract_path)
-        #     reader.Update()
-        #     tract_path = Path(self.output_dir).joinpath('tractogram_42.vtk').__str__()
-        #     writer = vtk.vtkPolyDataReader()
-        #     writer.SetFileVersion(42)
-        #     writer.SetFileName(tract_path)
-        #     writer.SetInputConnection(reader.GetOutputPort())
-        #     writer.Write()
-
 
         self.addOutputFile(tract_path, "tractogram")
         self.result['output']['success']=True
         return self.result
-
     @common.measure_time
     def GetWMMaskManualThreshold(self, fa):
         WM1 = fa > self.protocol['thresholdLow']
@@ -206,6 +204,65 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         short_streamlines = [streamlines[i] for i in range(number_of_streamlines) if streamlines_length[i] < threshold]
         return short_streamlines
 
+## single tract registration
 
+    @common.measure_time
+    def RegisterSingleTract(self, **protocol):
+        res = {}
+        inputDTI = Path(self.output_dir).joinpath('input.nrrd').__str__()
+        if 'dti_path' in self.global_variables:
+            inputDTI = self.global_variables['dti_path']
+        else:
+            self.writeImageWithOriginalSpace(inputDTI,'nrrd',dtype='float')
+        inputFiberFile = protocol['referenceTractFile']
+        displacementField = protocol['displacementFieldFile']
+        if not displacementField:
+            displacementField = self.global_variables['displacement_field_path']
+            if not Path(self.global_variables['displacement_field_path']).exists():
+                raise Exception("Couldn't find the displacement field file")
 
+        outputFiberTract = Path(self.output_dir).joinpath('registered_ref_tract.vtk').__str__()
+        
+    # Register reference tract with the displacement field 
+        niralutils = tools.NIRALUtilities(softwares=self.softwares)
+        niralutils.dev_mode=True
+        # arguments = ['--polydata_input', inputFiberFile,
+        #              '-o', outputFiberTract,
+        #              '-D', displacementField,
+        #              '--inverty',
+        #              '--invertx']
+        arguments = ['--polydata_input', inputFiberFile,
+                     '-o', outputFiberTract,
+                     '-D', displacementField,
+                     '--inverty',
+                     '--invertx']
+        if self.overwriteFile(outputFiberTract) : output=niralutils.polydatatransform(arguments)
+        self.addGlobalVariable('reference_tract_path', outputFiberTract) ## update tract path to the updated one
+
+    ## Dilation and voxelization of the mapped reference tracts , getting labelmap
+        labelMapFile = Path(self.output_dir).joinpath('labelmap.nrrd').__str__()
+        arguments = ['--voxelize', labelMapFile,
+                     '--fiber_file', outputFiberTract,
+                     '-T', inputDTI]
+        fiberprocess = tools.FiberProcess(softwares=self.softwares)
+        fiberprocess.dev_mode = True
+        if self.overwriteFile(labelMapFile) : fiberprocess.execute(arguments=arguments)
+        self.addGlobalVariable('labelmap_path', labelMapFile)
+
+    ## Dilation and voxelization of the reference tracts
+        dilatedLabelmapFile = Path(self.output_dir).joinpath('labelmap_dilated.nrrd').__str__()
+        dilationRadius = self.protocol['dilationRadius']
+        imagemath = tools.ImageMath(softwares=self.softwares)
+        imagemath.dev_mode=True
+        arguments = [labelMapFile,
+                     '-dilate', str(dilationRadius)+',1',
+                     '-outfile', dilatedLabelmapFile
+                     ]
+        if self.overwriteFile(dilatedLabelmapFile) : imagemath.execute(arguments=arguments)
+        self.addGlobalVariable('labelmap_path', dilatedLabelmapFile)
+        labelMapImage = common.dwi.DWI(labelMapFile)
+        dilatedLabelmapImage = common.dwi.DWI(dilatedLabelmapFile)
+        dipyLabelMap = labelMapImage.images + dilatedLabelmapImage.images
+
+        return dipyLabelMap
 

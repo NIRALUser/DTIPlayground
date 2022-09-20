@@ -109,7 +109,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
             streamlines = self.RemoveLongTracts(streamlines, self.protocol['longTractsThreshold'])
 
         # save tracts
-        sft = StatefulTractogram(streamlines, img, Space.RASMM)
+        # sft = StatefulTractogram(streamlines, img, Space.RASMM)
         tract_path = Path(self.output_dir).joinpath('tractogram.vtk').__str__()
         # save_vtk(sft, tract_path, bbox_valid_check=False)
         logger("Saving streamlines ...",prep.Color.PROCESS)

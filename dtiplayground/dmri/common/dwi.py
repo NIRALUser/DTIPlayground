@@ -67,6 +67,8 @@ def _load_nrrd(filename):
     }
     if 'measurement_frame' in header:
         info['measurement_frame'] = header['measurement_frame'].tolist()
+    elif 'measurement frame' in header:
+        info['measurement_frame'] = header['measurement frame'].tolist()
     else:
         info['measurement_frame'] =  np.identity(3).tolist()
     if 'modality' in header:
@@ -96,12 +98,13 @@ def _load_nrrd(filename):
         info['image_size']=list(data.shape[0:3])
     ### extracting gradients
     gradients=[]
-    measurement_frame = np.identity(3)
-    if 'measurement_frame' in header:
-        measurement_frame = np.array(header['measurement_frame'])#.transpose() ?
-    if 'measurement frame' in header:
-        measurement_frame = np.array(header['measurement frame'])
-        
+    # measurement_frame = np.identity(3)
+    # if 'measurement_frame' in header:
+    #     measurement_frame = np.array(header['measurement_frame'])#.transpose() ?
+    # if 'measurement frame' in header:
+    #     measurement_frame = np.array(header['measurement frame'])
+    measurement_frame = np.array(info['measurement_frame'])
+    
     for k,v in header.items():
         if 'DWMRI_gradient' in k:
             idx=int(k.split('_')[2])
@@ -112,7 +115,8 @@ def _load_nrrd(filename):
                 unit_vec=(vec/normalize_term)
             else:
                 unit_vec=vec 
-            nifti_vec = np.matmul(np.matmul(np.array(space_directions), measurement_frame) , unit_vec) ## ROI
+            # nifti_vec = np.matmul(np.matmul(np.array(space_directions), measurement_frame) , unit_vec) ## ROI
+            nifti_vec = np.matmul(np.matmul(np.array(space_directions), measurement_frame.transpose()) , unit_vec) ## ROI, inverting measurement frame by transposing (identical to inversion)
             normalize_term=np.sqrt(np.sum(nifti_vec**2))
             if normalize_term>0:
                 nifti_grad = nifti_vec / normalize_term

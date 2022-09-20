@@ -97,11 +97,11 @@ class BRAIN_Tractography_v2(prep.modules.DTIPrepModule):
         
         # generate peaks
         if self.protocol['method'] == 'tensor':
-            peaks = self.GeneratePeaksTensor(masked_data, dti_model)
+            peaks = self.GeneratePeaksTensor(masked_data, dti_model, brainmask)
         elif self.protocol['method'] == 'csa':
-            peaks = self.GeneratePeaksCSA(gradient_tab, masked_data)
+            peaks = self.GeneratePeaksCSA(gradient_tab, masked_data, brainmask)
         elif self.protocol['method'] == 'opdt':
-            peaks = self.GeneratePeaksOPDT(gradient_tab, masked_data)
+            peaks = self.GeneratePeaksOPDT(gradient_tab, masked_data, brainmask)
 
         logger("Method: {} was selected".format(self.protocol['method']),color.INFO)
         # generate seeds
@@ -121,7 +121,7 @@ class BRAIN_Tractography_v2(prep.modules.DTIPrepModule):
 
         # save tracts
         # sft = StatefulTractogram(streamlines, img, Space.RASMM)
-        sft = StatefulTractogram(streamlines, img, Space.VOXMM)
+        # sft = StatefulTractogram(streamlines, img, Space.VOXMM)
         tract_path = Path(self.output_dir).joinpath('tractogram.vtk').__str__()
         # save_vtk(sft, tract_path, bbox_valid_check=False)
         save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=True)
@@ -160,34 +160,37 @@ class BRAIN_Tractography_v2(prep.modules.DTIPrepModule):
         return WM_mask_array
 
     @common.measure_time
-    def GeneratePeaksTensor(self, masked_data, dti_model):
+    def GeneratePeaksTensor(self, masked_data, dti_model,brainmask=None):
         sphere = get_sphere('symmetric362')
         peaks = peaks_from_model(model=dti_model,
             data=masked_data,
             sphere=sphere,
             relative_peak_threshold=self.protocol['relativePeakThreshold'],
             min_separation_angle=self.protocol['minPeakSeparationAngle'],
+            mask=brainmask,
             npeaks=2)
         return peaks
 
     @common.measure_time
-    def GeneratePeaksCSA(self, gtab, masked_data):
+    def GeneratePeaksCSA(self, gtab, masked_data, brainmask=None):
         csa_model = CsaOdfModel(gtab, sh_order=2)#self.protocol['shOrder'])
         peaks = peaks_from_model(model=csa_model,
             data=masked_data,
             sphere=default_sphere,
             relative_peak_threshold=self.protocol['relativePeakThreshold'],
-            min_separation_angle=self.protocol['minPeakSeparationAngle'])
+            min_separation_angle=self.protocol['minPeakSeparationAngle'],
+            mask=brainmask)
         return peaks
 
     @common.measure_time
-    def GeneratePeaksOPDT(self, gtab, masked_data):
+    def GeneratePeaksOPDT(self, gtab, masked_data, brainmask=None):
         opdt_model = OpdtModel(gtab, sh_order=2)#self.protocol['shOrder'])
         peaks = peaks_from_model(opdt_model, 
             data=masked_data,
             sphere=default_sphere,
             relative_peak_threshold=self.protocol['relativePeakThreshold'],
-            min_separation_angle=self.protocol['minPeakSeparationAngle'])
+            min_separation_angle=self.protocol['minPeakSeparationAngle'],
+            mask=brainmask)
         return peaks
 
     @common.measure_time

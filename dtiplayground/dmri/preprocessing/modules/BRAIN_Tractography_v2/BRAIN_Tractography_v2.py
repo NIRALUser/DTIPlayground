@@ -3,6 +3,7 @@ import numpy
 import os
 import SimpleITK as sitk
 import yaml
+import copy
 
 from dipy.tracking.benchmarks.bench_streamline import length
 from dipy.core.gradients import gradient_table
@@ -81,6 +82,11 @@ class BRAIN_Tractography_v2(prep.modules.DTIPrepModule):
         dti_fit = dti_model.fit(masked_data, mask=brainmask)
         fa = dti_fit.fa
 
+        # saving tensor file to nrrd
+        logger("Saving tensorfile..",color.PROCESS)
+        self.saveTensor(dti_fit)
+        logger("Tensor Saved",color.OK)
+
         # get WM mask
         if self.protocol['whiteMatterMaskThreshold'] == 'manual':
             WM_mask = self.GetWMMaskManualThreshold(fa)
@@ -129,6 +135,36 @@ class BRAIN_Tractography_v2(prep.modules.DTIPrepModule):
         self.addOutputFile(tract_path, "tractogram")
         self.result['output']['success']=True
         return self.result
+
+    @common.measure_time
+    def saveTensor(self, fitted):
+        ## convert 3x3 symmetric matrices to xx,xy,xz,yy,yz,zz vectors
+        np=numpy
+        logger("Reducing 3x3 symmetric matrix to vector")
+        def uppertriangle(matrix):
+            outvec=[]
+            for i in range(3):
+                for j in range(i,3):
+                    outvec.append(matrix[i,j])
+            return np.array(outvec)
+        quad_form = fitted.quadratic_form
+        new_quadform = np.ndarray(shape=(quad_form.shape[0],quad_form.shape[1],quad_form.shape[2],6),dtype=float)
+        for d1 in range(quad_form.shape[0]):
+            for d2 in range(quad_form.shape[1]):
+                for d3 in range(quad_form.shape[2]):
+                    mat = quad_form[d1,d2,d3]
+                    new_quadform[d1,d2,d3]=uppertriangle(mat)
+
+        # TODO : make nrrd file for new_quadform image volume (kind will be "3D-symmetric-matrix") , ref: http://teem.sourceforge.net/nrrd/format.html
+        temp_dti_image = copy.deepcopy(self.image)
+        temp_dti_image.setImage(new_quadform,modality='DTI', kinds=['space','space','space','3D-symmetric-matrix'])
+        dti_filename=Path(self.output_dir).joinpath('tensor.nrrd').__str__()
+        sp_dir=self.getSourceImageInformation()['space']
+        temp_dti_image.setSpaceDirection(target_space=sp_dir)
+        temp_dti_image.writeImage(dti_filename,dest_type='nrrd',dtype="float32")
+        self.addOutputFile(dti_filename, 'DTI')
+        self.addGlobalVariable('dti_path',dti_filename)
+
     @common.measure_time
     def GetWMMaskManualThreshold(self, fa):
         WM1 = fa > self.protocol['thresholdLow']

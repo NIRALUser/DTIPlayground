@@ -1,7 +1,9 @@
 import dtiplayground.dmri.preprocessing as base
 import dtiplayground.dmri.common as common
 import yaml
+
 logger=common.logger.write
+color=common.Color
 
 class @MODULENAME@(base.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):

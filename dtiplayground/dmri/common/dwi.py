@@ -366,7 +366,7 @@ def _write_dwi(filename,image , dest_type='nrrd',dtype='short'): ## image : imag
         return False
     
 class DWI:
-    def __init__(self,filename,b0_threshold=10,filetype=None,**kwargs):
+    def __init__(self,filename=None,b0_threshold=10,filetype=None,**kwargs):
         ## file information
         self.filename=filename
         
@@ -381,13 +381,24 @@ class DWI:
         self.original_data=None #Original Data returned from each file type
         
         ## load image
-        self.loadImage(self.filename,self.image_type)
+        if self.filename is not None:
+            self.loadImage(self.filename,self.image_type)
         
     def __getitem__(self,index):
         return self.images[index,:,:,:], self.gradients[index]
     def __len__(self):
         return len(self.gradients)
     
+    def cloneFrom(self,dwi,image=False,gradients=False):
+        self.filename = dwi.filename
+        if image:
+            self.images=dwi.images
+        if gradients:
+            self.gradients=dwi.gradients
+        self.information = dwi.information
+        self.image_type = dwi.image_type
+        self.oritinal_data = dwi.original_data
+        
     @staticmethod
     def mergeImages(*imgs):
         merged=copy.deepcopy(imgs[0])
@@ -503,6 +514,8 @@ class DWI:
     #     new_mat=np.delete(affine,column,axis=0)
     #     new_mat=np.transpose(np.delete(np.transpose(new_mat),column,axis=0))
     #     return new_mat
+
+
 
     def setSpaceDirection(self, target_space=None):
         if not target_space:

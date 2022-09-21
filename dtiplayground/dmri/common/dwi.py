@@ -389,7 +389,7 @@ class DWI:
     def __len__(self):
         return len(self.gradients)
     
-    def cloneFrom(self,dwi,image=False,gradients=False):
+    def copyFrom(self,dwi,image=False,gradients=False):
         self.filename = dwi.filename
         if image:
             self.images=dwi.images
@@ -398,7 +398,7 @@ class DWI:
         self.information = dwi.information
         self.image_type = dwi.image_type
         self.oritinal_data = dwi.original_data
-        
+
     @staticmethod
     def mergeImages(*imgs):
         merged=copy.deepcopy(imgs[0])

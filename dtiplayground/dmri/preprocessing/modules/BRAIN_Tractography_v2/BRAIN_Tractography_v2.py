@@ -26,6 +26,7 @@ from pathlib import Path
 import dtiplayground.dmri.preprocessing as prep
 import dtiplayground.dmri.common as common
 import dtiplayground.dmri.common.tools as tools 
+from dtiplayground.dmri.common.dwi import DWI
 
 logger=common.logger.write
 color = common.Color
@@ -156,7 +157,8 @@ class BRAIN_Tractography_v2(prep.modules.DTIPrepModule):
                     new_quadform[d1,d2,d3]=uppertriangle(mat)
 
         # TODO : make nrrd file for new_quadform image volume (kind will be "3D-symmetric-matrix") , ref: http://teem.sourceforge.net/nrrd/format.html
-        temp_dti_image = copy.deepcopy(self.image)
+        temp_dti_image = DWI()
+        temp_dti_image.copyFrom(self.image, image=False, gradients=False)
         temp_dti_image.setImage(new_quadform,modality='DTI', kinds=['space','space','space','3D-symmetric-matrix'])
         dti_filename=Path(self.output_dir).joinpath('tensor.nrrd').__str__()
         sp_dir=self.getSourceImageInformation()['space']

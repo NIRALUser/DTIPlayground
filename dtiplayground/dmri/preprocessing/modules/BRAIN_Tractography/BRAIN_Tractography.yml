@@ -43,7 +43,7 @@ protocol: #define protocol parameters here
             - value: tensor
               caption: DTI tensor model
               description: DTI tensor method
-        default_value: opdt
+        default_value: tensor
         description: Method used to generate the peaks used to generate the streamlines
     shOrder: # if method = csa or opdt
         type: number
@@ -90,3 +90,19 @@ protocol: #define protocol parameters here
         caption: Long tracts threshold
         default_value: 100
         description: Maximal length for tracts to be conserved.
+### for single tract
+    referenceTractFile:
+        type: string
+        caption: Reference Tract File
+        default_value: null
+        description: Path of the reference tract file (.vtk)
+    displacementFieldFile:
+        type: string
+        caption: Displacement Field Path
+        default_value: null
+        description: Path of the displacement file for transform
+    dilationRadius:
+        type: number
+        caption: Dilation Radius
+        default_value: 2
+        description: Dilation radius

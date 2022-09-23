@@ -1,10 +1,9 @@
-import dtiplayground.dmri.preprocessing as prep
-import dtiplayground.dmri.common as common
 import matplotlib.pyplot as plt
 import numpy
 import os
 import SimpleITK as sitk
 import yaml
+import copy
 
 from dipy.tracking.benchmarks.bench_streamline import length
 from dipy.core.gradients import gradient_table
@@ -24,7 +23,12 @@ from dipy.io.vtk import save_vtk_streamlines, load_vtk_streamlines
 
 from pathlib import Path
 
-logger=prep.logger.write
+import dtiplayground.dmri.preprocessing as prep
+import dtiplayground.dmri.common as common
+import dtiplayground.dmri.common.tools as tools 
+from dtiplayground.dmri.common.dwi import DWI
+
+logger=common.logger.write
 color = common.Color
 
 class BRAIN_Tractography(prep.modules.DTIPrepModule):
@@ -58,6 +62,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 ## new code
         data = self.image.images
         affine = self.image.getAffineMatrixForNifti()
+        # affine=img.affine
         bvecs = [x['nifti_gradient'] for x in self.image.getGradients()]
         bvals = [x['b_value'] for x in self.image.getGradients()]
         gradient_tab = gradient_table(bvals,bvecs)
@@ -66,17 +71,32 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
         # get brain mask
         masked_data, brainmask = median_otsu(data, vol_idx=[0], numpass=1)
-
+        dilated_mask=None
+        if self.protocol['referenceTractFile'] is not None:
+            logger("Partial tractography mode",color.INFO)
+            dilated_mask = self.RegisterSingleTract(**self.protocol)
+            # brainmask = brainmask * dilated_mask
+        else:
+            logger("No reference tracts are set, whole brain tractography mode is set",color.INFO)
         # get FA
+        
         dti_model = dti.TensorModel(gradient_tab)
         dti_fit = dti_model.fit(masked_data, mask=brainmask)
         fa = dti_fit.fa
+
+        # saving tensor file to nrrd
+        logger("Saving tensorfile..",color.PROCESS)
+        self.saveTensor(dti_fit)
+        logger("Tensor Saved",color.OK)
 
         # get WM mask
         if self.protocol['whiteMatterMaskThreshold'] == 'manual':
             WM_mask = self.GetWMMaskManualThreshold(fa)
         #if self.protocol['whiteMatterMaskThreshold'] == 'otsu':
         #    WM_mask = self.GetWMMaskOtsu(fa)
+            if dilated_mask is not None:
+                WM_mask = WM_mask * dilated_mask
+
 
         fig = plt.figure()
         plt.xticks([])
@@ -88,20 +108,22 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         
         # generate peaks
         if self.protocol['method'] == 'tensor':
-            peaks = self.GeneratePeaksTensor(masked_data, dti_model)
+            peaks = self.GeneratePeaksTensor(masked_data, dti_model, mask=None)
         elif self.protocol['method'] == 'csa':
-            peaks = self.GeneratePeaksCSA(gradient_tab, masked_data)
+            peaks = self.GeneratePeaksCSA(gradient_tab, masked_data, mask=None)
         elif self.protocol['method'] == 'opdt':
-            peaks = self.GeneratePeaksOPDT(gradient_tab, masked_data)
+            peaks = self.GeneratePeaksOPDT(gradient_tab, masked_data, mask=None)
 
+        logger("Method: {} was selected".format(self.protocol['method']),color.INFO)
         # generate seeds
         seeds = utils.seeds_from_mask(WM_mask, affine, density=[1, 1, 1])
 
         # generate tracts
+        logger("Generating streamlines ...",color.PROCESS)
         stopping_criterion = ThresholdStoppingCriterion(fa, self.protocol['stoppingCriterionThreshold'])
         streamlines_generator = LocalTracking(peaks, stopping_criterion, seeds, affine=affine, step_size=.3)
         streamlines = Streamlines(streamlines_generator)
-
+        logger("Streamlines generated.",color.OK)
         # filter tracts
         if self.protocol['removeShortTracts'] == True:
             streamlines = self.RemoveShortTracts(streamlines, self.protocol['shortTractsThreshold'])
@@ -110,26 +132,44 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
         # save tracts
         # sft = StatefulTractogram(streamlines, img, Space.RASMM)
+        # sft = StatefulTractogram(streamlines, img, Space.VOXMM)
         tract_path = Path(self.output_dir).joinpath('tractogram.vtk').__str__()
         # save_vtk(sft, tract_path, bbox_valid_check=False)
-        logger("Saving streamlines ...",prep.Color.PROCESS)
         save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=True)
-        logger("Tractogram generation completed",prep.Color.OK)
-        # if self.protocol['vtk42'] == True:
-        #     reader = vtk.vtkPolyDataReader()
-        #     reader.SetFileName(tract_path)
-        #     reader.Update()
-        #     tract_path = Path(self.output_dir).joinpath('tractogram_42.vtk').__str__()
-        #     writer = vtk.vtkPolyDataReader()
-        #     writer.SetFileVersion(42)
-        #     writer.SetFileName(tract_path)
-        #     writer.SetInputConnection(reader.GetOutputPort())
-        #     writer.Write()
-
 
         self.addOutputFile(tract_path, "tractogram")
         self.result['output']['success']=True
         return self.result
+
+    @common.measure_time
+    def saveTensor(self, fitted):
+        ## convert 3x3 symmetric matrices to xx,xy,xz,yy,yz,zz vectors
+        np=numpy
+        logger("Reducing 3x3 symmetric matrix to vector")
+        def uppertriangle(matrix):
+            outvec=[]
+            for i in range(3):
+                for j in range(i,3):
+                    outvec.append(matrix[i,j])
+            return np.array(outvec)
+        quad_form = fitted.quadratic_form
+        new_quadform = np.ndarray(shape=(quad_form.shape[0],quad_form.shape[1],quad_form.shape[2],6),dtype=float)
+        for d1 in range(quad_form.shape[0]):
+            for d2 in range(quad_form.shape[1]):
+                for d3 in range(quad_form.shape[2]):
+                    mat = quad_form[d1,d2,d3]
+                    new_quadform[d1,d2,d3]=uppertriangle(mat)
+
+        # TODO : make nrrd file for new_quadform image volume (kind will be "3D-symmetric-matrix") , ref: http://teem.sourceforge.net/nrrd/format.html
+        temp_dti_image = DWI()
+        temp_dti_image.copyFrom(self.image, image=False, gradients=False)
+        temp_dti_image.setImage(new_quadform,modality='DTI', kinds=['space','space','space','3D-symmetric-matrix'])
+        dti_filename=Path(self.output_dir).joinpath('tensor.nrrd').__str__()
+        sp_dir=self.getSourceImageInformation()['space']
+        temp_dti_image.setSpaceDirection(target_space=sp_dir)
+        temp_dti_image.writeImage(dti_filename,dest_type='nrrd',dtype="float32")
+        self.addOutputFile(dti_filename, 'DTI')
+        self.addGlobalVariable('dti_path',dti_filename)
 
     @common.measure_time
     def GetWMMaskManualThreshold(self, fa):
@@ -162,34 +202,37 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         return WM_mask_array
 
     @common.measure_time
-    def GeneratePeaksTensor(self, masked_data, dti_model):
+    def GeneratePeaksTensor(self, masked_data, dti_model,mask=None):
         sphere = get_sphere('symmetric362')
         peaks = peaks_from_model(model=dti_model,
             data=masked_data,
             sphere=sphere,
             relative_peak_threshold=self.protocol['relativePeakThreshold'],
             min_separation_angle=self.protocol['minPeakSeparationAngle'],
-            npeaks=2)
+            mask=mask,
+            npeaks=1)
         return peaks
 
     @common.measure_time
-    def GeneratePeaksCSA(self, gtab, masked_data):
+    def GeneratePeaksCSA(self, gtab, masked_data, mask=None):
         csa_model = CsaOdfModel(gtab, sh_order=2)#self.protocol['shOrder'])
         peaks = peaks_from_model(model=csa_model,
             data=masked_data,
             sphere=default_sphere,
             relative_peak_threshold=self.protocol['relativePeakThreshold'],
-            min_separation_angle=self.protocol['minPeakSeparationAngle'])
+            min_separation_angle=self.protocol['minPeakSeparationAngle'],
+            mask=mask)
         return peaks
 
     @common.measure_time
-    def GeneratePeaksOPDT(self, gtab, masked_data):
+    def GeneratePeaksOPDT(self, gtab, masked_data, mask=None):
         opdt_model = OpdtModel(gtab, sh_order=2)#self.protocol['shOrder'])
         peaks = peaks_from_model(opdt_model, 
             data=masked_data,
             sphere=default_sphere,
             relative_peak_threshold=self.protocol['relativePeakThreshold'],
-            min_separation_angle=self.protocol['minPeakSeparationAngle'])
+            min_separation_angle=self.protocol['minPeakSeparationAngle'],
+            mask=mask)
         return peaks
 
     @common.measure_time
@@ -206,6 +249,60 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         short_streamlines = [streamlines[i] for i in range(number_of_streamlines) if streamlines_length[i] < threshold]
         return short_streamlines
 
+## single tract registration
 
+    @common.measure_time
+    def RegisterSingleTract(self, **protocol):
+        res = {}
+        inputDTI = Path(self.output_dir).joinpath('input.nrrd').__str__()
+        if 'dti_path' in self.global_variables:
+            inputDTI = self.global_variables['dti_path']
+        else:
+            self.writeImageWithOriginalSpace(inputDTI,'nrrd',dtype='float')
+        inputFiberFile = protocol['referenceTractFile']
+        displacementField = protocol['displacementFieldFile']
+        if not displacementField:
+            displacementField = self.global_variables['displacement_field_path']
+            if not Path(self.global_variables['displacement_field_path']).exists():
+                raise Exception("Couldn't find the displacement field file")
 
+        outputFiberTract = Path(self.output_dir).joinpath('registered_ref_tract.vtk').__str__()
+        
+    # Register reference tract with the displacement field 
+        niralutils = tools.NIRALUtilities(softwares=self.softwares)
+        niralutils.dev_mode=True
+        arguments = ['--polydata_input', inputFiberFile,
+                     '-o', outputFiberTract,
+                     '-D', displacementField,
+                     '--inverty',
+                     '--invertx']
+        if self.overwriteFile(outputFiberTract) : output=niralutils.polydatatransform(arguments)
+        self.addGlobalVariable('reference_tract_path', outputFiberTract) ## update tract path to the updated one
+
+    ## Dilation and voxelization of the mapped reference tracts , getting labelmap
+        labelMapFile = Path(self.output_dir).joinpath('labelmap.nrrd').__str__()
+        arguments = ['--voxelize', labelMapFile,
+                     '--fiber_file', outputFiberTract,
+                     '-T', inputDTI]
+        fiberprocess = tools.FiberProcess(softwares=self.softwares)
+        fiberprocess.dev_mode = True
+        if self.overwriteFile(labelMapFile) : fiberprocess.execute(arguments=arguments)
+        self.addGlobalVariable('labelmap_path', labelMapFile)
+
+    ## Dilation and voxelization of the reference tracts
+        dilatedLabelmapFile = Path(self.output_dir).joinpath('labelmap_dilated.nrrd').__str__()
+        dilationRadius = self.protocol['dilationRadius']
+        imagemath = tools.ImageMath(softwares=self.softwares)
+        imagemath.dev_mode=True
+        arguments = [labelMapFile,
+                     '-dilate', str(dilationRadius)+',1',
+                     '-outfile', dilatedLabelmapFile
+                     ]
+        if self.overwriteFile(dilatedLabelmapFile) : imagemath.execute(arguments=arguments)
+        self.addGlobalVariable('labelmap_path', dilatedLabelmapFile)
+        labelMapImage = common.dwi.DWI(labelMapFile)
+        dilatedLabelmapImage = common.dwi.DWI(dilatedLabelmapFile)
+        dipyLabelMap = labelMapImage.images + dilatedLabelmapImage.images
+
+        return dipyLabelMap
 

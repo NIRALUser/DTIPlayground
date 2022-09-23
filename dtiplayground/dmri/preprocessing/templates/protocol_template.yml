@@ -99,9 +99,6 @@ options:
         - value: DTI_Register
           caption: Register DTI (ANTs) 
           description: Register DTI Image using DTI-Reg with ANTs libs
-        - value: SINGLETRACT_Process
-          caption: SINGLETRACT_Process DTI 
-          description: Single tractography
         - value: MANUAL_Exclude
           caption: Exclude Gradients
           description: Manual Exclusion of Gradient volume

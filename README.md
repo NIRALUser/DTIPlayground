@@ -254,6 +254,10 @@ MIT
 
 ### Change Log
 
+##### 2022-09-22
+- dmriprep - Measurement frame bug fixed (inversion of measurement frame applied)
+- dmriprep - BRAIN_Tractography_v2 : partial tractography with reference dti. Registration added
+
 ##### 2022-09-13
 - dmriprep - v0.4.3b8
 - dmriprep - Bug fixed : Affine matrix transposition bug fixed

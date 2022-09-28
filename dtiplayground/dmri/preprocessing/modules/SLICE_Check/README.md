@@ -2,57 +2,27 @@
 
 ##### Introduction
 
-SLICE_Check.py will check problematic slices 
-
+SLICE_Check.py will check problematic slices in the diffusion images and will exclude them from the image
+ 
 ##### Protocol Parameters
 
-- protocol:
-      bSubregionalCheck: 
-        type: boolean
-        caption: Sub Regional Check
-        default_value: false 
-        description: TBD
-      subregionalCheckRelaxationFactor: 
-        type: float
-        caption: Sub Regional Check Relaxation Factor
-        default_value: 1.10
-        description: TBD
-      checkTimes: 
-        type: integer
-        caption: Check Times
-        default_value: 0
-        description: TBD
-      headSkipSlicePercentage: 
-        type: float
-        caption: Head Skip Percentage
-        default_value: 0.10
-        description: TBD
-      tailSkipSlicePercentage: 
-        type: float
-        caption: Tail Skip Percentage
-        default_value: 0.10
-        description: TBD
-      correlationDeviationThresholdbaseline: 
-        type: float
-        caption: Correlation's Deviation Threshold Baseline
-        default_value: 3.0
-        description: TBD
-      correlationDeviationThresholdgradient: 
-        type: float
-        caption: Correlation's Deviation Threshold Gradient 
-        default_value: 3.5
-        description: TBD
-      quadFit:
-        type: boolean 
-        caption: Quadratic fit 
-        default_value: True
-        description: Quadratic fit of stdev multiple between baseline and gradients
+- bSubregionalCheck is a boolean with a default value of false, it will check all the subregional slices
 
+- subregionalCheckRelaxationFactor is a float with a default value of 1.10, it will check the relaxation factor of the subregional slices
+
+- checkTimes is an integer with a default value of 0, it will check the number of times the slice is problematic
+
+- headSkipSlicePercentage is a float with a default value of 0.10, it will skip the first 10% of the slices
+
+- tailSkipSlicePercentage is a float with a default value of 0.10, it will skip the last 10% of the slices
+
+- correlationDeviationThresholdbaseline is a float with a default value of 3.0, it will check the correlation's deviation threshold of the baseline
+
+- correlationDeviationThresholdgradient is a float with a default value of 3.5, it will check the correlation's deviation threshold of the gradients
+
+- quadFit is a boolean with a default value of True, it will check the quadratic fit of the stdev multiple between the baseline and the gradients
 ##### Examples
 
 
 ##### Author(s)
 
-- Sang Kyoon Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
-- Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
-- Timothée Teyssier - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France

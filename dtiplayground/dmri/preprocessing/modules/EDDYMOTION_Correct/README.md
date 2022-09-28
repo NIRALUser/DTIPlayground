@@ -1,42 +1,20 @@
 ### EDDYMOTION_Correct
 
 ##### Introduction
-EDDYMOTION_Correct.py helps to correct the EDDY motion artefacts
+EDDYMOTION_Correct.py helps to correct the EDDY motion artefacts in the diffusion images
 
 ##### Protocol Parameters
 
-- protocol:
-      # susceptibilityCorrection:
-      #   type: boolean
-      #   caption: Susceptibility Correction
-      #   default_value: False 
-      #   description: Correcting susceptibility motion, SUSCEPTIBILITY_Correct module is required to be performed before EDDY 
-      estimateMoveBySusceptibility:
-        type: boolean
-        caption: Estimate move by susceptibility
-        default_value: True
-        description: Estimate move by susceptibility
-      interpolateBadData:
-        type: boolean
-        caption: Interpolate bad data
-        default_value: True
-        description: Interpolate bad data (--repol)
-      dataIsShelled:
-        type: boolean
-        caption: Data is shelled
-        default_value: True
-        description: If the data is shelled, check this to be true
-      qcReport:
-        type: boolean
-        caption: Generate QC report
-        default_value: False
-        description: Generate QC report from FSL
+- estimateMoveBySusceptibility is a boolean parameter with a default value of True that indicates if the move will be estimated by susceptibility
+
+- interpolateBadData is a boolean parameter with a default value of True that indicates if the bad data will be interpolated
+
+- dataIsShelled is a boolean parameter with a default value of True that indicates if the data is shelled
+
+- qcReport is a boolean parameter with a default value of False that generates a QC report from FSL
 
 ##### Examples
 
 
 ##### Author(s)
 
-- Sang Kyoon Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
-- Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
-- Timothée Teyssier - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France

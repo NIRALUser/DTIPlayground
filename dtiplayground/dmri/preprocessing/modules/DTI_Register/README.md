@@ -1,87 +1,30 @@
 ### DTI_Register
 
 ##### Introduction
-DTI_Register allows you to register DTI
+DTI_Register allows you to register DTI images to a template. It is based on the ANTs software. It allows to register the DTI images to a template and to apply the transformation to the FA image.
 
 ##### Protocol Parameters
 
-- protocol:
-      method: 
-        type: list
-        caption: Method
-        default_value: ANTs
-        candidates:
-          - value: ANTs
-            caption: ANTs
-            description: Use ANTs to register
-        description: Method to register DTI (ANTs)
-      referenceImage:
-        type: string
-        caption: Reference Image Path 
-        default_value: null
-        description: Reference (Fixed Image)
-      ANTsPath:
-        type: string
-        caption: ANTS directory
-        default_value: $ANTSDIR
-        description: ANTs installation directory (default is dtiplayground-tools/ANTs)
-        tag:
-          - ANTS
-      ANTsMethod:
-        type: string
-        caption: ANTS method
-        default_value: useScalar-ANTS
-        tag:
-          - ANTS
-      registrationType:
-        type: list
-        caption: Registration Type
-        default_value: GreedyDiffeo
-        candidates:
-          - value: GreedyDiffeo 
-            caption: Greedy Diffeo
-            description: Greedy Diffeo
-        description: Registration Type
-        tag:
-          - ANTS
-      similarityMetric:
-        type: list
-        caption: Similarity Metric
-        default_value: CC
-        candidates:
-          - value: CC 
-            caption: Cross Correlation
-            description: Cross Correlation
-        description: Similarity Metric 
-        tag:
-          - ANTS 
-      similarityParameter:
-        type: number
-        caption: Similarity Parameter
-        default_value: 4
-        description: Similarity Parameter
-        tag:
-          - ANTS
-      ANTsIterations:
-        type: string
-        caption: Iterations
-        default_value: 100x50x25
-        description: Iteration parameter for ANTS
-        tag:
-          - ANTS
-      gaussianSigma:
-        type: number
-        caption: Gaussian Sigma
-        default_value: 3
-        description: Gaussian Sigma
-        tag:
-          - ANTS
+- method is a list with a default value of ANTs, it will check the method to register DTI (ANTs)
+
+- referenceImage is a string with a default value of null, it will be the reference (Fixed Image) path
+
+- ANTsPath is a string with a default value of $ANTSDIR, it will be the ANTs installation directory (default is dtiplayground-tools/ANTs)
+
+- ANTsMethod is a string with a default value of useScalar-ANTS, it will be the ANTs method
+
+- registrationType is a list with a default value of GreedyDiffeo, it will check the registration type
+
+- similarityMetric is a list with a default value of CC, it will check the similarity metric
+
+- similarityParameter is an integer number with a default value of 4, it will be the similarity parameter
+
+- ANTsIterations is a string with a default value of 100x50x25, it will be the iteration parameter for ANTS
+
+- gaussianSigma is an integer number with a default value of 3, it will be the gaussian parameter sigma
 
 ##### Examples
 
 
 ##### Author(s)
 
-- Sang Kyoon Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
-- Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
-- Timothée Teyssier - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France

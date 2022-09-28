@@ -6,12 +6,7 @@ UTIL_Merge will merge 2 images to one image
 
 ##### Protocol Parameters
 
-- protocol:
-      TestParam: 
-        type: string
-        caption: Test parameter
-        default_value: null
-        description: Test parameter
+- TestParam is a string parameter with a default value of null, This is the Test parameter
 
 
 ##### Examples
@@ -19,6 +14,3 @@ UTIL_Merge will merge 2 images to one image
 
 ##### Author(s)
 
-- Sang Kyoon Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
-- Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
-- Timothée Teyssier - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France

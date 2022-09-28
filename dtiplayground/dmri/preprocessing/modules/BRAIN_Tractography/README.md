@@ -2,115 +2,46 @@
 
 ##### Introduction
 
-BRAIN_Tractography.py is a code which helps to the treatment of the tracts observed in the white matter 
+BRAIN_Tractography.py is a code which helps to the treatment of the tracts observed in the white matter of the brain. It is based on the FSL software. It allows to extract the tracts from the brain and to visualize them
 
 ##### Protocol Parameters
 
-- protocol: #define protocol parameters here
-    whiteMatterMaskThreshold:
-        type: list
-        caption: White matter mask threshold on FA
-        candidates:
-            - value: manual
-              caption: Manual threshold
-              description: Use manual threshold on FA to create a white matter mask
-            #- value: otsu
-            #  caption: Otsu threshold
-            #  description: Use Otsu threshold on FA to create a white matter mask
-        default_value: manual
-        description: Manual or Otsu threshold on FA to get a white matter mask of the brain
-    thresholdLow: # if whiteMatterMaskThreshold = manual
-        type: number
-        caption: Lower threshold
-        default_value: 0.4
-        description: Lower value of threshold to apply on FA
-    thresholdUp: # if whiteMatterMaskThreshold = manual
-        type: number
-        caption: Upper threshold
-        default_value: 0.98
-        description: Upper value of threshold to apply on FA
-    method:
-        type: list
-        caption: Method
-        candidates:
-            - value: csa
-              caption: CSA model
-              description: Constant Solid Angle method
-            - value: opdt
-              caption: OPDT model
-              description: Orientation Probability Density Transform method
-            - value: tensor
-              caption: DTI tensor model
-              description: DTI tensor method
-        default_value: tensor
-        description: Method used to generate the peaks used to generate the streamlines
-    shOrder: # if method = csa or opdt
-        type: number
-        caption: sh order
-        default_value: 2
-        description: sh order used for peak generation model
-    relativePeakThreshold:
-        type: number
-        caption: Relative peak threshold
-        default_value: 0.9
-        description: Only keeps peaks greater than relativePeakThreshold * m where m is the largest peak
-    minPeakSeparationAngle:
-        type: number
-        caption: Minimum peak separation angle
-        default_value: 25
-        description: The minimum distance between directions. If two peaks are too close only the larger of the two is returned. Number between 0 and 90.
-    stoppingCriterionThreshold:
-        type: number
-        caption: Stopping criterion threshold
-        default_value: 0.3
-        description: Threshold on FA to stop tracts
-    vtk42:
-        type: bool
-        caption: VTK format 4.2
-        default_value: False
-        description: Save output tractogram in VTK format 4.2 (instead of 5.0)
-    removeShortTracts:
-        type: bool
-        caption: Remove short tracts
-        default_value: False
-        description: Remove short tracts from tractogram
-    shortTractsThreshold:
-        type: number
-        caption: Short tracts threshold
-        default_value: 100
-        description: Minimal length for tracts to be conserved.
-    removeLongTracts:
-        type: bool
-        caption: Remove long tracts
-        default_value: False
-        description: Remove long tracts from tractogram
-    longTractsThreshold:
-        type: number
-        caption: Long tracts threshold
-        default_value: 100
-        description: Maximal length for tracts to be conserved.
-### for single tract
-    referenceTractFile:
-        type: string
-        caption: Reference Tract File
-        default_value: null
-        description: Path of the reference tract file (.vtk)
-    displacementFieldFile:
-        type: string
-        caption: Displacement Field Path
-        default_value: null
-        description: Path of the displacement file for transform
-    dilationRadius:
-        type: number
-        caption: Dilation Radius
-        default_value: 2
-        description: Dilation radius
+- whiteMatterMaskThreshold is a list with a default value of manual, it will check the Manual threshold on FA to get a white matter mask of the brain
+
+- thresholdLow is a number with a default value of 0.4, it will be the Lower value of threshold to apply on FA
+
+- thresholdUp is a number with a default value of 0.98, it will be the Upper value of threshold to apply on FA
+
+- method is a list with a default value of tensor, it will choose the Method used to generate the peaks used to generate the streamlines between different methods like CSA model, OPDT model or DTI tensor model
+
+- shOrder is a number with a default value of 2, it will be the sh order used for peak generation model
+
+- relativePeakThreshold is a number with a default value of 0.9, it will be the Only keeps peaks greater than relativePeakThreshold * m where m is the largest peak
+
+- minPeakSeparationAngle is a number with a default value of 25, it will be the The minimum distance between directions. If two peaks are too close only the larger of the two is returned. It will return a number between 0 and 90
+
+- stoppingCriterionThreshold is a number with a default value of 0.3, it will be the Threshold on FA to stop tracts
+
+- vtk42 is a boolean with a default value of False, it will check the Save output tractogram in VTK format 4.2 (instead of 5.0)
+
+- removeShortTracts is a boolean with a default value of False, it will check the Remove short tracts from tractogram
+
+- shortTractsThreshold is a number with a default value of 100, it will be the Minimal length for tracts to be conserved
+
+- removeLongTracts is a boolean with a default value of False, it will check the Remove long tracts from tractogram
+
+- longTractsThreshold is a number with a default value of 100, it will be the Maximal length for tracts to be conserved
+
+For single tract : 
+
+- referenceTractFile is a string with a default value of null, it will be the Path of the reference tract file (.vtk)
+
+- displacementFieldFile is a string with a default value of null, it will be the Path of the displacement file for transform
+
+- dilationRadius is a number with a default value of 2, it will be the Dilation radius
 
 ##### Examples
 
 
 ##### Author(s)
 
-- Sang Kyoon Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
-- Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
-- Timothée Teyssier - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France

@@ -114,18 +114,18 @@ pipeline:
       registrationType: GreedyDiffeo
       similarityMetric: CC
       similarityParameter: 4
-- - SINGLETRACT_Process
-  - options:
-      overwrite: false
-      skip: false
-      write_image: false
-    protocol:
-      NIRALUtilitiesPath: null
-      dilationRadius: 2
-      displacementFieldFile: null
-      method: NIRAL
-      referenceTractFile: null
-      scalar: fa
+# - - SINGLETRACT_Process
+#   - options:
+#       overwrite: false
+#       skip: false
+#       write_image: false
+#     protocol:
+#       NIRALUtilitiesPath: null
+#       dilationRadius: 2
+#       displacementFieldFile: null
+#       method: NIRAL
+#       referenceTractFile: null
+#       scalar: fa
 - - MANUAL_Exclude
   - options:
       overwrite: false

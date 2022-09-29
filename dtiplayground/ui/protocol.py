@@ -118,8 +118,8 @@ class Protocol():
         self.qcreport_params[2] = protocol_module[1]
       if protocol_module[0] == "DTI_Register":
         self.dtiregister_params[2] = protocol_module[1]
-      if protocol_module[0] == "SINGLETRACT_Process DTI":
-        self.singletract_params[2] = protocol_module[1]
+      # if protocol_module[0] == "SINGLETRACT_Process DTI":
+      #   self.singletract_params[2] = protocol_module[1]
       if protocol_module[0] == "BRAIN_Tractography":
         self.braintractography_params[2] = protocol_module[1]
 
@@ -342,7 +342,7 @@ class Protocol():
     self.utilmerge_params = self.utilmerge_default_params.copy()
     self.qcreport_params = self.qcreport_default_params.copy()
     self.dtiregister_params = self.dtiregister_default_params.copy()
-    self.singletract_params = self.singletract_default_params.copy()
+    # self.singletract_params = self.singletract_default_params.copy()
     self.braintractography_params = self.braintractography_default_params.copy()
 
 

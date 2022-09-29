@@ -68,7 +68,7 @@ class Widgets(QWidget):
     self.protocol_tab.details.utilmerge.communicate.send_params.connect(self.UpdateModuleParams)
     self.protocol_tab.details.qcreport.communicate.send_params.connect(self.UpdateModuleParams)
     self.protocol_tab.details.dtiregister.communicate.send_params.connect(self.UpdateModuleParams)
-    self.protocol_tab.details.singletract.communicate.send_params.connect(self.UpdateModuleParams)
+    # self.protocol_tab.details.singletract.communicate.send_params.connect(self.UpdateModuleParams)
     self.protocol_tab.details.braintractography.communicate.send_params.connect(self.UpdateModuleParams)
     # Communication from module selector subtab
     self.protocol_tab.selector.communicate.module_added_to_protocol_drop.connect(self.protocol.ModuleAddedToProtocolDrop)

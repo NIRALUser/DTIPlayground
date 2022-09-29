@@ -15,7 +15,7 @@ from dtiplayground.ui.modules_details.exclude import ExcludeGradients
 from dtiplayground.ui.modules_details.interlacecheck import InterlaceCheck
 from dtiplayground.ui.modules_details.nomodule import NoModule
 from dtiplayground.ui.modules_details.qcreport import QCReport
-from dtiplayground.ui.modules_details.singletract import Singletract
+# from dtiplayground.ui.modules_details.singletract import Singletract
 from dtiplayground.ui.modules_details.slicecheck import SliceCheck
 from dtiplayground.ui.modules_details.susceptibility import SusceptibilityCorrection
 from dtiplayground.ui.modules_details.utilheader import UtilHeader
@@ -73,7 +73,7 @@ class ModuleDetails(QWidget):
     self.interlacecheck = InterlaceCheck(protocol_template, self.interlacecheck_yml)
     self.no_module = NoModule()
     self.qcreport = QCReport(protocol_template, self.qcreport_yml)
-    self.singletract = Singletract(protocol_template, self.singletract_yml)
+    # self.singletract = Singletract(protocol_template, self.singletract_yml)
     self.slicecheck = SliceCheck(protocol_template, self.slicecheck_yml)
     self.susceptibility = SusceptibilityCorrection(protocol_template, self.susceptibility_yml, preferences_yml)
     self.utilheader = UtilHeader(protocol_template, self.utilheader_yml)    
@@ -94,7 +94,7 @@ class ModuleDetails(QWidget):
     self.details_stack.addWidget(self.utilmerge.stack)
     self.details_stack.addWidget(self.qcreport.stack)
     self.details_stack.addWidget(self.dtiregister.stack)
-    self.details_stack.addWidget(self.singletract.stack)
+    # self.details_stack.addWidget(self.singletract.stack)
     self.details_stack.addWidget(self.braintractography.stack)
 
     # layout
@@ -146,15 +146,15 @@ class ModuleDetails(QWidget):
     filepath = module_dir.joinpath("DTI_Register/DTI_Register.yml")
     self.dtiregister_yml = yaml.safe_load(open(filepath, 'r'))
 
-    filepath = module_dir.joinpath("SINGLETRACT_Process/SINGLETRACT_Process.yml")
-    self.singletract_yml = yaml.safe_load(open(filepath, 'r'))
+    # filepath = module_dir.joinpath("SINGLETRACT_Process/SINGLETRACT_Process.yml")
+    # self.singletract_yml = yaml.safe_load(open(filepath, 'r'))
 
     filepath = module_dir.joinpath("BRAIN_Tractography/BRAIN_Tractography.yml")
     self.braintractography_yml = yaml.safe_load(open(filepath, 'r'))
 
     self.modules_yml_list = [self.slicecheck_yml, self.interlacecheck_yml, self.baselineaverage_yml,
       self.susceptibility_yml, self.eddymotion_yml, self.brainmask_yml, self.dtiestimate_yml, self.exclude_yml,
-      self.utilheader_yml, self.utilmerge_yml, self.qcreport_yml, self.dtiregister_yml, self.singletract_yml,
+      self.utilheader_yml, self.utilmerge_yml, self.qcreport_yml, self.dtiregister_yml, #self.singletract_yml,
       self.braintractography_yml]
 
   def DetailsDisplay(self, data):
@@ -501,7 +501,7 @@ class ModuleDetails(QWidget):
       self.details_stack.setCurrentIndex(13)
     
     if module[0] == "Brain Tractography":
-      self.singletract.tab_name.setText(str(index) + " - " + module[0])
+      self.braintractography.tab_name.setText(str(index) + " - " + module[0])
       if module[2]["options"]["overwrite"] == True:
         self.braintractography.overwrite.setChecked(True)
       else:

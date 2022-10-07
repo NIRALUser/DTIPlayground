@@ -1,0 +1,50 @@
+
+dtiprep:
+  result:
+    module_name: Module's name 
+    input: Previous result's output (previous output will be the input)
+    output:
+      success: Boolean success flag
+      image_path: Output image path 
+      image_object: Output image object reference id (to be passed to the next module as an input image)
+      output_path: Output path (null if not exist), computation result et al
+      output_directory: Output directory for the process 
+      excluded_gradients: Original indexes if excluded gradients at the stage
+      parameters: output parameters (the one in the template)
+
+  modules:
+    module:  module object 
+    path: module's file path 
+    template: module's default template object
+    template_path: module's template file path 
+  
+  DWI.gradients:
+    - index: 0
+      gradient: gradient vector (b_value adjusted)
+      unit_gradient: normalized gradient whose norm is 1.0
+      baseline: Boolean is this baseline(B) image?
+    - index: 1
+      gradient: gradient vector (b_value adjusted)
+      unit_gradient: normalized gradient whose norm is 1.0
+      baseline: Boolean is this baseline(B) image?
+      
+    #...      
+  DWI.information:
+    space: null
+    dimension: null
+    sizes: null
+    image_size: null 
+    b_value: null
+    space_directions: null
+    space_origin: null
+    measurement_frame: null
+    thicknesses: null
+
+  pipeline.options:
+    overwrite: Boolean overwrite the result.yml file (recompute may not be done) 
+    recompute: Boolean recompute all the part (if overwrite is not True, then it doesn't matter wheter recompute is true or not)
+    write_image: Boolean check if intermediary image is to be written, but for some modules uncheck won't work due to the forced writing (e.g. Baseline averaging)
+
+  template.process_attributes: # this will be used in DTIPrepModule.postProcess 
+    - exclude_gradients : Process that filters out the failed gradients 
+    - deform_image : Process that change image. In this case post, output image should be written at the first run (from second run, the following process should load that file i/o reading from memory)

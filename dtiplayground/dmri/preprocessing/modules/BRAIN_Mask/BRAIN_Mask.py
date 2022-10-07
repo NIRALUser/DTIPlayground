@@ -115,6 +115,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             averaged_image=baseline_img.idwi() 
             affine_matrix=src_image.getAffineMatrixForNifti()           
             averaged_image = nibabel.Nifti1Image(averaged_image, affine=affine_matrix)
+            print(averaged_path)
             nibabel.save(averaged_image, averaged_path)
         cmd_output=fsl.bet(averaged_path, output_image_path)
         mask=DWI(output_mask_path)
@@ -144,6 +145,6 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             }
             res=self.mask_antspynet(params)
         logger("Mask generation is completed",prep.Color.OK)
-        return res;
+        return res
 
 

@@ -9,7 +9,6 @@ logs
 dist
 build
 temp
-docs
 __pycache__
 dtiplayground.egg-info
 tests

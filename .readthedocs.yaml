@@ -7,7 +7,3 @@ build:
 
 sphinx:
   configuration: conf.py
-
-python:
-  install:
-    - requirements: docs/requirements.txt

@@ -38,6 +38,7 @@ Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of
 
 dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.
 
+About the Preprocessing part : [README about Preprocessing](dtiplayground/dmri/preprocessing/README.md)
 
 #### GUI Mode (Mac/Linux):
 

@@ -3,4 +3,4 @@ version: 2
 build:
   os: "centos7"
   tools:
-    python: "3.8.6"
+    python: "3.8"

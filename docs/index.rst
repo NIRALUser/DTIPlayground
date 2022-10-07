@@ -10,7 +10,13 @@ Welcome to DTIPlayground's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   installation
+   quickstart
+   usage
+   DMRIPrep
+   DMRIAtlasBuilder
+   DMRIAutotract
+   license
 
 Indices and tables
 ==================

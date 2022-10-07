@@ -13,4 +13,6 @@ __pycache__
 dtiplayground.egg-info
 tests
 _build
+_static
+_templates
 

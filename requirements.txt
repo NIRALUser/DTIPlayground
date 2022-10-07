@@ -14,3 +14,4 @@ tensorflow>=2.8.0
 antspyx>=0.3.2
 antspynet>=0.1.8
 fury>=0.7.0
+sphinx

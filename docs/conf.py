@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'DTIPlayground'
-copyright = '2022, SK Park'
+copyright = '2022, Neuro Image Research and Analysis Laboratory, University of North Carolina @ Chapel Hill'
 author = 'SK Park'
 
 # -- General configuration ---------------------------------------------------

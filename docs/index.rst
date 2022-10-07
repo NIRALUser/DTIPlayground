@@ -3,8 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-DTIPlayground - The integrated DWI processing software
+DTIPlayground - Integrated DWI processing toolkit
 ======================================================
+
+.. image:: _static/niral_logo.png
+.. include:: ../README.rst
 
 .. toctree::
    :maxdepth: 2

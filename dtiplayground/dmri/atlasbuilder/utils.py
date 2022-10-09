@@ -169,7 +169,7 @@ def ITKTransformTools_Concatenate(config,payload): ## payload should be deformat
         outputDir=_generate_concatenated_displacement_directory(config)
         binaryPath=config["m_SoftPath"][9] 
         command+=binaryPath + " concatenate "
-        refDTI=config["m_OutputPath"] + "/final_atlas/5_Final_Atlas/FinalAtlasDTI.nrrd"
+        refDTI=config["m_OutputPath"] + "/final_atlas/5_Final_Atlas/FinalAtlasDTI_float.nrrd"
         for idx, elm in enumerate(payload):
             hpairList=elm["id"].split("/")
             outFilename="_".join(hpairList) + "_GlobalDisplacementField_Concatenated.nrrd"
@@ -330,7 +330,7 @@ def parse_hbuild(hb,root_path,root_node="target"): #hbuild parser to generate bu
     if root["type"]=="node":    
         for c in root["components"]:
             seq+=parse_hbuild(hb, root_path=root_path, root_node=c)
-            nodeAtlasPath=os.path.join(root_path,"atlases/"+c+"/5_Final_Atlas/FinalAtlasDTI.nrrd")
+            nodeAtlasPath=os.path.join(root_path,"atlases/"+c+"/5_Final_Atlas/FinalAtlasDTI_float.nrrd")
             nodeFiles.append(nodeAtlasPath)
     elif root["type"]=="end_node":
         if root["filetype"]=="dataset":

@@ -9,8 +9,6 @@ class ImageMath(ExternalToolWrapper):
         elif 'softwares' in kwargs:
             self.binary_path=kwargs['softwares']['ImageMath']['path']
 
-        self.dev_mode=False
-
     def rescale(self,inputfile, outputfile , rescale=[0,10000]):
         arguments=[inputfile,'-outfile',outfile,'-rescale',",".join(rescale)]
         self.setArguments(arguments)

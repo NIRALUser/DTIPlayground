@@ -2,6 +2,9 @@ import sys
 import gc
 import datetime,time
 import uuid
+from pathlib import Path
+import yaml
+import stat
 
 class Color:
 
@@ -82,6 +85,57 @@ def measure_time(func):  ## decorator
         logger.write("[{}] Processed time : {:.2f}s".format(func.__qualname__,et),Color.DEV)
         return res 
     return wrapper 
+
+def is_executable(p):
+    if not p.exists(): return False
+    if p.is_dir(): return False
+    mode = p.stat().st_mode
+    if 'x' in stat.filemode(mode): return True
+    return False
+
+def isInBin(p):
+    return '/bin/' in str(p)
+
+def not_ants(p):
+    return 'ANTs' not in str(p)
+
+def get_executables_dpg(root_path):
+    r=root_path
+    pg = filter(lambda x: not x.is_dir(), Path(r).glob('**/*'))
+    pg = filter(lambda x: is_executable(x) and isInBin(x) and not_ants(x) , pg)
+    return pg
+
+def get_executables_ants(root_path):
+    r=root_path
+    pg = filter(lambda x: not x.is_dir(), Path(r).glob('**/*'))
+    pg = filter(lambda x: is_executable(x) and isInBin(x) and not not_ants(x) , pg)
+    return pg
+
+def get_global_variables():
+    home_dir = Path.home()
+    config_dir = home_dir.joinpath('.niral-dti')
+    global_variable_file = config_dir.joinpath('global_variables.yml')
+    return yaml.safe_load(open(global_variable_file,'r'))
+
+def get_default_dpg_executables():
+    gvals = get_global_variables()
+    root_path = gvals['dtiplayground-tools']['path']
+    pg = get_executables_dpg(root_path)
+    ## mapping
+    res = {}
+    for p in pg:
+        res[p.name] = str(p)
+    return res
+
+def get_default_ants_executables():
+    gvals = get_global_variables()
+    root_path = gvals['dtiplayground-tools']['path']
+    pg = get_executables_ants(root_path)
+    ## mapping
+    res = {}
+    for p in pg:
+        res[p.name] = str(p)
+    return res
 
 def not_implemented():
     raise Exception("Not Implemented yet")

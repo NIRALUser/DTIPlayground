@@ -3,7 +3,6 @@ from setuptools import setup, find_packages
 import json
 from os.path import join as pjoin, dirname, exists
 from glob import glob
-
 from dtiplayground.config import INFO as info
 
 using_setuptools = 'setuptools' in sys.modules
@@ -26,14 +25,19 @@ setup(
     author="SK Park, NIRAL, University of North Carolina @ Chapel Hill",
     author_email='scalphunter@gmail.com',
     packages=find_packages('.'),
-    package_dir={'': '.'},
+    package_dir={'':'.'},
     package_data = {
-    '': ['*.yml','*.yaml','*.json','*.cnf','*.md'],
+    '': ['*.yml','*.yaml','*.json','*.cnf','*.md','*.zip']
     },
+    # data_files=[
+    #     ('etc/dtiplayground-static', list(map(str,filter(lambda x: not x.is_dir(),Path('.').glob('dtiplayground-static/**/*')))))
+    # ],
     scripts=glob(pjoin('bin', '*')),
     url='https://github.com/niraluser/dtiplayground',
     keywords=['dtiplayground','dmriprep','dmriatlas','dmriautotract','dmrifiberprofile','nrrd','nifti','dwi','dti','qc','quality control'],
     install_requires=[
+        'flask',
+        'flask_cors',
         'cmake>=3.24.1',
         'pynrrd>=0.4.2',
         'dipy>=1.4.0',
@@ -52,7 +56,9 @@ setup(
         'pypdf2>=1.26.0',
         'markdown>=3.3.6',
         'xhtml2pdf>=0.2.7',
-        'fury>=0.7.0'
+        'fury>=0.7.0',
+        'sphinx',
+        'sphinx_rtd_theme'
        ],
 
  )

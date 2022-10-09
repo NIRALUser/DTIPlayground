@@ -1,0 +1,61 @@
+
+version: "3.7"
+
+volumes:
+  workingdir: 
+    driver: local
+
+services:
+
+  dtiplayground:
+    container_name: dtiplayground
+    working_dir: /
+    # network_mode : host
+    image: niraluser/dtiplayground
+    dns: 
+      - 8.8.8.8
+    build: 
+      context: . 
+      dockerfile: Dockerfile
+    user: 1000:1000
+    ipc: host
+    restart: always
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /etc/group:/etc/group:ro
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/shadow:/etc/shadow:ro
+      - /etc/sudoers:/stc/sudoers:ro
+      - /etc/sudoers.d:/etc/sudoers.d:ro 
+      - $PWD/../:/work
+    environment:
+      - TZ=America/New_York
+    command: entrypoint.sh
+
+  dtiplayground-server:
+    container_name: niraluser/dtiplayground
+    working_dir: /
+    # network_mode : host
+    image: dtiplayground
+    dns: 
+      - 8.8.8.8
+    build: 
+      context: . 
+      dockerfile: Dockerfile
+    user: 1000:1000
+    ipc: host
+    ports:
+      - 6543:6543
+    restart: always
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /etc/group:/etc/group:ro
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/shadow:/etc/shadow:ro
+      - /etc/sudoers:/stc/sudoers:ro
+      - /etc/sudoers.d:/etc/sudoers.d:ro 
+      - $PWD/../:/work
+    environment:
+      - TZ=America/New_York
+    command: entrypoint_server.sh
+

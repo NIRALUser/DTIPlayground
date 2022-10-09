@@ -1,6 +1,7 @@
 # DTI Playground 
 
-DTI Playground are python based NIRAL pipeline software including DMRIPrep (dmriprep), DTIAtlasBuilder (dmriatlasbuilder), DTIFiberAnalyzer (dmrifiberanalyzer), AutoTract
+DTI Playground is python based NIRAL pipeline software including DMRIPrep (dmriprep), DMRIAtlasBuilder (dmriatlasbuilder), DMRIFiberAnalyzer (dmrifiberanalyzer), DMRIAutoTract (dmriautotract)
+
 
 #### Installation (Mac/Linux/Windows-WSL)
 
@@ -32,6 +33,19 @@ Default output directory is `$HOME/.niral-dti/dtiplayground-tools` if output dir
 Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of the tools including root path of the packages, and automatically changes software paths for the current version of dmriprep unless `--install-only` option is present.
 
 **NOTE** Once FSL is installed, some of tools in FSL has hard coded path in the script, which means that once FSL directory is moved or copied to different directory, some of functions will not work (e.g. eddy_quad). You need to re-install FSL in that case. But changing directory of FSL doesn't affect the functions of DTIPlayground so far. 
+
+#### Installation with Docker
+
+```
+$ docker pull niraluser/dtiplayground:latest
+
+```
+
+Current docker image contains all the necessary tools (FSL/DTIPlaygroundTools) and configurations initialized. To use the container, either run bash or use as below :
+
+```
+$ docker run -it --rm -v $PWD:$PWD niraluser/dtiplayground:latest dmriprep [commands]
+```
 
 
 ## DMRIPrep (dmriprep)
@@ -200,12 +214,14 @@ DMRIAtlas is a software to make an atlas from multiple diffusion weighted images
 
 #### Authors
 
-- Sang Kyoon Park -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
+- Park, Sang Kyoon -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
 - Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
+- Teyssier, Timothée - Neuro Image Research and Analysis Laboratory, University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
 
 #### References
 
 - [Quality Control of Diffusion Weighted Images - Zhexing Liu, et al](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3864968/)
+
 
 #### Acknowlegements
 
@@ -235,13 +251,15 @@ MIT
     - pyyaml==5.3.1
     - nibabel==3.2.1
     - tensorflow==2.8.0 (For antspynet)
-    - antspyx==0.3.2 (This should be installed due to compiling error in more recent versions)
+    - antspyx==0.3.2 (This version should be installed due to compiling error in more recent versions)
     - antspynet==0.1.8 (For BRAIN_Mask module)
     - pandas==1.4.3
     - reportlab==3.6.6
     - pypdf2==1.26.0
     - markdown==3.3.6
     - xhtml2pdf==0.2.7
+    - flask
+    - flask_cors
 
 [DMRIPrepUI]
 - Python Libraries
@@ -254,6 +272,13 @@ MIT
 - Multi node computing with Kubernetes
 
 ### Change Log
+
+##### 2022-10-08
+
+- dtiplayground - dpg server development initiated
+- dtiplayground - readthedocs added [ReadTheDocs](https://dtiplayground.readthedocs.io)
+- dtiplayground - official dockerhub repository [DTIPlayground](https://https://hub.docker.com/r/niraluser/dtiplayground)
+- dmriprep - BRAIN_Tractography bug fixed
 
 ##### 2022-09-22
 - dmriprep - Measurement frame bug fixed (inversion of measurement frame applied)

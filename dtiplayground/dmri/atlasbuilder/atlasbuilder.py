@@ -15,6 +15,7 @@ import yaml
 import dtiplayground.dmri.atlasbuilder.utils as utils 
 import dtiplayground.dmri.common
 import dtiplayground.dmri.common.tools as ext_tools 
+common = dtiplayground.dmri.common
 
 logger=dtiplayground.dmri.common.logger.write
 
@@ -45,7 +46,8 @@ class AtlasBuilder(object):
         commonPath.mkdir(parents=True,exist_ok=True)
 
         ### copy greedy params
-        shutil.copy(greedyParamsPath, commonPath)
+        if greedyParamsPath.__str__() not in map(str,list(commonPath.glob('*'))):
+          shutil.copy(greedyParamsPath, commonPath)
 
         ### generate build sequence
         buildSequence=[]
@@ -72,6 +74,20 @@ class AtlasBuilder(object):
                     config=json.load(f)
                 else:
                     raise Exception("No supported file, .json or .yml can be accepted")
+
+            ### test
+            logger("Loading external tool settings",dtiplayground.dmri.common.Color.INFO)
+            ### init external toolset
+            # tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
+            # tool_pairs=list(zip(tool_list,config['m_SoftPath']))
+            tool_paths, m_softpath, tool_list = self.generate_software_paths()
+            config['m_SoftPath'] = m_softpath
+            tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_paths.items()))
+            self.tools=dict(zip(tool_list,tool_instances))
+            config['m_DTIRegExtraPath']=self.get_ants_path()
+
+            ### test end
+
             configPath=commonPath.joinpath('config.yml')
             config['m_OutputPath']=str(projectPath)
             yaml.dump(config,open(configPath,'w'))
@@ -90,12 +106,14 @@ class AtlasBuilder(object):
                 buildSequence=yaml.safe_load(f)
         
         numThreads=max(int(buildSequence[0]["m_NbThreadsString"]),1)
-        logger("Loading external tool settings",dtiplayground.dmri.common.Color.INFO)
-        ### init external toolset
-        tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
-        tool_pairs=list(zip(tool_list,config['m_SoftPath']))
-        tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_pairs))
-        self.tools=dict(zip(tool_list,tool_instances))
+        # logger("Loading external tool settings",dtiplayground.dmri.common.Color.INFO)
+        # ### init external toolset
+        # # tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
+        # # tool_pairs=list(zip(tool_list,config['m_SoftPath']))
+        # tool_paths, m_softpath, tool_list = self.generate_software_paths()
+        # config['m_SoftPath'] = m_softpath
+        # tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_paths.items()))
+        # self.tools=dict(zip(tool_list,tool_instances))
         # generate scaffolding directories 
         utils.generate_directories(projectPath,buildSequence)
 
@@ -124,6 +142,30 @@ class AtlasBuilder(object):
         }
         self.configuration=output
         return output
+
+    def get_ants_path(self):
+        ants_binaries = common.get_default_ants_executables()
+        return Path(ants_binaries['ANTS']).parent.__str__()
+
+    def generate_software_paths(self):
+        
+        tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
+        installed_tools = common.get_default_dpg_executables()
+        tools_paths = {
+            'ImageMath' : installed_tools['ImageMath'],
+            'ResampleDTIlogEuclidean' : installed_tools['ResampleDTIlogEuclidean'],
+            'CropDTI' : installed_tools['CropDTI'],
+            'DTIProcess' : installed_tools['dtiprocess'],
+            'BRAINSFit' : installed_tools['BRAINSFit'],
+            'GreedyAtlas' : installed_tools['GreedyAtlas'],
+            'DTIAverage' : installed_tools['dtiaverage'],
+            'DTIReg' : installed_tools['DTI-Reg'],
+            'UNU' : installed_tools['unu'],
+            'ITKTransformTools' : installed_tools['ITKTransformTools'],
+        }
+
+        m_softpath = list(map(lambda x: tools_paths[x], tool_list))
+        return tools_paths, m_softpath, tool_list
 
     @dtiplayground.dmri.common.measure_time
     def build(self):
@@ -364,16 +406,16 @@ class AtlasBuilder(object):
         m_CasesIDs=config["m_CasesIDs"]
         m_CasesPath=config["m_CasesPath"]
         #m_CropSize=config["m_CropSize"]
-        #m_DTIRegExtraPath=config["m_DTIRegExtraPath"]
+        m_DTIRegExtraPath=config["m_DTIRegExtraPath"]
         m_DTIRegOptions=config["m_DTIRegOptions"]
         # m_GridAtlasCommand=config["m_GridAtlasCommand"]
         # m_GridGeneralCommand=config["m_GridGeneralCommand"]
         m_InterpolLogOption=config["m_InterpolLogOption"]
         m_InterpolOption=config["m_InterpolOption"]
         m_InterpolType=config["m_InterpolType"]
-        #m_NbThreadsString=config["m_NbThreadsString"]
+        # m_NbThreadsString=config["m_NbThreadsString"]
         m_NeedToBeCropped=config["m_NeedToBeCropped"]
-        m_PythonPath=config["m_PythonPath"]
+        # m_PythonPath=config["m_PythonPath"]
         m_TensInterpol=config["m_TensInterpol"]
         m_nbLoopsDTIReg=config["m_nbLoopsDTIReg"]
 
@@ -536,7 +578,8 @@ class AtlasBuilder(object):
           BRAINSExecDir = os.path.dirname(m_SoftPath[4])
           dtiprocessExecDir = os.path.dirname(m_SoftPath[3])
           ResampExecDir = os.path.dirname(m_SoftPath[1])
-          PathList=[BRAINSExecDir,dtiprocessExecDir,ResampExecDir]
+          ITKTransformToolDir = os.path.dirname(m_SoftPath[9])
+          PathList=[BRAINSExecDir,m_DTIRegExtraPath, dtiprocessExecDir,ResampExecDir,ITKTransformToolDir]
 
           BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
           ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()
@@ -629,7 +672,8 @@ class AtlasBuilder(object):
             BRAINSExecDir = os.path.dirname(m_SoftPath[4])
             dtiprocessExecDir = os.path.dirname(m_SoftPath[3])
             ResampExecDir = os.path.dirname(m_SoftPath[1])
-            PathList=[BRAINSExecDir,dtiprocessExecDir,ResampExecDir]
+            ITKTransformToolDir = os.path.dirname(m_SoftPath[9])
+            PathList=[BRAINSExecDir,m_DTIRegExtraPath, dtiprocessExecDir,ResampExecDir,ITKTransformToolDir]
 
             BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_AffReg.txt").__str__()
             ANTSTempFileBase = FinalResampPath.joinpath("First_Resampling").joinpath(allcasesIDs[case] + "_" + m_ScalarMeasurement + "_").__str__()

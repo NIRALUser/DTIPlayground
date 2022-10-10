@@ -13,6 +13,7 @@ import shutil
 import copy
 import os
 import markdown
+from . import data 
 logger=prep.logger.write
 
 
@@ -25,7 +26,8 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         topup_config='fsl_regb02b0.cnf'
         install_dir=Path(install_dir).joinpath('parameters').joinpath('fsl')
         install_dir.mkdir(parents=True,exist_ok=True)
-        source_path=Path(dtiplayground.dmri.common.__file__).parent.joinpath('data').joinpath(topup_config)
+        #source_path=Path(dtiplayground.dmri.common.__file__).parent.joinpath('data').joinpath(topup_config)
+        source_path=Path(data.__file__).parent.joinpath(topup_config)
         dest_path=install_dir.joinpath(topup_config)
         logger("Copying FSL config file to {}".format(str(dest_path)))
         shutil.copy(source_path,dest_path)

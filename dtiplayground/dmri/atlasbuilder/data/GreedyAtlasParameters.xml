@@ -1,0 +1,64 @@
+<!--top-level node-->
+<ParameterFile>
+  <WeightedImageSet>
+    <ScaleImageWeights val="true"/>
+    <InputImageFormatString>
+      <FormatString val="" />
+      <Base val="0" />
+      <NumFiles val="9" />
+      <Weight val="1" />
+    </InputImageFormatString>
+  </WeightedImageSet>
+  <GreedyScaleLevel>
+    <ScaleLevel>
+      <!--factor by which to downsample images-->
+      <DownsampleFactor val="4" />
+    </ScaleLevel>
+    <!--Scale factor on the maximum velocity in a given deformation for computing delta-->
+    <NIterations val="150" />
+    <Iterator>
+      <MaxPert val="0.001" />
+      <DiffOper>
+        <Alpha val="1" />
+        <Beta val="1" />
+        <Gamma val="0.0001" />
+      </DiffOper>
+    </Iterator>
+  </GreedyScaleLevel>
+  <GreedyScaleLevel>
+    <ScaleLevel>
+      <!--factor by which to downsample images-->
+      <DownsampleFactor val="2" />
+    </ScaleLevel>
+    <!--Scale factor on the maximum velocity in a given deformation for computing delta-->
+    <NIterations val="120" />
+    <Iterator>
+      <MaxPert val="0.01" />
+      <DiffOper>
+        <Alpha val="1" />
+        <Beta val="1" />
+        <Gamma val="0.001" />
+      </DiffOper>
+    </Iterator>
+  </GreedyScaleLevel>
+  <GreedyScaleLevel>
+    <ScaleLevel>
+      <!--factor by which to downsample images-->
+      <DownsampleFactor val="1" />
+    </ScaleLevel>
+    <!--Scale factor on the maximum velocity in a given deformation for computing delta-->
+    <NIterations val="100" />
+    <Iterator>
+      <MaxPert val="0.1" />
+      <DiffOper>
+        <Alpha val="0.1" />
+        <Beta val="0.1" />
+        <Gamma val="0.01" />
+      </DiffOper>
+    </Iterator>
+  </GreedyScaleLevel>
+  <!--number of threads to use, 0=one per processor (only for CPU computation)-->
+  <nThreads val="3" />
+  <OutputPrefix val="/" />
+  <OutputSuffix val="mhd" />
+</ParameterFile>

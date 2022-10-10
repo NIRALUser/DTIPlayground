@@ -27,11 +27,8 @@ setup(
     packages=find_packages('.'),
     package_dir={'':'.'},
     package_data = {
-    '': ['*.yml','*.yaml','*.json','*.cnf','*.md','*.zip']
+    '': ['*.yml','*.yaml','*.json','*.xml','*.cnf','*.md','*.zip']
     },
-    # data_files=[
-    #     ('etc/dtiplayground-static', list(map(str,filter(lambda x: not x.is_dir(),Path('.').glob('dtiplayground-static/**/*')))))
-    # ],
     scripts=glob(pjoin('bin', '*')),
     url='https://github.com/niraluser/dtiplayground',
     keywords=['dtiplayground','dmriprep','dmriatlas','dmriautotract','dmrifiberprofile','nrrd','nifti','dwi','dti','qc','quality control'],

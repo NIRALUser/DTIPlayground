@@ -154,7 +154,7 @@ class Pipeline:
     def setSoftwareInfo(self, paths:object=None):
         softwares=None
         if paths is None:
-            spaths=[Path(self.config_dir).joinpath('software_paths.yml'),Path(__file__).resolve().parent.parent.joinpath('common/data/software_paths.yml')]
+            spaths=[Path(self.config_dir).joinpath('software_paths.yml'),Path(__file__).resolve().parent.joinpath('data/software_paths.yml')]
             for p in spaths:
                 if Path(p).exists():
                     softwares=yaml.safe_load(open(p,'r'))

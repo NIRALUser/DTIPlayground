@@ -81,7 +81,6 @@ class DMRIAtlasbuilderAPI:
         config_path = common_dir.joinpath('config.yml')
         hbuild_path = common_dir.joinpath('h-build.yml')
         greedy_path = common_dir.joinpath('greedy.yml')
-        greedy_xml_path = common_dir.joinpath('GreedyAtlasParameters.xml')
 
         config = params['config']
         hbuild = params['hbuild']
@@ -100,12 +99,11 @@ class DMRIAtlasbuilderAPI:
         config_path=output_dir.joinpath('common/config.yml')
         hbuild_path=output_dir.joinpath('common/h-build.yml')
         greedy_path=output_dir.joinpath('common/greedy.yml')
-        greedy_path=output_dir.joinpath("common/GreedyAtlasParameters.xml")
         bldr=AtlasBuilder()
         bldr.configure( output_dir=output_dir,
                         config_path=config_path,
                         hbuild_path=hbuild_path,
-                        greedy_params_path=greedy_path)
+                        greedy_path=greedy_path)
        
         bldr.build()
 

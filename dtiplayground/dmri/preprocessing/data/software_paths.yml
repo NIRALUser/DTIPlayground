@@ -1,0 +1,64 @@
+version : 0.1
+parameters:
+  num_max_threads: 4
+
+# under dev
+softwares:
+  ImageMath : 
+    path: ${DTIPLAYGROUNDTOOLS}/niral_utilities/bin/ImageMath
+  CropDTI: 
+    path: ${DTIPLAYGROUNDTOOLS}/niral_utilities/bin/CropDTI
+  ResampleDTIlogEuclidean: 
+    path: ${DTIPLAYGROUNDTOOLS}/ResampleDTIlogEuclidean/bin/ResampleDTIlogEuclidean
+  DTI-Reg: 
+    path: ${DTIPLAYGROUNDTOOLS}/DTI-Reg/bin/DTI-Reg
+  dtiprocess: 
+    path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/dtiprocess
+  dtiaverage: 
+    path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/dtiaverage
+  dtiestim:
+    path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/dtiestim
+  fiberprocess:
+    path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/fiberprocess
+  BRAINSFit: 
+    path: ${DTIPLAYGROUNDTOOLS}/BRAINSTools/bin/BRAINSFit
+  GreedyAtlas: 
+    path: ${DTIPLAYGROUNDTOOLS}/AtlasWerks/bin/GreedyAtlas
+  unu: 
+    path: ${DTIPLAYGROUNDTOOLS}/teem/bin/unu
+  ITKTransformTools: 
+    path: ${DTIPLAYGROUNDTOOLS}/ITKTransformTools/bin/ITKTransformTools
+  ANTs:
+    path: ${DTIPLAYGROUNDTOOLS}/ANTs/bin
+  FSL: 
+    path: ${FSL}
+  niral_utilities:
+    path: ${DTIPLAYGROUNDTOOLS}/niral_utilities/bin
+
+# softwares_alt:
+#   ImageMath : 
+#     path: /NIRAL/tools/bin_linux64/ImageMath
+#   ResampleDTIlogEuclidean: 
+#     path: /NIRAL/tools/bin_linux64/ResampleDTIlogEuclidean
+#   CropDTI: 
+#     path: /NIRAL/tools/bin_linux64/CropDTI
+#   dtiprocess: 
+#     path: /NIRAL/tools/bin_linux64/dtiprocess
+#   BRAINSFit: 
+#     path: /NIRAL/tools/bin_linux64/BRAINSFit
+#   GreedyAtlas: 
+#     path: /NIRAL/tools/bin_linux64/GreedyAtlas
+#   dtiaverage: 
+#     path: /NIRAL/tools/bin_linux64/dtiaverage
+#   DTI-Reg: 
+#     path: /NIRAL/tools/bin_linux64/DTI-Reg
+#   unu: 
+#     path: /NIRAL/tools/bin_linux64/unu
+#   ITKTransformTools: 
+#     path: /NIRAL/tools/bin_linux64/ITKTransformTools
+#   FSL: 
+#     path: /NIRAL/tools/FSL/fsl-6.0.3
+#   dtiestim:
+#     path: /NIRAL/tools/bin_linux64/dtiestim
+#   ANTs:
+#     path: /NIRAL/tools/ANTS/ANTSv2.2.0

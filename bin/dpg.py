@@ -452,7 +452,7 @@ def command_server(args):
     ## spa installation
     logger("Installing UI",color.PROCESS)
     static_dir = config_dir.joinpath('static')
-    import dtiplayground.data.spa as s 
+    import dtiplayground.api.static.spa as s 
     from zipfile import ZipFile
     spa_archive_fn=Path(s.__file__).resolve().parent.joinpath('spa.zip')
     with ZipFile(spa_archive_fn,'r') as z:

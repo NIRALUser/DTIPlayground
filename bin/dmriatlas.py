@@ -35,7 +35,6 @@ def build_atlas(args):
     bldr.configure(output_dir=args.output_dir,
                         config_path=args.config,
                         hbuild_path=args.hbuild,
-                        greedy_params_path=args.greedy_params,
                         buildsequence_path=args.buildsequence,
                         node=args.node)
    

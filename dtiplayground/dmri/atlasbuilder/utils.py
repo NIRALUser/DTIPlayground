@@ -1,7 +1,7 @@
 
 #
 #   utils.py 
-#   2021-05-10
+#   2022-10-09
 #   Written by SK Park, NIRAL, UNC
 #
 #   Atlasbuilding utilities
@@ -16,6 +16,7 @@ import argparse
 import csv 
 import copy 
 import xml.etree.cElementTree as ET 
+import xml.dom.minidom as minidom
 from pathlib import Path 
 
 import dtiplayground.dmri.atlasbuilder as ab 
@@ -23,35 +24,104 @@ import dtiplayground.dmri.common.tools as tools
 
 logger=ab.logger.write
 
-def generateGreedyAtlasParametersFile(cfg):
-    xmlfile=cfg["m_GreedyAtlasParametersTemplatePath"]
-    x=ET.parse(xmlfile)
-    r=x.getroot()
+def dumpXml(xml):
+    root = xml.getroot()
+    xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(indent="\t")
+    return xmlstr
 
-    ## remove all dummy dataset files
-    wis=r.find('WeightedImageSet')
-    wi_list=wis.findall('WeightedImage')
-    for w in wi_list:
-        wis.remove(w)
-
-    ## insert new dataset
-    for cid in cfg["m_CasesIDs"]:
+def makeXmlElementTree(config, greedy): ## generate greedy xml from the scratch (recommended)
+    root = ET.Element('ParameterFile')
+    wis = ET.SubElement(root,'WeightedImageSet')
+    ### WeightedImageSet
+    siw = ET.SubElement(wis, 'ScaleImageWeights', { 'val':'true' })
+    for cid in config['m_CasesIDs']:
         wi=ET.Element('WeightedImage',{})
-        lastLoop=str(cfg['m_nbLoops'])
-        p=os.path.join(cfg['m_OutputPath'],"1_Affine_Registration/Loop"+lastLoop+"/"+cid+"_Loop"+lastLoop+"_Final"+cfg["m_ScalarMeasurement"]+".nrrd")
+        lastLoop=str(config['m_nbLoops'])
+        p=os.path.join(config['m_OutputPath'],"1_Affine_Registration/Loop"+lastLoop+"/"+cid+"_Loop"+lastLoop+"_Final"+config["m_ScalarMeasurement"]+".nrrd")
         wiFilename=ET.Element('Filename',{'val':str(p)})
         wiItkTransform=ET.Element('ItkTransform',{'val':'1'})
         wi.insert(0,wiFilename)
         wi.insert(1,wiItkTransform)
-        wis.insert(-1,wi)  ## insert to the last
+        wis.insert(-1, wi)
 
-    ## change output path 
-    for neighbor in r.iter('OutputPrefix'):
-        logger("{} {}".format(neighbor.tag,neighbor.attrib))
-        neighbor.set('val',cfg["m_OutputPath"]+"/2_NonLinear_Registration/")
+    iif = ET.SubElement(wis, 'InputImageFormatString')
+    fs = ET.SubElement(iif, 'FormatString', { 'val':'' })
+    base = ET.SubElement(iif, 'Base', {'val':'0' })
+    num_files = ET.SubElement(iif, 'NumFiles', { 'val' : str(len(config['m_CasesIDs'])) } )
+    
+    weight = ET.SubElement(iif, 'Weight', { 'val': '1' })
+
+    ### GreedyScaleLevel
+    for row in greedy['rows']:
+        gsl = ET.SubElement(root,'GreedyScaleLevel',{})
+        scale_level = ET.SubElement(gsl, 'ScaleLevel')
+        downsample_factor = ET.SubElement(scale_level, 'DownSampleFactor')
+        downsample_factor.set('val',str(row['scale_level']))
+        n_iteration = ET.SubElement(gsl, 'NIterations')
+        n_iteration.set('val',str(row['n_iterations']))
+        iterator = ET.SubElement(gsl,'Iterator')
+        maxpert = ET.SubElement(iterator,'MaxPert')
+        maxpert.set('val',str(row['max_perturbation']))
+        diffoper = ET.SubElement(iterator, 'DiffOper')
+        alpha = ET.SubElement(diffoper,'Alpha')
+        alpha.set('val',str(row['alpha']))
+        beta = ET.SubElement(diffoper,'Beta')
+        beta.set('val', str(row['beta']))
+        gamma = ET.SubElement(diffoper,'Gamma')
+        gamma.set('val', str(row['gamma']))
+        
+    ### Other options
+    n_threads = ET.SubElement(root, 'nThreads')
+    n_threads.set('val', str(config['m_NbThreadsString']))
+    outputprefix = ET.SubElement(root, 'OutputPrefix')
+    outputprefix.set('val', config["m_OutputPath"]+"/2_NonLinear_Registration/")
+    outputsuffix = ET.SubElement(root, 'OutputSuffix')
+    outputsuffix.set('val', 'mhd')
+    xml = ET.ElementTree(element=root)
+    return xml
+
+# def makeXmlElementTreeDefault(cfg): ## generate them by default template (not recommended)
+#     xmlfile=cfg["m_GreedyAtlasParametersTemplatePath"]
+#     x=ET.parse(xmlfile)
+#     r=x.getroot()
+
+#     ## remove all dummy dataset files
+#     wis=r.find('WeightedImageSet')
+#     wi_list=wis.findall('WeightedImage')
+#     for w in wi_list:
+#         wis.remove(w)
+
+#     ## insert new dataset
+#     for cid in cfg["m_CasesIDs"]:
+#         wi=ET.Element('WeightedImage',{})
+#         lastLoop=str(cfg['m_nbLoops'])
+#         p=os.path.join(cfg['m_OutputPath'],"1_Affine_Registration/Loop"+lastLoop+"/"+cid+"_Loop"+lastLoop+"_Final"+cfg["m_ScalarMeasurement"]+".nrrd")
+#         wiFilename=ET.Element('Filename',{'val':str(p)})
+#         wiItkTransform=ET.Element('ItkTransform',{'val':'1'})
+#         wi.insert(0,wiFilename)
+#         wi.insert(1,wiItkTransform)
+#         wis.insert(-1,wi)  ## insert to the last
+
+#     ## change output path 
+#     for neighbor in r.iter('OutputPrefix'):
+#         logger("{} {}".format(neighbor.tag,neighbor.attrib))
+#         neighbor.set('val',cfg["m_OutputPath"]+"/2_NonLinear_Registration/")
+
+#     return x
+
+def generateGreedyAtlasParametersFile(cfg, greedy):
+
+    # if greedy_scale_table is not None:
+    x = makeXmlElementTree(cfg, greedy)
+    # else:
+    #     x = makeXmlElementTreeDefault(cfg)
 
     outputfile=cfg["m_OutputPath"]+"/2_NonLinear_Registration/GreedyAtlasParameters.xml"
-    x.write(outputfile)
+    xmlstr = dumpXml(x)
+    # x.write(outputfile)
+    with open(outputfile, 'w') as f:
+        f.writelines(xmlstr)
+
 
 
 def DisplayErrorAndQuit ( Error ):

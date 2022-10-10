@@ -1,4 +1,13 @@
 
+#
+#   atlasbuilder.py 
+#   2022-10-09
+#   Written by SK Park, NIRAL, UNC
+#
+#   Atlasbuilding class under dtiplayground
+#
+
+
 import os
 import time
 import sys
@@ -13,10 +22,11 @@ from pathlib import Path
 import yaml 
 
 import dtiplayground.dmri.atlasbuilder.utils as utils 
+import dtiplayground.dmri.atlasbuilder.data as data
 import dtiplayground.dmri.common
 import dtiplayground.dmri.common.tools as ext_tools 
+import dtiplayground.dmri.atlasbuilder.data as data
 common = dtiplayground.dmri.common
-
 logger=dtiplayground.dmri.common.logger.write
 
 
@@ -24,14 +34,14 @@ logger=dtiplayground.dmri.common.logger.write
 class AtlasBuilder(object):
     def __init__(self,*args,**kwargs):
         self.configuration=None  ## configuration (build, params, ...)
-        self.tools={}  #external tools
+        self.tools={}  #external tools (tool class instances)
 
-    def configure(self,output_dir,config_path,hbuild_path,greedy_params_path,buildsequence_path=None,node=None):
+    def configure(self,output_dir,config_path,hbuild_path,greedy_path,node=None):
 
         ### assertions
         assert(Path(config_path).exists())
         assert(Path(hbuild_path).exists())
-        assert(Path(greedy_params_path).exists())
+        assert(Path(greedy_path).exists())
 
         ### init output directories
         projectPath=Path(output_dir).absolute().resolve(strict=False)
@@ -39,87 +49,46 @@ class AtlasBuilder(object):
         commonPath=projectPath.joinpath('common')
         configPath=Path(config_path)
         hbuildPath=Path(hbuild_path)
-        greedyParamsPath=Path(greedy_params_path)
-
+        greedyPath=Path(greedy_path)
+        # greedyParamsPath=Path(data.__file__).resolve().parent.joinpath('GreedyAtlasParameters.xml') 
+        log_fn = projectPath.joinpath('log.txt')
+        common.logger.setLogfile(str(log_fn))  
         ### generate directories
         projectPath.mkdir(parents=True,exist_ok=True)
-        commonPath.mkdir(parents=True,exist_ok=True)
+        commonPath.mkdir(parents=False,exist_ok=True)
+    
+        ### basic parameter loading
+        greedy = yaml.safe_load(open(greedyPath,'r'))
+        hbuild = yaml.safe_load(open(hbuildPath,'r'))
+        config = yaml.safe_load(open(configPath,'r'))
 
-        ### copy greedy params
-        if greedyParamsPath.__str__() not in map(str,list(commonPath.glob('*'))):
-          shutil.copy(greedyParamsPath, commonPath)
+        ###  Tool mappings
+        logger("Loading external tool settings",dtiplayground.dmri.common.Color.INFO)
+        ### init external toolset
+        tool_paths, m_softpath, tool_list = self.generate_software_paths()
+        config['m_SoftPath'] = m_softpath
+        config['m_OutputPath']=str(projectPath)
+        tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_paths.items()))
+        self.tools=dict(zip(tool_list,tool_instances))
+        config['m_DTIRegExtraPath']=self.get_ants_path()
+        configPath=commonPath.joinpath('config.yml')
+        yaml.dump(config,open(configPath,'w'))
 
         ### generate build sequence
-        buildSequence=[]
-        hbuild={}
-        deformSequence=[]
-        numThreads=1
-        if buildsequence_path is None:
-            hbuild={}
-            with open(hbuildPath,'r') as f:
-                if hbuildPath.suffix == '.yml':
-                    hbuild=yaml.safe_load(f)
-                elif hbuildPath.suffix=='.json':
-                    hbuild=json.load(f)
-                else:
-                    raise Exception("No supported file, .json or .yml can be accepted")
-                hbuildPath=commonPath.joinpath('h-build.yml')
-                yaml.dump(hbuild,open(hbuildPath,'w'))
 
-            config={}
-            with open(configPath,'r') as f:
-                if configPath.suffix == '.yml':
-                    config=yaml.safe_load(f)
-                elif configPath.suffix == '.json':
-                    config=json.load(f)
-                else:
-                    raise Exception("No supported file, .json or .yml can be accepted")
+        hbuild["config"]=config
+        hbuild['config']['m_GreedyAtlasParametersTemplatePath']=str(commonPath.joinpath('GreedyAtlasParameters.xml'))
 
-            ### test
-            logger("Loading external tool settings",dtiplayground.dmri.common.Color.INFO)
-            ### init external toolset
-            # tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
-            # tool_pairs=list(zip(tool_list,config['m_SoftPath']))
-            tool_paths, m_softpath, tool_list = self.generate_software_paths()
-            config['m_SoftPath'] = m_softpath
-            tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_paths.items()))
-            self.tools=dict(zip(tool_list,tool_instances))
-            config['m_DTIRegExtraPath']=self.get_ants_path()
+        initSequence=utils.parse_hbuild(hbuild,root_path=projectPath,root_node=node)
+        buildSequence=utils.furnish_sequence(hbuild,initSequence)
 
-            ### test end
-
-            configPath=commonPath.joinpath('config.yml')
-            config['m_OutputPath']=str(projectPath)
-            yaml.dump(config,open(configPath,'w'))
-
-            hbuild["config"]=config
-            hbuild['config']['m_GreedyAtlasParametersTemplatePath']=str(commonPath.joinpath('GreedyAtlasParameters.xml'))
-
-            initSequence=utils.parse_hbuild(hbuild,root_path=projectPath,root_node=node)
-            buildSequence=utils.furnish_sequence(hbuild,initSequence)
-
-            #save sequence 
-            with open(commonPath.joinpath('build_sequence.yml'),'w') as f:
-                yaml.dump(buildSequence,f)
-        else:
-            with open(buildsequence,'r') as f:
-                buildSequence=yaml.safe_load(f)
-        
-        numThreads=max(int(buildSequence[0]["m_NbThreadsString"]),1)
-        # logger("Loading external tool settings",dtiplayground.dmri.common.Color.INFO)
-        # ### init external toolset
-        # # tool_list=['ImageMath','ResampleDTIlogEuclidean','CropDTI','DTIProcess','BRAINSFit','GreedyAtlas','DTIAverage','DTIReg','UNU','ITKTransformTools']
-        # # tool_pairs=list(zip(tool_list,config['m_SoftPath']))
-        # tool_paths, m_softpath, tool_list = self.generate_software_paths()
-        # config['m_SoftPath'] = m_softpath
-        # tool_instances=list(map(lambda x: getattr(ext_tools,x[0])(x[1]),tool_paths.items()))
-        # self.tools=dict(zip(tool_list,tool_instances))
-        # generate scaffolding directories 
-        utils.generate_directories(projectPath,buildSequence)
-
+        #save sequence 
         with open(commonPath.joinpath('initial_sequence.yml'),'w') as f:
-            yaml.dump(initSequence,f,indent=4)
-
+            yaml.safe_dump(initSequence,f,indent=4)
+        with open(commonPath.joinpath('build_sequence.yml'),'w') as f:
+            yaml.safe_dump(buildSequence,f)
+        # numThreads=max(int(buildSequence[0]["m_NbThreadsString"]),1)
+        utils.generate_directories(projectPath,buildSequence)
         ## generate deformation field map
         deformInitSequence=utils.generate_deformation_track(initSequence,node=hbuild['project']['target_node'])
         deformSequence=utils.furnish_deformation_track(deformInitSequence,projectPath,buildSequence)
@@ -134,6 +103,7 @@ class AtlasBuilder(object):
             "buildSequence" : buildSequence,
             "hbuild":hbuild,
             "config":config,
+            "greedy": greedy,
             "deformInitSequence":deformInitSequence,
             "deformSequence":deformSequence,
             "inverseDeformSequence":inverseDeformSequence,
@@ -175,9 +145,11 @@ class AtlasBuilder(object):
         hbuild=configuration['hbuild']
         projectPath=configuration['projectPath']
         config=configuration['config']
+        greedy=configuration['greedy']
         numThreads=max(1,int(config["m_NbThreadsString"]))
 
         ### atlas build begins (to be multiprocessed)
+
         logger("\n=============== Main Script ================")
         ## threading
         completedAtlases=[] #entry should be the node name 
@@ -189,7 +161,7 @@ class AtlasBuilder(object):
               prjName=conf["m_NodeName"]
               rt.append(prjName)
               self.preprocess(conf)
-              self.build_atlas(conf)  
+              self.build_atlas(conf,greedy)  
               rt.remove(prjName)
               ct.append(prjName)
             except Exception as e:
@@ -388,7 +360,7 @@ class AtlasBuilder(object):
         logger("\n============ End of Pre processing =============")
 
     @dtiplayground.dmri.common.measure_time
-    def build_atlas(self,cfg):
+    def build_atlas(self,cfg, greedy):
         ext_tools=deepcopy(self.tools) ### for thread safe
         config=cfg
 
@@ -459,7 +431,7 @@ class AtlasBuilder(object):
 
 # 2 NonLinear_Registration (DeformPath)
         # GreedyAtlas Command
-        utils.generateGreedyAtlasParametersFile(config)
+        utils.generateGreedyAtlasParametersFile(config, greedy)
         XMLFile= DeformPath.joinpath("GreedyAtlasParameters.xml").__str__()
         ParsedFile= DeformPath.joinpath("ParsedXML.xml").__str__()
         if m_Overwrite==1 or (not utils.CheckFileExists(DeformPath.joinpath("MeanImage.mhd").__str__(), 0, "")):
@@ -766,6 +738,7 @@ class AtlasBuilder(object):
         projectPath=configuration['projectPath']
         config=configuration['config']
         hbuild=configuration['hbuild']
+        greedy=configuration['greedy']
         node=configuration['node']
 
         ### copy final atals to 'final_atlas' directory

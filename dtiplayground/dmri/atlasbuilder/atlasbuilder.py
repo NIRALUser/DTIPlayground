@@ -146,8 +146,8 @@ class AtlasBuilder(object):
         projectPath=configuration['projectPath']
         config=configuration['config']
         greedy=configuration['greedy']
-        numThreads=max(1,int(config["m_NbThreadsString"]))
-
+        # numThreads=max(1,int(config["m_NbThreadsString"]))
+        numProcess=max(1,int(config['m_nbParallelism']))
         ### atlas build begins (to be multiprocessed)
 
         logger("\n=============== Main Script ================")
@@ -175,7 +175,7 @@ class AtlasBuilder(object):
         numNodes=len(buildSequence)
         threads=[]
         while len(completedAtlases) < numNodes:
-            if len(runningAtlases) < numThreads and len(buildSequence)>0:
+            if len(runningAtlases) < numProcess and len(buildSequence)>0:
                 if utils.dependency_satisfied(hbuild,buildSequence[0]["m_NodeName"],completedAtlases):
                     cfg=buildSequence.pop(0)
                     utils.generate_results_csv(cfg)
@@ -250,7 +250,7 @@ class AtlasBuilder(object):
             
         # Affine Registration and Normalization Loop
         n = 0
-        while n <= config['m_nbLoops'] : 
+        while n <= int(config['m_nbLoops']) : 
           # if not os.path.isdir(OutputPath.joinpath("Loop" + str(n)).__str__()):
           OutputPath.joinpath("Loop"+str(n)).mkdir(exist_ok=True)
           # Cases Loop
@@ -323,7 +323,7 @@ class AtlasBuilder(object):
             else: logger("=> The file \'" + LinearTransDTI + "\' already exists so the command will not be executed")
             # Generating FA/MA of registered images
             LinearTransDTI= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_LinearTrans_DTI.nrrd").__str__()
-            if n == config["m_nbLoops"] : LoopScalarMeasurement= OutputPath.joinpath("Loop"+str(n)).joinpath(allcasesIDs[case] + "_Loop"+ str(n)+"_Final"+config["m_ScalarMeasurement"]+".nrrd").__str__() # the last FA will be the Final output
+            if n == int(config["m_nbLoops"]) : LoopScalarMeasurement= OutputPath.joinpath("Loop"+str(n)).joinpath(allcasesIDs[case] + "_Loop"+ str(n)+"_Final"+config["m_ScalarMeasurement"]+".nrrd").__str__() # the last FA will be the Final output
             else : LoopScalarMeasurement= OutputPath.joinpath("Loop" + str(n)).joinpath(allcasesIDs[case] + "_Loop" + str(n) + "_"+config["m_ScalarMeasurement"]+".nrrd").__str__()
             
             if overwrite or (not Path(LoopScalarMeasurement).exists()):
@@ -371,7 +371,7 @@ class AtlasBuilder(object):
         m_Overwrite=config["m_Overwrite"]
         #m_useGridProcess=config["m_useGridProcess"]
         m_SoftPath=config["m_SoftPath"]
-        m_nbLoops=config["m_nbLoops"]
+        m_nbLoops=int(config["m_nbLoops"])
         m_TensTfm=config["m_TensTfm"]
         #m_TemplatePath=config["m_TemplatePath"]
         #m_BFAffineTfmMode=config["m_BFAffineTfmMode"]
@@ -389,7 +389,7 @@ class AtlasBuilder(object):
         m_NeedToBeCropped=config["m_NeedToBeCropped"]
         # m_PythonPath=config["m_PythonPath"]
         m_TensInterpol=config["m_TensInterpol"]
-        m_nbLoopsDTIReg=config["m_nbLoopsDTIReg"]
+        m_nbLoopsDTIReg=int(config["m_nbLoopsDTIReg"])
 
         ### To be removed
         if m_nbLoopsDTIReg is None: m_nbLoopsDTIReg=1
@@ -581,12 +581,12 @@ class AtlasBuilder(object):
         ### looping begins
         cnt=0
         if m_Overwrite==0:
-          for i in range(m_nbLoopsDTIReg):
+          for i in range(int(m_nbLoopsDTIReg)):
             if os.path.isdir(FinalResampPath.joinpath("Second_Resampling").joinpath("Loop_"+str(i)).__str__()):
               cnt=i 
           cnt=max(cnt,0)
 
-        while cnt < m_nbLoopsDTIReg:
+        while cnt < int(m_nbLoopsDTIReg):
           logger("-----------------------------------------------------------")
           logger("Iterative Registration cycle %d / %d" % (cnt+1,m_nbLoopsDTIReg) )
           logger("------------------------------------------------------------")

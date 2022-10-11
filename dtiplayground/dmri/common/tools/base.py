@@ -12,8 +12,7 @@ import time
 from pathlib import Path 
 import subprocess as sp
 import dtiplayground.dmri.common 
-
-logger=dtiplayground.dmri.common.logger.write
+common = dtiplayground.dmri.common 
 
 ### decorators
 
@@ -29,7 +28,11 @@ def measure_time(func):  ## decorator
     return wrapper 
 
 class ExternalToolWrapper(object):
-    def __init__(self,binary_path = None, **kwargs):
+    def __init__(self,binary_path = None,**kwargs):
+        kwargs.setdefault('logger', common.logger)
+        self.logger = kwargs['logger']
+        global logger
+        logger = self.logger.write
         self.binary_path=binary_path
         self.arguments=[]
         self.dev_mode=True
@@ -67,6 +70,7 @@ class ExternalToolWrapper(object):
 
     @measure_time
     def execute(self,arguments=None,stdin=None):
+        logger = self.logger.write
         command=self.getCommand()
         if arguments is not None: command=[self.binary_path]+arguments
         output=sp.run(command,capture_output=True,text=True,stdin=stdin)

@@ -18,6 +18,7 @@ from pathlib import Path
 import yaml
 
 from dtiplayground.dmri.atlasbuilder import AtlasBuilder 
+import  dtiplayground.dmri.common as common
 
 class DMRIAtlasbuilderAPI:
     def __init__(self,app,**kwargs):
@@ -99,7 +100,8 @@ class DMRIAtlasbuilderAPI:
         config_path=output_dir.joinpath('common/config.yml')
         hbuild_path=output_dir.joinpath('common/h-build.yml')
         greedy_path=output_dir.joinpath('common/greedy.yml')
-        bldr=AtlasBuilder()
+        ablogger = common.MultiLogger()
+        bldr=AtlasBuilder(logger = ablogger)
         bldr.configure( output_dir=output_dir,
                         config_path=config_path,
                         hbuild_path=hbuild_path,

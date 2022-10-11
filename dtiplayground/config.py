@@ -1,13 +1,13 @@
 
 INFO = {
   "dtiplayground": { 
-    "version" : "0.4.7b1"
+    "version" : "0.4.8b1"
   },
   "dmriprep": {
-    "version" : "0.4.7b1"
+    "version" : "0.4.8b1"
   },
   "dmriatlas": {
-    "version" : "0.2.0b1"
+    "version" : "2.0.0b1"
   },
   "dmriautotract" : {
     "version" : "0.0.2b1"

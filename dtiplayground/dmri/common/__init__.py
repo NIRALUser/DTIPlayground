@@ -166,19 +166,26 @@ class FileLogger(object):
 
 
 class MultiLogger(object):
-    def __init__(self,timestamp=False,verbosity=True):
+    def __init__(self,timestamp=True,verbosity=True):
         self.terminal=sys.stdout
         self.log_to_file=False
         self.timestamp=timestamp
         self.verbosity=verbosity 
         self.fileloggers=[]
+        self.filename = None
 
     def setVerbosity(self,v=True):
         self.verbosity=v 
 
     def setLogfile(self,filename,mode='a'):
         self.file=open(filename,mode)
+        self.filename = filename
         self.log_to_file=True
+
+    def resetLogfile(self):
+        if (self.file): self.file.close()
+        Path(self.filename).unlink()
+        self.setLogfile(self.filename)
 
     def addLogfile(self,filename,mode='w'):
         self.fileloggers.append(FileLogger(filename,mode))

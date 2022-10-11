@@ -28,13 +28,14 @@ import dtiplayground.dmri.common as common
 import dtiplayground.dmri.common.tools as tools 
 from dtiplayground.dmri.common.dwi import DWI
 
-logger=common.logger.write
 color = common.Color
 
 class BRAIN_Tractography(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
-        
+        global logger
+        logger = self.logger.write
+
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         ## todos

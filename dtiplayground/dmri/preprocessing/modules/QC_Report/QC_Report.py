@@ -10,16 +10,14 @@ import markdown
 from markdown import extensions
 from xhtml2pdf import pisa
 
-
-
 import dtiplayground.dmri.preprocessing as prep
-
-logger=prep.logger.write
 
 class QC_Report(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
-        
+        global logger
+        logger = self.logger.write
+
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         ## todos

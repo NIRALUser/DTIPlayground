@@ -8,7 +8,6 @@ import shutil
 import yaml,sys,traceback,time
 from pathlib import Path
 
-logger=common.logger.write
 
 def _load_protocol(filename):
     return yaml.safe_load(open(filename,'r'))
@@ -96,6 +95,11 @@ def default_pipeline_options():
 
 class Pipeline:
     def __init__(self,config_dir,modules=None,*args,**kwargs):
+        kwargs.setdefault('logger', common.logger)
+        kwargs.setdefault('global_vars', {})
+        self.logger = kwargs['logger']
+        self.global_variables=kwargs['global_vars']
+        
         self.image_paths=[]
         self.protocol_filename=None
         self.rawdata=None
@@ -118,8 +122,7 @@ class Pipeline:
         self.software_info=None # binary path of softwares (such as fsl)
         self.num_threads=4 # number of threads to use 
         self.global_variables={} # global variables to track from each module (arbitrary key-value dict)
-        if 'global_vars' in kwargs:
-            self.global_variables.update(kwargs['global_vars'])
+
         #Module related
         self.config,self.environment=load_configurations(self.config_dir)
 
@@ -128,6 +131,8 @@ class Pipeline:
         self.output_dir=None
         
         self.setSoftwareInfo()
+        global logger
+        logger = self.logger.write
 
     def loadImages(self, image_paths,b0_threshold=10):
         self.image_paths=list(map(lambda x:str(Path(x).absolute()),image_paths))

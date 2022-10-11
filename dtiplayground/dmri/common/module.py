@@ -101,6 +101,11 @@ def empty_result():
 
 class DTIPlaygroundModule: #base class
     def __init__(self,config_dir,*args, **kwargs):
+        kwargs.setdefault('logger',common.logger);
+        self.logger = kwargs['logger']
+        global logger
+        logger = self.logger.write
+        
         self.name=self.__class__.__name__
         self.config_dir=config_dir
         self.source_image=None
@@ -110,7 +115,7 @@ class DTIPlaygroundModule: #base class
         self.protocol=None
         self.result_history=None
         self.result=empty_result()
-       
+
         ##
         self.template=None ## template information located at the same directory of this module.(modulename.yml)
         self.output_dir=None ## output root
@@ -147,16 +152,12 @@ class DTIPlaygroundModule: #base class
             
             for idx,previous_result in enumerate(previous_outputs):
                 if previous_result["output"]["image_object"] is not None:
-                    # self.source_image=common.object_by_id(previous_result["output"]["image_object"])
-                    # self.images.append(copy.deepcopy(self.source_image))
                     self.source_image=common.object_by_id(previous_result["output"]["image_object"])
                     self.images.append(self.source_image)
                     logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.source_image)),common.Color.OK)
                 else:
                     logger("Loading image from the file : {}".format(previous_result['output']['image_path']),common.Color.PROCESS)
                     src_image_filename=Path(self.output_root).joinpath(previous_result['output']['image_path']).__str__()
-                    # self.source_image=self.loadImage(src_image_filename)
-                    # self.images.append(copy.deepcopy(self.source_image))
                     self.source_image=self.loadImage(src_image_filename)
                     self.images.append(self.source_image)
                         ## gradient information update
@@ -175,7 +176,7 @@ class DTIPlaygroundModule: #base class
                 self.images[idx].dumpInformation(image_information_filename)
 
             self.result_history.append({"output":previous_outputs})
-            self.image=copy.deepcopy(self.images[0])
+            self.image=copy.copy(self.images[0])
             self.result["module_name"]=self.name 
             self.result["input"]=previous_outputs
             self.result["output"]["image_object"]= id(self.image)
@@ -187,16 +188,12 @@ class DTIPlaygroundModule: #base class
             previous_result=self.getPreviousResult()
             logger(yaml.safe_dump(previous_result))
             if previous_result["output"]["image_object"] is not None:
-                # self.source_image=common.object_by_id(previous_result["output"]["image_object"])
-                # self.image=copy.deepcopy(self.source_image)
                 self.source_image=common.object_by_id(previous_result["output"]["image_object"])
                 self.image=self.source_image
                 logger("Source Image (Previous output) loaded from memory (object id): {}".format(id(self.source_image)),common.Color.OK)
             else:
                 logger("Loading image from the file : {}".format(previous_result['output']['image_path']),common.Color.PROCESS)
                 src_image_filename=Path(self.output_root).joinpath(previous_result['output']['image_path']).__str__()
-                # self.source_image=self.loadImage(src_image_filename)
-                # self.image=copy.deepcopy(self.source_image)
                 self.source_image=self.loadImage(src_image_filename)
                 self.image=self.source_image
                     ## gradient information update

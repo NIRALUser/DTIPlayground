@@ -2,14 +2,15 @@
 import dtiplayground.dmri.preprocessing as prep
 import yaml, os
 from pathlib import Path
-logger=prep.logger.write
 
 import dtiplayground.dmri.common.tools as tools 
 
 class DTI_Register(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
-        
+        global logger
+        logger = self.logger.write
+
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         self.protocol['ANTsPath'] = self.protocol['ANTsPath'].replace('$ANTSDIR', self.softwares['ANTs']['path'])

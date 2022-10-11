@@ -6,7 +6,7 @@ from dtiplayground.dmri.common.dwi import DWI
 import dtiplayground.dmri.common
 import yaml
 from pathlib import Path 
-import SUSCEPTIBILITY_Correct.utils as utils
+# import SUSCEPTIBILITY_Correct.utils as utils
 from dtiplayground.dmri.common import measure_time
 import dtiplayground.dmri.common.tools as tools 
 import shutil
@@ -14,12 +14,41 @@ import copy
 import os
 import markdown
 from . import data 
-logger=prep.logger.write
 
+def find_fsl(lookup_dirs=[]):
+    fsldir=os.environ.get('FSLDIR')
+    candidates=[]
+    if fsldir is not None:
+        fsldir=Path(fsldir)
+        candidates.append(fsldir)
+    else:
+        candidates=[]
+        for d in lookup_dirs:
+            candidates+=list(Path(d).glob("**/etc/fslversion"))
+        
+        if len(candidates)==0 : 
+            logger("FSL6 NOT found",prep.Color.WARNING)
+            return None,None 
+        candidates=list(map(lambda x: x.parent.parent, candidates))
 
+    fsl_version=None
+    for d in candidates:
+        fsldir=d
+        versionfile=fsldir.joinpath('etc/fslversion')
+        if versionfile.exists():
+            with open(versionfile,'r') as f:
+                fsl_version=f.readlines()[0]
+            bigversion=int(fsl_version.split('.')[0])
+            if bigversion>=6:
+                return str(fsldir), fsl_version
+
+    return str(fsldir),fsl_version
+    
 class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
+        global logger
+        logger = self.logger.write
 
 
     def install(self,install_dir,*args,**kwargs):
@@ -95,12 +124,14 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         if self.result['input'][0]["output"]['image_path']:
             input_image_1 = os.path.abspath(self.result['input'][0]["output"]['image_path'])
             input_image_2 = os.path.abspath(self.result['input'][1]["output"]['image_path'])
-            for number_1 in self.result['input'][0]['image_information']['sizes']:
-                if number_1 not in self.result['input'][0]['image_information']['image_size']:
-                    self.result['report']['csv_data']['original_number_of_gradients'] = [number_1]
-            for number_2 in self.result['input'][1]['image_information']['sizes']:
-                if number_2 not in self.result['input'][1]['image_information']['image_size']:
-                    self.result['report']['csv_data']['original_number_of_gradients'] += [number_2]
+            if 'image_information' in self.result['input'][0]:
+                for number_1 in self.result['input'][0]['image_information']['sizes']:
+                    if number_1 not in self.result['input'][0]['image_information']['image_size']:
+                        self.result['report']['csv_data']['original_number_of_gradients'] = [number_1]
+            if 'image_information' in self.result['input'][1]:
+                for number_2 in self.result['input'][1]['image_information']['sizes']:
+                    if number_2 not in self.result['input'][1]['image_information']['image_size']:
+                        self.result['report']['csv_data']['original_number_of_gradients'] += [number_2]
         else:
             input_image_1 = None
             input_image_2 = None
@@ -119,9 +150,10 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                 list_report_paths_1 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_1
                 if "output_directory" in previous_result["input"]:
                     input_directory = previous_result["input"]["output_directory"]
-                for number_1 in previous_result['input']['image_information']['sizes']:
-                    if number_1 not in previous_result['input']['image_information']['image_size']:
-                        self.result['report']['csv_data']['original_number_of_gradients'][0] = number_1
+                if 'image_information' in previous_result['input']:
+                    for number_1 in previous_result['input']['image_information']['sizes']:
+                        if number_1 not in previous_result['input']['image_information']['image_size']:
+                            self.result['report']['csv_data']['original_number_of_gradients'][0] = number_1
                 print("input_image_1:", input_image_1)
         
             input_directory = self.result_history[0]["output"][1]["output"]["output_directory"]
@@ -135,9 +167,10 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                 list_report_paths_2 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_2
                 if "output_directory" in previous_result["input"]:
                     input_directory = previous_result["input"]["output_directory"]
-                for number_2 in previous_result['input']['image_information']['sizes']:
-                    if number_2 not in previous_result['input']['image_information']['image_size']:
-                        self.result['report']['csv_data']['original_number_of_gradients'][1] = number_2
+                if 'image_information' in previous_result['input']:
+                    for number_2 in previous_result['input']['image_information']['sizes']:
+                        if number_2 not in previous_result['input']['image_information']['image_size']:
+                            self.result['report']['csv_data']['original_number_of_gradients'][1] = number_2
                 print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
                 
             self.result['report']['module_report_paths'] = [list_report_paths_1, list_report_paths_2, os.path.abspath(self.output_dir) + '/report.md']
@@ -256,7 +289,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         for index_file in b0index_files:
             indexes=open(index_file,'r').read().split()
             for i in indexes:
-                p=copy.deepcopy(phase_dir)
+                p=copy.copy(phase_dir)
                 p[axis]=direction
                 result.append(p)
             direction*=-1

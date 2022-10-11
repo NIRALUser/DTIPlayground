@@ -7,12 +7,12 @@ from pathlib import Path
 ###
 import numpy as np
 
-logger=prep.logger.write
-
 class TEST(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
-        
+        global logger
+        logger = self.logger.write
+
     def generateDefaultProtocol(self,image_obj):
         super().generateDefaultProtocol(image_obj)
         ## todos

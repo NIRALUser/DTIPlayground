@@ -5,10 +5,10 @@ from pathlib import Path
 import subprocess as sp
 import os 
 
-logger=dtiplayground.dmri.common.logger.write
 
 class FSL(ExternalToolWrapper):
     def __init__(self,binary_path= None, **kwargs): ## binary_path in this class is binary dir e.g. $FSLHOME 
+        super().__init__(binary_path, **kwargs)
         self.binary_path=binary_path
         self.arguments=[]
         self.fslhome=binary_path
@@ -154,10 +154,10 @@ class FSL(ExternalToolWrapper):
         binary=Path(self.binary_path).joinpath('bin').joinpath(binary_name).__str__()
         command=[binary]+self.getArguments()
         if arguments is not None: command=[binary]+arguments
-        logger("{}".format(command))
+        self.logger.write("{}".format(command))
         output=sp.run(command,capture_output=True,text=True,stdin=stdin)
         if self.dev_mode:
-            logger("{}\n{} {}".format(output.args,output.stdout,output.stderr))
+            self.logger.write("{}\n{} {}".format(output.args,output.stdout,output.stderr))
             output.check_returncode()
         return output  ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
 
@@ -166,7 +166,7 @@ class FSL(ExternalToolWrapper):
         binary=Path(self.binary_path).joinpath('bin').joinpath(binary_name).__str__()
         command=[binary]+self.getArguments()
         if arguments is not None: command=[binary]+arguments
-        logger("{}".format(command))
+        self.logger.write("{}".format(command))
         if stdin is None:
             pipe_output=sp.Popen(command,stdout=sp.PIPE)
         else:

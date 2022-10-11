@@ -21,8 +21,9 @@ from pathlib import Path
 
 import dtiplayground.dmri.atlasbuilder as ab 
 import dtiplayground.dmri.common.tools as tools
+import dtiplayground.dmri.common as common
 
-logger=ab.logger.write
+logger=common.logger.write
 
 def dumpXml(xml):
     root = xml.getroot()
@@ -326,7 +327,7 @@ def generate_deformation_track(seq,node="target"): #input : initialSequence to g
     return outseq
 
 def invert_deformation_track(deformation_seq):
-    seq=copy.deepcopy(deformation_seq)
+    seq=copy.copy(deformation_seq)
     outseq=[]
     for s in seq:
         elm=s

@@ -67,7 +67,26 @@ class FileBrowserAPI:
             param_last_line=request.args.get('last_line',default=0,type=int)
             request_id=utils.get_request_id()
             try:
-                res= self.getTextFileContent(param_path,param_last_line)
+                res= self.getTextFileContentAsArray(param_path,param_last_line)
+                res= utils.add_request_id(res)
+            except Exception as e:
+                sc=500
+                exc=traceback.format_exc()
+                res=utils.error_message("{}\n{}".format(str(e),exc),500,request_id)
+            finally:
+                resp=Response(json.dumps(res),status=sc)
+                resp.headers['Content-Type']='application/json'
+                return resp
+
+        @self.app.route('/api/v1/files/get-readme',methods=['GET'])
+        def _getReadMe():
+            sc=200
+            res=None
+            request_id=utils.get_request_id()
+            try:
+                import dtiplayground
+                path = Path(dtiplayground.__file__).resolve().parent.parent.joinpath('README.md');
+                res= self.getTextFileContentAsWhole(path)
                 res= utils.add_request_id(res)
             except Exception as e:
                 sc=500
@@ -97,7 +116,15 @@ class FileBrowserAPI:
         paths.sort(key=lambda x: (not x['is_dir'], x['name']))
         return { "data" : fixed_paths + list(paths) }
 
-    def getTextFileContent(self, path, lastline):
+    def getTextFileContentAsArray(self, path, lastline):
         p = Path(path)
-        content = open(p,'r').readlines()
+        with open(p,'r') as f:
+            content=f.readlines()
         return { "data" : content[lastline:-1] }
+
+    def getTextFileContentAsWhole(self, path):
+        p = Path(path)
+        with open(p,'r') as f:
+            content=f.read()
+        return { "data" : content }
+

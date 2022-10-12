@@ -1,6 +1,6 @@
 name: BASELINE_Average
 caption: BASELINE Average
-description: Averaging baselines of the DTI
+description: Averaging baselines of the diffusion weighted image
 version: "0.1"
 dependency: []
 result: null

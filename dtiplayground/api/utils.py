@@ -122,15 +122,21 @@ def get_request_id():
 
 def add_request_id(doc,request_id=None):
     if request_id is None : request_id=get_request_id()
-    if type(doc) == dict:
-        doc['request_id']=request_id
-        return doc
-    else:
-        newdoc={}
-        newdoc['request_id']=request_id
-        newdoc['data']=doc
-        return newdoc 
+    newdoc={}
+    newdoc['request_id']=request_id
+    newdoc['data']=doc
+    return newdoc 
     
+# def add_request_id(doc,request_id=None):
+#     if request_id is None : request_id=get_request_id()
+#     if type(doc) == dict:
+#         doc['request_id']=request_id
+#         return doc
+#     else:
+#         newdoc={}
+#         newdoc['request_id']=request_id
+#         newdoc['data']=doc
+#         return newdoc 
 
 ## password generator
 def generate_password(length=12):

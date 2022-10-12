@@ -1,6 +1,6 @@
 name: BRAIN_Tractography
 caption: BRAIN_Tractography
-description: Custom module
+description: Brain tractography (whole/single region) using DIPY library
 version: "0.1"
 dependency: []
 module_type: prep
@@ -66,12 +66,12 @@ protocol: #define protocol parameters here
         default_value: 0.3
         description: Threshold on FA to stop tracts
     vtk42:
-        type: bool
+        type: boolean
         caption: VTK format 4.2
         default_value: False
         description: Save output tractogram in VTK format 4.2 (instead of 5.0)
     removeShortTracts:
-        type: bool
+        type: boolean
         caption: Remove short tracts
         default_value: False
         description: Remove short tracts from tractogram
@@ -81,7 +81,7 @@ protocol: #define protocol parameters here
         default_value: 100
         description: Minimal length for tracts to be conserved.
     removeLongTracts:
-        type: bool
+        type: boolean
         caption: Remove long tracts
         default_value: False
         description: Remove long tracts from tractogram
@@ -91,18 +91,29 @@ protocol: #define protocol parameters here
         default_value: 100
         description: Maximal length for tracts to be conserved.
 ### for single tract
+    singleTract:
+        type: boolean
+        caption: Single Region Tractography
+        default_value: false
+        description: If checked, the module performs single region tractography instead of whole brain
     referenceTractFile:
-        type: string
+        type: filepath-remote
+        if:
+            singleTract: true
         caption: Reference Tract File
         default_value: null
         description: Path of the reference tract file (.vtk)
     displacementFieldFile:
-        type: string
+        type: filepath-remote
+        if:
+            singleTract: true
         caption: Displacement Field Path
         default_value: null
         description: Path of the displacement file for transform
     dilationRadius:
         type: number
+        if:
+            singleTract: true
         caption: Dilation Radius
         default_value: 2
         description: Dilation radius

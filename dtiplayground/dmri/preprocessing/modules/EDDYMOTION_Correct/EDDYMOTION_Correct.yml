@@ -1,6 +1,6 @@
 name: EDDYMOTION_Correct
 caption: EDDYMOTION Correct
-description: Eddy Motion correction (to be replaced)
+description: Eddy Motion correction, supporting single image eddy correction as well as with susceptibility correction
 version: "0.1"
 dependency: []
 result: null

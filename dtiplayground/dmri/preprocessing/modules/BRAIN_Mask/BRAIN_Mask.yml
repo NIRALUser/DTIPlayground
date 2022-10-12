@@ -1,6 +1,6 @@
 name: BRAIN_Mask
 caption: BRAIN_Mask
-description: Brain Masking
+description: Brain Masking, mask file will be added to the global variables in the result file
 version: "0.1"
 dependency: []
 result: null

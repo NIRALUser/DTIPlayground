@@ -17,6 +17,8 @@ options:
   system:
     available_types: 
       - boolean
+      - number
+      - array
       - integer
       - float
       - string
@@ -89,7 +91,7 @@ options:
           description: Eddymotion correction for both standalone single file process and phase encoded inputs with topup parameter generated in SUSCEPTIBILITY_Correct module.
         - value: BRAIN_Mask
           caption: Brain Masking
-          description: Brain masking using fsl bet #or antspynet
+          description: Brain masking using fsl bet or antspynet
         - value: BRAIN_Tractography
           caption: Brain Tractography
           description: Generate tractogram of the whole brain.
@@ -102,26 +104,15 @@ options:
         - value: MANUAL_Exclude
           caption: Exclude Gradients
           description: Manual Exclusion of Gradient volume
-        - value: UTIL_Header
-          caption: View Header
-          description: View header information of the image
         - value: UTIL_Merge
           caption: Merge Images
           description: Merge images to one image
-        - value: TEST
-          caption: Test Module (Dev)
-          description: Not implemented
         - value: QC_Report
           caption: QC Report
           description: Generate report documents
       default_value: ## default elements 
         - SLICE_Check
         - INTERLACE_Check 
-        # - BASELINE_Average
-        # - SUSCEPTIBILITY_Correct
         - EDDYMOTION_Correct
-        # - BRAIN_Mask
-        # - DTI_Estimate
-        # - MANUAL_Exclude
         - QC_Report
       description: Pipeline queue which executes as first in first processed.

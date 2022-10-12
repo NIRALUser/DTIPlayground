@@ -18,6 +18,7 @@ color= dtiplayground.dmri.common.Color
 ### APIs
 from dtiplayground.api.filebrowser import FileBrowserAPI 
 from dtiplayground.api.dmriatlasbuilder import DMRIAtlasbuilderAPI
+from dtiplayground.api.dmriprep import DMRIPrepAPI
 
 class DTIPlaygroundServer(object):
     def __init__(self,*args,**kwargs):
@@ -40,6 +41,7 @@ class DTIPlaygroundServer(object):
         self.app.config['SUBMODULES']={}
         self.app.config['SUBMODULES']['FileBrowserAPI']=FileBrowserAPI(self.app)
         self.app.config['SUBMODULES']['DMRIAtlasbuilderAPI']=DMRIAtlasbuilderAPI(self.app)
+        self.app.config['SUBMODULES']['DMRIPrepAPI']=DMRIPrepAPI(self.app)
 
         @self.app.route('/', defaults={'path': ''})
         @self.app.route('/<path>') ## for routers

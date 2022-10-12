@@ -1,6 +1,6 @@
 name: SLICE_Check
 caption: SLICE Check
-description: Slicewise correlation check
+description: Slicewise correlation check to exclude problematic gradient volumes
 version: "0.1"
 dependency: []
 module_type: prep
@@ -16,37 +16,39 @@ protocol:
         type: boolean
         caption: Sub Regional Check
         default_value: false 
-        description: TBD
+        description: Check for sub regional images
       subregionalCheckRelaxationFactor: 
         type: float
+        if:
+            bSubregionalCheck : true
         caption: Sub Regional Check Relaxation Factor
         default_value: 1.10
-        description: TBD
+        description: Set the relaxation factor if sub regional check is selected
       checkTimes: 
         type: integer
         caption: Check Times
         default_value: 0
-        description: TBD
+        description: How many times to check 
       headSkipSlicePercentage: 
         type: float
         caption: Head Skip Percentage
         default_value: 0.10
-        description: TBD
+        description: The percentage of front end indices to ignore due to small signals at the ends
       tailSkipSlicePercentage: 
         type: float
         caption: Tail Skip Percentage
         default_value: 0.10
-        description: TBD
+        description: The percentage of rear end indices to ignore due to small signals at the ends
       correlationDeviationThresholdbaseline: 
         type: float
         caption: Correlation's Deviation Threshold Baseline
         default_value: 3.0
-        description: TBD
+        description: Correlation's Deviation Threshold Baseline
       correlationDeviationThresholdgradient: 
         type: float
         caption: Correlation's Deviation Threshold Gradient 
         default_value: 3.5
-        description: TBD
+        description: Correlation's Deviation Threshold Gradient 
       quadFit:
         type: boolean 
         caption: Quadratic fit 

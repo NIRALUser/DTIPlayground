@@ -1,6 +1,6 @@
 name: IDENTITY_Process
 caption: IDENTITY_Process 
-description: Just pass image to the next module
+description: Just pass image to the next module, use this as converter (nrrd <-> nifti)
 version: "0.1"
 dependency: []
 result: null
@@ -14,9 +14,9 @@ process_attributes:
 protocol:
       options: 
         type: string
-        caption: Option
+        caption: Remark
         default_value: null
-        description: NA
+        description: Write anything for the record
 
 
         

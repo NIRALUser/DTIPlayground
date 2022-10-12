@@ -1,6 +1,6 @@
 name: INTERLACE_Check
 caption: INTERLACE Check
-description: Interlaced correlation check
+description: Interlaced correlation check across the gradient volumes
 version: "0.1"
 dependency: []
 module_type: prep
@@ -20,29 +20,29 @@ protocol:
         type: float
         caption: Correlation Threshold For the Baselines
         default_value: 0.9500
-        description: TBD
+        description: Correlation Threshold For the Baselines
       correlationThresholdGradient: 
         type: float
         caption: Correlation Threshold for the Gradients
         default_value: 0.7702
-        description: TBD
+        description: Correlation Threshold for the Gradients
       correlationDeviationBaseline: 
         type: float
         caption: Correlation Deviation for the Baselines
         default_value: 2.5000
-        description: TBD
+        description: Correlation Deviation for the Baseline images
       correlationDeviationGradient: 
         type: float
         caption: Correlation Deviation for the Gradients
         default_value: 3.0000
-        description: TBD
+        description: Correlation Deviation for the Gradients
       translationThreshold: 
         type: float
         caption: Translation Threshold
         default_value: 1.5000
-        description: TBD
+        description: Translation Threshold for an image to be excluded
       rotationThreshold: 
         type: float
         caption: Rotation Threshold
         default_value: 0.5000
-        description: TBD
+        description: Rotation Threshold for an image to be excluded

@@ -33,7 +33,7 @@ protocol:
         default_value: null
         description: Reference (Fixed Image)
       ANTsPath:
-        type: string
+        type: dirpath-remote
         caption: ANTS directory
         default_value: $ANTSDIR
         description: ANTs installation directory (default is dtiplayground-tools/ANTs)

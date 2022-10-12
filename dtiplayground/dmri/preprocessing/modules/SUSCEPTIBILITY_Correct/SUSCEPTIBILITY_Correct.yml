@@ -1,6 +1,6 @@
 name: SUSCEPTIBILITY_Correction
 caption: SUSCEPTIBILITY Correction
-description: Susceptibility correction (new)
+description: Susceptibility correction with FSL, 2 phase-encoded images are required to use this module
 version: "0.1"
 dependency: null 
 module_type: prep
@@ -10,18 +10,18 @@ process_attributes:
 result: null
 protocol:
       phaseEncodingAxis: 
-        type: list
-        caption: 0 - rl, 1 - ap(fh), 2  - si 
+        type: array
+        caption: Phase Encoding Axis Index (0,1,2)
         default_value: 
           - 1
-        description: Phase encoding axis (list of axis index of phase encoding (0,1,2))
+        description: Phase encoding axis (list of axis index of phase encoding (0,1,2)),e.g. 0 - rl, 1 - ap(fh), 2  - si 
       phaseEncodingValue: 
         type: float
         caption: Phase Encoding Value 
         default_value: 0.0924
         description: Phase encoding value (real number)
       configurationFilePath: 
-        type: string
+        type: filepath-remote
         caption: FSL topup configuration file path 
         default_value: $CONFIG_DIR/parameters/fsl/fsl_regb02b0.cnf 
         description: FSL topup configuration file path 

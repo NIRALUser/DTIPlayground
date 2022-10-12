@@ -10,12 +10,12 @@ process_attributes:
 result: null
 protocol:
     generatePDF: 
-        type: bool
+        type: boolean
         caption: PDF report
         default_value: True
         description: Generate PDF file report
     generateCSV:
-        type: bool
+        type: boolean
         caption: CSV report
         default_value: True
         description: Generate CSV file report

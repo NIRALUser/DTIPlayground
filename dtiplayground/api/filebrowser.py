@@ -114,17 +114,17 @@ class FileBrowserAPI:
         paths = ({'path': str(x), 'is_dir': x.is_dir(), "name": x.name, 'is_real': True } for x in p)
         paths = list(paths)
         paths.sort(key=lambda x: (not x['is_dir'], x['name']))
-        return { "data" : fixed_paths + list(paths) }
+        return fixed_paths + list(paths) 
 
     def getTextFileContentAsArray(self, path, lastline):
         p = Path(path)
         with open(p,'r') as f:
             content=f.readlines()
-        return { "data" : content[lastline:-1] }
+        return content[lastline:-1]
 
     def getTextFileContentAsWhole(self, path):
         p = Path(path)
         with open(p,'r') as f:
             content=f.read()
-        return { "data" : content }
+        return content
 

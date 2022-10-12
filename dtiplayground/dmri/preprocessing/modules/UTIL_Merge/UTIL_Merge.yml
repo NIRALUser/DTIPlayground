@@ -1,6 +1,6 @@
 name: UTIL_Merge
 caption: UTIL_Merge
-description: Merging two images
+description: Merging two diffusion images to one
 version: "0.1"
 dependency: null 
 module_type: prep
@@ -9,8 +9,8 @@ process_attributes:
     - multi_input
 result: null
 protocol:
-      TestParam: 
+      options: 
         type: string
-        caption: Test parameter
-        default_value: null
-        description: Test parameter
+        caption: Remark
+        default_value: ''
+        description: For the record, no real effect

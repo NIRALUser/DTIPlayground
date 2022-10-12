@@ -277,7 +277,7 @@ MIT
 
 - dtiplayground - dpg server development initiated
 - dtiplayground - readthedocs added [ReadTheDocs](https://dtiplayground.readthedocs.io)
-- dtiplayground - official dockerhub repository [DTIPlayground](https://https://hub.docker.com/r/niraluser/dtiplayground)
+- dtiplayground - official dockerhub repository [DTIPlayground](https://hub.docker.com/r/niraluser/dtiplayground)
 - dmriprep - BRAIN_Tractography bug fixed
 
 ##### 2022-09-22

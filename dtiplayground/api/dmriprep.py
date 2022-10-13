@@ -141,8 +141,9 @@ class DMRIPrepAPI:
         output_dir.mkdir(exist_ok=True,parents=False)
 
         protocol_fn_path = output_dir.joinpath('protocols.yml')
+        protocol_fn_json = output_dir.joinpath('protocols.json')
         yaml.safe_dump(protocols, open(protocol_fn_path,'w'))
-
+        json.dump(protocols, open(protocol_fn_json,'w'),indent=4)
         return req
 
     def run(self, req):
@@ -180,7 +181,6 @@ class DMRIPrepAPI:
                 if 'input_image_2' in protocol['io']:
                     if not protocol['io']['input_image_2'] and protocol['io']['input_image_2'].strip()=='':
                         image_list.append(protocol['io']['input_image_2'])
-
                 proto= p.Protocols(config_dir,logger=logger)
                 proto.loadImages(image_list, protocol['io']['baseline_threshold'])
                 proto.setOutputDirectory(params['output_dir'])

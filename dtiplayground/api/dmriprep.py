@@ -17,9 +17,7 @@ import json
 from . import utils
 from pathlib import Path
 import yaml
-
-from dtiplayground.dmri.atlasbuilder import AtlasBuilder 
-import  dtiplayground.dmri.common as common
+from multiprocessing import Process
 
 class DMRIPrepAPI:
     def __init__(self,app,**kwargs):
@@ -75,8 +73,7 @@ class DMRIPrepAPI:
             request_id=utils.get_request_id()
             try:
                 req=request.get_json()
-                output_dir = req['output_dir']
-                res= self.run(output_dir)
+                res= self.run(req)
                 res= utils.add_request_id(res)
             except Exception as e:
                 sc=500
@@ -123,19 +120,95 @@ class DMRIPrepAPI:
         return res
 
     def generate_default_protocols(self,req):
+        from dtiplayground.config import INFO
+        req.setdefault('version', INFO['dmriprep']['version'])
+
+        params = {
+            'version' : req['version'],
+            'output_dir' : req['output_dir'],
+            'pipeline' : req['pipeline'],
+            'io' : req['io']
+        }
+
+        protocols = {
+            'version': params['version'],
+            'io': params['io'],
+            'pipeline': params['pipeline']
+        }
+
+
+        output_dir=Path(params['output_dir'])
+        output_dir.mkdir(exist_ok=True,parents=False)
+
+        protocol_fn_path = output_dir.joinpath('protocols.yml')
+        yaml.safe_dump(protocols, open(protocol_fn_path,'w'))
 
         return req
 
-    def run(self, configured_dir):
+    def run(self, req):
 
-        res = { 'task_id' : utils.get_uuid()}
+        params = {
+            'output_dir' : req['output_dir'],
+        }
+        output_dir = Path(params['output_dir'])
+        config_dir = self.getConfigDirectory()
+        protocol_fn = output_dir.joinpath('protocols.yml')
+        protocol = yaml.safe_load(open(protocol_fn,'r'))
+        params.setdefault('config_dir',str(config_dir))
+        params.setdefault('protocol_path',str(protocol_fn))
+        params.setdefault('execution_id', utils.get_uuid())
+        params.setdefault('global_variables', {})
+
+    
+        def dmriprep_proc(param):
+
+            
+            with open(output_dir.joinpath('log.txt'),'w') as sys.stdout:
+                
+                ### begin
+                os.environ['OMP_NUM_THREADS']=str(protocol['io']['num_threads']) ## this should go before loading any dipy function. 
+                os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(protocol['io']['num_threads']) ## for ANTS threading
+                import  dtiplayground.dmri.common as common
+                import dtiplayground.dmri.preprocessing
+                import dtiplayground.dmri.preprocessing.modules as m
+                import dtiplayground.dmri.preprocessing.protocols as p
+                logger = common.logger
+                logger.setFilePointer(sys.stdout)
+                sys.path.append(Path(m.__file__).parent.__str__()) 
+                image_list = []
+                image_list.append(protocol['io']['input_image_1'])
+                if 'input_image_2' in protocol['io']:
+                    image_list.append(protocol['io']['input_image_2'])
+
+                proto= p.Protocols(config_dir,logger=logger)
+                proto.loadImages(image_list, protocol['io']['baseline_threshold'])
+                proto.setOutputDirectory(params['output_dir'])
+                proto.loadProtocols(str(protocol_fn))
+                proto.setNumThreads(int(protocol['io']['num_threads']))
+                proto.runPipeline(options=params)
+             
+
+        res = { 
+            'task_id' : utils.get_uuid(),
+            'output_dir' : output_dir.__str__()
+        }
+        proc = Process(target= dmriprep_proc, args=[params])
+        proc.start()
+        proc.join()
+        if proc.exitcode != 0 : raise Exception("Error during running")
         return res
 
     def getProtocolTemplateConfig(self):
-        config_dir = self.getConfigDirectory();
-        ptc_fn = config_dir.joinpath('protocol_template.yml')
+        # config_dir = self.getConfigDirectory();
+        import dtiplayground.dmri.preprocessing.templates as t
+        ptc_fn = Path(t.__file__).parent.joinpath('protocol_template.yml')
+        # ptc_fn = config_dir.joinpath('protocol_template.yml')
         with open(ptc_fn,'r') as f:
             ptc = yaml.safe_load(f)
+
+        ptc['ui'] = {
+            'execution': self.convertTemplate(ptc['options']['io'])
+        } 
         return ptc
 
     def getModuleList(self,extra_dirs = []):
@@ -174,22 +247,29 @@ class DMRIPrepAPI:
         if not filepath.exists() : raise Exception("There is no such module : {}".format(name))
         with open(filepath,'r') as f:
             original=yaml.safe_load(f)
+        ui = self.convertTemplate(original['protocol'])
 
-        ui = self.convertTemplate(original)
+        protoTemplate = self.getProtocolTemplateConfig()
+        
+        options = self.convertTemplate(protoTemplate['options']['execution']['options'])
         res = {
                 'original': original,
-                'ui': ui
+                'ui': {
+                    'name' : original['name'],
+                    'description': original['description'],
+                    'protocol' : ui,
+                    'options' : options
+                 }
         }
         return res
 
     def convertTemplate(self, template):
         new_proto = []
-        for k,v in template['protocol'].items():
+        for k,v in template.items():
             tmp = v
             tmp.update({'name': k})
             new_proto.append(tmp)
-        template['protocol']=new_proto
-        return template
+        return new_proto
 
 
     def getConfigDirectory(self):

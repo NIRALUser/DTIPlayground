@@ -270,10 +270,12 @@ class Pipeline:
             module_names.append(mod_name)
         opts={
                 "software_info": self.getSoftwareInfo(),
-                "global_variables" : self.global_variables
+                "global_variables" : self.global_variables,
+                "logger" : self.logger
              }
         if 'baseline_threshold' in self.io:
             opts['baseline_threshold'] = self.io['baseline_threshold']
+
         self.loadModules(module_names,user_module_paths=self.config['user_module_directories'],**opts)
         new_pipeline=[]
         for idx,parr in enumerate(pipeline):
@@ -350,7 +352,7 @@ class Pipeline:
             self.checkRunnable()
             self.processes_history=[]
             self.io_options['output_filename_base']=self.getBaseFilename(self.images[0].filename)
-            if options['output_file_base']:
+            if 'output_file_base' in options:
                 self.io_options['output_filename_base']=options['output_file_base']
             execution_sequence = _generate_exec_sequence(self.pipeline,self.image_paths,self.output_dir,self.modules, self.io_options)
             Path(self.output_dir).mkdir(parents=True,exist_ok=True)

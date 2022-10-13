@@ -17,8 +17,7 @@ from . import utils
 from pathlib import Path
 import yaml
 
-from dtiplayground.dmri.atlasbuilder import AtlasBuilder 
-import  dtiplayground.dmri.common as common
+from multiprocessing import Process
 
 class DMRIAtlasbuilderAPI:
     def __init__(self,app,**kwargs):
@@ -94,20 +93,52 @@ class DMRIAtlasbuilderAPI:
 
         return params
 
+    # def build_atlas(self, configured_dir):
+
+    #     output_dir=Path(configured_dir)
+        
+
+        
+    #     config_path=output_dir.joinpath('common/config.yml')
+    #     hbuild_path=output_dir.joinpath('common/h-build.yml')
+    #     greedy_path=output_dir.joinpath('common/greedy.yml')
+    #     ablogger = common.MultiLogger()
+    #     bldr=AtlasBuilder(logger = ablogger)
+    #     bldr.configure( output_dir=output_dir,
+    #                     config_path=config_path,
+    #                     hbuild_path=hbuild_path,
+    #                     greedy_path=greedy_path)
+       
+    #     bldr.build()
+
+    #     res = { 'task_id' : utils.get_uuid()}
+    #     return res
+
     def build_atlas(self, configured_dir):
 
         output_dir=Path(configured_dir)
-        config_path=output_dir.joinpath('common/config.yml')
-        hbuild_path=output_dir.joinpath('common/h-build.yml')
-        greedy_path=output_dir.joinpath('common/greedy.yml')
-        ablogger = common.MultiLogger()
-        bldr=AtlasBuilder(logger = ablogger)
-        bldr.configure( output_dir=output_dir,
-                        config_path=config_path,
-                        hbuild_path=hbuild_path,
-                        greedy_path=greedy_path)
-       
-        bldr.build()
+        
+        def dmriatlas_proc(output_dir):
+            with open(output_dir.joinpath('log.txt'),'w') as sys.stdout:
+                import  dtiplayground.dmri.common as common   
+                from dtiplayground.dmri.atlasbuilder import AtlasBuilder 
+                logger = common.logger
+                logger.setFilePointer(sys.stdout)
+                config_path=output_dir.joinpath('common/config.yml')
+                hbuild_path=output_dir.joinpath('common/h-build.yml')
+                greedy_path=output_dir.joinpath('common/greedy.yml')
+                bldr=AtlasBuilder(logger = logger)
+                bldr.configure( output_dir=output_dir,
+                                config_path=config_path,
+                                hbuild_path=hbuild_path,
+                                greedy_path=greedy_path)
+           
+                bldr.build()
 
         res = { 'task_id' : utils.get_uuid()}
+        proc = Process(target= dmriatlas_proc, args=[output_dir])
+        proc.start()
+        proc.join()
+        if proc.exitcode != 0 : raise Exception("Error during running")
         return res
+

@@ -11,6 +11,10 @@ logger=common.logger.write
 
 @common.measure_time
 def _load_modules(system_module_paths=[],user_module_paths=[],module_names=None, **options):
+    options.setdefault('logger', common.logger)
+    global logger
+    logger = options['logger'].write
+
     modules=_load_default_modules(system_module_paths, module_names, **options)
     usermodules= _load_modules_from_paths(user_module_paths,module_names, **options)
     modules.update(usermodules)
@@ -21,6 +25,10 @@ def _load_default_modules( system_module_paths: list, module_names=None, **optio
     return _load_modules_from_paths(system_module_paths,module_names, **options)
 
 def _load_modules_from_paths(user_module_paths: list,module_names=None, **options): #module names = list of modules to load (if none, load everything)
+    options.setdefault('logger', common.logger)
+    global logger
+    logger = options['logger'].write
+        
     modules={}
     mods=[]
     for pth in map(lambda x: str(x),user_module_paths):  ## path objects to string array

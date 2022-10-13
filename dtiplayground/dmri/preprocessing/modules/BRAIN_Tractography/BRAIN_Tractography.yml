@@ -67,6 +67,8 @@ protocol: #define protocol parameters here
         description: Threshold on FA to stop tracts
     vtk42:
         type: boolean
+        disabled: true
+        hidden: true
         caption: VTK format 4.2
         default_value: False
         description: Save output tractogram in VTK format 4.2 (instead of 5.0)

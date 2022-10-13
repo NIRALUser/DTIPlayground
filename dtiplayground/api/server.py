@@ -54,5 +54,5 @@ class DTIPlaygroundServer(object):
 
     def serve(self):
         if not self.app: raise Exception('Flask app is not configured')
-        self.app.run(host=self.host, port=self.port)
+        self.app.run(host=self.host, port=self.port,debug=True)
 

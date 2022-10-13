@@ -10,7 +10,7 @@ import traceback,time,copy,yaml,sys,uuid
 import sys
 import subprocess
 import re
-sys.path.append(Path(__file__).resolve().parent.parent.__str__()) ## this line is for development
+sys.path.append(Path(__file__).resolve().parent.parent.__str__())  ## this line is for development
 import dtiplayground
 import dtiplayground.dmri.common
 import dtiplayground.dmri.common.module

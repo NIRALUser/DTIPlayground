@@ -173,6 +173,7 @@ class MultiLogger(object):
         self.verbosity=verbosity 
         self.fileloggers=[]
         self.filename = None
+        self.file = None
 
     def setVerbosity(self,v=True):
         self.verbosity=v 
@@ -180,6 +181,11 @@ class MultiLogger(object):
     def setLogfile(self,filename,mode='a'):
         self.file=open(filename,mode)
         self.filename = filename
+        self.log_to_file=True
+
+    def setFilePointer(self, fp):
+        if (self.file): self.file.close()
+        self.file = fp
         self.log_to_file=True
 
     def resetLogfile(self):

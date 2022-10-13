@@ -35,14 +35,30 @@ options:
   ### io template
   io:
     output_directory: 
-      type: directory # file dialog for ui
+      type: dirpath-remote # file dialog for ui
       caption: Output Directory
       default_value: null
       description: Output directory storing the results and generated files 
+    input_image_1:
+      type: filepath-remote
+      caption: Image File 
+      default_value: null
+      description: Image File (For Susceptibility correction, this image should be with R,A (F),S direction first (RL, FH, AP, SI))
+    input_image_2:
+      type: filepath-remote
+      caption: Optional Image File 
+      default_value: null
+      description: Optional image for multi input pipeline, e.g. SUSCEPTIBILITY_Correct module or UTIL_Merge module
+    num_threads:
+      type: number
+      caption: Number of Threads to Use
+      default_value: 1
+      description: Number of threads to use for the process 
     output_format:
       type: list
       caption: Output image type
       default_value: null
+      description: Output image format (NRRD/NIFTI), if not set input image type will be used.
       candidates:
         - value: null
           caption: Same as input
@@ -70,6 +86,23 @@ options:
       description: Final output base name
   #### Execution related
   execution:
+    options:
+      overwrite:
+        type: boolean
+        caption: Overwrite
+        default_value: false
+        description: Owerwrite the files
+      skip:
+        type: boolean
+        caption: Skip This Module
+        default_value: false
+        description: Skip this module and pass the image to the next module
+      write_image:
+        type: boolean
+        caption: Write Output Image
+        default_value: false
+        description: This will generate intermediate image file of this module's output (not recommended)
+
     pipeline:
       type: queue
       caption: Pipeline Queue

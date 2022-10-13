@@ -178,7 +178,8 @@ class DMRIPrepAPI:
                 image_list = []
                 image_list.append(protocol['io']['input_image_1'])
                 if 'input_image_2' in protocol['io']:
-                    image_list.append(protocol['io']['input_image_2'])
+                    if not protocol['io']['input_image_2'] and protocol['io']['input_image_2'].strip()=='':
+                        image_list.append(protocol['io']['input_image_2'])
 
                 proto= p.Protocols(config_dir,logger=logger)
                 proto.loadImages(image_list, protocol['io']['baseline_threshold'])

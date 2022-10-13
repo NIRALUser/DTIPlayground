@@ -136,7 +136,7 @@ class DMRIAtlasbuilderAPI:
                 bldr.build()
 
         res = { 'task_id' : utils.get_uuid()}
-        proc = Process(target= dmriatlas_proc, args=[output_dir])
+        proc = Process(target= dmriatlas_proc, args=[output_dir.__str__()])
         proc.start()
         proc.join()
         if proc.exitcode != 0 : raise Exception("Error during running")

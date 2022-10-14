@@ -179,8 +179,9 @@ class DMRIPrepAPI:
                 image_list = []
                 image_list.append(protocol['io']['input_image_1'])
                 if 'input_image_2' in protocol['io']:
-                    if not protocol['io']['input_image_2'] and protocol['io']['input_image_2'].strip()=='':
+                    if protocol['io']['input_image_2'] and protocol['io']['input_image_2'].strip()!='':
                         image_list.append(protocol['io']['input_image_2'])
+
                 proto= p.Protocols(config_dir,logger=logger)
                 proto.loadImages(image_list, protocol['io']['baseline_threshold'])
                 proto.setOutputDirectory(params['output_dir'])
@@ -258,12 +259,37 @@ class DMRIPrepAPI:
                 'ui': {
                     'name' : original['name'],
                     'description': original['description'],
-                    'protocol' : ui,
+                    'protocol' : self.parseDefaultValues(ui),
                     'options' : options
                  }
         }
         return res
 
+    def defaultVariables(self):
+        config_dir = self.getConfigDirectory().__str__()
+
+        resMap = {
+            '$CONFIG' : config_dir
+        }
+
+        return resMap
+
+    def setEnvironmentVars(self):
+        os.environ['CONFIG_DIR'] = self.getConfigDirectory().__str__()
+
+    def parseDefaultValues(self,template):
+        # default_map = self.defaultVariables()
+        self.setEnvironmentVars()
+        for idx,v in enumerate(template):
+            print(v['name'])
+            if 'filepath' in v['type'] or 'dirpath' in v['type']:
+                if v['default_value'] is not None:
+                    try:
+                        template[idx]['default_value'] = os.path.expandvars(v['default_value'])
+                    except:
+                        pass
+
+        return template
     def convertTemplate(self, template):
         new_proto = []
         for k,v in template.items():

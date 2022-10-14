@@ -192,7 +192,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
     @measure_time
     def convert_to_nifti(self,phaseEncodingAxis): ## generate nifti file and return filenames
         axis_alias={0:'lr',1:'ap',2:'is'}
-        ped=axis_alias[phaseEncodingAxis[0]]
+        ped=axis_alias[int(phaseEncodingAxis)]
         inv_ped=ped[::-1] #reverse string
         directions=[ped,inv_ped]
         out_files=[]
@@ -290,7 +290,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             indexes=open(index_file,'r').read().split()
             for i in indexes:
                 p=copy.copy(phase_dir)
-                p[axis]=direction
+                p[int(axis)]=direction
                 result.append(p)
             direction*=-1
         with open(outfilename,'w') as fw:
@@ -307,7 +307,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         return indices 
 
     def get_phase_axis(self,phaseEncodingAxis):
-        return phaseEncodingAxis[0]
+        return phaseEncodingAxis
 
     def zero_padding_odd_sizes(self):
         for img in self.images:

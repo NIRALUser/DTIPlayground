@@ -41,14 +41,14 @@ class DTIReg(ExternalToolWrapper):
             options+=["--BRAINSRegistrationType","SpatioTempDiffeo"]
           else:
             options+=["--BRAINSRegistrationType",m_DTIRegOptions[1]]
-          options.append(" --BRAINSnumberOfPyramidLevels " + m_DTIRegOptions[3] + "")
-          options.append(" --BRAINSarrayOfPyramidLevelIterations " + m_DTIRegOptions[4] + "")
+          options += ["--BRAINSnumberOfPyramidLevels",str(m_DTIRegOptions[3])]
+          options += ["--BRAINSarrayOfPyramidLevelIterations",str(m_DTIRegOptions[4])]
           if m_DTIRegOptions[2]=="Use computed affine transform":
-            options.append(" --initialAffine " + initial_affine)
+            options+=["--initialAffine",initial_affine]
           else:
-            options.append(" --BRAINSinitializeTransformMode " + m_DTIRegOptions[2] + "")
+            options +=["--BRAINSinitializeTransformMode",str(m_DTIRegOptions[2])]
           #BRAINSTempTfm = FinalResampPath.joinpath("First_Resampling/" + case_id + "_" + scalar_measurement_type + "_AffReg.txt").__str__()
-          options.append(" --outputTransform " + brains_transform)
+          options +=["--outputTransform", brains_transform]
 
         if m_DTIRegOptions[0]=="ANTS":
           options+=["--method","useScalar-ANTS"]
@@ -58,8 +58,8 @@ class DTIReg(ExternalToolWrapper):
             options+=["--ANTSRegistrationType","SpatioTempDiffeo"]
           else:
             options+=["--ANTSRegistrationType",m_DTIRegOptions[1]]
-          options+=["--ANTSTransformationStep",m_DTIRegOptions[2]]
-          options+=["--ANTSIterations",m_DTIRegOptions[3]]
+          options+=["--ANTSTransformationStep",str(m_DTIRegOptions[2])]
+          options+=["--ANTSIterations",str(m_DTIRegOptions[3])]
           if m_DTIRegOptions[4]=="Cross-Correlation (CC)" :
             options+=["--ANTSSimilarityMetric","CC"]
           elif m_DTIRegOptions[4]=="Mutual Information (MI)" :
@@ -67,7 +67,7 @@ class DTIReg(ExternalToolWrapper):
           elif m_DTIRegOptions[4]=="Mean Square Difference (MSQ)":
             options+=["--ANTSSimilarityMetric","MSQ"]
           options+=["--ANTSSimilarityParameter",m_DTIRegOptions[5]]
-          options+=["--ANTSGaussianSigma",m_DTIRegOptions[6]]
+          options+=["--ANTSGaussianSigma",str(m_DTIRegOptions[6])]
           if m_DTIRegOptions[7]=="1":
             options+=["--ANTSGaussianSmoothingOff"]
 

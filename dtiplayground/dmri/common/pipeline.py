@@ -468,7 +468,7 @@ class Pipeline:
             logger("Exception occurred in runPipeline {}".format(str(e)),common.Color.ERROR)
             tbstr=traceback.format_exc()
             logger(tbstr,common.Color.ERROR)
-            return None
+            exit(1);
         finally:
             with open(Path(self.output_dir).joinpath('result_history.yml'),'w') as f:
                 yaml.safe_dump(self.result_history,f)

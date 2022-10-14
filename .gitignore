@@ -14,3 +14,4 @@ dtiplayground.egg-info
 tests
 **/_build
 **/_templates
+**/spa.zip

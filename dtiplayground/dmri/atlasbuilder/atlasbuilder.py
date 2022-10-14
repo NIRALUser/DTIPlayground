@@ -759,7 +759,7 @@ class AtlasBuilder(object):
         shutil.copytree(src,dst)
 
         logger("Final atlas copied into %s "% dst)
-        ### Concatenate the displacement fields
+        ### Concatenate the displacement fields if tree level is over 2
         logger("\nConcatenating deformation fields")
         ITKTransformTools_Concatenate(config,deformSequence)
         ITKTransformTools_Concatenate_Inverse(config,inverseDeformSequence)
@@ -1020,8 +1020,8 @@ def ITKTransformTools_Concatenate(config,payload): ## payload should be deformat
             #logger("%d : %s " %(idx,tmpCommand))
             os.system(tmpCommand)
     else:
-        logger("There are some missing deformation fields file(s)")
-        raise(Exception("There are some missing deformation fields file(s)"))
+        logger("There are some missing deformation fields file(s)",common.Color.ERROR)
+        #raise(Exception("There are some missing deformation fields file(s)"))
 
 def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be deformation_track.json list
     command=""
@@ -1047,8 +1047,8 @@ def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be 
             #logger("%d : %s " %(idx,tmpCommand))
             os.system(tmpCommand)
     else:
-        logger("There are some missing deformation fields file(s)")
-        raise(Exception("There are some missing deformation fields file(s)"))
+        logger("There are some missing deformation fields file(s)",common.Color.ERROR)
+        #raise(Exception("There are some missing deformation fields file(s)"))
 
 
 

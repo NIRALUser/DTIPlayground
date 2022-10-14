@@ -10,10 +10,9 @@ process_attributes:
 result: null
 protocol:
       phaseEncodingAxis: 
-        type: array
+        type: number
         caption: Phase Encoding Axis Index (0,1,2)
-        default_value: 
-          - 1
+        default_value: 1
         description: Phase encoding axis (list of axis index of phase encoding (0,1,2)),e.g. 0 - rl, 1 - ap(fh), 2  - si 
       phaseEncodingValue: 
         type: float

@@ -16,9 +16,12 @@ import json
 from . import utils
 from pathlib import Path
 
+from dtiplayground.config import INFO 
+
 class FileBrowserAPI:
-    def __init__(self,app,**kwargs):
-        self.app=app
+    def __init__(self,server,**kwargs):
+        self.server = server
+        self.app=self.server.app
         self.initEndpoints()
 
 ##### Endpoints
@@ -40,6 +43,23 @@ class FileBrowserAPI:
                 resp=Response(json.dumps(res),status=sc)
                 resp.headers['Content-Type']='application/json'
                 return resp  
+
+        @self.app.route('/api/v1/app',methods=['GET'])
+        def _getUserInfo():
+            sc=200
+            res=None
+            request_id=utils.get_request_id()
+            try:
+                res= self.getAppInfo()
+                res= utils.add_request_id(res)
+            except Exception as e:
+                sc=500
+                exc=traceback.format_exc()
+                res=utils.error_message("{}\n{}".format(str(e),exc),500,request_id)
+            finally:
+                resp=Response(json.dumps(res),status=sc)
+                resp.headers['Content-Type']='application/json'
+                return resp
 
         @self.app.route('/api/v1/files',methods=['GET'])
         def _getFileList():
@@ -128,3 +148,10 @@ class FileBrowserAPI:
             content=f.read()
         return content
 
+    def getAppInfo(self):
+        res = {
+            'version' : INFO['dtiplayground']['version'],
+            'home_dir': Path.home().__str__(),
+            'config_dir' : str(self.server.config_dir)
+        }
+        return res

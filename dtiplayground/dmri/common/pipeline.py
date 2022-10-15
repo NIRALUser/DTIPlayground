@@ -286,7 +286,10 @@ class Pipeline:
                 mod_name , _ = parr
             default_options=default_pipeline_options()
 
-            default_protocol=getattr(self.modules[mod_name]['module'],mod_name)(str(self.config_dir), **opts).generateDefaultProtocol(self.images[0])
+            if len(self.images) > 0:
+                image_obj = self.images[0]
+            else: image_obj = None
+            default_protocol=getattr(self.modules[mod_name]['module'],mod_name)(str(self.config_dir), **opts).generateDefaultProtocol(image_obj)
             default_options['protocol'].update(default_protocol)
             if not isinstance(parr, list):
                 new_pipeline.append([parr,default_options])

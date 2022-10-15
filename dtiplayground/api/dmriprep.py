@@ -20,8 +20,9 @@ import yaml
 from multiprocessing import Process
 
 class DMRIPrepAPI:
-    def __init__(self,app,**kwargs):
-        self.app=app
+    def __init__(self,server,**kwargs):
+        self.server = server
+        self.app=self.server.app
         self.initEndpoints()
 
 ##### Endpoints
@@ -281,7 +282,6 @@ class DMRIPrepAPI:
         # default_map = self.defaultVariables()
         self.setEnvironmentVars()
         for idx,v in enumerate(template):
-            print(v['name'])
             if 'filepath' in v['type'] or 'dirpath' in v['type']:
                 if v['default_value'] is not None:
                     try:

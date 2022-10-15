@@ -314,7 +314,7 @@ class DTIPlaygroundModule: #base class
     def getTemplate(self):
         return self.template 
 
-    def generateDefaultProtocol(self,image_obj):
+    def generateDefaultProtocol(self,image_obj=None):
         self.protocol={}
         for k,v in self.template['protocol'].items():
                 self.protocol[k]=v['default_value']

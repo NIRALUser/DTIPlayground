@@ -20,8 +20,9 @@ import yaml
 from multiprocessing import Process
 
 class DMRIAtlasbuilderAPI:
-    def __init__(self,app,**kwargs):
-        self.app=app
+    def __init__(self,server,**kwargs):
+        self.server = server
+        self.app=self.server.app
         self.initEndpoints()
 
 ##### Endpoints
@@ -93,26 +94,6 @@ class DMRIAtlasbuilderAPI:
 
         return params
 
-    # def build_atlas(self, configured_dir):
-
-    #     output_dir=Path(configured_dir)
-        
-
-        
-    #     config_path=output_dir.joinpath('common/config.yml')
-    #     hbuild_path=output_dir.joinpath('common/h-build.yml')
-    #     greedy_path=output_dir.joinpath('common/greedy.yml')
-    #     ablogger = common.MultiLogger()
-    #     bldr=AtlasBuilder(logger = ablogger)
-    #     bldr.configure( output_dir=output_dir,
-    #                     config_path=config_path,
-    #                     hbuild_path=hbuild_path,
-    #                     greedy_path=greedy_path)
-       
-    #     bldr.build()
-
-    #     res = { 'task_id' : utils.get_uuid()}
-    #     return res
 
     def build_atlas(self, configured_dir):
 

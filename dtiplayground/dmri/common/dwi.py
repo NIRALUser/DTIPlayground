@@ -94,7 +94,6 @@ def _load_nrrd(filename):
         data=np.moveaxis(data,grad_axis,-1)
         info['sizes']=list(data.shape)
         info['image_size']=list(data.shape[0:3])
-    logger("{}".format(info))
     ### extracting gradients
     gradients=[]
     measurement_frame = np.array(info['measurement_frame'])

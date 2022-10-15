@@ -273,6 +273,13 @@ MIT
 
 ### Change Log
 
+##### 2022-10-13
+- dmriplayground - executable name dpg changed to dmriplayground (dtiplaground lab)
+- dmriprep - minor bug fixed
+- dmriatlas - minor bug fixed in using BRAINS (parameter error)
+- dmriatlas - cropping image bug fixed
+- dmriatlas - issue of external software : DTIReg doesn't generate inverse deformation field if BRAINS is selected
+
 ##### 2022-10-08
 
 - dtiplayground - dpg server development initiated

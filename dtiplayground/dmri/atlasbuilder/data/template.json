@@ -1,0 +1,635 @@
+{
+  "name" : "dmriatlasbuilder",
+  "tables" : {
+        "greedy":{
+
+                "name" : "greedy",
+                "description" : "Greedy Atlas Parameters",
+                "table": {
+                     "name": "Greedy Atlas Scale Level",
+                     "columns" : [
+
+                          { "name": "scale_level", "label": "Scale Level", "field": "scale_level" },
+                          { "name": "n_iterations", "label": "Number of Iterations", "field": "n_iterations" },
+                          { "name": "alpha", "label": "Alpha", "field": "alpha" },
+                          { "name": "beta", "label": "Beta", "field": "beta" },
+                          { "name": "gamma", "label": "Gamma", "field": "gamma" },
+                          { "name": "max_perturbation", "label": "Max Perturbation", "field": "max_perturbation" }
+
+                      ],
+                      "rows" : [
+                          {
+                            "scale_level" : 4,
+                            "n_iterations" : 150,
+                            "alpha" : 1.0,
+                            "beta" : 1.0,
+                            "gamma" : 0.0001,
+                            "max_perturbation": 0.001
+                          },
+                          {
+                            "scale_level" : 2,
+                            "n_iterations" : 120,
+                            "alpha" : 1.0,
+                            "beta" : 1.0,
+                            "gamma" : 0.001,
+                            "max_perturbation": 0.01
+                          },
+                          {
+                            "scale_level" : 1,
+                            "n_iterations" : 100,
+                            "alpha" : 0.1,
+                            "beta" : 0.1,
+                            "gamma" : 0.01,
+                            "max_perturbation": 0.1
+                          }
+                      ]
+                }
+        }
+  },
+  "parameter_groups":
+  {
+    "affine_atlas": {
+          "caption" : "Affine Atlas",
+          "parameters":[
+               {
+                  "name" : "m_BFAffineTfmMode",
+                  "caption": "Affine Transform Mode",
+                  "value": "useCenterOfHeadAlign",
+                  "type": "select",
+                  "description" : "Affine registration transform mode",
+                  "candidates" : [
+                    {
+                      "value": "useCenterOfHeadAlign",
+                      "caption": "Center of head align",
+                      "description": "Center of head align"
+                    },
+                    {
+                      "value": "useGeometryAlign",
+                      "caption": "Use Geometry Align",
+                      "description": "Using Geometry Alignment"
+                    },
+                    {
+                      "value": "UseMomentsAlign",
+                      "caption": "Use Moments Align",
+                      "description": "Use Moment Alignment method"
+                    },
+                    {
+                      "value": "Off",
+                      "caption": "Off",
+                      "description": "Do not align"
+                    }           
+                  ]
+               },
+               {
+                  "name" : "m_nbLoops",
+                  "caption" : "Number of Iterations",
+                  "value" : 2,
+                  "type": "number",
+                  "description" : "Number of affine registration"
+               },
+               {
+                  "name" : "m_NeedToBeCropped",
+                  "caption" : "To Crop",
+                  "value" : false,
+                  "type": "boolean",
+                  "description" : "If checked, image will be cropped"
+               },
+               {
+                  "name" : "m_CropSize",
+                  "if" : {
+                    "m_NeedToBeCropped" : true
+                  },
+                  "caption": "Cropping Sizes",
+                  "value": "50,50,50",
+                  "type": "string",
+                  "size": 3,
+                  "description" : "None"
+               },
+               {
+                  "name" : "m_ScalarMeasurement",
+                  "caption" : "Scalar Measurement Type",
+                  "value" : "FA",
+                  "type": "select",
+                  "description" : "Scalar to be used for registration",
+                  "candidates" : [
+                    {
+                      "value": "FA",
+                      "caption": "FA",
+                      "description": "None"
+                    },
+                    {
+                      "value": "MD",
+                      "caption": "MD",
+                      "description": "Nothing"
+                    }
+                  ]
+               },
+               {
+                  "name" : "m_RegType",
+                  "caption" : "Use the First Image as the Registration Template",
+                  "value" : true,
+                  "type": "boolean",
+                  "description" : "If checked, use the first image as reference in the first Registration Loop"
+               },     
+               {
+                  "name" : "m_TemplatePath",
+                  "caption" : "Template Path",
+                  "if" : {
+                      "m_RegType" : false
+                  },
+                  "value" : "",
+                  "type": "filepath-remote",
+                  "description" : "None"
+               }
+               
+             ]
+    },
+    "diffeomorphic_atlas": {
+          "caption" : "Diffeormorphic Atlas",
+          "parameters":[
+               {
+                  "name" : "m_InterpolType",
+                  "caption" : "Resampling Interpolation type",
+                  "value" : "Linear",
+                  "type": "select",
+                  "description" : "Interpolation type for diffeomorphic registration",
+                  "candidates" : [
+                    {
+                      "value": "Linear",
+                      "caption": "Linear",
+                      "description": "Use linear interpolation"
+                    },
+                    {
+                      "value": "Nearest Neighborhood",
+                      "caption": "Nearest Neighborhood",
+                      "description": "Use nearest neighbor"
+                    },
+                    {
+                      "value": "BSpline",
+                      "caption": "BSpline",
+                      "description": "Use B Spline for interpolation"
+                    },
+                    {
+                      "value": "Windowed Sinc",
+                      "caption": "Windowed Sinc",
+                      "description": "Use windowed sinc interpolation, further option needed"
+                    }
+                  ]
+               },
+               {
+                  "name" : "m_InterpolOption",
+                  "caption" : "Resampling Interpolation Option",
+                  "value" : "Cosine",
+                  "type": "select",
+                  "if" : {
+                    "m_InterpolType" : "Windowed Sinc"
+                  },
+                  "candidates":[
+                    {
+                      "value": "Hamming",
+                      "caption": "Hamming",
+                      "description": "Hamming"
+                    },
+                    {
+                      "value": "Cosine",
+                      "caption": "Cosine",
+                      "description": "Cosine"
+                    },
+                    {
+                      "value": "Welch",
+                      "caption": "Welch",
+                      "description": "Welch"
+                    },
+                    {
+                      "value": "Lanczos",
+                      "caption": "Lanczos",
+                      "description": "Lanczos"
+                    },
+                    {
+                      "value": "Blackman",
+                      "caption": "Blackman",
+                      "description": "Blackman"
+                    }
+                  ],
+                  "description" : "Interpolation sub class if Windoed Sinc was chosen for interpolation type"
+               },
+               {
+                  "name" : "m_TensInterpol",
+                  "caption" : "Tensor Interpolation",
+                  "value" : "Log Euclidean",
+                  "type": "select",
+                  "description" : "Tensor interpolation type",
+                  "candidates" : [
+                    {
+                      "value": "Log Euclidean",
+                      "caption": "Log Euclidean",
+                      "description": "Use log euclidean method for tensor interpolation"
+                    },
+                    {
+                      "value": "Non Log Euclidean",
+                      "caption": "Non Log Euclidean",
+                      "description": "Use log non euclidean method for tensor interpolation (Further option needed)"
+                    }
+                  ]
+               },
+               {
+                  "name" : "m_InterpolLogOption",
+                  "caption" : "Tensor Interpolation Correction",
+                  "if" : {
+                    "m_TensInterpol" : "Non Log Euclidean"
+                  },
+                  "value" : "None",
+                  "type": "select",
+                  "candidates":[
+                    {
+                      "value": "Zero",
+                      "caption": "Zero",
+                      "description": "Zero for non euclidean tensor interpolation"
+                    },
+                    {
+                      "value": "None",
+                      "caption": "None",
+                      "description": "None for non euclidean tensor interpolation"
+                    },
+                    {
+                      "value": "Absolute Value",
+                      "caption": "Absolute Value",
+                      "description": "Absolute Value for non euclidean tensor interpolation"
+                    },
+                    {
+                      "value": "Nearest",
+                      "caption": "Nearest",
+                      "description": "Nearest for non euclidean tensor interpolation"
+                    }
+                  ],
+                  "description" : "Options iff Non Log Euclidean tensor interpolation is selected"
+               },
+               {
+                  "name" : "m_TensTfm",
+                  "caption" : "Tensor Transformation",
+                  "value" : "Preservation of the Principal Direction (PPD)",
+                  "type": "select",
+                  "description" : "Tensor transformation method",
+                  "candidates" : [
+                    {
+                      "value": "Preservation of the Principal Direction (PPD)",
+                      "caption": "Preservation of the Principal Direction (PPD)",
+                      "description": "Preservation of the Principal Direction (PPD)"
+                    },
+                    {
+                      "value": "Finite Strain (FS)",
+                      "caption": "Finite Strain (FS)",
+                      "description": "Finite Strain (FS)"
+                    }
+                  ]
+               }
+          ]
+    },
+    "final_resample" : {
+          "caption" : "Final Resampling",
+          "parameters":[
+               {
+                  "name": "m_RegMethod",
+                  "caption": "Registration Method",
+                  "type" : "select",
+                  "value" : "ANTS",
+                  "description" : "Registration method for the registration in final resampling",
+                  "candidates": [
+                       {
+                          "value" : "ANTS",
+                          "caption" : "ANTS",
+                          "description" : "Advanced Normalization Tools"
+                       },
+                       {
+                          "value" : "BRAINS",
+                          "caption" : "BRAINS",
+                          "description" : "Brain Research: Analysis of Images, Networks, and Systems"
+                       }
+                  ]
+               },
+               {
+                  "name" : "m_DTIRegOptions_BRAINS",
+                  "caption": "DTIReg Options",
+                  "if" : { "m_RegMethod" : "BRAINS" },
+                  "value": ["BRAINS", "Diffeomorphic", "Use computed affine transform",5,"300,50,30,20,15"],
+                  "type": "component",
+                  "description" : "None",
+                  "components":[
+                            { 
+                                "name" : 0,
+                                "caption": "Registration Method",
+                                "type" : "label",
+                                "value" : "BRAINS",
+                                "hidden": true,
+                                "disabled": false,
+                                "description": "Fixed parameter"
+                            },
+                            {
+                                "name" : 1,
+                                "caption" : "Registration Type",
+                                "value" : "Diffeomorphic",
+                                "type" : "select",
+                                "description" : "Type of registration to apply",
+                                "candidates" : [
+                                        {
+                                          "value": "None",
+                                          "caption": "None",
+                                          "description": "None type"
+                                        },
+                                        {
+                                          "value": "Rigid",
+                                          "caption": "Rigid",
+                                          "description": "Rigid type"                        
+                                        },
+                                        {
+                                          "value": "BSpline",
+                                          "caption": "BSpline",
+                                          "description": "BSpline type"                        
+                                        },
+                                        {
+                                          "value": "Diffeomorphic",
+                                          "caption": "Diffeomorphic",
+                                          "description": "Diffeomorphic type"                        
+                                        },
+                                        {
+                                          "value": "Demons",
+                                          "caption": "Demons",
+                                          "description": "Demons type"                        
+                                        },
+                                        {
+                                          "value": "FastSymmetricForces",
+                                          "caption": "FastSymmetricForces",
+                                          "description": "FastSymmetricForces type"                        
+                                        }                                   
+                                ]
+                            },
+                            {
+                                "name": 2,
+                                "caption" : "Transform Mode",
+                                "value" : "Use computed affine transform",
+                                "type" : "select",
+                                "description" : "Transform mode",
+                                "candidates" : [
+                                        {
+                                          "value": "Off",
+                                          "caption": "Off",
+                                          "description": "Off"
+                                        },
+                                        {
+                                          "value": "UseMomentsAlign",
+                                          "caption": "UseMomentsAlign",
+                                          "description": "UseMomentsAlign"                        
+                                        },
+                                        {
+                                          "value": "useCenterOfHeadAlign",
+                                          "caption": "useCenterOfHeadAlign",
+                                          "description": "useCenterOfHeadAlign"                        
+                                        },
+                                        {
+                                          "value": "useGeometryAlign",
+                                          "caption": "useGeometryAlign",
+                                          "description": "useGeometryAlign"                        
+                                        },
+                                        {
+                                          "value": "Use computed affine transform",
+                                          "caption": "Use computed affine transform",
+                                          "description": "Use computed affine transform"                        
+                                        }                            
+                                ]
+                            },
+                            {
+                                    "name" : 3,
+                                    "caption" : "Number of Pyramid Levels",
+                                    "type" : "number",
+                                    "value" : 5,
+                                    "description" : "Number of pyramid levels"
+                            },
+                            {
+                                    "name" : 4,
+                                    "caption" : "Number of Pyramid Levels",
+                                    "type" : "string",
+                                    "value" : "300,50,30,20,15",
+                                    "description" : "Number of pyramid levels"
+                            }
+                    ]
+                  
+               },
+               {
+                  "name" : "m_DTIRegExtraPath",
+                  "caption" : "ANTS Directory",
+                  "value" : "",
+                  "if" :{
+                    "m_RegMethod" : "ANTS"
+                  },
+                  "type": "filepath-remote",
+                  "description" : "(Optional) ANTS installation directory (e.g. /usr/local/ANTS/bin), if not selected, ANTS in DTIPlaygroundTools will be used."
+               },  
+               {
+                  "name" : "m_NbThreadsString",
+                  "caption" : "Number of threads to use for GreedyAtlas",
+                  "value" : 3,
+                  "type": "number",
+                  "description" : "This is the number of threads to be allocated for single registration process. If parallelism is set in execution settings, total number of threads to be used will be multiplied."
+               },
+               {
+                  "name" : "m_DTIRegOptions_ANTS",
+                  "caption": "DTIReg Options",
+                  "if" : { "m_RegMethod" : "ANTS" },
+                  "value": ["ANTS", "GreedyDiffeo (SyN)", "0.25", "100x50x25", "Cross-Correlation (CC)", "2","3",false],
+                  "type": "component",
+                  "description" : "None",
+                  "components":[
+                                  { "name" : 0,
+                                    "caption": "Registration Method",
+                                    "type" : "label",
+                                    "value" : "ANTS",
+                                    "hidden": true,
+                                    "disabled": false,
+                                    "description" : "Fixed parameter"
+                                  },
+                                  {
+                                    "name": 1,
+                                    "caption": "Registration Type",
+                                    "type" : "select",
+                                    "value" : "GreedyDiffeo (SyN)",
+                                    "description" : "Registration Type (Greedy as default)",
+                                    "disabled" : false,
+                                    "candidates": [
+                                        {
+                                          "value": "None",
+                                          "caption": "None",
+                                          "description": "None type"
+                                        },
+                                        {
+                                          "value": "Rigid",
+                                          "caption": "Rigid",
+                                          "description": "Rigid type"                        
+                                        },
+                                        {
+                                          "value": "Elast",
+                                          "caption": "Elast",
+                                          "description": "Elastic type"                        
+                                        },
+                                        {
+                                          "value": "Exp",
+                                          "caption": "Exp",
+                                          "description": "Exponential type"                        
+                                        },
+                                        {
+                                          "value": "GreedyExp",
+                                          "caption": "GreedyExp",
+                                          "description": "Greedy Exponential Type"                        
+                                        },
+                                        {
+                                          "value": "GreedyDiffeo (SyN)",
+                                          "caption": "GreedyDiffeo (SyN)",
+                                          "description": "Greedt Diffeomorphic type"                        
+                                        },
+                                        {
+                                          "value": "SpatioTempDiffeo (SyN)",
+                                          "caption": "SpatioTempDiffeo (SyN)",
+                                          "description": "Spatio Temporal Diffeomorphic type"                        
+                                        }
+                                    ]
+                                  },
+                                  {
+                                    "name" : 2,
+                                    "caption" : "Transformation Step",
+                                    "type" : "number",
+                                    "value" : 0.25,
+                                    "description" : "Transformation Step Parameter"
+                                  },
+                                  {
+                                    "name" : 3,
+                                    "caption" : "Iterations",
+                                    "type" : "string",
+                                    "value" : "100x50x25",
+                                    "description" : "3 dimensional expression such as 100x50x25"
+                                  },
+                                  {
+                                    "name" : 4,
+                                    "caption" : "Similarity Metric",
+                                    "type" : "select",
+                                    "value" : "Cross-Correlation (CC)",
+                                    "description" : "Similarity Metric",
+                                    "candidates" : [
+                                        {
+                                          "value": "Cross-Correlation (CC)",
+                                          "caption": "Cross-Correlation (CC)",
+                                          "description": "Cross-Correlation"
+                                        },
+                                        {
+                                          "value": "Mutual Information (MI)",
+                                          "caption": "Mutual Information (MI)",
+                                          "description": "Mutual Information"
+                                        },{
+                                          "value": "Mean Square Difference (MSQ)",
+                                          "caption": "Mean Square Difference (MSQ)",
+                                          "description": "Mutual Mean Square Difference"
+                                        }
+                                    ]
+                                  },
+                                  {
+                                    "name" : 5,
+                                    "caption" : "Similarity Parameter",
+                                    "type" : "number",
+                                    "value" : 2.00,
+                                    "description" : "Similarity Parameter"
+                                  },
+                                  {
+                                    "name" : 6,
+                                    "caption" : "Gaussian Sigma",
+                                    "type" : "number",
+                                    "value" : 3.00,
+                                    "description" : "Gaussian sigma to evaluate the threshold"
+                                  },
+                                  {
+                                    "name" : 7,
+                                    "caption" : "Gaussian Smoothing Off",
+                                    "type" : "boolean",
+                                    "value" : false,
+                                    "description" : "If checked, gaussian smoothing will be off"
+                                  }
+                              ]
+                  
+               },
+               {
+                  "name" : "m_nbLoopsDTIReg",
+                  "caption" : "Number of interations with DTIReg",
+                  "value" : 3,
+                  "type": "number",
+                  "disabled": false,
+                  "description" : "Number of iterations to perform final registration with DTIReg"
+               }
+          ]
+    },
+    "execution": {
+          "caption" : "Execution Parameters",
+          "parameters":[
+               {
+                  "name" : "m_OutputPath",
+                  "caption" : "Output Path",
+                  "value" : "",
+                  "type": "dirpath-remote",
+                  "description" : "Output directory. If it doesn't exist, it creates the directory, however, recursive generation of directory is not permitted."
+               },
+               {
+                  "name" : "m_nbParallelism",
+                  "caption" : "Number of processes to use for parallel process",
+                  "value" : 1,
+                  "type": "number",
+                  "disabled": false,
+                  "description" : "The maximum number of parallel proceses when building hierarchical atlas. Thie can save time, but keep in mind that total core to use will be nbThread * nbParallelism"
+               },
+               {
+                  "name" : "m_Overwrite",
+                  "caption" : "Overwrite",
+                  "value" : true,
+                  "type": "boolean",
+                  "description" : "If checked, all the files will be overwritten"
+               },
+               {
+                  "name" : "m_PythonPath",
+                  "caption" : "Python Path",
+                  "value" : "/usr/bin/python",
+                  "hidden": true,
+                  "disabled": true,
+                  "type": "filepath-remote",
+                  "description" : "Python path, deprecated"
+               },
+               {
+                  "name" : "m_useGridProcess",
+                  "caption" : "Use Grid Processing",
+                  "value" : false,
+                  "type": "boolean",
+                  "disabled" : true,
+                  "hidden": true,
+                  "description" : "Deprecated"
+               },
+               {
+                  "name" : "m_GridAtlasCommand",
+                  "caption" : "Grid Atlas Command (optional)",
+                  "value" : "",
+                  "if": {
+                    "m_useGridProcess" : true
+                  },
+                  "optional": true,
+                  "type": "string",
+                  "description" : "Deprecated"
+               },
+               {
+                  "name" : "m_GridGeneralCommand",
+                  "caption" : "Grid General Computing Command (optional)",
+                  "value" : "",
+                  "if": {
+                    "m_useGridProcess" : true
+                  },
+                  "optional" : true,
+                  "type": "string",
+                  "description" : "Deprecated"
+               }
+
+          ]
+    }
+  }
+}

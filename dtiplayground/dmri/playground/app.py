@@ -56,7 +56,7 @@ class DMRIPlaygroundApp(AppBase):
             options.setdefault('static_page_dir', spa_dir)
             options.setdefault('debug', False)
             config = {
-                "config_dir": self.app['application_dir'],
+                "config_dir": Path(self.app['application_dir']).parent.__str__(),
                 "host" : options['host'],
                 "port" : options['port'],
                 "static_page_dir" : options['static_page_dir'],

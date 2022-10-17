@@ -16,7 +16,7 @@ logger=dtiplayground.dmri.common.logger.write
 color= dtiplayground.dmri.common.Color
 
 ### APIs
-from dtiplayground.api.filebrowser import FileBrowserAPI 
+from dtiplayground.api.application import ApplicationAPI 
 from dtiplayground.api.dmriatlasbuilder import DMRIAtlasbuilderAPI
 from dtiplayground.api.dmriprep import DMRIPrepAPI
 
@@ -48,7 +48,7 @@ class DTIPlaygroundServer(object):
         CORS(self.app)
 
         self.app.config['SUBMODULES']={}
-        self.app.config['SUBMODULES']['FileBrowserAPI']=FileBrowserAPI(self)
+        self.app.config['SUBMODULES']['ApplicationAPI']=ApplicationAPI(self)
         self.app.config['SUBMODULES']['DMRIAtlasbuilderAPI']=DMRIAtlasbuilderAPI(self)
         self.app.config['SUBMODULES']['DMRIPrepAPI']=DMRIPrepAPI(self)
 

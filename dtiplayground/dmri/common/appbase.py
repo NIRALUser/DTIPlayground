@@ -110,7 +110,7 @@ class AppBase:
     def initializeImpl(self, options):
         pass
 
-    def run(self,options):
+    def run(self,options): ### options must have output_dir 
         return self.runImpl(options)
 
     def runImpl(self, options):

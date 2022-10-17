@@ -67,6 +67,25 @@ class DMRIAtlasbuilderAPI:
                 resp.headers['Content-Type']='application/json'
                 return resp  
 
+        @self.app.route('/api/v1/dmriatlasbuilder',methods=['GET'])
+        def _get_dmriab_template():
+            sc=200
+            res=None
+            req=None
+            request_id=utils.get_request_id()
+            try:
+                res= self.getUITemplate()
+                res= utils.add_request_id(res)
+            except Exception as e:
+                sc=500
+                exc=traceback.format_exc()
+                res=utils.error_message("{}\n{}".format(str(e),exc),500,request_id)
+            finally:
+                resp=Response(json.dumps(res),status=sc)
+                resp.headers['Content-Type']='application/json'
+                return resp  
+
+
     def generate_parameter_dir(self,req):
         params = {
             'output_dir' : req['output_dir'],
@@ -116,10 +135,28 @@ class DMRIAtlasbuilderAPI:
            
                 bldr.build()
 
-        res = { 'task_id' : utils.get_uuid()}
-        proc = Process(target= dmriatlas_proc, args=[output_dir])
+        res = { 'execution_id' : utils.get_uuid(),
+                'output_dir' : output_dir.__str__()
+        }
+        proc = Process(target= dmriatlas_proc,name=res['execution_id'], args=[output_dir])
         proc.start()
+        res['pid']=proc.pid
+        res['proc_name']=proc.name
+        res['status']='running'
+        json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
         proc.join()
-        if proc.exitcode != 0 : raise Exception("Error during running")
+        if proc.exitcode != 0 : 
+            res['status']='failed'
+            json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
+            raise Exception("Error during running")
+        else:
+            res['status']='success'
+            json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
         return res
 
+
+    def getUITemplate(self):
+        import dtiplayground.dmri.atlasbuilder.data as d
+        template_fn = Path(d.__file__).parent.joinpath('template.json')
+        template = json.load(open(template_fn,'r'))
+        return template 

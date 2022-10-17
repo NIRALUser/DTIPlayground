@@ -147,6 +147,71 @@ class DMRIPrepAPI:
         json.dump(protocols, open(protocol_fn_json,'w'),indent=4)
         return req
 
+    # def run(self, req):
+
+    #     params = {
+    #         'output_dir' : req['output_dir'],
+    #     }
+    #     output_dir = Path(params['output_dir'])
+    #     config_dir = self.getConfigDirectory()
+    #     protocol_fn = output_dir.joinpath('protocols.yml')
+    #     protocol = yaml.safe_load(open(protocol_fn,'r'))
+    #     params.setdefault('config_dir',str(config_dir))
+    #     params.setdefault('protocol_path',str(protocol_fn))
+    #     params.setdefault('execution_id', utils.get_uuid())
+    #     params.setdefault('global_variables', {})
+
+    
+    #     def dmriprep_proc(param):
+
+            
+    #         with open(output_dir.joinpath('log.txt'),'w') as sys.stdout:
+                
+    #             ### begin
+    #             os.environ['OMP_NUM_THREADS']=str(protocol['io']['num_threads']) ## this should go before loading any dipy function. 
+    #             os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(protocol['io']['num_threads']) ## for ANTS threading
+    #             import  dtiplayground.dmri.common as common
+    #             import dtiplayground.dmri.preprocessing
+    #             import dtiplayground.dmri.preprocessing.modules as m
+    #             import dtiplayground.dmri.preprocessing.protocols as p
+    #             logger = common.logger
+    #             logger.setFilePointer(sys.stdout)
+    #             sys.path.append(Path(m.__file__).parent.__str__()) 
+    #             image_list = []
+    #             image_list.append(protocol['io']['input_image_1'])
+    #             if 'input_image_2' in protocol['io']:
+    #                 if protocol['io']['input_image_2'] and protocol['io']['input_image_2'].strip()!='':
+    #                     image_list.append(protocol['io']['input_image_2'])
+
+    #             proto= p.Protocols(config_dir,logger=logger)
+    #             proto.loadImages(image_list, protocol['io']['baseline_threshold'])
+    #             proto.setOutputDirectory(params['output_dir'])
+    #             proto.loadProtocols(str(protocol_fn))
+    #             proto.setNumThreads(int(protocol['io']['num_threads']))
+    #             proto.runPipeline(options=params)
+             
+
+    #     res = { 
+    #         'execution_id' : params['execution_id'],
+    #         'output_dir' : output_dir.__str__()
+    #     }
+    #     proc = Process(target= dmriprep_proc, name=params['execution_id'],args=[params])
+    #     proc.start()
+
+    #     res['pid']=proc.pid
+    #     res['proc_name']=proc.name
+    #     res['status']='running'
+    #     json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
+    #     proc.join()
+    #     if proc.exitcode != 0 : 
+    #         res['status']='failed'
+    #         json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
+    #         raise Exception("Error during running")
+    #     else:
+    #         res['status']='success'
+    #         json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
+    #     return res
+
     def run(self, req):
 
         params = {
@@ -174,31 +239,47 @@ class DMRIPrepAPI:
                 import dtiplayground.dmri.preprocessing
                 import dtiplayground.dmri.preprocessing.modules as m
                 import dtiplayground.dmri.preprocessing.protocols as p
-                logger = common.logger
-                logger.setFilePointer(sys.stdout)
-                sys.path.append(Path(m.__file__).parent.__str__()) 
-                image_list = []
-                image_list.append(protocol['io']['input_image_1'])
-                if 'input_image_2' in protocol['io']:
-                    if protocol['io']['input_image_2'] and protocol['io']['input_image_2'].strip()!='':
-                        image_list.append(protocol['io']['input_image_2'])
-
-                proto= p.Protocols(config_dir,logger=logger)
-                proto.loadImages(image_list, protocol['io']['baseline_threshold'])
-                proto.setOutputDirectory(params['output_dir'])
-                proto.loadProtocols(str(protocol_fn))
-                proto.setNumThreads(int(protocol['io']['num_threads']))
-                proto.runPipeline(options=params)
-             
+                from dtiplayground.dmri.preprocessing.app import DMRIPrepApp
+                
+                inputs = [protocol['io']['input_image_1']]
+                protocol['io'].setdefault('input_image_2',None)
+                if protocol['io']['input_image_2'] is not None:
+                    inputs.append(protocol['io']['input_image_2'])
+                options={
+                    "input_image_paths" : inputs,
+                    "protocol_path" : str(protocol_fn),
+                    "output_dir" : protocol['io']['output_directory'],
+                    "num_threads":  protocol['io']['num_threads'],
+                    "default_protocols": None,
+                    "execution_id": param['execution_id'],
+                    "baseline_threshold" : protocol['io']['baseline_threshold'],
+                    "output_format" : protocol['io']['output_format'],
+                    "output_file_base" : protocol['io']['output_filename_base'],
+                    "no_output_image" :  protocol['io']['no_output_image'],
+                    "global_variables" : {}
+                }
+                app=DMRIPrepApp(config_root=str(self.server.config_dir))
+                app.run(options)
 
         res = { 
-            'task_id' : utils.get_uuid(),
+            'execution_id' : params['execution_id'],
             'output_dir' : output_dir.__str__()
         }
-        proc = Process(target= dmriprep_proc, args=[params])
+        proc = Process(target= dmriprep_proc, name=params['execution_id'],args=[params])
         proc.start()
+
+        res['pid']=proc.pid
+        res['proc_name']=proc.name
+        res['status']='running'
+        json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
         proc.join()
-        if proc.exitcode != 0 : raise Exception("Error during running")
+        if proc.exitcode != 0 : 
+            res['status']='failed'
+            json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
+            raise Exception("Error during running")
+        else:
+            res['status']='success'
+            json.dump(res,open(output_dir.joinpath('status.json'),'w'),indent=4)
         return res
 
     def getProtocolTemplateConfig(self):

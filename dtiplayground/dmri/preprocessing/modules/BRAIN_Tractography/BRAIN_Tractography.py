@@ -135,10 +135,12 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         # sft = StatefulTractogram(streamlines, img, Space.RASMM)
         # sft = StatefulTractogram(streamlines, img, Space.VOXMM)
         tract_path = Path(self.output_dir).joinpath('tractogram.vtk').__str__()
+        tract_path_vtp = Path(self.output_dir).joinpath('tractogram.vtp').__str__()
         # save_vtk(sft, tract_path, bbox_valid_check=False)
-        save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=True)
-
+        save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=False)
+        save_vtk_streamlines(streamlines, tract_path_vtp, to_lps=False, binary=False)
         self.addOutputFile(tract_path, "tractogram")
+        self.addOutputFile(tract_path_vtp, "tractogram")
         self.result['output']['success']=True
         return self.result
 

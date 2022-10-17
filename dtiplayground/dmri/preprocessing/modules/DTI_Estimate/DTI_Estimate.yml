@@ -28,6 +28,7 @@ protocol:
         type: list
         caption: Optimization Method
         default_value: wls
+        description: Optimizaition Method
         candidates:
           - value : wls
             caption: Weighted Least Squares

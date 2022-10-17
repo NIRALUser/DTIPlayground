@@ -1,7 +1,0 @@
-io:
-  baseline_threshold: 10.0
-  no_output_image: false
-  output_directory: ''
-  output_format: null
-pipeline: []
-version: 0.1

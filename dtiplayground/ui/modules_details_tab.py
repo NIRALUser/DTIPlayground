@@ -76,8 +76,8 @@ class ModuleDetails(QWidget):
     # self.singletract = Singletract(protocol_template, self.singletract_yml)
     self.slicecheck = SliceCheck(protocol_template, self.slicecheck_yml)
     self.susceptibility = SusceptibilityCorrection(protocol_template, self.susceptibility_yml, preferences_yml)
-    self.utilheader = UtilHeader(protocol_template, self.utilheader_yml)    
-    self.utilmerge = UtilMerge(protocol_template, self.utilmerge_yml)
+    #self.utilheader = UtilHeader(protocol_template, self.utilheader_yml)    
+    #self.utilmerge = UtilMerge(protocol_template, self.utilmerge_yml)
 
     # add modules to stack
     self.details_stack = QStackedWidget()
@@ -88,14 +88,16 @@ class ModuleDetails(QWidget):
     self.details_stack.addWidget(self.susceptibility.stack)
     self.details_stack.addWidget(self.eddymotion.stack)
     self.details_stack.addWidget(self.brainmask.stack)
-    self.details_stack.addWidget(self.dtiestimate.stack)
-    self.details_stack.addWidget(self.exclude.stack)
-    self.details_stack.addWidget(self.utilheader.stack)
-    self.details_stack.addWidget(self.utilmerge.stack)
-    self.details_stack.addWidget(self.qcreport.stack)
-    self.details_stack.addWidget(self.dtiregister.stack)
-    # self.details_stack.addWidget(self.singletract.stack)
     self.details_stack.addWidget(self.braintractography.stack)
+    self.details_stack.addWidget(self.dtiestimate.stack)
+    self.details_stack.addWidget(self.dtiregister.stack)
+    self.details_stack.addWidget(self.exclude.stack)
+    #self.details_stack.addWidget(self.utilheader.stack)
+    #self.details_stack.addWidget(self.utilmerge.stack)
+    self.details_stack.addWidget(self.qcreport.stack)
+    
+    # self.details_stack.addWidget(self.singletract.stack)
+    
 
     # layout
     layout_v = QVBoxLayout()
@@ -134,11 +136,11 @@ class ModuleDetails(QWidget):
     filepath = module_dir.joinpath("MANUAL_Exclude/MANUAL_Exclude.yml")
     self.exclude_yml = yaml.safe_load(open(filepath,'r'))
 
-    filepath = module_dir.joinpath("UTIL_Header/UTIL_Header.yml")
-    self.utilheader_yml = yaml.safe_load(open(filepath, 'r'))
+    #filepath = module_dir.joinpath("UTIL_Header/UTIL_Header.yml")
+    #self.utilheader_yml = yaml.safe_load(open(filepath, 'r'))
 
-    filepath = module_dir.joinpath("UTIL_Merge/UTIL_Merge.yml")
-    self.utilmerge_yml = yaml.safe_load(open(filepath, 'r'))
+    #filepath = module_dir.joinpath("UTIL_Merge/UTIL_Merge.yml")
+    #self.utilmerge_yml = yaml.safe_load(open(filepath, 'r'))
 
     filepath = module_dir.joinpath("QC_Report/QC_Report.yml")
     self.qcreport_yml = yaml.safe_load(open(filepath, 'r'))
@@ -154,7 +156,7 @@ class ModuleDetails(QWidget):
 
     self.modules_yml_list = [self.slicecheck_yml, self.interlacecheck_yml, self.baselineaverage_yml,
       self.susceptibility_yml, self.eddymotion_yml, self.brainmask_yml, self.dtiestimate_yml, self.exclude_yml,
-      self.utilheader_yml, self.utilmerge_yml, self.qcreport_yml, self.dtiregister_yml, #self.singletract_yml,
+        self.qcreport_yml, self.dtiregister_yml, #self.singletract_yml,
       self.braintractography_yml]
 
   def DetailsDisplay(self, data):
@@ -330,176 +332,7 @@ class ModuleDetails(QWidget):
       #  self.brainmask.modality_fa.setChecked(True)
       self.details_stack.setCurrentIndex(6)
 
-    if module[0] == "Estimate DTI":
-      self.dtiestimate.tab_name.setText(str(index) + " - " + module[0])
-      if module[2]["options"]["overwrite"] == True:
-        self.dtiestimate.overwrite.setChecked(True)
-      else:
-        self.dtiestimate.overwrite.setChecked(False)
-      if module[2]["options"]["skip"] == True:
-        self.dtiestimate.skip.setChecked(True)
-      else:
-        self.dtiestimate.skip.setChecked(False)
-      if module[2]["options"]["write_image"] == True:
-        self.dtiestimate.writeimage.setChecked(True)
-      else:
-        self.dtiestimate.writeimage.setChecked(False)
-      method = module[2]["protocol"]["correctionMethod"]
-      for ite1 in self.dtiestimate_yml["protocol"]["correctionMethod"]["candidates"]:
-        if ite1["value"] == method:
-          self.dtiestimate.correctionMethod.setCurrentText(ite1["caption"])
-          self.dtiestimate.GetCorrectionMethodIt(ite1["caption"])
-      method = module[2]["protocol"]["method"]
-      for ite1 in self.dtiestimate_yml["protocol"]["method"]["candidates"]:
-        if ite1["value"] == method:
-          self.dtiestimate.method.setCurrentText(ite1["caption"])
-          self.dtiestimate.GetMethodIt(ite1["caption"])
-      method = module[2]["protocol"]["optimizationMethod"]
-      for ite1 in self.dtiestimate_yml["protocol"]["optimizationMethod"]["candidates"]:
-        if ite1["value"] == method:
-          self.dtiestimate.optimizationMethod.setCurrentText(ite1["caption"])
-          self.dtiestimate.GetOptimizationMethodIt(ite1["caption"])
-      self.details_stack.setCurrentIndex(7)
 
-    if module[0] == "Exclude Gradients":
-      self.exclude.tab_name.setText(str(index) + " - " + module[0])
-      if module[2]["options"]["overwrite"] == True:
-        self.exclude.overwrite.setChecked(True)
-      else:
-        self.exclude.overwrite.setChecked(False)
-      if module[2]["options"]["skip"] == True:
-        self.exclude.skip.setChecked(True)
-      else:
-        self.exclude.skip.setChecked(False)
-      if module[2]["options"]["write_image"] == True:
-        self.exclude.writeimage.setChecked(True)
-      else:
-        self.exclude.writeimage.setChecked(False)
-      gradients_list = module[2]["protocol"]["gradientsToExclude"]
-      gradients_string = ", ".join(str(gradient) for gradient in gradients_list)
-      self.exclude.gradients2exclude.insertPlainText(gradients_string)
-      self.details_stack.setCurrentIndex(8)
-
-    if module[0] == "View Header":
-      self.utilheader.tab_name.setText(str(index) + " - " + module[0])
-      if module[2]["options"]["overwrite"] == True:
-        self.utilheader.overwrite.setChecked(True)
-      else:
-        self.utilheader.overwrite.setChecked(False)
-      if module[2]["options"]["skip"] == True:
-        self.utilheader.skip.setChecked(True)
-      else:
-        self.utilheader.skip.setChecked(False)
-      if module[2]["options"]["write_image"] == True:
-        self.utilheader.writeimage.setChecked(True)
-      else:
-        self.utilheader.writeimage.setChecked(False)
-      self.utilheader.options.setText(module[2]["protocol"]["options"])
-      self.details_stack.setCurrentIndex(9)
-
-    if module[0] == "Merge Images":
-      self.utilmerge.tab_name.setText(str(index) + " - " + module[0])
-      if module[2]["options"]["overwrite"] == True:
-        self.utilmerge.overwrite.setChecked(True)
-      else:
-        self.utilmerge.overwrite.setChecked(False)
-      if module[2]["options"]["skip"] == True:
-        self.utilmerge.skip.setChecked(True)
-      else:
-        self.utilmerge.skip.setChecked(False)
-      if module[2]["options"]["write_image"] == True:
-        self.utilmerge.writeimage.setChecked(True)
-      else:
-        self.utilmerge.writeimage.setChecked(False)
-      self.utilmerge.testparam.setText(module[2]["protocol"]["TestParam"])
-      self.details_stack.setCurrentIndex(10)
-
-    if module[0] == "QC Report":
-      self.qcreport.tab_name.setText(str(index) + " - " + module[0])
-      if module[2]["options"]["overwrite"] == True:
-        self.qcreport.overwrite.setChecked(True)
-      else:
-        self.qcreport.overwrite.setChecked(False)
-      if module[2]["options"]["skip"] == True:
-        self.qcreport.skip.setChecked(True)
-      else:
-        self.qcreport.skip.setChecked(False)
-      if module[2]["protocol"]["generatePDF"] == True:
-        self.qcreport.generatePDF_true.setChecked(True)
-      else: 
-        self.qcreport.generatePDF_false.setChecked(True)
-      if module[2]["protocol"]["generateCSV"] == True:
-        self.qcreport.generateCSV_true.setChecked(True)
-      else:
-        self.qcreport.generateCSV_false.setChecked(False)
-      self.details_stack.setCurrentIndex(11)
-
-    if module[0] == "Register DTI (ANTs)":
-      self.dtiregister.tab_name.setText(str(index) + " - " + module[0])
-      if module[2]["options"]["overwrite"] == True:
-        self.dtiregister.overwrite.setChecked(True)
-      else:
-        self.dtiregister.overwrite.setChecked(False)
-      if module[2]["options"]["skip"] == True:
-        self.dtiregister.skip.setChecked(True)
-      else:
-        self.dtiregister.skip.setChecked(False)
-      if module[2]["options"]["write_image"] == True:
-        self.dtiregister.writeimage.setChecked(True)
-      else:
-        self.dtiregister.writeimage.setChecked(False)
-      method = module[2]["protocol"]["method"]
-      for ite1 in self.dtiregister_yml["protocol"]["method"]["candidates"]:
-        if ite1["value"] == method:
-          self.dtiregister.method.setCurrentText(ite1["caption"])
-          self.dtiregister.GetMethodIt(ite1["caption"])
-      self.dtiregister.referenceImage.setText(module[2]['protocol']['referenceImage'])
-      self.dtiregister.ANTsPath.setText(module[2]['protocol']['ANTsPath'])
-      self.dtiregister.ANTsMethod.setText(module[2]['protocol']['ANTsMethod'])
-      registrationType = module[2]["protocol"]["registrationType"]
-      for ite1 in self.dtiregister_yml["protocol"]["registrationType"]["candidates"]:
-        if ite1["value"] == registrationType:
-          self.dtiregister.registrationType.setCurrentText(ite1["caption"])
-          self.dtiregister.GetRegistrationTypeIt(ite1["caption"])
-      similarityMetric = module[2]["protocol"]["similarityMetric"]
-      for ite1 in self.dtiregister_yml["protocol"]["similarityMetric"]["candidates"]:
-        if ite1["value"] == similarityMetric:
-          self.dtiregister.similarityMetric.setCurrentText(ite1["caption"])
-          self.dtiregister.GetSimilarityMetricIt(ite1["caption"])      
-      self.dtiregister.similarityParameter.setValue(module[2]["protocol"]["similarityParameter"])
-      self.dtiregister.ANTsIterations.setText(module[2]['protocol']['ANTsIterations'])
-      self.dtiregister.gaussianSigma.setValue(module[2]["protocol"]["gaussianSigma"])
-      self.details_stack.setCurrentIndex(12)
-
-    if module[0] == "SINGLETRACT_Process DTI":
-      self.singletract.tab_name.setText(str(index) + " - " + module[0])
-      if module[2]["options"]["overwrite"] == True:
-        self.singletract.overwrite.setChecked(True)
-      else:
-        self.singletract.overwrite.setChecked(False)
-      if module[2]["options"]["skip"] == True:
-        self.singletract.skip.setChecked(True)
-      else:
-        self.singletract.skip.setChecked(False)
-      if module[2]["options"]["write_image"] == True:
-        self.singletract.writeimage.setChecked(True)
-      else:
-        self.singletract.writeimage.setChecked(False)
-      method = module[2]["protocol"]["method"]
-      for ite1 in self.singletract_yml["protocol"]["method"]["candidates"]:
-        if ite1["value"] == method:
-          self.singletract.method.setCurrentText(ite1["caption"])
-          self.singletract.GetMethodIt(ite1["caption"])
-      scalar = module[2]["protocol"]["scalar"]
-      for ite1 in self.singletract_yml["protocol"]["scalar"]["candidates"]:
-        if ite1["value"] == scalar:
-          self.singletract.scalar.setCurrentText(ite1["caption"])
-          self.singletract.GetScalarIt(ite1["caption"])
-      self.singletract.NIRALUtilitiesPath.setText(module[2]['protocol']['NIRALUtilitiesPath'])
-      self.singletract.referenceTractFile.setText(module[2]['protocol']['referenceTractFile'])
-      self.singletract.dilationRadius.setValue(module[2]['protocol']['dilationRadius'])
-      self.details_stack.setCurrentIndex(13)
-    
     if module[0] == "Brain Tractography":
       self.braintractography.tab_name.setText(str(index) + " - " + module[0])
       if module[2]["options"]["overwrite"] == True:
@@ -540,7 +373,182 @@ class ModuleDetails(QWidget):
       else:
         self.braintractography.removeLongTracts.setChecked(False)
       self.braintractography.longTractsThreshold.setValue(module[2]['protocol']['longTractsThreshold'])
-      self.details_stack.setCurrentIndex(14)
+      self.details_stack.setCurrentIndex(7)
+
+      
+    if module[0] == "Estimate DTI":
+      self.dtiestimate.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.dtiestimate.overwrite.setChecked(True)
+      else:
+        self.dtiestimate.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.dtiestimate.skip.setChecked(True)
+      else:
+        self.dtiestimate.skip.setChecked(False)
+      if module[2]["options"]["write_image"] == True:
+        self.dtiestimate.writeimage.setChecked(True)
+      else:
+        self.dtiestimate.writeimage.setChecked(False)
+      method = module[2]["protocol"]["correctionMethod"]
+      for ite1 in self.dtiestimate_yml["protocol"]["correctionMethod"]["candidates"]:
+        if ite1["value"] == method:
+          self.dtiestimate.correctionMethod.setCurrentText(ite1["caption"])
+          self.dtiestimate.GetCorrectionMethodIt(ite1["caption"])
+      method = module[2]["protocol"]["method"]
+      for ite1 in self.dtiestimate_yml["protocol"]["method"]["candidates"]:
+        if ite1["value"] == method:
+          self.dtiestimate.method.setCurrentText(ite1["caption"])
+          self.dtiestimate.GetMethodIt(ite1["caption"])
+      method = module[2]["protocol"]["optimizationMethod"]
+      for ite1 in self.dtiestimate_yml["protocol"]["optimizationMethod"]["candidates"]:
+        if ite1["value"] == method:
+          self.dtiestimate.optimizationMethod.setCurrentText(ite1["caption"])
+          self.dtiestimate.GetOptimizationMethodIt(ite1["caption"])
+      self.details_stack.setCurrentIndex(8)
+
+    if module[0] == "Register DTI (ANTs)":
+      self.dtiregister.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.dtiregister.overwrite.setChecked(True)
+      else:
+        self.dtiregister.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.dtiregister.skip.setChecked(True)
+      else:
+        self.dtiregister.skip.setChecked(False)
+      if module[2]["options"]["write_image"] == True:
+        self.dtiregister.writeimage.setChecked(True)
+      else:
+        self.dtiregister.writeimage.setChecked(False)
+      method = module[2]["protocol"]["method"]
+      for ite1 in self.dtiregister_yml["protocol"]["method"]["candidates"]:
+        if ite1["value"] == method:
+          self.dtiregister.method.setCurrentText(ite1["caption"])
+          self.dtiregister.GetMethodIt(ite1["caption"])
+      self.dtiregister.referenceImage.setText(module[2]['protocol']['referenceImage'])
+      self.dtiregister.ANTsPath.setText(module[2]['protocol']['ANTsPath'])
+      self.dtiregister.ANTsMethod.setText(module[2]['protocol']['ANTsMethod'])
+      registrationType = module[2]["protocol"]["registrationType"]
+      for ite1 in self.dtiregister_yml["protocol"]["registrationType"]["candidates"]:
+        if ite1["value"] == registrationType:
+          self.dtiregister.registrationType.setCurrentText(ite1["caption"])
+          self.dtiregister.GetRegistrationTypeIt(ite1["caption"])
+      similarityMetric = module[2]["protocol"]["similarityMetric"]
+      for ite1 in self.dtiregister_yml["protocol"]["similarityMetric"]["candidates"]:
+        if ite1["value"] == similarityMetric:
+          self.dtiregister.similarityMetric.setCurrentText(ite1["caption"])
+          self.dtiregister.GetSimilarityMetricIt(ite1["caption"])      
+      self.dtiregister.similarityParameter.setValue(module[2]["protocol"]["similarityParameter"])
+      self.dtiregister.ANTsIterations.setText(module[2]['protocol']['ANTsIterations'])
+      self.dtiregister.gaussianSigma.setValue(module[2]["protocol"]["gaussianSigma"])
+      self.details_stack.setCurrentIndex(9)
+
+    if module[0] == "Exclude Gradients":
+      self.exclude.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.exclude.overwrite.setChecked(True)
+      else:
+        self.exclude.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.exclude.skip.setChecked(True)
+      else:
+        self.exclude.skip.setChecked(False)
+      if module[2]["options"]["write_image"] == True:
+        self.exclude.writeimage.setChecked(True)
+      else:
+        self.exclude.writeimage.setChecked(False)
+      gradients_list = module[2]["protocol"]["gradientsToExclude"]
+      gradients_string = ", ".join(str(gradient) for gradient in gradients_list)
+      self.exclude.gradients2exclude.insertPlainText(gradients_string)
+      self.details_stack.setCurrentIndex(10)
+
+    #if module[0] == "View Header":
+    #  self.utilheader.tab_name.setText(str(index) + " - " + module[0])
+    #  if module[2]["options"]["overwrite"] == True:
+    #    self.utilheader.overwrite.setChecked(True)
+    #  else:
+    #    self.utilheader.overwrite.setChecked(False)
+    #  if module[2]["options"]["skip"] == True:
+    #    self.utilheader.skip.setChecked(True)
+    #  else:
+    #    self.utilheader.skip.setChecked(False)
+    #  if module[2]["options"]["write_image"] == True:
+    #    self.utilheader.writeimage.setChecked(True)
+    #  else:
+    #    self.utilheader.writeimage.setChecked(False)
+    #  self.utilheader.options.setText(module[2]["protocol"]["options"])
+    #  self.details_stack.setCurrentIndex(11)
+#
+    #if module[0] == "Merge Images":
+    #  self.utilmerge.tab_name.setText(str(index) + " - " + module[0])
+    #  if module[2]["options"]["overwrite"] == True:
+    #    self.utilmerge.overwrite.setChecked(True)
+    #  else:
+    #    self.utilmerge.overwrite.setChecked(False)
+    #  if module[2]["options"]["skip"] == True:
+    #    self.utilmerge.skip.setChecked(True)
+    #  else:
+    #    self.utilmerge.skip.setChecked(False)
+    #  if module[2]["options"]["write_image"] == True:
+    #    self.utilmerge.writeimage.setChecked(True)
+    #  else:
+    #    self.utilmerge.writeimage.setChecked(False)
+    #  self.utilmerge.testparam.setText(module[2]["protocol"]["TestParam"])
+    #  self.details_stack.setCurrentIndex(12)
+#
+    if module[0] == "QC Report":
+      self.qcreport.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.qcreport.overwrite.setChecked(True)
+      else:
+        self.qcreport.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.qcreport.skip.setChecked(True)
+      else:
+        self.qcreport.skip.setChecked(False)
+      if module[2]["protocol"]["generatePDF"] == True:
+        self.qcreport.generatePDF_true.setChecked(True)
+      else: 
+        self.qcreport.generatePDF_false.setChecked(True)
+      if module[2]["protocol"]["generateCSV"] == True:
+        self.qcreport.generateCSV_true.setChecked(True)
+      else:
+        self.qcreport.generateCSV_false.setChecked(False)
+      self.details_stack.setCurrentIndex(11)
+
+    
+
+    if module[0] == "SINGLETRACT_Process DTI":
+      self.singletract.tab_name.setText(str(index) + " - " + module[0])
+      if module[2]["options"]["overwrite"] == True:
+        self.singletract.overwrite.setChecked(True)
+      else:
+        self.singletract.overwrite.setChecked(False)
+      if module[2]["options"]["skip"] == True:
+        self.singletract.skip.setChecked(True)
+      else:
+        self.singletract.skip.setChecked(False)
+      if module[2]["options"]["write_image"] == True:
+        self.singletract.writeimage.setChecked(True)
+      else:
+        self.singletract.writeimage.setChecked(False)
+      method = module[2]["protocol"]["method"]
+      for ite1 in self.singletract_yml["protocol"]["method"]["candidates"]:
+        if ite1["value"] == method:
+          self.singletract.method.setCurrentText(ite1["caption"])
+          self.singletract.GetMethodIt(ite1["caption"])
+      scalar = module[2]["protocol"]["scalar"]
+      for ite1 in self.singletract_yml["protocol"]["scalar"]["candidates"]:
+        if ite1["value"] == scalar:
+          self.singletract.scalar.setCurrentText(ite1["caption"])
+          self.singletract.GetScalarIt(ite1["caption"])
+      self.singletract.NIRALUtilitiesPath.setText(module[2]['protocol']['NIRALUtilitiesPath'])
+      self.singletract.referenceTractFile.setText(module[2]['protocol']['referenceTractFile'])
+      self.singletract.dilationRadius.setValue(module[2]['protocol']['dilationRadius'])
+      self.details_stack.setCurrentIndex(12)
+    
+    
 
     self.communicate.SetUpdateModuleDetailsBool(True)
 

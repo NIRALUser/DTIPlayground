@@ -95,11 +95,11 @@ class ModuleSelector(QWidget):
     else:
       self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Exclude Gradients", Qt.MatchExactly)[0].flags() & ~Qt.ItemIsEnabled)
 
-  def EnableMergeImagesModule(self, enable):
-    if enable == True:
-      self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].flags() | Qt.ItemIsEnabled)
-    else:
-      self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].flags() & ~Qt.ItemIsEnabled)
+  #def EnableMergeImagesModule(self, enable):
+  #  if enable == True:
+  #    self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].flags() | Qt.ItemIsEnabled)
+  #  else:
+  #    self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].setFlags(self.modules_list_widget.findItems("Merge Images", Qt.MatchExactly)[0].flags() & ~Qt.ItemIsEnabled)
 
   def UpdateSelectorData(self, module_name, new_data):
     for module_iter in range(self.modules_list_widget.count()):

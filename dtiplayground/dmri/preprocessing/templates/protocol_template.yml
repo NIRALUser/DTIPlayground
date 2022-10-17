@@ -137,9 +137,9 @@ options:
         - value: MANUAL_Exclude
           caption: Exclude Gradients
           description: Manual Exclusion of Gradient volume
-        - value: UTIL_Merge
-          caption: Merge Images
-          description: Merge images to one image
+        #- value: UTIL_Merge
+        #  caption: Merge Images
+        #  description: Merge images to one image
         - value: QC_Report
           caption: QC Report
           description: Generate report documents

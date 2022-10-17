@@ -372,10 +372,10 @@ class Protocol():
       self.dtiestimate_params = self.dtiestimate_default_params
     if module_name == "MANUAL_Exclude":
       self.exclude_params = self.exclude_default_params
-    if module_name == "UTIL_Header":
-      self.utilheader_params = self.utilheader_default_params
-    if module_name == "UTIL_Merge":
-      self.utilmerge_params = self.utilmerge_default_params
+    #if module_name == "UTIL_Header":
+    #  self.utilheader_params = self.utilheader_default_params
+    #if module_name == "UTIL_Merge":
+    #  self.utilmerge_params = self.utilmerge_default_params
     if module_name == "QC_Report":
       self.qcreport_params = self.qcreport_default_params
     if module_name == "DTI_Register":
@@ -383,7 +383,7 @@ class Protocol():
     if module_name == "SINGLETRACT_Process":
       self.singletract_params = self.singletract_default_params
     if module_name == "BRAIN_Tractography":
-      self.braintractography_params = self.brainmask_default_params
+      self.braintractography_params = self.braintractography_default_params
 
   def RemoveModuleFromDicProtocol(self, item_to_remove_key):
     self.dic_protocol.pop(item_to_remove_key)

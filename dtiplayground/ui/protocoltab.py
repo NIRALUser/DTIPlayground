@@ -225,7 +225,7 @@ class ProtocolTab(QWidget):
 
     if self.protocol_list_widget.count() == 0:
       self.selector.EnableExcludeGradientsModule(True)
-      self.selector.EnableMergeImagesModule(True)
+      #self.selector.EnableMergeImagesModule(True)
       self.selector.EnableModulesListWidget(True) 
       self.details.details_stack.setCurrentIndex(0)
 
@@ -242,7 +242,7 @@ class ProtocolTab(QWidget):
       removed_item = self.protocol_list_widget.takeItem(0)
     self.selector.EnableModulesListWidget(True)  
     self.selector.EnableExcludeGradientsModule(True)
-    self.selector.EnableMergeImagesModule(True)
+    #self.selector.EnableMergeImagesModule(True)
     self.communicate.EnableEddyMotionParam(False)
     self.communicate.SetDicProtocol({})
 

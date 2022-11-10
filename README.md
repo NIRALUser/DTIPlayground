@@ -260,6 +260,7 @@ MIT
     - xhtml2pdf==0.2.7
     - flask
     - flask_cors
+    - flas_jwt_extended
 
 [DMRIPrepUI]
 - Python Libraries
@@ -268,10 +269,14 @@ MIT
 
 ### Todos
 
-- Server mode - Flask 
 - Multi node computing with Kubernetes
 
 ### Change Log
+
+##### 2022-11-10
+- dmriplayground - refactored, local-server mode enabled
+- dmriprep - refactored
+- dmriatlas - refactored
 
 ##### 2022-10-13
 - dmriplayground - executable name dpg changed to dmriplayground (dtiplaground lab)

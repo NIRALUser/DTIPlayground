@@ -16,7 +16,7 @@ import json
 from . import utils
 from pathlib import Path
 import multiprocessing as mp
-
+mp.set_start_method("fork")
 from dtiplayground.config import INFO 
 
 class ApplicationAPI:

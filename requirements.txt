@@ -16,3 +16,7 @@ antspynet>=0.1.8
 fury>=0.7.0
 sphinx
 sphinx_rtd_theme
+flask
+flask_cors
+flask_jwt_extended
+

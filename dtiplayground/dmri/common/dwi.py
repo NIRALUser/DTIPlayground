@@ -461,7 +461,7 @@ class DWI:
         # affine=self.getAffineMatrix()
         space_origin=np.array(self.information['space_origin'])
         affine=np.zeros((4,4))
-        affine[0:3,0:3] = spdir
+        affine[0:3,0:3] = spdir[0:3,0:3]
         affine[3,0:4] = np.array([[0,0, 0, 1]])
         affine[0:3,3] = np.array([space_origin])
         # affine=np.append(affine,[space_origin],axis=0)

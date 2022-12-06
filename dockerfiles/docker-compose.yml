@@ -17,7 +17,7 @@ services:
     build: 
       context: . 
       dockerfile: Dockerfile
-    user: 1000:1000
+    user: 0:0
     ipc: host
     restart: always
     volumes:

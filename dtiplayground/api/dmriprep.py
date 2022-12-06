@@ -19,7 +19,6 @@ from pathlib import Path
 import yaml
 import multiprocessing
 from multiprocessing import Process
-multiprocessing.set_start_method("fork")
 class DMRIPrepAPI:
     def __init__(self,server,**kwargs):
         self.server = server

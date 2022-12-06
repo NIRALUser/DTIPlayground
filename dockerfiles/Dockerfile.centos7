@@ -1,0 +1,31 @@
+FROM centos:centos7
+RUN yum -y update
+RUN yum groupinstall -y "Development Tools" 
+RUN yum install -y openssl-devel bzip2-devel libffi-devel xz-devel wget
+RUN yum install -y glut-devel
+RUN yum install -y qt5-qtbase-devel
+RUN yum install -y qt5-qtx11extras-devel
+RUN yum install -y qt5-qtsvg-devel
+RUN yum install -y python-devel 
+RUN yum install -y libXrender
+RUN mkdir /tmp-install
+WORKDIR /tmp-install
+ARG PYVER=3.8.6
+RUN wget https://www.python.org/ftp/python/${PYVER}/Python-${PYVER}.tgz
+RUN tar xvf Python-${PYVER}.tgz
+WORKDIR /tmp-install/Python-${PYVER}
+RUN ./configure --enable-optimizations
+RUN make altinstall
+RUN ln -s /usr/local/bin/python3.8 /usr/bin/python3
+RUN rm -rf /tmp-install
+RUN python3 -m pip install cmake
+RUN python3 -m pip install packaging
+RUN python3 -m pip install tensorflow
+RUN python3 -m pip install dtiplayground==0.5.2b1
+RUN mkdir /dtiplayground
+RUN dmriprep install-tools -o /dtiplayground
+RUN dmriprep init
+WORKDIR /
+RUN yum clean all
+RUN rm -rf /var/cache/yum
+

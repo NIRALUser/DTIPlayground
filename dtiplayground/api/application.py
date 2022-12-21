@@ -18,11 +18,16 @@ from pathlib import Path
 import multiprocessing as mp
 mp.set_start_method("fork")
 from dtiplayground.config import INFO 
+import dtiplayground.dmri.common.dwi as dwi
+import cv2
+import io
+import numpy as np 
 
 class ApplicationAPI:
     def __init__(self,server,**kwargs):
         self.server = server
         self.app=self.server.app
+        self.filecache={}
         self.initEndpoints()
 
 ##### Endpoints
@@ -176,6 +181,68 @@ class ApplicationAPI:
                 resp.headers['Content-Type']='application/json'
                 return resp
 
+        ###### DWI image
+        @self.app.route('/api/v1/files/load',methods=['GET'])
+        def _loadFileAsCache():
+            sc=200
+            res=None
+            request_id=utils.get_request_id()
+            param_path=request.args.get('filename',default=None,type=str)
+            param_key=request.args.get('key', default='image', type=str)
+            if param_path is None: raise Exception('No file selected')
+            try:
+                fn = Path(param_path).resolve()
+                res= self.loadFileAsCache(fn, param_key)
+                res= utils.add_request_id(res)
+            except Exception as e:
+                sc=500
+                exc=traceback.format_exc()
+                res=utils.error_message("{}\n{}".format(str(e),exc),500,request_id)
+            finally:
+                resp=Response(json.dumps(res),status=sc)
+                resp.headers['Content-Type']='application/json'
+                return resp        
+
+        ####### Image browsing (DWI)
+        @self.app.route('/api/v1/dwi/<img_id>/<grad_idx>/<axis_idx>/<slice_idx>',methods=['GET'])
+        def _getFrameFromDWI(img_id,grad_idx,axis_idx,slice_idx): ## img_id is not used, just to prevent browser cacheing
+            res=None
+            sc=500 
+            data=None
+            grad_idx=int(grad_idx)
+            axis_idx=int(axis_idx)
+            slice_idx=int(slice_idx)
+            param_min = request.args.get('min',default=0,type=int)
+            param_max = request.args.get('max',default=10e6,type=int)
+            try:
+                if axis_idx == 0:
+                    res = self.filecache['dwi'].images[int(slice_idx),:,:,int(grad_idx)]
+                elif axis_idx == 1:
+                    res = self.filecache['dwi'].images[:,int(slice_idx),:,int(grad_idx)]
+                elif axis_idx == 2:
+                    res = self.filecache['dwi'].images[:,:,int(slice_idx),int(grad_idx)]
+                else: raise Exception('No such axis')
+
+                out = (res >= param_min) * res
+                out[out >= param_max] = param_max
+
+                ok,res=cv2.imencode('.jpeg',out, [int(cv2.IMWRITE_JPEG_QUALITY), 50]) ### compress 
+                if ok:                       
+                    data=io.BytesIO(res).read() 
+                else:
+                    raise Exception("Failed to encode")
+                sc=200
+            except Exception as e:
+                msg=traceback.format_exc()
+                err_msg="{}:{}".format(str(e),msg)
+                print(str(e))
+                print(msg)
+            finally:
+                resp=Response(data,status=sc)
+                resp.headers['Content-Type']='application/octet-stream'
+                resp.headers['Image-Format']='jpeg'
+                return resp
+
         ####### Multiprocessing
 
         @self.app.route('/api/v1/process', methods=['GET'])
@@ -211,6 +278,26 @@ class ApplicationAPI:
                 resp=Response(json.dumps(res),status=sc)
                 resp.headers['Content-Type']='application/json'
                 return resp
+
+    def loadFileAsCache(self, filename, filekey):
+        meta={}
+        if filekey.lower() == 'dwi':
+            #load DWI and put it in cache 
+            self.filecache[filekey] = dwi.DWI(str(filename))
+            meta = {
+                'info': self.filecache[filekey].information,
+                'gradients': self.filecache[filekey].getGradients()
+            }
+            del meta['info']['thicknesses']
+
+        out = {
+            'filename': str(filename),
+            'type': filekey,
+            'meta': meta,
+        }
+        return out
+
+    #### image browsing
 
     #### Process
 

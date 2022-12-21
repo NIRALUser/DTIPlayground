@@ -102,6 +102,10 @@ class DMRIAtlasbuilderAPI:
         hbuild_path = common_dir.joinpath('h-build.yml')
         greedy_path = common_dir.joinpath('greedy.yml')
 
+        config_json=output_dir.joinpath('common/config.json')
+        hbuild_json=output_dir.joinpath('common/h-build.json')
+        greedy_json=output_dir.joinpath('common/greedy.json')
+
         config = params['config']
         hbuild = params['hbuild']
         greedy = params['greedy']
@@ -111,6 +115,9 @@ class DMRIAtlasbuilderAPI:
         yaml.safe_dump(hbuild, open(hbuild_path,'w'))
         yaml.safe_dump(greedy, open(greedy_path,'w'))
 
+        json.dump(config, open(config_json,'w'))
+        json.dump(hbuild, open(hbuild_json,'w'))
+        json.dump(greedy, open(greedy_json,'w'))
         return params
 
 
@@ -127,6 +134,7 @@ class DMRIAtlasbuilderAPI:
                 config_path=output_dir.joinpath('common/config.yml')
                 hbuild_path=output_dir.joinpath('common/h-build.yml')
                 greedy_path=output_dir.joinpath('common/greedy.yml')
+
                 bldr=AtlasBuilder(logger = logger)
                 bldr.configure( output_dir=output_dir,
                                 config_path=config_path,

@@ -78,12 +78,12 @@ class DMRIPlaygroundApp(AppBase):
             
             ## app prep
             app = DTIPlaygroundServer(**config)
-            app.configure(host=config['host'],
-                          port=config['port'],
-                          static_folder=config['static_page_dir'],
+            app.configure(host=options['host'],
+                          port=options['port'],
+                          static_folder=options['static_page_dir'],
                           static_url_path='/')
 
-            if config['browser']: 
+            if options['browser']: 
                 import webbrowser
                 from threading import Timer
                 def open_browser():

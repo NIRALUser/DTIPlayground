@@ -3,74 +3,146 @@
 import os
 import sys
 import argparse
+from argparse import RawTextHelpFormatter
 import traceback
 from pathlib import Path 
 import yaml 
-sys.path.append(Path(__file__).parent.__str__())
+sys.path.append(Path(__file__).parent.parent.__str__())
 ### for dev
-
+from argparse import RawTextHelpFormatter
 import dtiplayground.dmri.atlasbuilder.utils as utils 
 from dtiplayground.dmri.atlasbuilder import AtlasBuilder 
-import dtiplayground.dmri.common
+import dtiplayground.dmri.common as common
 
-logger=dmri.common.logger.write
+from dtiplayground.config import INFO as info
+from dtiplayground.dmri.atlasbuilder.app import DMRIAtlasBuilderApp
+
+logger=common.logger.write 
+color= common.Color
 
 
 def build_atlas(args):
-    Path(args.output_dir).mkdir(parents=True,exist_ok=True)
-    logfilepath=Path(args.output_dir).joinpath('log.txt')
-    initialize_logger(logfilepath, args.no_log_timestamp,args.no_verbosity)
-    ## system log
-    sys_log_dir=current_dir.joinpath('logs')
-    sys_log_dir.mkdir(parents=True,exist_ok=True)
-    env=os.environ
-    uid, ts = dtiplayground.dmri.common.get_uuid(), dtiplayground.dmri.common.get_timestamp()
-    sys_logfilename='dmriatlasbuilder_'+env['USER']+"_"+ts+"_"+uid+".txt"
-    sys_logfile=sys_log_dir.joinpath(sys_logfilename)
-    dtiplayground.dmri.common.logger.addLogfile(sys_logfile.__str__(),mode='w')
-    logger("Execution ID : {}".format(uid))
-    logger("Execution Command : "+" ".join(sys.argv))
-    logger("--------------- Atlasbulder begins ----------------------",dtiplayground.dmri.common.Color.INFO)
-    bldr=AtlasBuilder()
-    bldr.configure(output_dir=args.output_dir,
-                        config_path=args.config,
-                        hbuild_path=args.hbuild,
-                        buildsequence_path=args.buildsequence,
-                        node=args.node)
-   
-    bldr.build()
+    params_dir = args.params_dir
 
-## utilities
-def initialize_logger(logpath, no_log_timestamp, no_verbosity):
-    ## default log setting
-    dtiplayground.dmri.common.logger.setLogfile(logpath)
-    dtiplayground.dmri.common.logger.setTimestamp(not no_log_timestamp)
-    dtiplayground.dmri.common.logger.setVerbosity(not no_verbosity)
+    if params_dir is None:
+        options={
+            "output_dir" : args.output_dir,
+            "config_dir" : args.config_dir,
+            "hbuild_path" : args.hbuild,
+            "config_path" : args.config,
+            "greedy_path" : args.greedy
+        }
+        app = DMRIAtlasBuilderApp(options['config_dir'])
+        app.run(options)        
+    else:
+        build_dir = Path(params_dir)
+        output_dir = args.output_dir
+        config_dir = args.config_dir
+        hbuild_path = build_dir.joinpath('common/h-build.json').__str__()
+        config_path = build_dir.joinpath('common/config.json').__str__()
+        greedy_path = build_dir.joinpath('common/greedy.json').__str__()
+        options={
+            "output_dir" : output_dir,
+            "config_dir" : config_dir,
+            "hbuild_path" : hbuild_path,
+            "config_path" : config_path,
+            "greedy_path" : greedy_path
+        }
+        app = DMRIAtlasBuilderApp(options['config_dir'])
+        app.run(options)        
 
-if __name__=="__main__":
-    current_dir=Path(__file__).parent
-    parser=argparse.ArgumentParser(description="Argument Parser")
-    parser.add_argument('--output-dir', help='configuration file',default='output',type=str)
-    parser.add_argument('--config',help='configuration file',default='config.yml',type=str)
-    parser.add_argument('--hbuild',help='hierarchical build file', default='h-build.yml', type=str)
-    parser.add_argument('--greedy-params',help='Greedy atlas parameter xml file', type=str)
-    parser.add_argument('--node',help="node to build",type=str)
-    parser.add_argument('--buildsequence',help='build sequence file, if this option is inputted then build sequence process will be skipped',type=str)
 
-    ## log related
+def build_atlas_dir(args):
+    build_dir = Path(args.build_dir)
+    output_dir = build_dir.__str__()
+    config_dir = args.config_dir
+    hbuild_path = build_dir.joinpath('common/h-build.json').__str__()
+    config_path = build_dir.joinpath('common/config.json').__str__()
+    greedy_path = build_dir.joinpath('common/greedy.json').__str__()
+    options={
+        "output_dir" : output_dir,
+        "config_dir" : config_dir,
+        "hbuild_path" : hbuild_path,
+        "config_path" : config_path,
+        "greedy_path" : greedy_path
+    }
+    app = DMRIAtlasBuilderApp(options['config_dir'])
+    app.run(options)
+
+
+def get_args():
+    version = info['dmriatlas']['version']
+    logger("VERSION : {}".format(str(version)))
+    config_dir=Path.home().joinpath('.niral-dti').resolve()
+    # ## read template
+    module_help_str=None
+    if config_dir.exists() and config_dir.joinpath('config.yml').exists() and config_dir.joinpath('environment.yml').exists():
+        config,environment = load_configurations(str(config_dir))
+        template_path=config_dir.joinpath(config['protocol_template_path'])
+        template=yaml.safe_load(open(template_path,'r'))
+        available_modules=template['options']['execution']['pipeline']['candidates']
+        available_modules_list=["{}".format(x['value'])  for x in available_modules if x['description']!="Not implemented"]
+        module_help_str="Avaliable Modules := \n" + " , ".join(available_modules_list)
+    uid, ts = common.get_uuid(), common.get_timestamp()
+
+    ### Argument parsers
+
+    parser=argparse.ArgumentParser(prog="dmriatlas",
+                                   formatter_class=RawTextHelpFormatter,
+                                   description="dmriatlas is a tool to make DTI Atlas.",
+                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu)  ,Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
+    subparsers=parser.add_subparsers(help="Commands")
+    
+    ## build command
+    parser_build=subparsers.add_parser('build',help='Build Atlas')
+    parser_build.add_argument('-o','--output-dir', help='Output directory',required=True,type=str)
+    parser_build_param_dir= parser_build.add_argument_group('from-dir')
+    parser_build_param_dir.add_argument('-p','--params-dir', help='Parameter directory', default=None, type=str)
+    parser_build_param = parser_build.add_argument_group('from-files')
+    parser_build_param.add_argument('-c','--config',help='configuration file',default='config.yml',type=str)
+    parser_build_param.add_argument('-b','--hbuild',help='hierarchical build file', default='h-build.yml', type=str)
+    parser_build_param.add_argument('-g','--greedy',help='Greedy atlas parameter xml file', default="greedy.xml", type=str)
+    parser_build.set_defaults(func=build_atlas)
+
+    ## build dir command
+    parser_build_dir=subparsers.add_parser('build-dir',help='Build Atlas with parameterized directory')
+    parser_build_dir.add_argument('build_dir', help='Build directory having parameters',type=str)
+    parser_build_dir.set_defaults(func=build_atlas_dir)
+
+    parser.add_argument('--config-dir',help='Configuration directory',default=str(config_dir))
+    parser.add_argument('--log',help='log file',default=str(config_dir.joinpath('log.txt')))
+    parser.add_argument('--execution-id',help='execution id',default=uid,type=str)
     parser.add_argument('--no-log-timestamp',help='Remove timestamp in the log', default=False, action="store_true")
     parser.add_argument('--no-verbosity',help='Do not show any logs in the terminal', default=False, action="store_true")
-
+    parser.add_argument('-v','--version', help="Show version", default=False,action="store_true")
+    parser.add_argument('--tools-dir', help="Initialize with specific tool directory", default=None)
+    
+    ## if no parameter is furnished, exit with printing help
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     args=parser.parse_args()
+    if args.version:
+        sys.exit(1)
 
+    return args 
+
+## threading environment
+args=get_args()
+if hasattr(args,'num_threads'):
+    os.environ['OMP_NUM_THREADS']=str(args.num_threads) ## this should go before loading any dipy function. 
+    os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(args.num_threads) ## for ANTS threading
+
+if __name__=='__main__':
     try:
-       logger("--------------- Atlasbulder begins ----------------------",dtiplayground.dmri.common.Color.INFO)
-       build_atlas(args)
-       sys.exit(0)
+        common.logger.setTimestamp(True)
+        result=args.func(args)
+        exit(0)
     except Exception as e:
-       logger(str(e))
-       msg=traceback.format_exc()
-       logger(msg,dtiplayground.dmri.common.Color.ERROR)
-       sys.exit(1)     
-
+        common.logger.setVerbosity(True)
+        msg=traceback.format_exc()
+        logger(msg,color.ERROR)
+        exit(-1)
+    finally:
+        pass
 

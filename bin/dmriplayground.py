@@ -4,6 +4,7 @@ import sys
 import os 
 import traceback
 import shutil
+import socket
 from pathlib import Path
 import argparse
 from argparse import RawTextHelpFormatter
@@ -17,6 +18,19 @@ from dtiplayground.dmri.playground.app import DMRIPlaygroundApp
 
 logger=common.logger.write 
 color= common.Color
+
+## utils
+
+def next_free_port(port=6543, max_port=6999 ):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    while port <= max_port:
+        try:
+            sock.bind(('', port))
+            sock.close()
+            return port
+        except OSError:
+            port += 1
+    raise IOError('no free ports')
 
 ### unit functions
 
@@ -54,11 +68,12 @@ def command_server(args):
     config = {
         "config_dir": args.config_dir,
         "host" : args.host,
-        "port" : args.port,
-        "static_page_dir" : args.directory,
+        "port" : next_free_port(int(args.port)),
+        "static_page_dir" : Path(args.directory).resolve().__str__(),
         "browser" : args.browser,
         "debug" : args.debug
     }
+
     app = DMRIPlaygroundApp(config['config_dir'])
     app.run(config)
     

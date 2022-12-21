@@ -96,7 +96,7 @@
                },
                {
                   "name" : "m_CropSize",
-                  "if" : {
+                  "disable_if" : {
                     "m_NeedToBeCropped" : true
                   },
                   "caption": "Cropping Sizes",
@@ -134,7 +134,7 @@
                {
                   "name" : "m_TemplatePath",
                   "caption" : "Template Path",
-                  "if" : {
+                  "disable_if" : {
                       "m_RegType" : false
                   },
                   "value" : "",
@@ -235,7 +235,7 @@
                {
                   "name" : "m_InterpolLogOption",
                   "caption" : "Tensor Interpolation Correction",
-                  "if" : {
+                  "disable_if" : {
                     "m_TensInterpol" : "Non Log Euclidean"
                   },
                   "value" : "None",

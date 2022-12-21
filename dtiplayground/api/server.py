@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import traceback
 import sys
+import socket 
 
 from flask import Flask
 from flask import send_from_directory
@@ -33,6 +34,7 @@ class DTIPlaygroundServer(object):
         self.static_folder =kwargs['static_folder']
         self.static_url_path=kwargs['static_url_path']
         self.config_dir = kwargs['config_dir']
+        self.temp_directory = Path(self.config_dir).joinpath('temporary').__str__()
         self.debug=kwargs['debug']
         self.app = None
 
@@ -61,7 +63,10 @@ class DTIPlaygroundServer(object):
     def get_app(self): ## for UWSGI
         return self.app
 
+
+
     def serve(self):
         if not self.app: raise Exception('Flask app is not configured')
         self.app.run(host=self.host, port=self.port,debug=self.debug)
+
 

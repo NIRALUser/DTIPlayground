@@ -74,6 +74,13 @@ def command_server(args):
         "debug" : args.debug
     }
 
+    if config['browser']: 
+        import webbrowser
+        from threading import Timer
+        def open_browser():
+            webbrowser.open('http://{}:{}'.format(config['host'],config['port']))
+        Timer(1, open_browser).start();
+        
     app = DMRIPlaygroundApp(config['config_dir'])
     app.run(config)
     

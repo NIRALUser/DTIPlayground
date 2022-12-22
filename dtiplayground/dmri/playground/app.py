@@ -83,12 +83,6 @@ class DMRIPlaygroundApp(AppBase):
                           static_folder=options['static_page_dir'],
                           static_url_path='/')
 
-            if options['browser']: 
-                import webbrowser
-                from threading import Timer
-                def open_browser():
-                    webbrowser.open('http://{}:{}'.format(options['host'],options['port']))
-                Timer(1, open_browser).start();
             logger("API Server initiated, running",color.OK)
             app.serve()
 

@@ -465,13 +465,16 @@ class DWI:
         #affine = self.getAffineMatrixBySpace(target_space=self.information['space'])
         spd = affine[:3,:3]
         mn, mx = display_range
-
+        spacing = np.array(list(map(lambda x : np.max(np.abs(x)), self.information['space_directions'])))
         if axis_idx == 0:
             res = self.images[int(slice_idx),:,:,int(grad_idx)]
+            spacing_crop = [spacing[1], spacing[2]]
         elif axis_idx == 1:
             res = self.images[:,int(slice_idx),:,int(grad_idx)]
+            spacing_crop = [spacing[0], spacing[2]]
         elif axis_idx == 2:
             res = self.images[:,:,int(slice_idx),int(grad_idx)]
+            spacing_crop = [spacing[0], spacing[1]]
         else: 
             raise Exception('No such axis')
 
@@ -480,6 +483,13 @@ class DWI:
 
         if normalized:
             out=((out - mn)/(mx-mn))*255 
+
+
+        spacing_crop_normalized = spacing_crop/np.max(spacing_crop)
+
+        width = int(out.shape[1] / spacing_crop_normalized[0])
+        height = int(out.shape[0] / spacing_crop_normalized[1])
+        out = cv2.resize(out, dsize=[width, height])
 
         # srcTri = np.array([[0,0],
         #                    [0,out.shape[1]-1],

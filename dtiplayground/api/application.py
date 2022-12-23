@@ -215,17 +215,17 @@ class ApplicationAPI:
             param_min = request.args.get('min',default=0,type=int)
             param_max = request.args.get('max',default=10e6,type=int)
             try:
-                if axis_idx == 0:
-                    res = self.filecache['dwi'].images[int(slice_idx),:,:,int(grad_idx)]
-                elif axis_idx == 1:
-                    res = self.filecache['dwi'].images[:,int(slice_idx),:,int(grad_idx)]
-                elif axis_idx == 2:
-                    res = self.filecache['dwi'].images[:,:,int(slice_idx),int(grad_idx)]
-                else: raise Exception('No such axis')
+                # if axis_idx == 0:
+                #     res = self.filecache['dwi'].images[int(slice_idx),:,:,int(grad_idx)]
+                # elif axis_idx == 1:
+                #     res = self.filecache['dwi'].images[:,int(slice_idx),:,int(grad_idx)]
+                # elif axis_idx == 2:
+                #     res = self.filecache['dwi'].images[:,:,int(slice_idx),int(grad_idx)]
+                # else: raise Exception('No such axis')
 
-                out = (res >= param_min) * res
-                out[out >= param_max] = param_max
-
+                # out = (res >= param_min) * res
+                # out[out >= param_max] = param_max
+                out = self.filecache['dwi'].getImageSlice4D(axis_idx,slice_idx,grad_idx,normalized=True, display_range=[param_min, param_max])
                 ok,res=cv2.imencode('.jpeg',out, [int(cv2.IMWRITE_JPEG_QUALITY), 50]) ### compress 
                 if ok:                       
                     data=io.BytesIO(res).read() 

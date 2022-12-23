@@ -8,7 +8,7 @@ import nibabel as nib
 import yaml
 from pathlib import Path
 import copy
-
+import cv2
 #
 #
 # gradients are unit-vectors normalized according to b-value (nrrd), there is also normalized gradient coupled with bvalue
@@ -448,6 +448,98 @@ class DWI:
         self.images,self.gradients,self.information ,self.original_data = _load_dwi(filename,self.image_type)
         self.images = self.images.astype(float)
         logger("Image - {} loaded".format(self.filename),common.Color.OK,terminal_only=True)
+
+        self.information['display_range'] = []
+        self.information['display_range'] = [ float(np.percentile(self.images, 0.1)), float(np.percentile(self.images,99.9)) ]
+
+        self.information['volume_display_ranges'] = []
+        for grad_idx,g in enumerate(self.gradients):
+            rng = [ float(np.percentile(self.images[:,:,:,grad_idx], 1)), float(np.percentile(self.images[:,:,:,grad_idx],99)) ]
+            self.information['volume_display_ranges'].append(rng)
+
+    def getImageSlice4D(self,axis_idx,slice_idx,grad_idx, normalized=True, display_range=None):
+        if display_range is None:
+            display_range =  self.information['volume_display_ranges'][grad_idx]
+
+        affine = self.getAffineMatrixForNifti()
+        #affine = self.getAffineMatrixBySpace(target_space=self.information['space'])
+        spd = affine[:3,:3]
+        mn, mx = display_range
+
+        if axis_idx == 0:
+            res = self.images[int(slice_idx),:,:,int(grad_idx)]
+        elif axis_idx == 1:
+            res = self.images[:,int(slice_idx),:,int(grad_idx)]
+        elif axis_idx == 2:
+            res = self.images[:,:,int(slice_idx),int(grad_idx)]
+        else: 
+            raise Exception('No such axis')
+
+        out = (res >= mn) * res
+        out[out >= mx] = mx
+
+        if normalized:
+            out=((out - mn)/(mx-mn))*255 
+
+        # srcTri = np.array([[0,0],
+        #                    [0,out.shape[1]-1],
+        #                    [out.shape[0]-1,0]]).astype(np.float32)
+        # destTri = np.array([
+        #                     np.matmul(spd[:2,:2],np.array([0,0]).transpose()),
+        #                     np.matmul(spd[:2,:2],np.array([0,out.shape[1]-1]).transpose()),
+        #                     np.matmul(spd[:2,:2],np.array([out.shape[0]-1,0]).transpose())
+        #                     ]).astype(np.float32)
+        # print(destTri)
+        # warp_mat = cv2.getAffineTransform(srcTri,destTri)
+        # print(warp_mat)
+        # dsize = [np.max(out.shape), np.max(out.shape) ]
+        # warp_mat = np.zeros((2,3))
+        
+
+
+        # if axis_idx == 0:
+        #     warp_mat= affine[(1,2),:]
+        #     warp_mat = -warp_mat[:,(1,2,3)]
+        # elif axis_idx == 1:
+        #     warp_mat= affine[(0,2),:]
+        #     warp_mat = -warp_mat[:,(0,2,3)]
+        # elif axis_idx ==2:
+        #     warp_mat= affine[(0,1),:]
+        #     warp_mat= -warp_mat[:,(0,1,3)]
+        # else:
+        #     raise Exception('No such axis in 4D')
+
+        # warp_mat[:,2] = 0
+        # print(self.information)
+        # print(affine)
+        # print(warp_mat)
+        # rotated = cv2.warpAffine(src=out, M=warp_mat, dsize=dsize)
+
+        # return rotated
+        axial_is = True
+        spd = np.matmul(spd, self.information['measurement_frame'])
+        idx = np.matmul(self.information['measurement_frame'],[0,1,2])
+        if np.trace(self.information['measurement_frame']) < 3:
+            axial_is = False
+        idx=np.abs(idx)
+        new_axis_idx = int(idx[axis_idx])
+        if spd[axis_idx,new_axis_idx] > 0:
+            return out.transpose()
+        else:
+            if axis_idx == 0:
+                if axial_is:
+                    return np.flipud(out.transpose())
+                else:
+                    return np.fliplr(np.flipud(out).transpose())
+            elif axis_idx == 1:
+                if axial_is:
+                    return np.flipud(out.transpose())
+                else:
+                    return np.fliplr(out.transpose())
+            elif axis_idx == 2:
+                return out.transpose()
+            
+
 
 
     def getAffineMatrixForNifti(self):

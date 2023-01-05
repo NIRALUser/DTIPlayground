@@ -212,11 +212,20 @@ DMRIAtlas is a software to make an atlas from multiple diffusion weighted images
 
 ### Developement 
 
-#### Authors
+#### Contributors
+
+##### Developers
 
 - Park, Sang Kyoon -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
 - Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
 - Teyssier, Timothée - Neuro Image Research and Analysis Laboratory, University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
+- Styner, Martin - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
+
+##### Disucssion/Test
+
+- Foster, Mark - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
+- Vladisova, Roza - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
+- Hong, Yoonmi - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
 
 #### References
 

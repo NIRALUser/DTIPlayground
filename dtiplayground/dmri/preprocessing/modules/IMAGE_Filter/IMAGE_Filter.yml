@@ -1,0 +1,45 @@
+name: IMAGE_Filter
+caption: IMAGE_Filter
+description: Custom module
+version: "0.1"
+dependency: []
+module_type: prep
+process_attributes:
+    - utility
+result: null
+protocol: #define protocol parameters here
+      tresholding_mode:
+          type: string
+          caption: Tresholding_mode
+          candidates:
+            - value: one_treshold_below
+              caption: One_treshold_below
+              description: one_treshold_below which include all b-values below (including) b_tresh and exclude others
+            - value: one_treshold_above
+              caption: One_treshold_above
+              description: one_treshold_above which include all b-values above (including) b_tresh and exclude others
+            - value: two_tresholds_within
+              caption: Two_tresholds_within
+              description: two_tresholds_within which include all b-values between b_lower and b_upper (including) and exclude others
+            - value: two_tresholds_outside
+              caption: Two_tresholds_outside
+              description: two_tresholds_outside which exclude all b-values between b_lower and b_upper (including) and include others
+          default_value: one_treshold_below
+          description: Tresholding_mode between one_treshold_below, one_treshold_above, two_tresholds_within, two_tresholds_outside
+      
+      # for these parameters, choose b_value superior or equal to 0
+      b_tresh:
+          type: float
+          caption: B_Tresh
+          default_value: 1500
+          description: B_Tresh
+      b_lower:
+          type: float
+          caption: B_Lower
+          default_value: 0
+          description: B_Lower
+      b_upper:    
+          type: float
+          caption: B_Upper
+          default_value: 1500
+          description: B_Upper

@@ -8,7 +8,6 @@ from pathlib import Path
 import importlib
 ###
 import numpy as np
-import ants 
 import nibabel
 
 class BRAIN_Mask(prep.modules.DTIPrepModule):
@@ -39,6 +38,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
 
 ### User defined methods
     def mask_antspynet(self,params):
+        import ants 
         import antspynet
         logger("AntsPyNet is running ...",prep.Color.INFO)
         res=None

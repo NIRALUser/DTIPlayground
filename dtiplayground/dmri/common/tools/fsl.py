@@ -103,6 +103,53 @@ class FSL(ExternalToolWrapper):
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)
 
+    # def eddy_cpu(self,
+    #                 imain, # input image filename
+    #                 mask, # brain mask filename
+    #                 acqp, #acqp filename , topup params for b0 
+    #                 index_file, #b0 index filename
+    #                 bvals, #bvals filename
+    #                 bvecs, #bvecs filename
+    #                 out, # output basename (not a filename), path + basename(without extension)
+    #                 estimate_move_by_susceptibility:bool = False,  # susceptibility correction
+    #                 topup=None, # topuped file (if susceptibility_correct==True)
+    #                 data_is_shelled=True,
+    #                 repol=True,
+    #                 verbose=True
+    #                 ):
+    #     binary_name='eddy_cpu'
+    #     arguments=[]
+    #     if topup is not None:  # susceptibility correction 
+    #         arguments=[
+    #             '--imain={}'.format(imain),
+    #             '--mask={}'.format(mask),
+    #             '--acqp={}'.format(acqp),
+    #             '--index={}'.format(index_file),
+    #             '--bvals={}'.format(bvals),
+    #             '--bvecs={}'.format(bvecs),
+    #             '--out={}'.format(out),
+    #             '--topup={}'.format(topup)
+    #         ]
+    #         if estimate_move_by_susceptibility:
+    #             arguments.append('--estimate_move_by_susceptibility')
+    #     else: ## singlefile eddy correction without susceptibility
+    #         arguments=[
+    #             '--imain={}'.format(imain),
+    #             '--mask={}'.format(mask),
+    #             '--acqp={}'.format(acqp),
+    #             '--index={}'.format(index_file),
+    #             '--bvals={}'.format(bvals),
+    #             '--bvecs={}'.format(bvecs),
+    #             '--out={}'.format(out)
+    #         ]
+    #     if data_is_shelled: arguments.append('--data_is_shelled')
+    #     if verbose : arguments.append('--verbose')
+    #     if repol: arguments.append('--repol')
+
+    #     self.setArguments(arguments)
+    #     return self.execute(binary_name,arguments)
+
+
     def eddy_openmp(self,
                     imain, # input image filename
                     mask, # brain mask filename
@@ -118,6 +165,9 @@ class FSL(ExternalToolWrapper):
                     verbose=True
                     ):
         binary_name='eddy_openmp'
+        if not Path(self.binary_path).joinpath('bin').joinpath(binary_name).exists():
+            binary_name="eddy_cpu"
+            
         arguments=[]
         if topup is not None:  # susceptibility correction 
             arguments=[

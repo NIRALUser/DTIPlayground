@@ -15,9 +15,9 @@ protocol:
           - value: fsl
             caption: FSL
             description: Use FSL for Brainmasking
-          - value: antspynet
-            caption: AntsPyNet
-            description: AntsPyNet's brain_extraction() method 
+          # - value: antspynet
+          #   caption: AntsPyNet
+          #   description: AntsPyNet's brain_extraction() method 
         default_value: fsl
         description: Method to extract the brain 
       averagingMethod:

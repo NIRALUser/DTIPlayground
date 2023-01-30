@@ -485,12 +485,13 @@ class AtlasBuilder(object):
             Ref = AffinePath.joinpath("Loop" + str(m_nbLoops-1)).joinpath("Loop" + str(m_nbLoops-1) + "_" + m_ScalarMeasurement + "Average.nrrd").__str__()
 
           HField= DeformPath.joinpath(allcasesIDs[case] + "_HField.mhd").__str__()
+          InvHField= DeformPath.joinpath(allcasesIDs[case] + "_InverseHField.mhd").__str__()
 
           if m_Overwrite==1 or (not CheckFileExists(FinalDTI, case, allcasesIDs[case])):
             DiffeomorphicCaseScalarMeasurement = FinalPath.joinpath(allcasesIDs[case] + "_Diffeomorphic"+m_ScalarMeasurement+".nrrd").__str__()
             
             sp_out=ext_tools['ResampleDTIlogEuclidean'].resample(reference_file=Ref,
-                                                                   deform_field_file=HField,
+                                                                   deform_field_file=InvHField,
                                                                    transformation_file=alltfms[case],
                                                                    moving_file=originalDTI,
                                                                    output_file=FinalDTI,

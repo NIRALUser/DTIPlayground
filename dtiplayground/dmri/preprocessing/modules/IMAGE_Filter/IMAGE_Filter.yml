@@ -9,7 +9,7 @@ process_attributes:
 result: null
 protocol: #define protocol parameters here
       tresholding_mode:
-          type: string
+          type: list
           caption: Tresholding_mode
           candidates:
             - value: one_treshold_below

@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy
 import os
 import SimpleITK as sitk
@@ -99,13 +99,13 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
                 WM_mask = WM_mask * dilated_mask
 
 
-        fig = plt.figure()
-        plt.xticks([])
-        plt.yticks([])
-        fig.tight_layout()
-        plt.imshow(WM_mask[:, :, data.shape[2] // 2].T, cmap='gray',
-                   origin='lower', interpolation='nearest')
-        fig.savefig(Path(self.output_dir).joinpath('white_matter_mask.png').__str__())
+        # fig = plt.figure()
+        # plt.xticks([])
+        # plt.yticks([])
+        # fig.tight_layout()
+        # plt.imshow(WM_mask[:, :, data.shape[2] // 2].T, cmap='gray',
+        #            origin='lower', interpolation='nearest')
+        # fig.savefig(Path(self.output_dir).joinpath('white_matter_mask.png').__str__())
         
         # generate peaks
         if self.protocol['method'] == 'tensor':

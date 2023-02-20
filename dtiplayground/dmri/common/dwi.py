@@ -740,7 +740,7 @@ class DWI:
         remove_list=[]
         grad=self.getGradients()
         for idx,g in enumerate(grad):
-            if g['original_index'] in original_indexes:
+            if int(g['original_index']) in list(map(int, original_indexes)):
                 remove_list.append(idx)
         self.deleteGradients(remove_list)
 

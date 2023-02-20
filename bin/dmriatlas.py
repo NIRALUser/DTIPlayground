@@ -21,6 +21,20 @@ logger=common.logger.write
 color= common.Color
 
 
+def command_init(args):
+    ## reparametrization
+    options = {
+        'config_dir' : args.config_dir,
+        'log' : args.log,
+        'execution_id' : args.execution_id,
+        'no_verbosity' : args.no_verbosity,
+        'no_log_timestamp' : args.no_log_timestamp,
+        'version' : args.version,
+        'tools_dir' : args.tools_dir,
+    }
+    app = DMRIAtlasBuilderApp(options['config_dir'])
+    return app.initialize(options)
+
 def build_atlas(args):
     params_dir = args.params_dir
 
@@ -92,6 +106,10 @@ def get_args():
                                    description="dmriatlas is a tool to make DTI Atlas.",
                                    epilog="Written by SK Park (sangkyoon_park@med.unc.edu)  ,Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
     subparsers=parser.add_subparsers(help="Commands")
+
+    ## init command
+    parser_init=subparsers.add_parser('init',help='Initialize configurations')
+    parser_init.set_defaults(func=command_init)
     
     ## build command
     parser_build=subparsers.add_parser('build',help='Build Atlas')

@@ -21,6 +21,9 @@ class MANUAL_Exclude(prep.modules.DTIPrepModule):
         inputParams=self.getPreviousResult()['output']
         # << TODOS>>
 
+        if isinstance(self.protocol['gradientsToExclude'],str):
+            temp = list(map(int,self.protocol['gradientsToExclude'].split(',')))
+            self.protocol['gradientsToExclude'] = temp 
         self.result['output']['excluded_gradients_original_indexes']= self.protocol['gradientsToExclude'] ## this is code to exclude the gradients 
         self.result['output']['success']=True
         return self.result

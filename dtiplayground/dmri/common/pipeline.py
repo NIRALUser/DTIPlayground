@@ -26,6 +26,7 @@ def load_configurations(config_dir:str):
 def _generate_exec_sequence(pipeline,image_paths:list,output_dir,modules, io_options): ## generate sequence using uuid to avoid the issue from redundant module use
     seq=[]
     after_multi_input=False
+    print(io_options)
     for idx,parr in enumerate(pipeline):
         module_name, options=parr 
         is_multi_input='multi_input' in modules[module_name]['template']['process_attributes']
@@ -352,12 +353,18 @@ class Pipeline:
     def runPipeline(self,options={}): ## default is QC module (to be abstracted)
         try:
             if 'execution_id' in options: logger("Execution ID : {}".format(options['execution_id']))
+            logger(str(options),common.Color.DEV)
             self.checkRunnable()
             self.processes_history=[]
             self.io_options['output_filename_base']=self.getBaseFilename(self.images[0].filename)
             if 'output_file_base' in options:
-                self.io_options['output_filename_base']=options['output_file_base']
-            execution_sequence = _generate_exec_sequence(self.pipeline,self.image_paths,self.output_dir,self.modules, self.io_options)
+                if options['output_file_base'] is not None:
+                    self.io_options['output_filename_base']=options['output_file_base']
+            execution_sequence = _generate_exec_sequence(self.pipeline,
+                                                         self.image_paths,
+                                                         self.output_dir,
+                                                         self.modules,
+                                                         self.io_options)
             Path(self.output_dir).mkdir(parents=True,exist_ok=True)
             output_dir_map=_generate_output_directories_mapping(self.output_dir,execution_sequence)
             protocol_filename=Path(self.output_dir).joinpath('protocols.yml').__str__()

@@ -36,7 +36,7 @@ setup(
         'wheel',
         'cmake>=3.24.1',
         'pynrrd>=0.4.2',
-        'dipy>=1.4.0',
+        'dipy>=1.6.0',
         'pyyaml>=5.3.1',
         'nibabel>=3.2.1',
         'opencv-python-headless',

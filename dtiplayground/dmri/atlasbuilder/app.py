@@ -48,22 +48,25 @@ class DMRIAtlasBuilderApp(AppBase):
     ########################################
 
     def build(self,options):
+        @self.after_initialized
+        def _build(options):
+            logger = common.logger
+            # logger.setFilePointer(sys.stdout)
+            output_dir = Path(options['output_dir']).resolve()
+            output_dir.mkdir(exist_ok=True, parents=False)
+            config_path=output_dir.joinpath('common/config.yml')
+            hbuild_path=output_dir.joinpath('common/h-build.yml')
+            greedy_path=output_dir.joinpath('common/greedy.yml')
 
-        logger = common.logger
-        # logger.setFilePointer(sys.stdout)
-        output_dir = Path(options['output_dir']).resolve()
-        output_dir.mkdir(exist_ok=True, parents=False)
-        config_path=output_dir.joinpath('common/config.yml')
-        hbuild_path=output_dir.joinpath('common/h-build.yml')
-        greedy_path=output_dir.joinpath('common/greedy.yml')
-
-        bldr=AtlasBuilder(logger = logger)
-        bldr.configure( output_dir=options['output_dir'],
-                        config_path=options['config_path'],
-                        hbuild_path=options['hbuild_path'],
-                        greedy_path=options['greedy_path'])
-   
-        bldr.build()
+            bldr=AtlasBuilder(logger = logger)
+            bldr.configure( output_dir=options['output_dir'],
+                            config_path=options['config_path'],
+                            hbuild_path=options['hbuild_path'],
+                            greedy_path=options['greedy_path'])
+       
+            bldr.build()
+        return _build(options)
+        
    
     ##############        
     ### utilities

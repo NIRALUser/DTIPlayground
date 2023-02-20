@@ -96,6 +96,37 @@ def command_run(args):
     app.run(options)
 ### Arguments 
 
+def command_run_dir(args):
+    options = {
+        "config_dir" : args.config_dir,
+        "output_dir" : args.output_dir,
+        "execution_id":args.execution_id,
+        "default_protocols": None,
+        "global_variables" : _parse_global_variables(args.global_variables)        
+    }
+    protocol_fn = Path(options['output_dir']).joinpath('protocols.yml')
+    if protocol_fn.exists():
+        options['protocol_path']=protocol_fn.__str__()
+    else:
+        protocol_fn = Path(options['output_dir']).joinpath('protocols.json')
+        if protocol_fn.exists():
+            options['protocol_path']=protocol_fn.__str__()
+        else:
+            raise Exception("No protocols fille exists")
+    protocol = yaml.safe_load(open(protocol_fn,'r'))
+    options['num_threads'] = protocol['io']['num_threads']
+    options['output_format'] = protocol['io']['output_format']
+    options['baseline_threshold'] = protocol['io']['baseline_threshold']
+    options['output_filename_base'] = protocol['io']['output_filename_base']
+    options['input_image_paths'] = [protocol['io']['input_image_1']]
+    if 'input_image_2' in protocol['io']:
+        if protocol['io']['input_image_2'] is not None:
+            options['input_image_paths'].append(protocol['io']['input_image_2'])
+
+    app = DMRIPrepApp(options['config_dir'])
+    app.run(options)
+
+
 def get_args():
     version = info['dmriprep']['version']
     logger("VERSION : {}".format(str(version)))
@@ -163,6 +194,13 @@ def get_args():
     run_exclusive_group.add_argument('-p','--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
     parser_run.set_defaults(func=command_run)
+
+    ## run-dir command
+    parser_run_dir=subparsers.add_parser('run-dir',help='Run pipeline with directory',epilog=module_help_str)
+    parser_run_dir.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
+    parser_run_dir.add_argument('output_dir',help="Output directory",type=str)
+    parser_run_dir.set_defaults(func=command_run_dir)
+
 
     ## log related
     parser.add_argument('--config-dir',help='Configuration directory',default=str(config_dir))

@@ -207,6 +207,7 @@ DMRIAtlas is a software to make an atlas from multiple diffusion weighted images
 #### CLI Mode (Mac/Linux/Windows-WSL):
 
 *DTIPlaygroundTools required*
+
 *NIFTI DTI is not supported yet*
 
 

@@ -3,6 +3,24 @@
 DTI Playground is python based NIRAL pipeline software including DMRIPrep (dmriprep), DMRIAtlasBuilder (dmriatlasbuilder), DMRIFiberAnalyzer (dmrifiberanalyzer), DMRIAutoTract (dmriautotract)
 
 
+#### Getting Started
+
+Python 3.8.6 or above is required (Python 3.8.6 ~ 3.9.x preferred)
+
+```
+$ pip install dtiplayground
+$ dmriplaygroundlab
+```
+
+For the legacy native application
+
+```
+$ pip install dtiplayground-native
+```
+
+It will automatically install dtiplayground module as well if there is no pre installed dtiplayground
+
+
 #### Installation (Mac/Linux/Windows-WSL)
 
 We recommend users to make a virtual environment first using python >= 3.8.6
@@ -11,7 +29,7 @@ We recommend users to make a virtual environment first using python >= 3.8.6
 $ python -m venv $HOME/dtiplayground-env
 $ source $HOME/dtiplayground-env/bin/activate
 (dtiplayground_env) $ pip install dtiplayground
-$ dmriprep -v
+$ dmriplayground --version
 ```
 
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
@@ -21,9 +39,9 @@ For Windows users, install WSL and linux distribution (tested with ubuntu 20.04,
 
 **Note** : Build tested only on CentOS7 for now. However, it would work on most of linux systems. You don't need to install this tools everytime you upgrade dtiplayground.
 ```
-$ dmriprep install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only] [--build]
+$ dmriplayround install-tools
 ```
-Default output directory is `$HOME/.niral-dti/dtiplayground-tools` if output directory option is omitted
+Default output directory is `$HOME/.niral-dti/` if output directory option is omitted
 - If `--clean-install` option is present, it removes existing software packages and temporary files first.
 - If `--no-remove` option is present, it doesn't remove temporary build files after installation
 - If `--nofsl` option is present, it will not install FSL.
@@ -32,20 +50,22 @@ Default output directory is `$HOME/.niral-dti/dtiplayground-tools` if output dir
 
 Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of the tools including root path of the packages, and automatically changes software paths for the current version of dmriprep unless `--install-only` option is present.
 
-**NOTE** Once FSL is installed, some of tools in FSL has hard coded path in the script, which means that once FSL directory is moved or copied to different directory, some of functions will not work (e.g. eddy_quad). You need to re-install FSL in that case. But changing directory of FSL doesn't affect the functions of DTIPlayground so far. 
+**NOTE** If installation falied, remove `$HOME/.niral-dti`  directory and reinstall or re-init dmriplayround by `$dmriplayground init`  
 
 #### Installation with Docker
 
 ```
-$ docker pull niraluser/dtiplayground:latest
+$ docker pull niraluser/dtiplayground
 
 ```
 
 Current docker image contains all the necessary tools (FSL/DTIPlaygroundTools) and configurations initialized. To use the container, either run bash or use as below :
 
 ```
-$ docker run -it --rm -v $PWD:$PWD niraluser/dtiplayground:latest dmriprep [commands]
+$ docker run -it --rm --user $(id -u):$(id -g) -e HOME=$HOME -v $PWD:$PWD -v <WORKINGDIR>:<WORKINGDIR> niraluser/dtiplayground
 ```
+
+It will launch DTIPlaygroundLab, open the link in a browser after execution.
 
 
 ## DMRIPrep (dmriprep)
@@ -56,12 +76,19 @@ About the Preprocessing part : [README about Preprocessing](dtiplayground/dmri/p
 
 #### GUI Mode (Mac/Linux):
 
+To use the legacy native UI, 
+```
+$ pip install dtiplayground-native
+``` 
+
 When a user run dmriprep-ui first time, it automatically initialize.
 ```
 $ dmriprep-ui
 ```
 
 #### CLI Mode (Mac/Linux/Windows-WSL):
+
+*FSL/DTIPlaygroundTools required*
 
 For windows users, install WSL2 and linux packages with python >=3.8.6. 
 
@@ -114,6 +141,12 @@ To run with existing protocol file:
 
 **[NOTE]** when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
 
+5. **run-dir** Run output directory having protocol file
+
+```
+    $ dmriprep run-dir output/directory 
+```
+
 ### Development of a new module 
 
 #### Adding a module
@@ -158,51 +191,30 @@ $ dmriprep remove-module MYFIRST_Module
 #### Modules in other directory
 You can just copy module directory to `$HOME/.niral-dti/modules/dmriprep` and check with `$ dmriprep update` command. Same applies for removal of user modules.
 
-## DMRIAutoTract (dmriautotract) - *UNDER DEVELOPMENT*
-
-`dmriautotract` is a tool that performs automatic tractography from the diffusion weighted image. 
 
 
-#### GUI Mode (Mac/Linux):
-
-Currently GUI for dmritract is not available
-
-#### CLI Mode (Mac/Linux/Windows-WSL):
-
-The usage is same as DMRIPrep. Only difference is that DMRITract uses different set of modules.
-
-To run with existing protocol file:
-```
-    $ dmritautoract run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
-```
-
-`-p` option cannot be used with `-d` option.
-
-## DMRIFiberProfile (dmrifiberprofile) - *UNDER DEVELOPMENT*
-
-`dmrifiberprofile` performs statistical computation over the extracted fibers. This enables researchers to get the information of the fiber images easily and fast.
-
-#### GUI Mode (Mac/Linux):
-
-Currently GUI for dmrifiberprofile is not available
-
-#### CLI Mode (Mac/Linux/Windows-WSL):
-
-The usage is same as DMRIPrep. Only difference is that DMRIFiberProfile uses different set of modules.
-
-To run with existing protocol file:
-```
-    $ dmrifiberprofile run -i IMAGE_FILES -p PROTOCOL_FILE -o output/directory/
-```
-
-`-p` option cannot be used with `-d` option.
-
-## DMRIAtlas (dmriatlas) - *UNDER DEVELOPMENT*
+## DMRIAtlas (dmriatlas)
 
 DMRIAtlas is a software to make an atlas from multiple diffusion weighted images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
 
+#### CLI Mode (Mac/Linux/Windows-WSL):
+
+*DTIPlaygroundTools required*
+*NIFTI DTI is not supported yet*
 
 
+**Usage**
+
+The configured directory can be generated from DTIPlaygroundLab (UI)
+
+```
+$ dmriatlas build-dir configured/directory
+```
+
+#### GUI Mode
+
+In DTIPlaygroundLab, ($ dmriplaygroundlab )
+Goto DMRI AtlasBuilder -> configure -> Generate Output Directory or Execute.
 
 ### Supported Images
 
@@ -248,7 +260,7 @@ MIT
 [GENERAL]
 - Python >= 3.8.6 and development packages (e.g. python-dev or python-devel)
 
-[POST INSTALLATION (OPTION)] : below tools can be installed using `$ dmriprep install-tools` command
+[POST INSTALLATION (OPTION)] : below tools can be installed using `$ dmriplayground install-tools` command
 - FSL >= 6.0 
 - DTIPlaygroundTools 
 
@@ -256,22 +268,20 @@ MIT
 - Python Libraries
     - simpleitk>=2.1.1
     - pynrrd==0.4.2
-    - dipy==1.4.0 
+    - dipy==1.5.0 
     - pyyaml==5.3.1
     - nibabel==3.2.1
-    - tensorflow==2.8.0 (For antspynet)
-    - antspyx==0.3.2 (This version should be installed due to compiling error in more recent versions)
-    - antspynet==0.1.8 (For BRAIN_Mask module)
     - pandas==1.4.3
     - reportlab==3.6.6
     - pypdf2==1.26.0
     - markdown==3.3.6
     - xhtml2pdf==0.2.7
+    - opencv-python
     - flask
     - flask_cors
     - flas_jwt_extended
 
-[DMRIPrepUI]
+[DTIPlaygroundNative]
 - Python Libraries
     - PyQt5==5.9.2
 
@@ -281,6 +291,12 @@ MIT
 - Multi node computing with Kubernetes
 
 ### Change Log
+
+##### 2023-02-23
+- dmriplaygroundlabs - Modern Web UI
+- dmriplayground - installation, bug fixed
+- dmriprep - minor bug fixed, antspynet removed
+- dmriatlas - bug fixed, added directory build mode ($ dmriatlas build-dir [dir])
 
 ##### 2022-11-10
 - dmriplayground - refactored, local-server mode enabled

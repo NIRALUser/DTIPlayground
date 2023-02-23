@@ -4,7 +4,7 @@ INFO = {
     "version" : "0.5.5b13"
   },
   "dmriplayground": {
-    "version" : "0.2.1b1"
+    "version" : "0.5.5b13"
   },
   "dmriprep": {
     "version" : "0.5.5b1"

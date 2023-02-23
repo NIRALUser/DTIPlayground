@@ -14,11 +14,9 @@ DTIPlayground - Integrated DWI processing toolkit
    :caption: Contents:
 
    installation
-   quickstart
-   usage
    DMRIPrep
    DMRIAtlasBuilder
-   DMRIAutotract
+   DMRIViewer
    license
 
 Indices and tables

@@ -75,6 +75,14 @@ About the Preprocessing part : [README about Preprocessing](dtiplayground/dmri/p
 
 #### GUI Mode (Mac/Linux):
 
+Use web UI:
+```
+$ dmriplaygroundlab
+
+```
+From the menu, go to DMRIPrep application
+
+
 To use the legacy native UI, 
 ```
 $ pip install dtiplayground-native

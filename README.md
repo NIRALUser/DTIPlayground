@@ -33,7 +33,6 @@ $ dmriplayground --version
 ```
 
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
-**FSL should be installed and environment variable 'FSL' needs to be set to the corresponding directory before initialization.**
 
 **install-tools** - Install DTIPlayground Tools (docker & docker-compose required if custom build is needed)
 

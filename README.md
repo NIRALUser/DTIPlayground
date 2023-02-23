@@ -73,7 +73,7 @@ dmriprep is a tool that performs quality control over diffusion weighted images.
 
 About the Preprocessing part : [README about Preprocessing](dtiplayground/dmri/preprocessing/README.md)
 
-#### GUI Mode (Mac/Linux):
+#### GUI Mode:
 
 Use web UI:
 ```
@@ -83,12 +83,12 @@ $ dmriplaygroundlab
 From the menu, go to DMRIPrep application
 
 
-To use the legacy native UI, 
+To use the legacy native UI (Mac/Linux), 
 ```
 $ pip install dtiplayground-native
 ``` 
 
-When a user run dmriprep-ui first time, it automatically initialize.
+When a user run dmriprep-ui first time, it automatically initializes.
 ```
 $ dmriprep-ui
 ```

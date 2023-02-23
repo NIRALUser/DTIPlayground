@@ -1,6 +1,6 @@
 # DTI Playground 
 
-DTI Playground is python based NIRAL pipeline software including DMRIPrep (dmriprep), DMRIAtlasBuilder (dmriatlasbuilder), DMRIFiberAnalyzer (dmrifiberanalyzer), DMRIAutoTract (dmriautotract)
+DTI Playground is python based NIRAL pipeline software including DMRIPrep (dmriprep), DMRIAtlas (dmriatlas)
 
 
 #### Getting Started

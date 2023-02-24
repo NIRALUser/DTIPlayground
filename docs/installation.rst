@@ -6,6 +6,19 @@ We recommend users to make a virtual environment first using python >= 3.8.6
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
 
 
+Prerequisite
+~~~~~~~~~~~~~~~~~~~~~
+
+Python2 is required for installation of FSL
+Python3.8 or conda environment is required
+
+User needs to set path of python2 like below
+
+e.g.::
+
+    $ ln -s /usr/bin/python2.7 /usr/bin/python2
+
+
 Getting Started
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -26,6 +39,18 @@ Run DTIPlaygroundLab (UI)::
 Once launched, you can open the link in your browser and have fun.
 
 .. image:: _static/dtilab_viewer_tract.png
+
+
+Using Conda
+~~~~~~~~~~~~~~~~~~~~~~
+
+Create the environment and install::
+
+    $ conda create -n dtienv-py38 python=3.8
+    $ conda activate dtienv-py38
+    $ pip install --upgrade dtiplayground
+    $ dmriplaygroundlab
+
 
 
 Using Docker 
@@ -53,6 +78,7 @@ Make sure to set HOME directory when running docker container, this will install
 Install-tools
 ~~~~~~~~~~~~~
 Install DTIPlayground Tools (docker & docker-compose required if custom build is needed) 
+* python2 should be executable. (e.g. $ python2 ). If not install python2 and link it to python2 
 
 Default::
 
@@ -61,6 +87,12 @@ Default::
 Options::
 
     $ dmriplayground install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only] [--build]
+
+
+If you want to use pre-installed FSL/DTIPlaygroundTools::
+
+    $ cp <some-dir>/global_variables.yml $HOME/.niral-dti/
+
 
 Install legacy UI (To be obsolete)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

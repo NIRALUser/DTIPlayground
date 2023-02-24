@@ -178,7 +178,7 @@ class AppBase:
             if not no_fsl and not fsldir.exists():
                 import dtiplayground.dmri.common.data
                 fslinstaller_fn=Path(dtiplayground.dmri.common.data.__file__).parent.joinpath('fslinstaller.py')
-                command=['/usr/bin/python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] ### python2 is needed
+                command=['python2', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] ### python2 is needed
                 subprocess.run(command)
                 info = {
                     'name' : 'fsl',

@@ -7,6 +7,19 @@ DTI Playground is python based NIRAL pipeline software including DMRIPrep (dmrip
 [Documentation](https://dtiplayground.readthedocs.io/en/latest/)
 
 
+
+#### Prerequisite
+
+Python2 is required for installation of FSL
+Python3.8 or conda environment is required
+
+User needs to set path of python2 like below
+
+e.g.
+```
+$ ln -s /usr/bin/python2.7 /usr/bin/python2
+```
+
 #### Getting Started
 
 Python 3.8.6 or above is required (Python 3.8.6 ~ 3.9.x preferred)
@@ -25,22 +38,21 @@ $ pip install dtiplayground-native
 It will automatically install dtiplayground module as well if there is no pre installed dtiplayground
 
 
-#### Installation (Mac/Linux/Windows-WSL)
+#### Using Conda
 
-We recommend users to make a virtual environment first using python >= 3.8.6
+
+Create the environment
 
 ```
-$ python -m venv $HOME/dtiplayground-env
-$ source $HOME/dtiplayground-env/bin/activate
-(dtiplayground_env) $ pip install dtiplayground
-$ dmriplayground --version
+$ conda create -n dtienv-py38 python=3.8
+$ conda activate dtienv-py38
+$ pip install --upgrade dtiplayground
+$ dmriplaygroundlab
 ```
 
-For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
+#### Install Tools (FSL/DTIPlaygroundTools)
 
-**install-tools** - Install DTIPlayground Tools (docker & docker-compose required if custom build is needed)
 
-**Note** : Build tested only on CentOS7 for now. However, it would work on most of linux systems. You don't need to install this tools everytime you upgrade dtiplayground.
 ```
 $ dmriplayround install-tools
 ```

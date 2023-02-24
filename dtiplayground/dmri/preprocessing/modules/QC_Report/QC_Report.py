@@ -8,7 +8,7 @@ import numpy
 from PIL import Image
 import markdown
 from markdown import extensions
-from xhtml2pdf import pisa
+
 
 import dtiplayground.dmri.preprocessing as prep
 
@@ -40,6 +40,7 @@ class QC_Report(prep.modules.DTIPrepModule):
                 html_data = f.read()
             pdf_path = self.output_dir+"/QC_report.pdf"
             result_file = open(pdf_path, "w+b")
+            from xhtml2pdf import pisa
             pisa.CreatePDF(html_data, dest=result_file)
             result_file.close()
             self.addOutputFile(pdf_path, "QC_report")

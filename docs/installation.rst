@@ -5,6 +5,8 @@ We recommend users to make a virtual environment first using python >= 3.8.6
 
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
 
+* This software has dependencies on linux compiled binaries. It is recommended for Mac/Windows users to use dockerized version (Install using docker part below)
+
 
 Prerequisite
 ~~~~~~~~~~~~~~~~~~~~~
@@ -19,8 +21,8 @@ e.g.::
     $ ln -s /usr/bin/python2.7 /usr/bin/python2
 
 
-Install Using PIP
-~~~~~~~~~~~~~~~~~~~~
+Install Using PIP (Linux/Windows WSL)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 To install (as root)::
@@ -41,8 +43,8 @@ Once launched, you can open the link in your browser and have fun.
 .. image:: _static/dtilab_viewer_tract.png
 
 
-Install Using Conda
-~~~~~~~~~~~~~~~~~~~~~~
+Install Using Conda (Linux/Windows WSL)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Create the environment and install::
 
@@ -53,8 +55,8 @@ Create the environment and install::
 
 
 
-Install Using Docker 
-~~~~~~~~~~~~~~~~~~~~~~~
+Install Using Docker (Linux/Windows/MacOS)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To install (with Docker)::
     

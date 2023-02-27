@@ -17,7 +17,7 @@ RUN ./configure
 RUN make install
 WORKDIR /
 RUN pip install packaging
-RUN pip install --upgrade dtiplayground==0.5.5b11
+RUN pip install --upgrade dtiplayground==0.5.5b17
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 RUN chmod 777 -R /root
 EXPOSE 6543

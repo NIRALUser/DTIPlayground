@@ -11,8 +11,8 @@ For Windows users, install WSL and linux distribution (tested with ubuntu 20.04,
 Prerequisite
 ~~~~~~~~~~~~~~~~~~~~~
 
-Python2 is required for installation of FSL
-Python3.8 or conda environment is required
+* Python2 is required for installation of FSL
+* Python3.8 or conda environment is required
 
 User needs to set path of python2 like below
 
@@ -109,7 +109,7 @@ Options::
 If you want to use pre-installed FSL/DTIPlaygroundTools::
 
     $ cp <some-dir>/global_variables.yml $HOME/.niral-dti/
-    
+
 
 Note
 ~~~~

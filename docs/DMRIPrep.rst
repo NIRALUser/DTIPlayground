@@ -32,7 +32,7 @@ Then go to DMRI Prep menu. Once protocol file is made with IO options (image fil
 Legacy UI (Mac/Linux only)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When a user run dmriprep-ui first time, it automatically initialize.
+When a user run dmriprep-ui first time, it automatically initialize.::
 
     $ dmriprep-ui
 

@@ -6,7 +6,7 @@
 DTIPlayground - Integrated DWI processing toolkit
 ======================================================
 
-.. image:: _static/niral_logo.png
+.. image:: _static/niral_logo.jpg
    :align: center
 .. include:: ../README.rst
 

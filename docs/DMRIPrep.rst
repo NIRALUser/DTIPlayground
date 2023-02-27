@@ -29,7 +29,7 @@ Then go to DMRI Prep menu. Once protocol file is made with IO options (image fil
 
 
 
-Legacy UI (Mac/Linux only)
+Legacy UI (Linux only)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When a user run dmriprep-ui first time, it automatically initialize.::
@@ -42,7 +42,7 @@ If you haven't installed legacy UI::
 
 
 
-CLI Mode (Mac/Linux/Windows-WSL)
+CLI Mode (Linux/Windows-WSL)
 ================================
 
 For Windows users, install WSL2 and linux packages with python>=3.8.6.
@@ -87,7 +87,7 @@ option is not specified, the default pipeline will be generated from the file `p
 pipeline in `protocol_template.yml` file
 
 4. run - Run pipeline
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To run with default protocol generated from `protocol_template.yml`::
 

@@ -77,6 +77,18 @@ Make sure to set HOME directory when running docker container, this will install
 
 
 
+
+
+
+Install legacy UI (To be obsolete, Linux Only)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PyQt based native UI has moved to different repository, if you want to use it for some reason::
+
+    $ pip install dtiplayground-native
+    $ dmriprep-ui
+
+
 Installation of necessary tools
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -97,16 +109,7 @@ Options::
 If you want to use pre-installed FSL/DTIPlaygroundTools::
 
     $ cp <some-dir>/global_variables.yml $HOME/.niral-dti/
-
-
-Install legacy UI (To be obsolete)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-PyQt based native UI has moved to different repository, if you want to use it for some reason::
-
-    $ pip install dtiplayground-native
-    $ dmriprep-ui
-
+    
 
 Note
 ~~~~

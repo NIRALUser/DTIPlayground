@@ -19,7 +19,7 @@ e.g.::
     $ ln -s /usr/bin/python2.7 /usr/bin/python2
 
 
-Getting Started
+Install Using PIP
 ~~~~~~~~~~~~~~~~~~~~
 
 
@@ -41,7 +41,7 @@ Once launched, you can open the link in your browser and have fun.
 .. image:: _static/dtilab_viewer_tract.png
 
 
-Using Conda
+Install Using Conda
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Create the environment and install::
@@ -53,7 +53,7 @@ Create the environment and install::
 
 
 
-Using Docker 
+Install Using Docker 
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 To install (with Docker)::
@@ -75,8 +75,11 @@ Make sure to set HOME directory when running docker container, this will install
 
 
 
-Install-tools
-~~~~~~~~~~~~~
+Installation of necessary tools
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This will be automatically done when initiated (or during the first run). If you want to install or use existing tools (installed via dmriplayground) , use below instructions.
+
 Install DTIPlayground Tools (docker & docker-compose required if custom build is needed) 
 * python2 should be executable. (e.g. $ python2 ). If not install python2 and link it to python2 
 

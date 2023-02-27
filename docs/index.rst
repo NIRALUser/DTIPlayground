@@ -8,6 +8,7 @@ DTIPlayground - Integrated DWI processing toolkit
 
 .. image:: _static/niral_logo.jpg
    :align: center
+   :width: 200px
 .. include:: ../README.rst
 
 .. toctree::

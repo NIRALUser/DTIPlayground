@@ -11,15 +11,7 @@ For Windows users, install WSL and linux distribution (tested with ubuntu 20.04,
 Prerequisite
 ~~~~~~~~~~~~~~~~~~~~~
 
-* Python2 is required for installation of FSL
 * Python3.8 or conda environment is required
-
-User needs to set path of python2 like below
-
-e.g.::
-
-    $ ln -s /usr/bin/python2.7 /usr/bin/python2
-
 
 Install Using PIP (Linux/Windows WSL)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -33,6 +25,9 @@ To install (as user)::
 
   $ pip install --user --upgrade dtiplayground
 
+Initialize::
+
+    $ dmriplayground init
 
 Run DTIPlaygroundLab (UI)::
 
@@ -51,6 +46,7 @@ Create the environment and install::
     $ conda create -n dtienv-py38 python=3.8
     $ conda activate dtienv-py38
     $ pip install --upgrade dtiplayground
+    $ dmriplayground init
     $ dmriplaygroundlab
 
 
@@ -74,10 +70,6 @@ Make sure to set HOME directory when running docker container, this will install
 * If you experience error during installation of tools, remove configuration directory::
 
     $ rm -rf $HOME/.niral-dti
-
-
-
-
 
 
 Install legacy UI (To be obsolete, Linux Only)

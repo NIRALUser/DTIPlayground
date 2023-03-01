@@ -77,7 +77,7 @@ $ docker pull niraluser/dtiplayground
 Current docker image contains all the necessary tools (FSL/DTIPlaygroundTools) and configurations initialized. To use the container, either run bash or use as below :
 
 ```
-$ docker run -it --rm --user $(id -u):$(id -g) -e HOME=$HOME -v $PWD:$PWD -v <WORKINGDIR>:<WORKINGDIR> niraluser/dtiplayground
+$ docker run -it --rm --user $(id -u):$(id -g) -e HOME=$HOME -v $HOME:$HOME -v <WORKINGDIR>:<WORKINGDIR> niraluser/dtiplayground
 ```
 
 It will launch DTIPlaygroundLab, open the link in a browser after execution.

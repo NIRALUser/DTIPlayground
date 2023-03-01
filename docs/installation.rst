@@ -63,7 +63,7 @@ Current docker image contains all the necessary tools (FSL/DTIPlaygroundTools) a
 
 To use the container::
 
-    $ docker run -it --rm -e HOME=$HOME -v $PWD:$PWD -v <WORKDIR>:<WORKDIR> niraluser/dtiplayground
+    $ docker run -it --rm -e HOME=$HOME -v $HOME:$HOME -v <WORKDIR>:<WORKDIR> niraluser/dtiplayground
 
 Make sure to set HOME directory when running docker container, this will install or check FSL and DTIPlaygroundTools. If omitted, it tries to install those software every execution inside of docker container which is volatile.
 

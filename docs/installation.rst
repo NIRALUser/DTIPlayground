@@ -109,7 +109,7 @@ If you want to change paths of installed tools (such as FSL)::
 
 Note
 ~~~~
-Build tested only on CentOS7 for now. However, it would work on most of linux systems. You don't need to install this tools everytime you upgrade dtiplayground.
+Build tested only on CentOS7 for now. However, it would work on most of linux systems. You don't need to install this tools everytime you upgrade dtiplayground.::
 
     $ dmriplayground install-tools [-o <output directory>] [--clean-install] [--no-remove] [--nofsl] [--install-only] [--build]
 

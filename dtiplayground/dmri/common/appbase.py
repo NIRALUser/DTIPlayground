@@ -33,6 +33,9 @@ class AppBase:
             self.app.setdefault('log', self.log_file)
             self.app.setdefault('no_verbosity', False)
             self.app.setdefault('execution_id',  common.get_uuid())
+            init_fn = Path(self.app['application_dir']).joinpath('init.yml')
+            if init_fn.exists():
+                self.app['parameters'] = yaml.safe_load(open(init_fn,'r'))
             self.kwargs=kwargs
         else:
             self.kwargs=kwargs
@@ -119,6 +122,7 @@ class AppBase:
                             else:
                                 dptdir=Path(dptdir)
                             dptdir=dptdir.expanduser()
+                            dptdir=Path(os.path.expandvars(dptdir))
                             logger('Installing to : {}'.format(dptdir.__str__()),color.PROCESS)
                             self.install_tools({'output_dir': Path(dptdir).resolve(),'no_fsl':True})
                             dptdir = dptdir.joinpath('dtiplayground-tools')
@@ -130,11 +134,13 @@ class AppBase:
                         else:
                             dptdir=Path(dptdir)
                         dptdir=dptdir.expanduser()
+                        dptdir=Path(os.path.expandvars(dptdir))
                         logger('Installing to : {}'.format(dptdir.__str__()),color.PROCESS)
                         self.install_tools({'output_dir': Path(dptdir).resolve(), 'no_fsl':True})
                         dptdir = dptdir.joinpath('dtiplayground-tools')
 
                 ## FSL
+                os.chdir(Path.home())
                 if not fsldir.joinpath('etc/fslversion').exists():
                     if not _args['install_tools']:
                         logger('Couldn\'t find the FSL',color.ERROR)
@@ -161,8 +167,9 @@ class AppBase:
                             else:
                                 fsldir=Path(fsldir)
                             fsldir=fsldir.expanduser()
+                            fsldir=Path(os.path.expandvars(fsldir))
                             logger('Installing to : {}'.format(fsldir.__str__()),color.PROCESS)
-                            self.install_tools({'output_dir': Path(fsldir),'no_dtiplayground_tools':True})
+                            self.install_tools({'output_dir': Path(fsldir).resolve(),'no_dtiplayground_tools':True})
                             fsldir=fsldir.joinpath('FSL')
                     else:
                         logger('Installation Directory [~/.niral-dti/]:')
@@ -172,8 +179,9 @@ class AppBase:
                         else:
                             fsldir=Path(fsldir)
                         fsldir=fsldir.expanduser()
+                        fsldir=Path(os.path.expandvars(fsldir))
                         logger('Installing to : {}'.format(fsldir.__str__()),color.PROCESS)
-                        self.install_tools({'output_dir': Path(fsldir), 'no_dtiplayground_tools':True})
+                        self.install_tools({'output_dir': Path(fsldir).resolve(), 'no_dtiplayground_tools':True})
                         fsldir=fsldir.joinpath('FSL')
 
 
@@ -195,10 +203,9 @@ class AppBase:
                 logger("Couldn't find tool directory {}".format(str(tools_dir)),color.ERROR)
                 exit(1)
 
+        self.app['global_variables'] = self.globalvars
         self.initialize_logger(_args)
-
         self.initializeImpl(options)
-
         initialization_fn = Path(self.app['application_dir']).joinpath("init.yml")
         yaml.dump(self.app, open(initialization_fn,'w'))
         logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),color.OK)
@@ -225,6 +232,23 @@ class AppBase:
                 'build' : options['build'],
                 'no_remove' : options['no_remove'],
             }
+            args['output_dir']=os.path.expandvars(args['output_dir'])
+            logger('Installing to : {} [Y/n]'.format(Path(args['output_dir'])))
+            yn = input()
+            if yn.lower() == 'n':
+                logger('Specify the installation directory:')
+                inst_dir = input()
+                if len(inst_dir) < 1:
+                    logger('Installation aborted',color.ERROR)
+                else:
+                    inst_dir = Path(inst_dir)
+                    inst_dir = inst_dir.expanduser()
+                    inst_dir = Path(os.path.expandvars(inst_dir))
+                    args['output_dir'] = inst_dir
+                    logger('Installing tools to {}...'.format(args['output_dir']),color.PROCESS)
+            else:
+                pass
+
             home_dir=Path(self.app['application_dir'])
             home_dir.parent.mkdir(parents=True,exist_ok=True)
             # globalvars_fn = Path(os.path.expandvars("$HOME/.niral-dti/global_variables.yml"))
@@ -258,7 +282,7 @@ class AppBase:
             if not no_fsl and not fsldir.joinpath('etc/fslversion').exists():
                 import dtiplayground.dmri.common.data
                 fslinstaller_fn=Path(dtiplayground.dmri.common.data.__file__).parent.joinpath('fslinstaller.py')
-                command=['python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] ### python2 is needed
+                command=['python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] 
                 subprocess.run(command)
                 info = {
                     'name' : 'fsl',

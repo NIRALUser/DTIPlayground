@@ -102,6 +102,10 @@ If you want to use pre-installed FSL/DTIPlaygroundTools::
 
     $ cp <some-dir>/global_variables.yml $HOME/.niral-dti/
 
+If you want to change paths of installed tools (such as FSL)::
+
+    $ vi ~/.niral-dti/global_variables.yml
+
 
 Note
 ~~~~

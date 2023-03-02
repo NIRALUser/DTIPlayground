@@ -1220,6 +1220,10 @@ def furnish_sequence(hb,seq):
         conf["m_CasesIDs"]=s['dataset_ids']
         conf["m_NodeInfo"]=hb["build"][s['name']]
         conf["m_NodeName"]=s["name"]
+
+        if len(conf['m_CasesPath']) ==1:
+          conf['m_CasesPath'] += conf['m_CasesPath']
+          conf['m_CasesIDs'] += [conf['m_CasesIDs'][0]+'_dup']
         bs.append(conf)
 
     return bs

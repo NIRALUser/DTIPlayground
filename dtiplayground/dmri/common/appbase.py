@@ -86,7 +86,6 @@ class AppBase:
         if globalvars_fn.exists():
             self.globalvars = yaml.safe_load(open(globalvars_fn,'r'))
 
-
         if tools_dir is not None:
             if tools_dir.exists():
                 dptdir = tools_dir.joinpath('dtiplayground-tools')
@@ -184,7 +183,8 @@ class AppBase:
                         self.install_tools({'output_dir': Path(fsldir).resolve(), 'no_dtiplayground_tools':True})
                         fsldir=fsldir.joinpath('FSL')
 
-
+                if self.globalvars is None:
+                    self.globalvars={}
                 self.globalvars.update({
                     "dtiplayground-tools" :{
                         "path" : dptdir.resolve().__str__(),

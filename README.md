@@ -20,7 +20,7 @@ e.g.
 $ ln -s /usr/bin/python2.7 /usr/bin/python2
 ```
 
-#### Getting Started
+#### Using PIP
 
 Python 3.8.6 or above is required (Python 3.8.6 ~ 3.9.x preferred)
 
@@ -50,7 +50,30 @@ $ pip install --upgrade dtiplayground
 $ dmriplaygroundlab
 ```
 
+
+#### Using Docker
+
+```
+$ docker pull niraluser/dtiplayground
+
+```
+
+Current docker image contains all the necessary tools (FSL/DTIPlaygroundTools) and configurations initialized. To use the container, either run bash or use as below :
+
+```
+$ docker run -it --rm --user $(id -u):$(id -g) -e HOME=$HOME -v $HOME:$HOME -v <WORKINGDIR>:<WORKINGDIR> niraluser/dtiplayground
+```
+
+It will launch DTIPlaygroundLab, open the link in a browser after execution.
+
 #### Install Tools (FSL/DTIPlaygroundTools)
+
+For admins who want users to use same FSL/dtiplayground-tools preinstalled in the network, use environment variables
+
+- FSLDIR : path to FSL root directory
+- DTIPLAYGROUNDTOOLS  : path to dtiplayground-tools having `info.yml` file
+
+Then each user will be asked to use those tools when he/she initialize (or first time use) the software
 
 
 ```
@@ -66,21 +89,6 @@ Default output directory is `$HOME/.niral-dti/` if output directory option is om
 Once installed, `$HOME/.niral-dti/global_variables.yml` will have information of the tools including root path of the packages, and automatically changes software paths for the current version of dmriprep unless `--install-only` option is present.
 
 **NOTE** If installation falied, remove `$HOME/.niral-dti`  directory and reinstall or re-init dmriplayround by `$dmriplayground init`  
-
-#### Installation with Docker
-
-```
-$ docker pull niraluser/dtiplayground
-
-```
-
-Current docker image contains all the necessary tools (FSL/DTIPlaygroundTools) and configurations initialized. To use the container, either run bash or use as below :
-
-```
-$ docker run -it --rm --user $(id -u):$(id -g) -e HOME=$HOME -v $HOME:$HOME -v <WORKINGDIR>:<WORKINGDIR> niraluser/dtiplayground
-```
-
-It will launch DTIPlaygroundLab, open the link in a browser after execution.
 
 
 ## DMRIPrep (dmriprep)

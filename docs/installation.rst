@@ -84,6 +84,12 @@ PyQt based native UI has moved to different repository, if you want to use it fo
 Installation of necessary tools
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+For admins who want users to use same FSL/dtiplayground-tools preinstalled in the network, set below environment variables to the users' profile.
+
+* FSLDIR : path to FSL root directory
+* DTIPLAYGROUNDTOOLS  : path to dtiplayground-tools having `info.yml` file
+
+
 This will be automatically done when initiated (or during the first run). If you want to install or use existing tools (installed via dmriplayground) , use below instructions.
 
 Install DTIPlayground Tools (docker & docker-compose required if custom build is needed) 

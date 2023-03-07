@@ -34,8 +34,10 @@ class AppBase:
             self.app.setdefault('no_verbosity', False)
             self.app.setdefault('execution_id',  common.get_uuid())
             init_fn = Path(self.app['application_dir']).joinpath('init.yml')
-            if init_fn.exists():
-                self.app['parameters'] = yaml.safe_load(open(init_fn,'r'))
+            globalvar_fn =  Path(self.config_dir).joinpath('global_variables.yml')
+            if globalvar_fn.exists():
+                self.app['parameters'] = yaml.safe_load(open(globalvar_fn,'r'))
+                pass
             self.kwargs=kwargs
         else:
             self.kwargs=kwargs
@@ -82,7 +84,10 @@ class AppBase:
 
         globalvars_fn=Path(self.app['config_dir']).joinpath('global_variables.yml')
 
-        self.globalvars = None
+        self.globalvars = {}
+        self.globalvars.setdefault('dtiplayground-tools',{'info':{},'path':None})
+        self.globalvars.setdefault('fsl',{'info':{},'path':None})
+
         if globalvars_fn.exists():
             self.globalvars = yaml.safe_load(open(globalvars_fn,'r'))
 
@@ -90,21 +95,47 @@ class AppBase:
             if tools_dir.exists():
                 dptdir = tools_dir.joinpath('dtiplayground-tools')
                 fsldir = tools_dir.joinpath('FSL')
-                if self.globalvars is not None:
+
+                tmpdir=self._get_dpg_dir()
+                if  tmpdir is not None:
+                    dptdir = Path(tmpdir)
+                    if tmpdir != self.globalvars['dtiplayground-tools']['path']:
+                        logger("Use the installed DTIPlaygroundTools? [Y/n]")
+                        yn=input()
+                        if yn.lower() == 'n':
+                            pass
+                        else:
+                            self.globalvars['dtiplayground-tools']['path'] = dptdir.__str__()
+
+                tmpdir=self._get_fsl_dir()
+                if  tmpdir is not None:
+                    fsldir = Path(tmpdir)
+                    if tmpdir != self.globalvars['fsl']['path']:
+                        logger("Use the installed FSL? [Y/n]")
+                        yn=input()
+                        if yn.lower() == 'n':
+                            pass
+                        else:
+                            self.globalvars['fsl']['path'] = fsldir.__str__()
+
+                if self.globalvars['dtiplayground-tools']['path'] is not None:
                     dptdir = Path(self.globalvars['dtiplayground-tools']['path'])
+                if self.globalvars['fsl']['path'] is not None:
                     fsldir = Path(self.globalvars['fsl']['path'])
 
                 ## DTIPlayground Tools
+
+
                 if not dptdir.joinpath('info.yml').exists():
                     if not _args['install_tools']:
-                        logger('Couldn\'t find the DTIPlayground tools',color.ERROR)
+                        logger('Couldn\'t find the DTIPlayground tools at: {}'.format(dptdir.__str__()),color.ERROR)
                         logger('Do you want to install the DTIPlaygroundTools now? [Y/n]')
                         yn = input()
                         if yn=='n':
                             logger('Please input the directory where DTIPlaygroundTools is installed:')
                             dptdir = input()
                             if len(dptdir) < 1:
-                                logger('Initialization aborted')
+                                logger('Initialization aborted',color.ERROR)
                                 exit(1)
                             else:
                                 dptdir = Path(dptdir).resolve()
@@ -142,14 +173,14 @@ class AppBase:
                 os.chdir(Path.home())
                 if not fsldir.joinpath('etc/fslversion').exists():
                     if not _args['install_tools']:
-                        logger('Couldn\'t find the FSL',color.ERROR)
+                        logger('Couldn\'t find the FSL at: {}'.format(fsldir.__str__()),color.ERROR)
                         logger('Do you want to install the FSL now? [Y/n]')
                         yn = input()
                         if yn=='n':
                             logger('Please input the directory where FSL is installed:')
                             fsldir = input()
                             if fsldir is None:
-                                logger('Initialization aborted')
+                                logger('Initialization aborted',color.ERROR)
                                 exit(1)
                             else:
                                 fsldir = Path(fsldir).resolve()
@@ -203,6 +234,8 @@ class AppBase:
                 logger("Couldn't find tool directory {}".format(str(tools_dir)),color.ERROR)
                 exit(1)
 
+        yaml.dump(self.globalvars, open(globalvars_fn,'w'))
+
         self.app['global_variables'] = self.globalvars
         self.initialize_logger(_args)
         self.initializeImpl(options)
@@ -240,6 +273,7 @@ class AppBase:
                 inst_dir = input()
                 if len(inst_dir) < 1:
                     logger('Installation aborted',color.ERROR)
+                    exit(1)
                 else:
                     inst_dir = Path(inst_dir)
                     inst_dir = inst_dir.expanduser()
@@ -279,8 +313,11 @@ class AppBase:
                 logger("Removing files finished")
 
             ### FSL
+
+
             if not no_fsl and not fsldir.joinpath('etc/fslversion').exists():
                 import dtiplayground.dmri.common.data
+
                 fslinstaller_fn=Path(dtiplayground.dmri.common.data.__file__).parent.joinpath('fslinstaller.py')
                 command=['python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] 
                 subprocess.run(command)
@@ -310,7 +347,10 @@ class AppBase:
             os.chdir(tempdir)
             srcdir = tempdir.joinpath('dtiplaygroundtools')
             info={}
+
+
             if not outputdir.joinpath('info.yml').exists() and not no_dtiplayground_tools:
+
                 if build:
                     if not srcdir.exists():
                         logger("Fetching source code ...")
@@ -418,6 +458,28 @@ class AppBase:
         software_filename=home_dir.joinpath('software_paths.yml')
         yaml.dump(software_paths, open(software_filename,'w'))
     
+    def _get_fsl_dir(self):
+        logger('Looking up FSLDIR environment variable...', color.PROCESS)
+        if 'FSLDIR' in os.environ:
+            fsldir = os.environ['FSLDIR']
+            logger('Found FSLDIR: {}'.format(fsldir),color.OK)
+            if Path(fsldir).joinpath('etc/fslversion').exists():
+                return fsldir
+            else:
+                logger('Error : {}/etc/fslversion doesn\'t exist, installation might be required'.format(fsldir),color.ERROR)
+                return None
+
+    def _get_dpg_dir(self):
+        logger('Looking up DTIPLAYGROUNDTOOLS environment variable...', color.PROCESS)
+        if 'DTIPLAYGROUNDTOOLS' in os.environ:
+            dptdir = os.environ['DTIPLAYGROUNDTOOLS']
+            logger('Found DTIPLAYGROUNDTOOLS: {}'.format(dptdir),color.OK)
+            if Path(dptdir).joinpath('info.yml').exists():
+                return dptdir
+            else:
+                logger('Error : {}/info.yml doesn\'t exist, installation might be required'.format(dptdir),color.ERROR)
+                return None     
+
     def _resolve_softwarepaths(self,spathobj, globalvars):
         if 'dtiplayground-tools' in globalvars:
             p = Path(globalvars['dtiplayground-tools']['path'])

@@ -9,9 +9,29 @@ import yaml,sys,traceback,time
 from pathlib import Path
 
 
-def _load_protocol(filename):
-    return yaml.safe_load(open(filename,'r'))
+def _num(s):
+    if s is not None:
+        try:
+            return int(s)
+        except ValueError:
+            try:
+                return float(s)
+            except ValueError:
+                return s
+    return s
 
+def _load_protocol(filename):
+    res = yaml.safe_load(open(filename,'r'))
+    res['io'].setdefault('num_threads',1)
+    res['io']['num_threads']=int(res['io']['num_threads'])
+    res['io']['baseline_threshold']=int(res['io']['baseline_threshold'])
+    for idx,p in enumerate(res['pipeline']):
+        module_name, parameter = p
+        protocol = parameter['protocol']
+        for k, v in protocol.items():
+            res['pipeline'][idx][1]['protocol'][k] = _num(v)
+
+    return res
 
 def load_configurations(config_dir:str):
     ## reparametrization
@@ -165,7 +185,7 @@ class Pipeline:
                 if Path(p).exists():
                     softwares=yaml.safe_load(open(p,'r'))
                     self.software_info=softwares 
-                    self.num_threads=softwares['parameters']['num_max_threads']
+                    self.num_threads=int(softwares['parameters']['num_max_threads'])
                     break 
         if softwares is None: raise Exception("Software information is required")
         return softwares is not None 
@@ -173,9 +193,9 @@ class Pipeline:
     def getSoftwareInfo(self):
         return self.software_info 
 
-    def setNumThreads(self,nth:int):
-        assert(nth>0)
-        self.num_threads=nth 
+    def setNumThreads(self,nth):
+        assert(int(nth)>0)
+        self.num_threads=int(nth) 
         self.software_info['parameters']['num_max_threads']=nth
         self.io['num_threads']=nth  
 
@@ -204,6 +224,7 @@ class Pipeline:
                 self.io['output_format']=None
             if 'baseline_threshold' not in self.io:
                 self.io['baseline_threshold']=10
+                self.io['baseline_threshold']=float(self.io['baseline_threshold'])
             self.protocol_filename=filename
             return True
         except Exception as e:

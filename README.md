@@ -4,7 +4,7 @@ DTI Playground is python based NIRAL pipeline software including DMRIPrep (dmrip
 
 #### Documentation
 
-[Documentation](https://dtiplayground.readthedocs.io/en/latest/)
+For detailed information about installation and usage, please go here: [Documentation](https://dtiplayground.readthedocs.io/en/latest/)
 
 
 

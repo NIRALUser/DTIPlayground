@@ -4,6 +4,7 @@ import os
 import SimpleITK as sitk
 import yaml
 import copy
+import traceback 
 
 from dipy.tracking.benchmarks.bench_streamline import length
 from dipy.core.gradients import gradient_table
@@ -27,6 +28,7 @@ import dtiplayground.dmri.preprocessing as prep
 import dtiplayground.dmri.common as common
 import dtiplayground.dmri.common.tools as tools 
 from dtiplayground.dmri.common.dwi import DWI
+import copy
 
 color = common.Color
 
@@ -124,12 +126,12 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         stopping_criterion = ThresholdStoppingCriterion(fa, self.protocol['stoppingCriterionThreshold'])
         streamlines_generator = LocalTracking(peaks, stopping_criterion, seeds, affine=affine, step_size=.3)
         streamlines = Streamlines(streamlines_generator)
-        logger("Streamlines generated.",color.OK)
+        logger("{} Streamlines generated.".format(len(streamlines)),color.OK)
         # filter tracts
         if self.protocol['removeShortTracts'] == True:
-            streamlines = self.RemoveShortTracts(streamlines, self.protocol['shortTractsThreshold'])
+            streamlines = self.RemoveShortTracts(streamlines, float(self.protocol['shortTractsThreshold']))
         if self.protocol['removeLongTracts'] == True:
-            streamlines = self.RemoveLongTracts(streamlines, self.protocol['longTractsThreshold'])
+            streamlines = self.RemoveLongTracts(streamlines, float(self.protocol['longTractsThreshold']))
 
         # save tracts
         # sft = StatefulTractogram(streamlines, img, Space.RASMM)
@@ -137,10 +139,17 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         tract_path = Path(self.output_dir).joinpath('tractogram.vtk').__str__()
         tract_path_vtp = Path(self.output_dir).joinpath('tractogram.vtp').__str__()
         # save_vtk(sft, tract_path, bbox_valid_check=False)
-        save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=False)
-        save_vtk_streamlines(streamlines, tract_path_vtp, to_lps=False, binary=False)
-        self.addOutputFile(tract_path, "tractogram")
-        self.addOutputFile(tract_path_vtp, "tractogram")
+        logger("{} Streamlines is being saved...".format(len(streamlines)),color.PROCESS)
+        try:
+            save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=False)
+            save_vtk_streamlines(streamlines, tract_path_vtp, to_lps=False, binary=False)
+            self.addOutputFile(tract_path, "tractogram")
+            self.addOutputFile(tract_path_vtp, "tractogram")
+        except Exception as e:
+            logger(str(e),color.ERROR)
+            logger('Failed to save streamlines, this may be due to lack of streamline',color.ERROR)
+            logger(traceback.format_exc(),color.ERROR)
+
         self.result['output']['success']=True
         return self.result
 
@@ -167,6 +176,9 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         temp_dti_image = DWI()
         temp_dti_image.copyFrom(self.image, image=False, gradients=False)
         temp_dti_image.setImage(new_quadform,modality='DTI', kinds=['space','space','space','3D-symmetric-matrix'])
+
+        # print(self.image.information)
+        # print(temp_dti_image.information)
         dti_filename=Path(self.output_dir).joinpath('tensor.nrrd').__str__()
         sp_dir=self.getSourceImageInformation()['space']
         temp_dti_image.setSpaceDirection(target_space=sp_dir)
@@ -238,16 +250,31 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
             mask=mask)
         return peaks
 
+    # @common.measure_time
+    # def RemoveShortTracts(self, streamlines, threshold):
+    #     streamlines_length = length(streamlines)
+    #     number_of_streamlines = len(streamlines_length)
+    #     long_streamlines = [streamlines[i] for i in range(number_of_streamlines) if streamlines_length[i] > threshold]
+    #     return long_streamlines
+    
+    # @common.measure_time
+    # def RemoveLongTracts(self, streamlines, threshold):
+    #     streamlines_length = length(streamlines)
+    #     number_of_streamlines = len(streamlines_length)
+    #     short_streamlines = [streamlines[i] for i in range(number_of_streamlines) if streamlines_length[i] < threshold]
+    #     return short_streamlines
+
+
     @common.measure_time
     def RemoveShortTracts(self, streamlines, threshold):
-        streamlines_length = length(streamlines)
+        streamlines_length = list(map(length,streamlines))
         number_of_streamlines = len(streamlines_length)
         long_streamlines = [streamlines[i] for i in range(number_of_streamlines) if streamlines_length[i] > threshold]
         return long_streamlines
     
     @common.measure_time
     def RemoveLongTracts(self, streamlines, threshold):
-        streamlines_length = length(streamlines)
+        streamlines_length = list(map(length,streamlines))
         number_of_streamlines = len(streamlines_length)
         short_streamlines = [streamlines[i] for i in range(number_of_streamlines) if streamlines_length[i] < threshold]
         return short_streamlines

@@ -11,13 +11,14 @@ from pathlib import Path
 
 def _num(s):
     if s is not None:
-        try:
-            return int(s)
-        except ValueError:
+        if isinstance(s,str):
             try:
                 return float(s)
             except ValueError:
-                return s
+                try:
+                    return int(s)
+                except ValueError:
+                    return s
     return s
 
 def _load_protocol(filename):

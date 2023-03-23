@@ -390,12 +390,12 @@ class DWI:
     def copyFrom(self,dwi,image=False,gradients=False):
         self.filename = dwi.filename
         if image:
-            self.images=dwi.images
+            self.images=copy.copy(dwi.images)
         if gradients:
-            self.gradients=dwi.gradients
-        self.information = dwi.information
-        self.image_type = dwi.image_type
-        self.oritinal_data = dwi.original_data
+            self.gradients= copy.copy(dwi.gradients)
+        self.information = copy.copy(dwi.information)
+        self.image_type = copy.copy(dwi.image_type)
+        self.oritinal_data = copy.copy(dwi.original_data)
 
     @staticmethod
     def mergeImages(*imgs):
@@ -648,6 +648,7 @@ class DWI:
                  'b_value' : float(g['b_value']),
                  'gradient': g['gradient'],
                  'unit_gradient': g['unit_gradient'],
+                 'nifti_gradient': g['nifti_gradient'],
                  "baseline" : bool(g['baseline'])
             }
             out_grad.append(temp)

@@ -8,7 +8,7 @@ import numpy
 from PIL import Image
 import markdown
 from markdown import extensions
-
+from dtiplayground.dmri.common.dwi import DWI
 
 import dtiplayground.dmri.preprocessing as prep
 
@@ -130,6 +130,11 @@ class QC_Report(prep.modules.DTIPrepModule):
         for image_index in range(len(image_path)):
             if len(excluded_gradients[image_index]) != 0:
                 images = self.CreateImagesOfExcludedGradients(image_path[image_index], excluded_gradients[image_index])
+                # logger(str(self.image[image_index]))
+                # casted_image = list(self.image[image_index][0])
+                # logger(str(casted_image))
+                #images = self.CreateImagesOfExcludedGradients(casted_image, excluded_gradients[image_index])
+
                 global_report += "#### " + str(image_path[image_index]) + "\n"
                 global_report += "<table><tbody>\n"
                 for gradient_index in range(len(excluded_gradients[image_index])):
@@ -199,8 +204,10 @@ class QC_Report(prep.modules.DTIPrepModule):
         
         target_space = self.getSourceImageInformation()['space']
         self.source_image.setSpaceDirection(target_space=target_space)
+
         input_image = sitk.GetImageFromArray(self.source_image.images)
         input_size = list(input_image.GetSize())
+
         input_number_gradients = list(self.source_image.images.shape)[3]
         
         output_images_directory = self.GetOutputImagesDirectory()
@@ -225,9 +232,40 @@ class QC_Report(prep.modules.DTIPrepModule):
         info_display_QCed_gradients = [input_number_gradients, dwi_image.width, dwi_image.height]
         return info_display_QCed_gradients
 
+    # def CreateImagesOfExcludedGradients(self, image_path, excluded_gradients):
+    #     input_image = sitk.ReadImage(image_path)
+    #     input_size = list(input_image.GetSize())
+    #     logger('CreateExcludedGrad')
+    #     logger(str(input_size))
+    #     dwi_images_list = []
+    #     output_images_directory = self.GetOutputImagesDirectory()
+    #     for iter_gradients in excluded_gradients:  
+    #         axial_image = self.AxialView(iter_gradients, input_size, input_image)
+    #         axial_image = axial_image.rotate(180)
+    #         sagittal_image = self.SagittalView(iter_gradients, input_size, input_image)
+    #         coronal_image = self.CoronalView(iter_gradients, input_size, input_image)
+    #         coronal_image = coronal_image.rotate(180)
+
+    #         # concatenate
+    #         width = axial_image.width + sagittal_image.width + coronal_image.width
+    #         height = max(axial_image.height, sagittal_image.height, coronal_image.height)
+    #         dwi_image = Image.new('L', (width, height), 0)
+    #         dwi_image.paste(sagittal_image, (0, 0))
+    #         dwi_image.paste(axial_image, (sagittal_image.width, 0))
+    #         dwi_image.paste(coronal_image, (sagittal_image.width + axial_image.width, 0))
+    #         dwi_image.save(output_images_directory + "/excluded_dwi" + str(iter_gradients) + ".jpg")
+    #         dwi_images_list += [output_images_directory + "/excluded_dwi" + str(iter_gradients) + ".jpg"]
+
+    #     return dwi_images_list
+
+
     def CreateImagesOfExcludedGradients(self, image_path, excluded_gradients):
-        input_image = sitk.ReadImage(image_path)
+        #input_image = sitk.ReadImage(image_path)
+        loaded_img = DWI(image_path)
+        input_image = sitk.GetImageFromArray(loaded_img.images)
         input_size = list(input_image.GetSize())
+        # logger('CreateExcludedGrad')
+        # logger(str(input_size))
         dwi_images_list = []
         output_images_directory = self.GetOutputImagesDirectory()
         for iter_gradients in excluded_gradients:  
@@ -248,7 +286,6 @@ class QC_Report(prep.modules.DTIPrepModule):
             dwi_images_list += [output_images_directory + "/excluded_dwi" + str(iter_gradients) + ".jpg"]
 
         return dwi_images_list
-
     def GetOutputImagesDirectory(self):
         if not os.path.exists(self.output_dir + "/QC_Report_images"):
             os.mkdir(self.output_dir + "/QC_Report_images")
@@ -276,7 +313,9 @@ class QC_Report(prep.modules.DTIPrepModule):
     def AxialView(self, iter_gradients, input_size, input_image):
         
         slice_extractor = sitk.ExtractImageFilter()
+        # logger(str(input_size))
         slice_extractor.SetSize([0, input_size[1], input_size[2]])
+
         slice_extractor.SetIndex([input_size[0]//2, 0, 0])
         extracted_slice = slice_extractor.Execute(input_image)
 

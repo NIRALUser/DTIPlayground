@@ -10,7 +10,6 @@ For detailed information about installation and usage, please go here: [Document
 
 #### Prerequisite
 
-Python2 is required for installation of FSL
 Python3.8 or conda environment is required
 
 User needs to set path of python2 like below

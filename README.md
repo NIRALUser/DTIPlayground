@@ -225,7 +225,7 @@ You can just copy module directory to `$HOME/.niral-dti/modules/dmriprep` and ch
 
 ## DMRIAtlas (dmriatlas)
 
-DMRIAtlas is a software to make an atlas from multiple diffusion weighted images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
+DMRIAtlas is a software to make an atlas from multiple diffusion tensor images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
 
 #### CLI Mode (Mac/Linux/Windows-WSL):
 
@@ -250,7 +250,7 @@ Goto DMRI AtlasBuilder -> configure -> Generate Output Directory or Execute.
 ### Supported Images
 
 - NRRD 
-- NIFTI
+- NIFTI (dmriprep)
 
 
 ### Developement 

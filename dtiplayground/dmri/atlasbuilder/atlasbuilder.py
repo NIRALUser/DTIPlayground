@@ -26,7 +26,9 @@ import dtiplayground.dmri.atlasbuilder.data as data
 import dtiplayground.dmri.common
 import dtiplayground.dmri.common.tools as ext_tools 
 import dtiplayground.dmri.atlasbuilder.data as data
+
 common = dtiplayground.dmri.common
+color = dtiplayground.dmri.common.Color
 
 class AtlasBuilder(object):
     def __init__(self,*args,**kwargs):
@@ -762,10 +764,10 @@ class AtlasBuilder(object):
         logger("Final atlas copied into %s "% dst)
         ### Concatenate the displacement fields if tree level is over 2
         logger("\nConcatenating deformation fields")
-        ITKTransformTools_Concatenate(config,deformSequence)
-        ITKTransformTools_Concatenate_Inverse(config,inverseDeformSequence)
-        generate_results_csv_from_deformation_track(deformSequence,projectPath)
-
+        output_dir, deformation_track = ITKTransformTools_Concatenate(config,deformSequence)
+        output_dir, inv_deformation_track = ITKTransformTools_Concatenate_Inverse(config,inverseDeformSequence)
+        generate_results_csv_from_deformation_track(projectPath,deformSequence,inverseDeformSequence)
+        #generate_results_csv(config)
 
 
 
@@ -1023,6 +1025,7 @@ def ITKTransformTools_Concatenate(config,payload): ## payload should be deformat
     else:
         logger("There are some missing deformation fields file(s)",common.Color.ERROR)
         #raise(Exception("There are some missing deformation fields file(s)"))
+    return outputDir, payload
 
 def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be deformation_track.json list
     command=""
@@ -1050,7 +1053,7 @@ def ITKTransformTools_Concatenate_Inverse(config,payload): ## payload should be 
     else:
         logger("There are some missing deformation fields file(s)",common.Color.ERROR)
         #raise(Exception("There are some missing deformation fields file(s)"))
-
+    return outputDir, payload
 
 
 def unique(list1): 
@@ -1089,7 +1092,7 @@ def generate_deformation_track(seq,node="target"): #input : initialSequence to g
     return outseq
 
 def invert_deformation_track(deformation_seq):
-    seq=copy.copy(deformation_seq)
+    seq=json.loads(json.dumps(deformation_seq))
     outseq=[]
     for s in seq:
         elm=s
@@ -1256,9 +1259,10 @@ def dependency_satisfied(hb,node_name,completed_atlases):
 
 
 
-def generate_results_csv_from_deformation_track(deformation_track,project_path): # generate final result file with deformation track file
+def generate_results_csv_from_deformation_track(project_path,deformation_track=None,deformation_track_inv=None): # generate final result file with deformation track file
 
     dt=deformation_track
+    dt_inv=deformation_track_inv
     outpath=os.path.join(project_path,"DTIAtlasBuilderResults.csv")
     
     m_ScalarMeasurement=dt[0]["scalar_measurement"]
@@ -1273,7 +1277,9 @@ def generate_results_csv_from_deformation_track(deformation_track,project_path):
         "Diffeomorphic Deformation field to Affine space",
         "Diffeomorphic DTI",
         "Diffeomorphic Deformation field to Original space",
-        "DTI-Reg Final DTI"
+        "DTI-Reg Final DTI",
+        "Concatenated Deformation field",
+        "Inverse Concatenated Deformation field"
         ]
     header+=tmp
     with open(outpath,"w") as f:
@@ -1281,7 +1287,16 @@ def generate_results_csv_from_deformation_track(deformation_track,project_path):
         csvwriter.writerow(header)
         for idx,case in enumerate(dt):
             caseID,casePath = case["original_dti_id"],case["original_dti_path"]
-            m_OutputPath=case["project_path"]
+
+            concatenated_path = None
+            inv_concatenated_path = None;
+            if dt is not None:
+              concatenated_path = get_concatenation_info(dt,casePath)
+              inv_concatenated_path = get_concatenation_info(dt_inv,casePath)
+
+            #m_OutputPath=case["project_path"]
+            m_OutputPath=Path(project_path).joinpath('final_atlas').__str__()
+
             m_nbLoops=case["nb_loops"]
             m_nbLoopsDTIReg=case["nb_loops_dtireg"]
             row=[
@@ -1299,12 +1314,15 @@ def generate_results_csv_from_deformation_track(deformation_track,project_path):
                 m_OutputPath+"/2_NonLinear_Registration/" + caseID + "_InverseHField.mhd" ,
                 m_OutputPath+"/3_Diffeomorphic_Atlas/" + caseID + "_DiffeomorphicDTI.nrrd",
                 concatenated_displacement_path,
-                m_OutputPath+"/4_Final_Resampling/FinalTensors/" + caseID + "_FinalDeformedDTI.nrrd"
+                m_OutputPath+"/4_Final_Resampling/FinalTensors/" + caseID + "_FinalDeformedDTI.nrrd",
+                concatenated_path,
+                inv_concatenated_path,
             ]
             csvwriter.writerow(row)
 
-def generate_results_csv(cfg):
-
+def generate_results_csv(cfg, deformation_track=None, deformation_track_inv=None):
+    dt = deformation_track
+    dt_inv = deformation_track_inv
     outpath=os.path.join(cfg["m_OutputPath"],"DTIAtlasBuilderResults.csv")
     m_OutputPath=cfg["m_OutputPath"]
     m_ScalarMeasurement=cfg["m_ScalarMeasurement"]
@@ -1321,14 +1339,24 @@ def generate_results_csv(cfg):
         "Diffeomorphic Deformation field to Affine space",
         "Diffeomorphic DTI",
         "Diffeomorphic Deformation field to Original space",
-        "DTI-Reg Final DTI"
+        "DTI-Reg Final DTI",
+        "Concatenated Deformation field",
+        "Inverse Concatenated Deformation field"
         ]
     header+=tmp
     with open(outpath,"w") as f:
         csvwriter=csv.writer(f,delimiter=',')
         csvwriter.writerow(header)
         for idx,case in enumerate(zip(cfg["m_CasesIDs"],cfg["m_CasesPath"])):
+
+
             caseID,casePath = case
+
+            concatenated_path = None
+            inv_concatenated_path = None;
+            if dt is not None:
+              concatenated_path = get_concatenation_info(dt,casePath)
+              inv_concatenated_path = get_concatenation_info(dt_inv,casePath)
             row=[
                 idx+1,
                 casePath]
@@ -1343,10 +1371,21 @@ def generate_results_csv(cfg):
                 m_OutputPath+"/2_NonLinear_Registration/" + caseID + "_InverseHField.mhd" ,
                 m_OutputPath+"/3_Diffeomorphic_Atlas/" + caseID + "_DiffeomorphicDTI.nrrd",
                 m_OutputPath+"/4_Final_Resampling/FinalDeformationFields/" + caseID + "_GlobalDisplacementField.nrrd",
-                m_OutputPath+"/4_Final_Resampling/FinalTensors/" + caseID + "_FinalDeformedDTI.nrrd"
+                m_OutputPath+"/4_Final_Resampling/FinalTensors/" + caseID + "_FinalDeformedDTI.nrrd",
+                concatenated_path,
+                inv_concatenated_path
             ]
             csvwriter.writerow(row)
 
+def get_concatenation_info(dt,casePath):
+    #logger(casePath,color.INFO)
+    outpaths = list(filter(lambda x: x['original_dti_path']==casePath,dt))
+    if len(outpaths) > 0 :
+      #logger("Found",color.OK)
+      return outpaths[0]['output_path']
+    else:
+      #logger("Not Found",color.ERROR)
+      return None
 
 
 

@@ -58,7 +58,7 @@ needed. If you want to reset the initial configuration directory, you can run in
 
 If you want to set different directory other than default one ::
 
-    $ dmriprep --confid-dir my/config/dir init
+    $ dmriprep --config-dir my/config/dir init
 
 Once run, `config.yml` and `environment.yml` will be in the directory. 
 

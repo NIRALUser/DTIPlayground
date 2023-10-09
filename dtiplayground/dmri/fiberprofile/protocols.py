@@ -110,7 +110,8 @@ class Protocols(Pipeline):
             opts={
                     "software_info": self.getSoftwareInfo(),
                     "baseline_threshold" : self.io['baseline_threshold'],
-                    "global_variables" : self.global_variables
+                    "global_variables" : self.global_variables,
+                    **options
                  }
             forced_overwrite=False
             self.global_variables.update(self.loadGlobalVariables())
@@ -130,7 +131,7 @@ class Protocols(Pipeline):
                 logger("-----------------------------------------------",common.Color.BOLD)
                 Path(output_dir_map[uid]).mkdir(parents=True,exist_ok=True)
                 logger("Output directory : {}\n".format(str(output_dir_map[uid])),common.Color.DEV)
-                m=getattr(self.modules[p]['module'], p)(self.config_dir, **opts)
+                m=getattr(self.modules[p]['module'], p)(**opts)
                 m.setOptionsAndProtocol(options)
                 logger(yaml.safe_dump(m.getTemplate()['process_attributes']),common.Color.DEV)
                 logger(yaml.safe_dump(m.getOptions()),common.Color.DEV)

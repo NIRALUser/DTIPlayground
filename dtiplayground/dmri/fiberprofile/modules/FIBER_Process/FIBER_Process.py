@@ -13,9 +13,10 @@ class FIBER_Process(base.modules.DTIFiberProfileModule):
         ## todos
         return self.protocol
 
-    def process(self,*args,**kwargs): ## variables : self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
+    def process(self,*args,**kwargs):
         super().process()
         inputParams=self.getPreviousResult()['output']
+        opts=args[0] # includes options from command line args
         # << TODOS>>
         path_to_csv = inputParams["file_path"]
         with open(path_to_csv) as csv_file:

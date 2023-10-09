@@ -195,6 +195,16 @@ class DTIPlaygroundModule: #base class
             #inputpath=Path(self.result_history[0]["output"]["image_path"]).absolute()
             previous_result=self.getPreviousResult()
             logger(yaml.safe_dump(previous_result))
+
+            # This is a non-image input (e.g. a CSV)
+            if "file_path" in previous_result["output"]:
+                self.result["module_name"] = self.name
+                self.result["input"] = previous_result["output"]
+                self.result["output"]["file_path"] = previous_result["output"]["file_path"]
+                self.result["output"]["success"] = False
+                self.result["output"]["output_directory"] = str(Path(self.output_dir).relative_to(self.output_root))
+                return
+
             if previous_result["output"]["image_object"] is not None:
                 self.source_image=common.object_by_id(previous_result["output"]["image_object"])
                 self.image=self.source_image
@@ -394,6 +404,12 @@ class DTIPlaygroundModule: #base class
         if 'global_vars' in kwargs:
             self.result['output']['global_variables'].update(kwargs['global_vars'])
             self.global_variables.update(kwargs['global_vars'])
+
+        # do this if this module acts on a file, not an image (e.g. a CSV)
+        if "file_path" in self.getPreviousResult()['output']:
+            res = self.process(*args, **kwargs)  ## main computation for user implementation
+            return self.result["output"]
+
         self.image.setB0Threshold(baseline_threshold)
         self.image.getGradients()
         

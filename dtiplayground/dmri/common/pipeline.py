@@ -171,6 +171,16 @@ class Pipeline:
         self.original_image_information = self.images[0].information
         self.original_image_format = self.images[0].image_type
 
+    # generic method for loading datasheets -- supports csv
+    def loadDataSheets(self, file_paths):
+        self.file_paths = list(map(lambda x: str(Path(x).absolute()), file_paths))
+        # check the input type
+        first_path = file_paths[0]
+        ext = Path(first_path).suffix
+        for fp in self.file_paths:
+            logger("Loading Data Sheet: {}".format(str(fp)), common.Color.PROCESS)
+            self.result_history[fp] = [{"output": {"file_path": str(Path(fp).absolute()),
+                                                   }}]
     def setOutputDirectory(self, output_dir=None):
         if output_dir is None:
             self.output_dir=Path(self.getImagePath()).parent
@@ -336,7 +346,7 @@ class Pipeline:
         self.checkDependencies()
 
     def checkImage(self):
-         if len(self.images) ==0: 
+         if len(self.images) == 0 and len(self.file_paths) == 0:
             logger("[ERROR] Image is not loaded.",common.Color.ERROR)
             raise Exception("Image is not set")       
     def checkPipeline(self):

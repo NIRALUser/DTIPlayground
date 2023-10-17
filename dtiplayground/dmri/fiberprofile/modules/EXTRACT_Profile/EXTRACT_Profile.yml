@@ -1,0 +1,25 @@
+name: EXTRACT_Profile
+caption: EXTRACT_Profile
+description: Custom module
+version: "0.1"
+dependency: []
+module_type: fiberprofile
+process_attributes:
+    - utility
+result: null
+protocol: #define protocol parameters here
+    atlas:
+        type: directory
+        caption: Atlas directory
+        default_value: null
+        description: Directory containing set of fiber tracts in the atlas to be analyzed
+    tracts:
+        type: list
+        caption: List of tracts
+        default_value: null
+        description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
+    propertiesToProfile:
+        type: list
+        caption: List of tracts
+        default_value: null
+        description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.

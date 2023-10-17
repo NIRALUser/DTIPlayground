@@ -4,7 +4,7 @@ import csv
 import yaml
 logger=common.logger.write
 
-class FIBER_Process(base.modules.DTIFiberProfileModule):
+class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir)
         

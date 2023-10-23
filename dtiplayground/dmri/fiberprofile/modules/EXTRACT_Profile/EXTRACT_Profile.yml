@@ -18,8 +18,43 @@ protocol: #define protocol parameters here
         caption: List of tracts
         default_value: null
         description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
-    propertiesToProfile:
-        type: list
-        caption: List of tracts
+    # TODO: Add support for multiple properties to profile
+    propertyToProfile:
+        type: string
+        caption: Property to profile
         default_value: null
-        description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
+        description: Selected DTI property to profile along tracts
+    # TODO: Add support for a "per tract origin file" option where a user can specify their origins per tract in a file
+    planeOfOrigin:
+        type: list
+        caption: Plane of origin
+        candidates:
+            - value: Median
+              caption: Median
+              description: Origin of profile will be median of tract
+            - value: CoG
+              caption: Center of gravity
+              description: Origin of profile will be center of gravity
+        default_value: Median
+        description: Location on tract for origin of profile
+    stepSize:
+        type: integer
+        caption: Step size
+        default_value: 1
+        description: How far long the tract to step for each new fiber profile location
+    supportBandwidth:
+        type: integer
+        caption: Support/bandwidth
+        default_value: 1
+        description: Kernel support for DTITractStat
+    noNaN:
+        type: boolean
+        caption: No NaN
+        default_value: false
+        description: Remove fibers with NaN values (used both for FiberPostProcess and DTITractStat)
+    mask:
+        type: file
+        caption: Mask
+        default_value: null
+        description: Optional mask file to use during profile extraction. Mask has to be defined in atlas space.
+

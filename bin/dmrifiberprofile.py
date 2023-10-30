@@ -635,13 +635,6 @@ def command_run(args):
     options={
         "config_dir" : args.config_dir,
         "input_file_paths" : args.input_file_list,
-        "atlas_path": args.atlas,
-        "tracts": args.tracts,
-        "properties": args.properties,
-        "plane_of_origin": args.plane_of_origin,
-        "step_size": args.step_size,
-        "no_NaN": args.no_NaN,
-        "mask_path": args.mask,
         "overwrite": args.overwrite,
         "protocol_path" : args.protocols,
         "output_dir" : args.output_dir,
@@ -748,13 +741,6 @@ def get_args():
     ## generate-default-protocols
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
     parser_make_protocols.add_argument('-i','--input-files',help='Input image paths',type=str,nargs='+',required=True)
-    parser_make_protocols.add_argument('-a','--atlas',help='File path for atlas',type=str,required=True)
-    parser_make_protocols.add_argument('-t','--tracts',help='Subset of tracts to use from atlas',type=str,nargs='+',required=True)
-    parser_make_protocols.add_argument('-p','--properties',help='Set of DTI properties to profile along fiber tracts',type=str,nargs='+',required=True)
-    parser_make_protocols.add_argument('-c','--plane-of-origin',help='Plane of origin for fiber profiles',type=str,default=None) # Default is None because default setting will be left to tool
-    parser_make_protocols.add_argument('-s','--step-size',help='Step size along tract for each new fiber profile location',type=int,default=None)
-    parser_make_protocols.add_argument('--no-NaN',help='Remove fibers with NaN values',type=bool,default=None)
-    parser_make_protocols.add_argument('-m','--mask',help='Mask to use in profile extraction. Must be defined in atlas space',type=str,required=False)
     parser_make_protocols.add_argument('--overwrite',help='Overwrite existing files/steps (True) or use these files (False)',type=bool,default=None)
     parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
@@ -770,13 +756,6 @@ def get_args():
     ## run command
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
     parser_run.add_argument('-i','--input-file-list',help='Input file paths',type=str,nargs='+',required=True)
-    parser_run.add_argument('-a','--atlas',help='File path for atlas',type=str,required=True)
-    parser_run.add_argument('-t','--tracts',help='Subset of tracts to use from atlas',type=str,nargs='+',required=True)
-    parser_run.add_argument('-p','--properties',help='Set of DTI properties to profile along fiber tracts',type=str,nargs='+',required=True)
-    parser_run.add_argument('-c','--plane-of-origin',help='Plane of origin for fiber profiles',type=str,default=None) # Default is None because default setting will be left to tool
-    parser_run.add_argument('-s','--step-size',help='Step size along tract for each new fiber profile location',type=int,default=None)
-    parser_run.add_argument('--no-NaN',help='Remove fibers with NaN values',type=bool,default=None)
-    parser_run.add_argument('-m','--mask',help='Mask to use in profile extraction. Must be defined in atlas space',type=str,required=False)
     parser_run.add_argument('--overwrite',help='Overwrite existing files/steps (True) or use these files (False)',type=bool,default=None)
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)

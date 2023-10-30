@@ -19,15 +19,15 @@ protocol: #define protocol parameters here
         default_value: null
         description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
     # TODO: Add support for multiple properties to profile
-    propertyToProfile:
-        type: string
-        caption: Property to profile
+    propertiesToProfile:
+        type: list
+        caption: Properties to profile
         default_value: null
-        description: Selected DTI property to profile along tracts
+        description: List of selected properties to profile along tracts
     # TODO: Add support for a "per tract origin file" option where a user can specify their origins per tract in a file
     planeOfOrigin:
         type: list
-        caption: Plane of origin
+        caption: Type of plane of origin
         candidates:
             - value: Median
               caption: Median
@@ -36,7 +36,7 @@ protocol: #define protocol parameters here
               caption: Center of gravity
               description: Origin of profile will be center of gravity
         default_value: Median
-        description: Location on tract for origin of profile
+        description: Determines plane that sets the origin of the profile arc length
     stepSize:
         type: integer
         caption: Step size

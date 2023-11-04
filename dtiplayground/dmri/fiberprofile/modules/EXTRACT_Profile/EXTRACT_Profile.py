@@ -25,7 +25,17 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             print(header)
             for row in reader:
                 print(row)
-                pass
+
+        atlas_path = self.protocol["atlas"]
+        tracts = self.protocol["tracts"]
+
+        properties_to_profile = self.protocol["propertiesToProfile"]
+
+        # call fiberprocess
+
+        # call fiberpostprocess
+
+        # call dtitractstat
 
 
         self.result['output']['success']=True

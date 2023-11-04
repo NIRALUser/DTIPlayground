@@ -14,8 +14,8 @@ protocol: #define protocol parameters here
         default_value: null
         description: Directory containing set of fiber tracts in the atlas to be analyzed
     tracts:
-        type: list
-        caption: List of tracts
+        type: string
+        caption: Comma delimited list of paths to tract files
         default_value: null
         description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
     # TODO: Add support for multiple properties to profile

@@ -13,9 +13,9 @@ class FiberProcess(ExternalToolWrapper):
         arguments=[]
         arguments+=['--datasheet',datasheet_path]
         arguments+=['--atlas',atlas_path]
-        arguments+=['--tracts',tracts]
-        arguments+=['--propertiesToProfile',properties_to_profile]
-        arguments+=['--output',output_path]
+        # arguments+=['--tracts',tracts]
+        # arguments+=['--propertiesToProfile',properties_to_profile]
+        # arguments+=['--output',output_path]
         arguments+=options
         self.setArguments(arguments)
         return self.execute(arguments)

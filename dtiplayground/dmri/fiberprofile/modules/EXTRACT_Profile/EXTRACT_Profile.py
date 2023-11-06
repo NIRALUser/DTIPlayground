@@ -23,7 +23,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
     def process(self,*args,**kwargs):
         super().process()
         inputParams=self.getPreviousResult()['output']
-        opts=args[0] # includes options from command line args
+        protocol_options = args[0]
+        self.software_info = protocol_options['software_info']['softwares']
         # << TODOS>>
         path_to_csv = inputParams["file_path"]
         with open(path_to_csv) as csv_file:
@@ -55,7 +56,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
         # call fiberprocess
         print(self.software_info)
-        fiberprocess = tools.DTIEstim(self.software_info['fiberprocess']['path'])
+        fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
         # TODO: what type of file is the output of fiberprocess?
         fiberprocess_output_path = Path(self.output_dir).joinpath('fiberprocess_out.csv').__str__()
         options = []

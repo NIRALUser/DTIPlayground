@@ -698,8 +698,8 @@ def get_args():
 
     parser=argparse.ArgumentParser(prog="dmrifiberprofile",
                                    formatter_class=RawTextHelpFormatter,
-                                   description="dmrifiberprofile is a tool that profiles for the fibers.",
-                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2022")
+                                   description="dmrifiberprofile allows the generation and processing of tract profile data from white matter fiber tracts.",
+                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu), Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2022")
     subparsers=parser.add_subparsers(help="Commands")
 
     ## init command

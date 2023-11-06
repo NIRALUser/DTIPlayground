@@ -36,16 +36,16 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         # run fiberprocess
         self.runFiberProcess()
         # call fiberpostprocess
-        self.runFiberProcess()
+        # self.runFiberProcess()
         # call dtitractstat
-        self.runDTITractStat()
+        # self.runDTITractStat()
 
         self.result['output']['success']=True
         return self.result
     """
     Runs the fiberprocess binary using the Python wrapper in the common tools.
     """
-    def runFiberProcess(self, args):
+    def runFiberProcess(self, args=None):
         inputParams = self.getPreviousResult()['output']
         path_to_csv = inputParams["file_path"]
         atlas_path = self.protocol["atlas"]
@@ -64,7 +64,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
     """
     Runs the fiberpostprocess binary using the Python wrapper in the common tools.
     """
-    def runFiberPostProcess(self, args):
+    def runFiberPostProcess(self, args=None):
         inputParams = self.getPreviousResult()['output']
         path_to_csv = inputParams["file_path"]
         atlas_path = self.protocol["atlas"]
@@ -81,7 +81,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
     """
     Runs the dtitractstat binary using the Python wrapper in the common tools.
     """
-    def runDTITractStat(self, args):
+    def runDTITractStat(self, args=None):
         inputParams = self.getPreviousResult()['output']
         path_to_csv = inputParams["file_path"]
         atlas_path = self.protocol["atlas"]

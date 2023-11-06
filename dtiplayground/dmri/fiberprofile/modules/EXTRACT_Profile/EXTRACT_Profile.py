@@ -54,6 +54,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         properties_to_profile = self.protocol["propertiesToProfile"]
 
         # call fiberprocess
+        print(self.software_info)
         fiberprocess = tools.DTIEstim(self.software_info['fiberprocess']['path'])
         # TODO: what type of file is the output of fiberprocess?
         fiberprocess_output_path = Path(self.output_dir).joinpath('fiberprocess_out.csv').__str__()

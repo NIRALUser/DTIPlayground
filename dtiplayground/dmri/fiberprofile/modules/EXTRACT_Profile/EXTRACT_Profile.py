@@ -43,7 +43,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         # For each subject
 
         # For each property to profile,
-
+        print(self.software_info)
         for property in properties_to_profile:
             print("property: ", property)
             # create the directory for the output for the scalar property

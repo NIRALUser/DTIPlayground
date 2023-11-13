@@ -53,17 +53,16 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             # create the file path for the output
             for tract in tracts:
                 print("tract: ", tract)
-                tract_absolute_filename = atlas_path + tract # concatenate the atlas path with the tract name
-                fiber_output_path = scalar_dir_output_path.__str__() + '/' + tract.replace('_extracted_done',
-                                                                                              f'_{property}_profile')
-                fiber_output_path_str = fiber_output_path
+                tract_absolute_filename = Path(atlas_path).joinpath(tract) # concatenate the atlas path with the tract name
+                fiber_output_path = scalar_dir_output_path.joinpath(tract.replace('_extracted_done',
+                                                                                              f'_{property}_profile'))
                 scalar_name = property
                 options = []
                 options += ['--scalarName', scalar_name]
                 options += ['--ScalarImage', scalar_img_path]
                 options += ['--no_warp']
                 fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
-                fiberprocess.run(tract_absolute_filename, fiber_output_path_str,
+                fiberprocess.run(tract_absolute_filename.__str__(), fiber_output_path.__str__(),
                                  options=options)
 
             # Extract the filename without the path

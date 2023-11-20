@@ -35,56 +35,49 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         output_base_dir = self.output_dir  # output directory string
         properties_to_profile = self.protocol["propertiesToProfile"].split(',')
 
-        row = df.iloc[1]
-        path_to_dti_image = row.iloc[1]
-        # for index, row in df.itterows():
-        #     path_to_dti_image = row.iloc[0]
+        # Check if scalar images need to be generated from the tensor image
+        # if so, generate scalar images for each property required
+        if "FA" in properties_to_profile:
+            # generate FA images and add their paths to the CSV
+            pass
+        if "MD" in properties_to_profile:
+            # generate MD images and add their paths to the CSV
+            pass
+        if "RD" in properties_to_profile:
+            # generate RD images and add their paths to the CSV
+            pass
+        if "AD" in properties_to_profile:
+            # generate AD images and add their paths to the CSV
+            pass
 
-        # For each subject
 
-        # For each property to profile,
-        print(self.software_info)
-        for property in properties_to_profile:
-            print("property: ", property)
-            # create the directory for the output for the scalar property
-            scalar_dir_output_path = Path(output_base_dir).joinpath(property)
-            scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
-            scalar_img_path = row.iloc[2]
-            # create the file path for the output
-            for tract in tracts:
-                print("tract: ", tract)
-                tract_absolute_filename = Path(atlas_path).joinpath(tract) # concatenate the atlas path with the tract name
-                fiber_output_path = scalar_dir_output_path.joinpath(tract.replace('_extracted_done',
-                                                                                              f'_{property}_profile'))
-                scalar_name = property
-                options = []
-                options += ['--scalarName', scalar_name]
-                options += ['--ScalarImage', scalar_img_path]
-                options += ['--no_warp']
-                fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
-                fiberprocess.run(tract_absolute_filename.__str__(), fiber_output_path.__str__(),
-                                 options=options)
-
-            # Extract the filename without the path
-
-            # call fiberprocess
-            self.runFiberProcess()
-            # call fiberpostprocess
-            self.runFiberPostProcess()
-            # call dtitractstat
-            self.runDTITractStat()
-
-            # create the file path for the output
-
-        for index, row in df.itterows():
-            path_to_dti_image = row.iloc[0]
-
-        # run fiberprocess
-        self.runFiberProcess()
-        # call fiberpostprocess
-        # self.runFiberProcess()
-        # call dtitractstat
-        # self.runDTITractStat()
+        # iterate over the rows of the CSV
+        for _, row in df.iterrows():
+            subject_id = row.iloc[0]
+            path_to_original_dti_image = row.iloc[1]
+            # For each property to profile,
+            for property in properties_to_profile:
+                print("property: ", property)
+                # Find path to scalar image in the dataframe
+                scalar_img_col = f'{property} from original'
+                scalar_img_path = row[scalar_img_col]
+                # create the file path for the output
+                for tract in tracts:
+                    # create the directory for the output for the scalar property
+                    scalar_dir_output_path = Path(output_base_dir).joinpath(property).joinpath(Path(tract).stem)
+                    scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
+                    print("tract: ", tract)
+                    tract_absolute_filename = Path(atlas_path).joinpath(tract) # concatenate the atlas path with the tract name
+                    fiber_output_path = scalar_dir_output_path.joinpath(f'{subject_id}_' + tract.replace('_extracted_done',
+                                                                                                  f'_{property}_profile'))
+                    scalar_name = property
+                    options = []
+                    options += ['--scalarName', scalar_name]
+                    options += ['--ScalarImage', scalar_img_path]
+                    options += ['--no_warp']
+                    fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
+                    fiberprocess.run(tract_absolute_filename.__str__(), fiber_output_path.__str__(),
+                                     options=options)
 
         self.result['output']['success'] = True
         return self.result

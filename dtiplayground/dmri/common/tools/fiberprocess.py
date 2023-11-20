@@ -19,11 +19,11 @@ class FiberProcess(ExternalToolWrapper):
       # I/O
       --fiber_file, -fiberFile           Input DTI fiber file. (Required)
       --fiber_output, -o                 Output fiber file. May be warped or updated with new data. (Required)
-      --tensor_volume, -T                Input tensor volume. Interpolate tensor values from this field. (Required)
-      --scalarImage, -S                  Input scalar image file. Samples scalar values at fiber locations.
+      --tensor_volume, -T                Input tensor volume. Interpolate tensor values from this field. (tensor or scalar required) 
+      --scalarImage, -S                  Input scalar image file. Samples scalar values at fiber locations. (tensor or scalar required) 
       --scalarName                        Name for the pointData field in the output fiber file.
-      --h_field, -H                      Input HField for warp and statistics lookup.
-      --displacement_field, -D           Input Displacement Field for warp and statistics lookup.
+      --h_field, -H                      Input HField for warp and statistics lookup. (alternative to displacement field)
+      --displacement_field, -D           Input Displacement Field for warp and statistics lookup. (usually needed to move images into atlas space)
 
       # Options
       --saveProperties, -p               Save tensor property as scalar data into the VTK (for VTK fiber files).

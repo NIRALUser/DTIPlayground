@@ -56,7 +56,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 path_to_original_dti_image = row.iloc[1]
                 scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
                 scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
-                output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem)
+                output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
                 options = [
                     '--correction', 'nearest', '--scalar_float'
                 ]

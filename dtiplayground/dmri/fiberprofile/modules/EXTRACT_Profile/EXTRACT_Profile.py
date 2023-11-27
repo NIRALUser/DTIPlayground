@@ -43,8 +43,6 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             # check to see if the scalar images have already been generated
             # if not, generate them
             dtiprocess = tools.DTIProcess(self.software_info['dtiprocess']['path'])
-            dtiprocess.setArguments(['--dti_image', '/proj/NIRAL/studies/IBIS/VSA/Data_DTIAtlas/Data_CMRR/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI.nrrd', '-m', '/proj/NIRAL/users/alecjn/test/out/test/00_EXTRACT_Profile/scalar_images/1/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI_MD.nrrd', '--lambda1_output', '/proj/NIRAL/users/alecjn/test/out/test/00_EXTRACT_Profile/scalar_images/1/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI_AD.nrrd', '--RD_output', '/proj/NIRAL/users/alecjn/test/out/test/00_EXTRACT_Profile/scalar_images/1/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI_RD.nrrd', '--correction', 'none'])
-            dtiprocess.execute(['--dti_image', '/proj/NIRAL/studies/IBIS/VSA/Data_DTIAtlas/Data_CMRR/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI.nrrd', '-m', '/proj/NIRAL/users/alecjn/test/out/test/00_EXTRACT_Profile/scalar_images/1/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI_MD.nrrd', '--lambda1_output', '/proj/NIRAL/users/alecjn/test/out/test/00_EXTRACT_Profile/scalar_images/1/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI_AD.nrrd', '--RD_output', '/proj/NIRAL/users/alecjn/test/out/test/00_EXTRACT_Profile/scalar_images/1/107524_VSA-CVD_CMRR_APPA_final_lowShell_DTI_RD.nrrd', '--correction', 'none'])
             # Determine which scalars need to be generated
             scalars_to_generate = []
             for scalar in ['FA', 'MD', 'AD', 'RD']:
@@ -60,7 +58,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
                 output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
                 options = [
-                    '--correction', 'nearest', '--scalar_float'
+                    '--correction', 'none', '--scalar_float'
                 ]
                 # run dtiprocess to generate scalar images
                 dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)

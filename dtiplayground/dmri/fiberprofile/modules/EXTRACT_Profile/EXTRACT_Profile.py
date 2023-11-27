@@ -35,22 +35,41 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         output_base_dir = self.output_dir  # output directory string
         properties_to_profile = self.protocol["propertiesToProfile"].split(',')
 
-        # Check if scalar images need to be generated from the tensor image
-        # if so, generate scalar images for each property required
-        if "FA" in properties_to_profile:
-            # generate FA images and add their paths to the CSV
-            pass
-        if "MD" in properties_to_profile:
-            # generate MD images and add their paths to the CSV
-            pass
-        if "RD" in properties_to_profile:
-            # generate RD images and add their paths to the CSV
-            pass
-        if "AD" in properties_to_profile:
-            # generate AD images and add their paths to the CSV
-            pass
+        input_is_dti = True
 
+        scalar_to_col_map = {}
 
+        if input_is_dti:
+            # check to see if the scalar images have already been generated
+            # if not, generate them
+            dtiprocess = tools.DTIProcess(self.software_info['dtiprocess']['path'])
+            # Determine which scalars need to be generated
+            scalars_to_generate = []
+            for scalar in ['FA', 'MD', 'AD', 'RD']:
+                scalar_col = f'{scalar} from original'
+                if scalar_col not in df.columns:
+                    # generate the scalar image
+                    scalars_to_generate.append(scalar)
+
+            for index, row in df.iterrows():
+                subject_id = str(row.iloc[0])
+                path_to_original_dti_image = row.iloc[1]
+                scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
+                scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
+                output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem)
+                options = [
+                    '--correction', 'nearest', '--scalar_float'
+                ]
+                # run dtiprocess to generate scalar images
+                dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
+                # update the dataframe with the paths to the scalar images
+                for scalar in scalars_to_generate:
+                    scalar_col = f'{scalar} from original'
+                    scalar_img_path = output_stem.__str__() + '_' + scalar + '.nrrd'
+                    df.at[index, scalar_col] = scalar_img_path
+
+        # write the modified dataframe to the output directory
+        df.to_csv(Path(output_base_dir).joinpath(path_to_csv.stem + '_with_scalars.csv'), index=False)
         # iterate over the rows of the CSV
         for _, row in df.iterrows():
             subject_id = row.iloc[0]

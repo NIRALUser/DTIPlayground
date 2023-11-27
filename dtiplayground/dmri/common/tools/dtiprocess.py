@@ -29,4 +29,5 @@ class DTIProcess(ExternalToolWrapper):
             arguments += [scalar_opt, outputFileStem + '_' + scalar + '.nrrd']
         arguments += options
         self.setArguments(arguments)
+        print(self.binary_path)
         return self.execute(arguments)

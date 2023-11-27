@@ -68,7 +68,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
                     print("tract: ", tract)
                     tract_absolute_filename = Path(atlas_path).joinpath(tract) # concatenate the atlas path with the tract name
-                    fiber_output_path = scalar_dir_output_path.joinpath(f'{subject_id}_' + tract.replace('_extracted_done',
+                    fiberprocess_output_path = scalar_dir_output_path.joinpath(f'{subject_id}_' + tract.replace('_extracted_done',
                                                                                                   f'_{property}_profile'))
                     scalar_name = property
                     options = []
@@ -76,8 +76,14 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     options += ['--ScalarImage', scalar_img_path]
                     options += ['--no_warp']
                     fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
-                    fiberprocess.run(tract_absolute_filename.__str__(), fiber_output_path.__str__(),
+                    fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path.__str__(),
                                      options=options)
+                    # run fiberpostprocess
+                    options = []
+                    fiberpostprocess = tools.FiberPostProcses(self.software_info['fiberpostprocess']['path'])
+                    fiberpostprocess_output_path = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
+                    fiberpostprocess.run(fiberprocess_output_path, fiberpostprocess_output_path, options=options)
+
 
         self.result['output']['success'] = True
         return self.result

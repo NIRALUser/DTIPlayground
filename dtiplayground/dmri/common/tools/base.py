@@ -73,6 +73,7 @@ class ExternalToolWrapper(object):
         logger = self.logger.write
         command=self.getCommand()
         if arguments is not None: command=[self.binary_path]+arguments
+        print(command)
         output=sp.run(command,capture_output=True,text=True,stdin=stdin)
         if self.dev_mode:
             logger("{}\n{} {}".format(output.args,output.stdout,output.stderr))

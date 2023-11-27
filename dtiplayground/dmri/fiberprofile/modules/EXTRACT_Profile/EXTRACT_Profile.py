@@ -43,6 +43,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             # check to see if the scalar images have already been generated
             # if not, generate them
             dtiprocess = tools.DTIProcess(self.software_info['dtiprocess']['path'])
+            dtiprocess.setArguments([])
+            dtiprocess.execute([])
             # Determine which scalars need to be generated
             scalars_to_generate = []
             for scalar in ['FA', 'MD', 'AD', 'RD']:

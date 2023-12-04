@@ -33,7 +33,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         atlas_path = self.protocol["atlas"]
         tracts = self.protocol["tracts"].split(',')
         output_base_dir = self.output_dir  # output directory string
-        properties_to_profile = self.protocol["propertiesToProfile"].split(',')
+        properties_to_profile = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
 
         input_is_dti = True
 
@@ -64,10 +64,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             # Determine which scalars need to be generated
             scalars_to_generate = []
             for scalar in ['FA', 'MD', 'AD', 'RD']:
-                scalar_col = parameter_to_col_map[scalar]
-                if scalar_col not in df.columns:
-                    # generate the scalar image
+                scalar_col_header = parameter_to_col_map[scalar]
+                if scalar_col_header not in df.columns:
                     scalars_to_generate.append(scalar)
+                    df[scalar_col_header] = '' # initialize the column as a string
 
             for index, row in df.iterrows():
                 subject_id = str(row[parameter_to_col_map['Case ID']])
@@ -79,12 +79,12 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     '--correction', 'none', '--scalar_float'
                 ]
                 # run dtiprocess to generate scalar images
-                dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
+                # dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
                 # update the dataframe with the paths to the scalar images
                 for scalar in scalars_to_generate:
                     scalar_col = parameter_to_col_map[scalar]
-                    scalar_img_path = output_stem.__str__() + '_' + scalar + '.nrrd'
-                    df.at[index, scalar_col] = scalar_img_path
+                    scalar_img_path_str = output_stem.__str__() + '_' + scalar + '.nrrd'
+                    df.at[index, scalar_col] = scalar_img_path_str
 
         # write the modified dataframe to the output directory
         df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'), index=False)
@@ -94,7 +94,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             path_to_original_dti_image = row.iloc[1]
             # For each property to profile,
             for property in properties_to_profile:
-                print("property: ", property)
+                logger(f"Extracting property {property} from column header '{parameter_to_col_map[property]}'")
                 # Find path to scalar image in the dataframe
                 scalar_img_path = row[parameter_to_col_map[property]]
                 # create the file path for the output

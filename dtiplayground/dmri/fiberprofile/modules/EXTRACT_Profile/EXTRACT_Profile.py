@@ -37,7 +37,25 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
         input_is_dti = True
 
-        scalar_to_col_map = {}
+        # Get parameter to col map, overriding with user inputs if necessary
+        # Generate default map
+        parameter_to_col_map = {}
+        parameter_to_col_map['Case ID'] = 'id'
+        parameter_to_col_map['Original DTI Image'] = 'Original DTI Image'
+        parameter_to_col_map['Deformation Field'] = 'Concatenated Deformation Field'
+        for scalar in ['FA', 'MD', 'AD', 'RD']:
+            scalar_col = f'{scalar} from original'
+            parameter_to_col_map[scalar] = scalar_col
+        for scalar in properties_to_profile:
+            scalar_col = f'{scalar} from original'
+            parameter_to_col_map[scalar] = scalar_col
+
+        # Update defaults with user overrides
+        user_parameter_to_col_map = self.protocol['parameterToColumnHeaderMap']
+        if user_parameter_to_col_map is not None:
+            parameter_to_col_map.update(user_parameter_to_col_map)
+
+
 
         if input_is_dti:
             # check to see if the scalar images have already been generated
@@ -46,14 +64,14 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             # Determine which scalars need to be generated
             scalars_to_generate = []
             for scalar in ['FA', 'MD', 'AD', 'RD']:
-                scalar_col = f'{scalar} from original'
+                scalar_col = parameter_to_col_map[scalar]
                 if scalar_col not in df.columns:
                     # generate the scalar image
                     scalars_to_generate.append(scalar)
 
             for index, row in df.iterrows():
-                subject_id = str(row.iloc[0])
-                path_to_original_dti_image = row.iloc[1]
+                subject_id = str(row[parameter_to_col_map['Case ID']])
+                path_to_original_dti_image = row[parameter_to_col_map['Original DTI Image']]
                 scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
                 scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
                 output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
@@ -64,12 +82,12 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
                 # update the dataframe with the paths to the scalar images
                 for scalar in scalars_to_generate:
-                    scalar_col = f'{scalar} from original'
+                    scalar_col = parameter_to_col_map[scalar]
                     scalar_img_path = output_stem.__str__() + '_' + scalar + '.nrrd'
                     df.at[index, scalar_col] = scalar_img_path
 
         # write the modified dataframe to the output directory
-        df.to_csv(Path(output_base_dir).joinpath(path_to_csv.stem + '_with_scalars.csv'), index=False)
+        df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'), index=False)
         # iterate over the rows of the CSV
         for _, row in df.iterrows():
             subject_id = row.iloc[0]
@@ -78,8 +96,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             for property in properties_to_profile:
                 print("property: ", property)
                 # Find path to scalar image in the dataframe
-                scalar_img_col = f'{property} from original'
-                scalar_img_path = row[scalar_img_col]
+                scalar_img_path = row[parameter_to_col_map[property]]
                 # create the file path for the output
                 for tract in tracts:
                     # create the directory for the output for the scalar property

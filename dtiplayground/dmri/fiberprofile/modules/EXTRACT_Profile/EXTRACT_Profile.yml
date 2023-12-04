@@ -24,6 +24,11 @@ protocol: #define protocol parameters here
         caption: Properties to profile
         default_value: null
         description: List of selected properties to profile along tracts
+    parameterToColumnHeaderMap: # Optional map of parameters (e.g., scalar names, case id) to column headers
+        type: dictionary
+        caption: Property to column header map
+        default_value: null
+        description: Map of parameters of column headers to use for each property to profile
     # TODO: Add support for a "per tract origin file" option where a user can specify their origins per tract in a file
     planeOfOrigin:
         type: list

@@ -39,10 +39,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
         # Get parameter to col map, overriding with user inputs if necessary
         # Generate default map
-        parameter_to_col_map = {}
-        parameter_to_col_map['Case ID'] = 'id'
-        parameter_to_col_map['Original DTI Image'] = 'Original DTI Image'
-        parameter_to_col_map['Deformation Field'] = 'Concatenated Deformation Field'
+        parameter_to_col_map = {'Case ID': 'id', 'Original DTI Image': 'Original DTI image',
+                                'Deformation Field': 'Concatenated Deformation field'}
         for scalar in ['FA', 'MD', 'AD', 'RD']:
             scalar_col = f'{scalar} from original'
             parameter_to_col_map[scalar] = scalar_col
@@ -55,8 +53,6 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         if user_parameter_to_col_map is not None:
             parameter_to_col_map.update(user_parameter_to_col_map)
 
-
-
         if input_is_dti:
             # check to see if the scalar images have already been generated
             # if not, generate them
@@ -67,7 +63,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 scalar_col_header = parameter_to_col_map[scalar]
                 if scalar_col_header not in df.columns:
                     scalars_to_generate.append(scalar)
-                    df[scalar_col_header] = '' # initialize the column as a string
+                    df[scalar_col_header] = ''  # initialize the column as a string
 
             for index, row in df.iterrows():
                 subject_id = str(row[parameter_to_col_map['Case ID']])
@@ -75,11 +71,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
                 scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
                 output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
-                options = [
-                    '--correction', 'none', '--scalar_float'
-                ]
+                options = ['--correction', 'none', '--scalar_float']
                 # run dtiprocess to generate scalar images
-                # dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
+                dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
                 # update the dataframe with the paths to the scalar images
                 for scalar in scalars_to_generate:
                     scalar_col = parameter_to_col_map[scalar]
@@ -102,10 +96,11 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     # create the directory for the output for the scalar property
                     scalar_dir_output_path = Path(output_base_dir).joinpath(property).joinpath(Path(tract).stem)
                     scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
-                    print("tract: ", tract)
-                    tract_absolute_filename = Path(atlas_path).joinpath(tract) # concatenate the atlas path with the tract name
-                    fiberprocess_output_path = scalar_dir_output_path.joinpath(f'{subject_id}_' + tract.replace('_extracted_done',
-                                                                                                  f'_{property}_profile'))
+                    logger(f"Extracting profile for tract {tract}")
+                    tract_absolute_filename = Path(atlas_path).joinpath(
+                        tract)  # concatenate the atlas path with the tract name
+                    fiberprocess_output_path = scalar_dir_output_path.joinpath(
+                        f'{subject_id}_' + tract.replace('_extracted_done', f'_{property}_profile'))
                     scalar_name = property
                     options = []
                     options += ['--scalarName', scalar_name]
@@ -116,10 +111,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                      options=options)
                     # run fiberpostprocess
                     options = []
-                    fiberpostprocess = tools.FiberPostProcses(self.software_info['fiberpostprocess']['path'])
+                    fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                     fiberpostprocess_output_path = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
                     fiberpostprocess.run(fiberprocess_output_path, fiberpostprocess_output_path, options=options)
-
 
         self.result['output']['success'] = True
         return self.result

@@ -113,7 +113,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     options = []
                     fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                     fiberpostprocess_output_path = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
-                    fiberpostprocess.run(fiberprocess_output_path, fiberpostprocess_output_path, options=options)
+                    fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
 
         self.result['output']['success'] = True
         return self.result

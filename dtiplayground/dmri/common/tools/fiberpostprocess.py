@@ -51,7 +51,7 @@ class FiberPostProcess(ExternalToolWrapper):
     Contributors: Jean-Yves Yang, Juan Carlos Prieto
     """
 
-    def run(self, input_fiber_path, output_file_path, options=[]):
+    def run(self, input_fiber_path: str, output_file_path: str, options=[]):
         arguments=[]
         arguments+=['--inputFiberFile',input_fiber_path]
         arguments+=['--outputFiberFile', output_file_path]

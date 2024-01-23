@@ -100,7 +100,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 tract_absolute_filename = Path(atlas_path).joinpath(
                     tract)  # concatenate the atlas path with the tract name
                 # Create dataframe to track statistics for this tract
-                tract_stat_df = pd.DataFrame()
+                tract_stat_df: pd.DataFrame = None
                 for _, row in df.iterrows():
                     subject_id = row.iloc[0]
                     # Find path to scalar image in the dataframe
@@ -132,8 +132,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     logger(fvp_data.head().__str__())
                     logger(fvp_data.tail().__str__())
                     # write fvp data to csv
-                    if tract_stat_df.size == 0:
-                        tract_stat_df.columns = ['case_id'] + fvp_data["Arc_Length"].tolist()
+                    if not tract_stat_df:
+                        col_list = ['case_id'] + fvp_data["Arc_Length"].tolist()
+                        tract_stat_df = pd.DataFrame(columns=col_list)
                     new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
                     tract_stat_df = tract_stat_df.append(dict(zip(tract_stat_df.columns, new_row_list)), ignore_index=True)
                 logger(tract_stat_df.__str__())

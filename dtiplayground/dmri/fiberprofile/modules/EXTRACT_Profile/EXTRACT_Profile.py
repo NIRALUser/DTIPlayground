@@ -132,7 +132,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     logger(fvp_data.head().__str__())
                     logger(fvp_data.tail().__str__())
                     # write fvp data to csv
-                    if not tract_stat_df:
+                    if tract_stat_df is None:
                         col_list = ['case_id'] + fvp_data["Arc_Length"].tolist()
                         tract_stat_df = pd.DataFrame(columns=col_list)
                     new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()

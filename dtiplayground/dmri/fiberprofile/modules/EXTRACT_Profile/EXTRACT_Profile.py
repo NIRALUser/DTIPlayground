@@ -136,7 +136,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         col_list = ['case_id'] + fvp_data["Arc_Length"].tolist()
                         tract_stat_df = pd.DataFrame(columns=col_list)
                     new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
-                    tract_stat_df = tract_stat_df.append(dict(zip(tract_stat_df.columns, new_row_list)), ignore_index=True)
+                    tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
                 logger(tract_stat_df.__str__())
 
         self.result['output']['success'] = True

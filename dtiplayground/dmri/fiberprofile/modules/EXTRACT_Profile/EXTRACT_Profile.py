@@ -128,8 +128,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
                     dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
-                    # extract fvp data
-                    fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
+                    # extract fvp data, removing first few rows and last 2
+                    fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3, -1, -2])
                     logger(fvp_data.head)
                     # write fvp data to csv
 

@@ -73,11 +73,14 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
                 output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
                 # check if scalar_img_folder_path already exists
-                if not scalar_img_folder_path.exists() or recompute_scalars:
+                if scalar_img_folder_path.exists() and not recompute_scalars:
+                    logger(f"Skipping recomputation of scalars {', '. join(scalars_to_generate)}for subject " + subject_id)
+                else:
                     scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
                     options = ['--correction', 'none', '--scalar_float']
                     # run dtiprocess to generate scalar images
                     dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
+
                 # update the dataframe with the paths to the scalar images
                 for scalar in scalars_to_generate:
                     scalar_col = parameter_to_col_map[scalar]

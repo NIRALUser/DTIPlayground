@@ -76,7 +76,7 @@ class DTITractStat(ExternalToolWrapper):
     def run(self, input_fiber_file: str, output_stats_file: str, options=[]):
         arguments=[]
         arguments+=['--input_fiber_file',input_fiber_file]
-        arguments+=['--output_stats_file',output_stats_file]
+        arguments+=['-o',output_stats_file]
         arguments+=options
         self.setArguments(arguments)
         return self.execute(arguments)

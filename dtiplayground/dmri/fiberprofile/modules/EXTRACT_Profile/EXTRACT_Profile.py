@@ -35,7 +35,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         output_base_dir = self.output_dir  # output directory string
         properties_to_profile = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
 
+        # TODO: link these parameters to the protocol
         input_is_dti = True
+        recompute_scalars = False
 
         # Get parameter to col map, overriding with user inputs if necessary
         # Generate default map
@@ -69,11 +71,13 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 subject_id = str(row[parameter_to_col_map['Case ID']])
                 path_to_original_dti_image = row[parameter_to_col_map['Original DTI Image']]
                 scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
-                scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
                 output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
-                options = ['--correction', 'none', '--scalar_float']
-                # run dtiprocess to generate scalar images
-                dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
+                # check if scalar_img_folder_path already exists
+                if not scalar_img_folder_path.exists() or recompute_scalars:
+                    scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
+                    options = ['--correction', 'none', '--scalar_float']
+                    # run dtiprocess to generate scalar images
+                    dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
                 # update the dataframe with the paths to the scalar images
                 for scalar in scalars_to_generate:
                     scalar_col = parameter_to_col_map[scalar]

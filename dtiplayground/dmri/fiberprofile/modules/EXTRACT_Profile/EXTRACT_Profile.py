@@ -94,7 +94,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             logger(f"Extracting property {prop} from column header '{parameter_to_col_map[prop]}'")
             for tract in tracts:
                 # create the directory for the output for the scalar property
-                scalar_dir_output_path = Path(output_base_dir).joinpath(prop).joinpath(Path(tract).stem)
+                scalar_dir_output_path: Path = Path(output_base_dir).joinpath(prop).joinpath(Path(tract).stem)
                 scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
                 logger(f"Extracting profile for tract {tract}")
                 tract_absolute_filename = Path(atlas_path).joinpath(
@@ -125,7 +125,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     options = ['--parameter_list', prop, '--scalarName', prop]
                     dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                     dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
-                    dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
+                    if Path(dtitractstat_output_path).exists() and not recompute_scalars:
+                        pass
+                    else:
+                        dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
                     # extract fvp data
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
@@ -138,6 +141,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
                     tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
                 logger(tract_stat_df.__str__())
+                tract_stat_df.to_csv(scalar_dir_output_path.joinpath(f'{tract}_{prop}.csv'), index=False)
 
         self.result['output']['success'] = True
         return self.result

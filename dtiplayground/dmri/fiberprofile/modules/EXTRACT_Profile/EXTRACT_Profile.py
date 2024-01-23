@@ -92,10 +92,12 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         # iterate over the rows of the CSV
         for prop in properties_to_profile:
             logger(f"Extracting property {prop} from column header '{parameter_to_col_map[prop]}'")
+            prop_output_path: Path = Path(output_base_dir).joinpath(prop)
             for tract in tracts:
                 # create the directory for the output for the scalar property
-                scalar_dir_output_path: Path = Path(output_base_dir).joinpath(prop).joinpath(Path(tract).stem)
-                scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
+                tract_name_stem: str = Path(tract).stem
+                tract_output_path: Path = prop_output_path.joinpath(tract_name_stem)
+                tract_output_path.mkdir(parents=True, exist_ok=True)
                 logger(f"Extracting profile for tract {tract}")
                 tract_absolute_filename = Path(atlas_path).joinpath(
                     tract)  # concatenate the atlas path with the tract name
@@ -105,10 +107,13 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     subject_id = row.iloc[0]
                     # Find path to scalar image in the dataframe
                     scalar_img_path = row[parameter_to_col_map[prop]]
-                    fiberprocess_output_path = scalar_dir_output_path.joinpath(
-                        f'{subject_id}_' + tract.replace('_extracted_done', f'_{prop}_profile'))
+                    fiberprocess_output_path: str = tract_output_path.joinpath(
+                        f'{subject_id}_' + tract.replace('_extracted_done', f'_{prop}_profile')).__str__()
+                    fiberpostprocess_output_path: str = fiberprocess_output_path.__str__().replace('.vtk',
+                                                                                                   '_processed.vtk')
+                    dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
                     scalar_name = prop
-                    if fiberprocess_output_path.exists() and not recompute_scalars:
+                    if Path(fiberprocess_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping fiberprocess of scalar {prop} for subject {subject_id}")
                     else:
                         # run fiberprocess
@@ -117,10 +122,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         options += ['--ScalarImage', scalar_img_path]
                         options += ['--no_warp']
                         fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
-                        fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path.__str__(),
+                        fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path,
                                          options=options)
 
-                    fiberpostprocess_output_path: str = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
+
                     if Path(fiberpostprocess_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping fiberpostprocess of scalar {prop} for subject {subject_id}")
                     else:
@@ -129,7 +134,6 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                         fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
 
-                    dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
 
                     if Path(dtitractstat_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping dtitractstat of scalar {prop} for subject {subject_id}")
@@ -150,7 +154,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
                     tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
                 logger(tract_stat_df.__str__())
-                tract_stat_df.to_csv(scalar_dir_output_path.joinpath(f'{tract}_{prop}.csv'), index=False)
+                tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
 
         self.result['output']['success'] = True
         return self.result

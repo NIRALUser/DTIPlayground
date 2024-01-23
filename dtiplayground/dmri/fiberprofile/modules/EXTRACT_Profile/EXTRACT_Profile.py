@@ -123,7 +123,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
 
                     # run dtitractstat
-                    options = ['--scalarName', property]
+                    options = ['--parameter_list', property, '--scalarName', property]
                     dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                     dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
                     dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)

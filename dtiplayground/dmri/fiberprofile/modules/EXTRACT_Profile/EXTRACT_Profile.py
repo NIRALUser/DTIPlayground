@@ -90,25 +90,24 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         # write the modified dataframe to the output directory
         df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'), index=False)
         # iterate over the rows of the CSV
-        for _, row in df.iterrows():
-            subject_id = row.iloc[0]
-            path_to_original_dti_image = row.iloc[1]
-            # For each property to profile,
-            for property in properties_to_profile:
-                logger(f"Extracting property {property} from column header '{parameter_to_col_map[property]}'")
-                # Find path to scalar image in the dataframe
-                scalar_img_path = row[parameter_to_col_map[property]]
-                # create the file path for the output
-                for tract in tracts:
-                    # create the directory for the output for the scalar property
-                    scalar_dir_output_path = Path(output_base_dir).joinpath(property).joinpath(Path(tract).stem)
-                    scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
-                    logger(f"Extracting profile for tract {tract}")
-                    tract_absolute_filename = Path(atlas_path).joinpath(
-                        tract)  # concatenate the atlas path with the tract name
+        for prop in properties_to_profile:
+            logger(f"Extracting property {prop} from column header '{parameter_to_col_map[prop]}'")
+            for tract in tracts:
+                # create the directory for the output for the scalar property
+                scalar_dir_output_path = Path(output_base_dir).joinpath(prop).joinpath(Path(tract).stem)
+                scalar_dir_output_path.mkdir(parents=True, exist_ok=True)
+                logger(f"Extracting profile for tract {tract}")
+                tract_absolute_filename = Path(atlas_path).joinpath(
+                    tract)  # concatenate the atlas path with the tract name
+                # Create dataframe to track statistics for this tract
+                tract_stat_df = pd.DataFrame()
+                for _, row in df.iterrows():
+                    subject_id = row.iloc[0]
+                    # Find path to scalar image in the dataframe
+                    scalar_img_path = row[parameter_to_col_map[prop]]
                     fiberprocess_output_path = scalar_dir_output_path.joinpath(
-                        f'{subject_id}_' + tract.replace('_extracted_done', f'_{property}_profile'))
-                    scalar_name = property
+                        f'{subject_id}_' + tract.replace('_extracted_done', f'_{prop}_profile'))
+                    scalar_name = prop
                     options = []
                     options += ['--scalarName', scalar_name]
                     options += ['--ScalarImage', scalar_img_path]
@@ -123,23 +122,21 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
 
                     # run dtitractstat
-                    options = ['--parameter_list', property, '--scalarName', property]
+                    options = ['--parameter_list', prop, '--scalarName', prop]
                     dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                     dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
                     dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
                     # extract fvp data
-                    # count the lines in the file, for skipping purposes
-                    # with open(dtitractstat_output_path, 'r') as fp:
-                    #     for line_count, line in enumerate(fp):
-                    #         pass
-
-                    # logger(f"Line count: {line_count}")
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
                     logger(fvp_data.head().__str__())
                     logger(fvp_data.tail().__str__())
                     # write fvp data to csv
-
+                    if tract_stat_df.size == 0:
+                        tract_stat_df.columns = ['case_id'] + fvp_data["Arc_Length"].tolist()
+                    new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
+                    tract_stat_df = tract_stat_df.append(dict(zip(tract_stat_df.columns, new_row_list)), ignore_index=True)
+                logger(tract_stat_df.__str__())
 
         self.result['output']['success'] = True
         return self.result

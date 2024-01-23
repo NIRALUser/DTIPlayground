@@ -108,23 +108,31 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     fiberprocess_output_path = scalar_dir_output_path.joinpath(
                         f'{subject_id}_' + tract.replace('_extracted_done', f'_{prop}_profile'))
                     scalar_name = prop
-                    options = []
-                    options += ['--scalarName', scalar_name]
-                    options += ['--ScalarImage', scalar_img_path]
-                    options += ['--no_warp']
-                    fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
-                    fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path.__str__(),
-                                     options=options)
-                    # run fiberpostprocess
-                    options = []
-                    fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
+                    if fiberprocess_output_path.exists() and not recompute_scalars:
+                        logger(f"Skipping fiberprocess of scalar {prop} for subject {subject_id}")
+                    else:
+                        # run fiberprocess
+                        options = []
+                        options += ['--scalarName', scalar_name]
+                        options += ['--ScalarImage', scalar_img_path]
+                        options += ['--no_warp']
+                        fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
+                        fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path.__str__(),
+                                         options=options)
+
                     fiberpostprocess_output_path: str = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
-                    fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
+                    if Path(fiberpostprocess_output_path).exists() and not recompute_scalars:
+                        logger(f"Skipping fiberpostprocess of scalar {prop} for subject {subject_id}")
+                    else:
+                        # run fiberpostprocess
+                        options = []
+                        fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
+                        fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
 
                     dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
 
                     if Path(dtitractstat_output_path).exists() and not recompute_scalars:
-                        logger(f"Skipping dtitractstat of scalar {prop} for subject " + subject_id)
+                        logger(f"Skipping dtitractstat of scalar {prop} for subject {subject_id}")
                     else:
                         # run dtitractstat
                         options = ['--parameter_list', prop, '--scalarName', prop]

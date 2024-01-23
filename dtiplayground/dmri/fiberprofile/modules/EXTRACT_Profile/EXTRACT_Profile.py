@@ -74,7 +74,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
                 # check if scalar_img_folder_path already exists
                 if scalar_img_folder_path.exists() and not recompute_scalars:
-                    logger(f"Skipping recomputation of scalars {', '. join(scalars_to_generate)}for subject " + subject_id)
+                    logger(f"Skipping recomputation of scalars {', '. join(scalars_to_generate)} for subject " + subject_id)
                 else:
                     scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
                     options = ['--correction', 'none', '--scalar_float']
@@ -129,7 +129,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
                     # extract fvp data
-                    fvp_data = pd.read_csv(dtitractstat_output_path)
+                    fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
                     logger(fvp_data.head)
                     # write fvp data to csv
 

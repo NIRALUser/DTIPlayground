@@ -112,8 +112,20 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     # run fiberpostprocess
                     options = []
                     fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
-                    fiberpostprocess_output_path = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
+                    fiberpostprocess_output_path: str = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
                     fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
+
+                    # run dtitractstat
+                    options = []
+                    dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
+                    dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
+                    dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
+
+                    # extract fvp data
+                    fvp_data = pd.read_csv(dtitractstat_output_path)
+                    logger(fvp_data.head)
+                    # write fvp data to csv
+
 
         self.result['output']['success'] = True
         return self.result

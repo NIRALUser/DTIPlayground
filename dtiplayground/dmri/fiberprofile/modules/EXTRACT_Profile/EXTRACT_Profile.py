@@ -136,7 +136,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
                     logger(f"Line count: {line_count}")
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3, line_count, line_count-1])
-                    logger(fvp_data.head)
+                    logger(fvp_data.head())
+                    logger(fvp_data.tail())
                     # write fvp data to csv
 
 

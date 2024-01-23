@@ -121,13 +121,14 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     fiberpostprocess_output_path: str = fiberprocess_output_path.__str__().replace('.vtk', '_processed.vtk')
                     fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
 
-                    # run dtitractstat
-                    options = ['--parameter_list', prop, '--scalarName', prop]
-                    dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                     dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
+
                     if Path(dtitractstat_output_path).exists() and not recompute_scalars:
-                        pass
+                        logger(f"Skipping dtitractstat of scalar {prop} for subject " + subject_id)
                     else:
+                        # run dtitractstat
+                        options = ['--parameter_list', prop, '--scalarName', prop]
+                        dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
                     # extract fvp data

@@ -37,7 +37,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
         # TODO: link these parameters to the protocol
         input_is_dti = True
-        recompute_scalars = False
+        recompute_scalars = True
 
         # Get parameter to col map, overriding with user inputs if necessary
         # Generate default map
@@ -144,7 +144,6 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
                     # extract fvp data
-                    fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
                     logger(fvp_data.head().__str__())
                     logger(fvp_data.tail().__str__())
                     # write fvp data to csv

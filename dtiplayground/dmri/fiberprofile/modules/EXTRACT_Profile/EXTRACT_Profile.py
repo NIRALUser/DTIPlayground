@@ -143,9 +143,6 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
-                    # extract fvp data
-                    logger(fvp_data.head().__str__())
-                    logger(fvp_data.tail().__str__())
                     # write fvp data to csv
                     if tract_stat_df is None:
                         col_list = ['case_id'] + fvp_data["Arc_Length"].tolist()

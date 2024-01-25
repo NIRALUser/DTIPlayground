@@ -77,7 +77,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     logger(f"Skipping recomputation of scalars {', '. join(scalars_to_generate)} for subject " + subject_id)
                 else:
                     scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
-                    options = ['--correction', 'none', '--scalar_float']
+                    options = ['--correction', 'none', '--saveScalarsAsFloat']
                     # run dtiprocess to generate scalar images
                     dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
 

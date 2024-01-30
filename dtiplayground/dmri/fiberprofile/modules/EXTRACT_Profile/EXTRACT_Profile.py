@@ -38,6 +38,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         # TODO: link these parameters to the protocol
         input_is_dti = True
         recompute_scalars = True
+        result_case_columnwise = True
 
         # Get parameter to col map, overriding with user inputs if necessary
         # Generate default map
@@ -63,9 +64,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             scalars_to_generate = []
             for scalar in ['FA', 'MD', 'AD', 'RD']:
                 scalar_col_header = parameter_to_col_map[scalar]
-                if scalar_col_header not in df.columns:
-                    scalars_to_generate.append(scalar)
-                    df[scalar_col_header] = ''  # initialize the column as a string
+                scalars_to_generate.append(scalar)
+                df[scalar_col_header] = ''  # initialize the column as a string
 
             for index, row in df.iterrows():
                 subject_id = str(row[parameter_to_col_map['Case ID']])
@@ -89,6 +89,28 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
         # write the modified dataframe to the output directory
         df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'), index=False)
+
+
+        # Generate parameterized fiber profiles
+        # parameterized_fibers_path = Path(output_base_dir).joinpath('parameterized_fibers')
+        # parameterized_fibers_path.mkdir(parents=True, exist_ok=True)
+        #
+        # example_case = df.loc[0]
+        # example_dti = example_case[parameter_to_col_map['Original DTI Image']]
+        # for tract in tracts:
+        #     tract_name_stem: str = Path(tract).stem
+        #     parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(tract_name_stem).joinpath("_parameterized.vtk")
+        #     if parameterized_fiber_output_path.exists() and not recompute_scalars:
+        #         logger(f"Skipping parameterized fiber generation of tract {tract}")
+        #     else:
+        #         logger(f"Generating parameterized fiber profile for tract {tract}")
+        #         tract_absolute_filename = Path(atlas_path).joinpath(
+        #             tract)
+        #         options = ['--output_parameterized_fiber_file']
+        #         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
+        #         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
+        #
+
         # iterate over the rows of the CSV
         for prop in properties_to_profile:
             logger(f"Extracting property {prop} from column header '{parameter_to_col_map[prop]}'")
@@ -149,10 +171,20 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     logger(fvp_data.tail().__str__())
                     # write fvp data to csv
                     if tract_stat_df is None:
-                        col_list = ['case_id'] + fvp_data["Arc_Length"].tolist()
-                        tract_stat_df = pd.DataFrame(columns=col_list)
-                    new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
-                    tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
+                        if result_case_columnwise:
+                            tract_stat_df = pd.DataFrame(columns=["Arc Length"])
+                            tract_stat_df["Arc Length"] = fvp_data["Arc_Length"].tolist()
+                        else:
+                            col_list = ['case_id'] + fvp_data["Arc_Length"].tolist()
+                            tract_stat_df = pd.DataFrame(columns=col_list)
+
+                    if result_case_columnwise:
+                        new_col = fvp_data["Parameter_Value"].tolist()
+                        tract_stat_df[subject_id] = new_col
+                    else:
+                        new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
+                        tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
+
                 logger(tract_stat_df.__str__())
                 tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
 

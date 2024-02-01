@@ -37,7 +37,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
         # TODO: link these parameters to the protocol
         input_is_dti = True
-        recompute_scalars = True
+        recompute_scalars = False
         result_case_columnwise = True
 
         # Get parameter to col map, overriding with user inputs if necessary

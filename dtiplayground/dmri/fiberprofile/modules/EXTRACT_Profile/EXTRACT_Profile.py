@@ -152,7 +152,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         tract_name_stem: str = Path(tract).stem
                         parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(
                             tract_name_stem).joinpath("_parameterized.vtk")
-                        if parameterized_fiber_output_path.exists() and not recompute_scalars:
+                        # TODO: Change this condition back
+                        if parameterized_fiber_output_path.exists() and not recompute_scalars and False:
                             logger(f"Skipping parameterized fiber generation of tract {tract}")
                         else:
                             logger(f"Generating parameterized fiber profile for tract {tract}")

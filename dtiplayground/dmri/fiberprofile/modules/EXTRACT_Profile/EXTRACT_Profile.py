@@ -147,7 +147,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                             logger(f"Generating parameterized fiber profile for tract {tract}")
                             tract_name_stem: str = Path(tract).stem
                             parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(
-                                tract_name_stem).joinpath("_parameterized.vtk")
+                                tract_name_stem + "_parameterized.vtk")
                             # TODO: Change this condition back
                             if parameterized_fiber_output_path.exists() and not recompute_scalars and False:
                                 logger(f"Skipping parameterized fiber generation of tract {tract}")
@@ -155,7 +155,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                 logger(f"Generating parameterized fiber profile for tract {tract}")
                                 tract_absolute_filename = Path(atlas_path).joinpath(
                                     tract)
-                                options += ['--returnparameterfile', parameterized_fiber_output_path.__str__()]
+                                options += ['-f', parameterized_fiber_output_path.__str__()]
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 

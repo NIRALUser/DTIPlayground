@@ -90,27 +90,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         # write the modified dataframe to the output directory
         df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'), index=False)
 
-
-        # Generate parameterized fiber profiles
-        # parameterized_fibers_path = Path(output_base_dir).joinpath('parameterized_fibers')
-        # parameterized_fibers_path.mkdir(parents=True, exist_ok=True)
-        #
-        # example_case = df.loc[0]
-        # example_dti = example_case[parameter_to_col_map['Original DTI Image']]
-        # for tract in tracts:
-        #     tract_name_stem: str = Path(tract).stem
-        #     parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(tract_name_stem).joinpath("_parameterized.vtk")
-        #     if parameterized_fiber_output_path.exists() and not recompute_scalars:
-        #         logger(f"Skipping parameterized fiber generation of tract {tract}")
-        #     else:
-        #         logger(f"Generating parameterized fiber profile for tract {tract}")
-        #         tract_absolute_filename = Path(atlas_path).joinpath(
-        #             tract)
-        #         options = ['--output_parameterized_fiber_file']
-        #         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
-        #         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
-        #
-
+        parameterized_fibers_path = Path(output_base_dir).joinpath('parameterized_fibers')
+        parameterized_fibers_path.mkdir(parents=True, exist_ok=True)
         # iterate over the rows of the CSV
         for prop in properties_to_profile:
             logger(f"Extracting property {prop} from column header '{parameter_to_col_map[prop]}'")
@@ -125,7 +106,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     tract)  # concatenate the atlas path with the tract name
                 # Create dataframe to track statistics for this tract
                 tract_stat_df: pd.DataFrame = None
-                for _, row in df.iterrows():
+                for row_index, row in df.iterrows():
                     subject_id = row.iloc[0]
                     # Find path to scalar image in the dataframe
                     scalar_img_path = row[parameter_to_col_map[prop]]
@@ -164,6 +145,22 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         options = ['--parameter_list', prop, '--scalarName', prop]
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
+
+                    # generate parameterized fiber profile if this is the first row
+                    if row_index == 0:
+                        logger(f"Generating parameterized fiber profile for tract {tract}")
+                        tract_name_stem: str = Path(tract).stem
+                        parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(
+                            tract_name_stem).joinpath("_parameterized.vtk")
+                        if parameterized_fiber_output_path.exists() and not recompute_scalars:
+                            logger(f"Skipping parameterized fiber generation of tract {tract}")
+                        else:
+                            logger(f"Generating parameterized fiber profile for tract {tract}")
+                            tract_absolute_filename = Path(atlas_path).joinpath(
+                                tract)
+                            options = ['--output_parameterized_fiber_file']
+                            dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
+                            dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 
                     # extract fvp data
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])

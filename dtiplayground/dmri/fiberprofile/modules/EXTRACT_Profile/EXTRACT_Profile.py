@@ -158,7 +158,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                             logger(f"Generating parameterized fiber profile for tract {tract}")
                             tract_absolute_filename = Path(atlas_path).joinpath(
                                 tract)
-                            options = ['--output_parameterized_fiber_file']
+                            # options = ['--output_parameterized_fiber_file']
+                            options = ['--returnparameterfile']
                             dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                             dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 

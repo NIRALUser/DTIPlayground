@@ -45,7 +45,7 @@ options:
       default_value: null
       description: Image File (For Susceptibility correction, this image should be with R,A (F),S direction first (RL, FH, AP, SI))
     input_image_2:
-      type: filepath-remote
+      type: filepath-remote-mult
       caption: Optional Image File 
       default_value: null
       description: Optional image for multi input pipeline, e.g. SUSCEPTIBILITY_Correct module or UTIL_Merge module

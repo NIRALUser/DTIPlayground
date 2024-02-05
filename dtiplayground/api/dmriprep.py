@@ -244,7 +244,11 @@ class DMRIPrepAPI:
                 inputs = [protocol['io']['input_image_1']]
                 protocol['io'].setdefault('input_image_2',None)
                 if protocol['io']['input_image_2'] is not None:
-                    inputs.append(protocol['io']['input_image_2'])
+                     if "," in protocol['io']['input_image_2']:
+                        mult_image_list = protocol['io']['input_image_2'].split(',')
+                        inputs += mult_image_list
+                     else:
+                         inputs.append(protocol['io']['input_image_2'])
                 options={
                     "input_image_paths" : inputs,
                     "protocol_path" : str(protocol_fn),

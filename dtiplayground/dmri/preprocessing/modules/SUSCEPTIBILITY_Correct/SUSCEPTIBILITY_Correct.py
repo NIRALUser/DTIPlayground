@@ -120,72 +120,68 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                                               'rms_gt_3': None}, 
                                  'eddymotion_pdf_path': None}
 
-        
+        image_path_dict = {}
+        all_list_report_paths = []
+        var_num_grad = self.result['report']['csv_data']['original_number_of_gradients']
         if self.result['input'][0]["output"]['image_path']:
-            input_image_1 = os.path.abspath(self.result['input'][0]["output"]['image_path'])
-            input_image_2 = os.path.abspath(self.result['input'][1]["output"]['image_path'])
-            if 'image_information' in self.result['input'][0]:
-                for number_1 in self.result['input'][0]['image_information']['sizes']:
-                    if number_1 not in self.result['input'][0]['image_information']['image_size']:
-                        self.result['report']['csv_data']['original_number_of_gradients'] = [number_1]
-            if 'image_information' in self.result['input'][1]:
-                for number_2 in self.result['input'][1]['image_information']['sizes']:
-                    if number_2 not in self.result['input'][1]['image_information']['image_size']:
-                        self.result['report']['csv_data']['original_number_of_gradients'] += [number_2]
+            list_image_paths = self.result['input']
+            all_list_report_paths += list_image_paths
+            for path in range(len(list_image_paths)):
+                key_name = 'input_image'+ str(path+1)
+                image_path_dict[key_name] = {}
+                image_path_dict[key_name]['input_path'] = list_image_paths[path]["output"]['image_path']
+                image_path_dict[key_name]['index'] = path
+                if 'image_information' in list_image_paths[path]:
+                    for number in list_image_paths[path]['sizes']:
+                        if number not in list_image_paths[path]['image_information']['image_size']:
+                            if not var_num_grad:
+                                self.result['report']['csv_data']['original_number_of_gradients'] = [number]
+                            else:
+                                self.result['report']['csv_data']['original_number_of_gradients'] += [number]
+
         else:
-            input_image_1 = None
-            input_image_2 = None
-            input_directory = self.result_history[0]["output"][0]["output"]["output_directory"]
             self.result['report']['csv_data']['original_number_of_gradients'] = [None, None]
-            list_report_paths_1 = []
-            list_report_paths_2 = []
             self.result['report']['csv_data']['excluded_gradients'] = [None, None, None]
-            while input_image_1 == None:
-                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
-                input_image_1 = previous_result["input"]["image_path"]
-                if previous_result['report']['csv_data']['excluded_gradients']:
-                    if not self.result['report']['csv_data']['excluded_gradients'][0]:
-                        self.result['report']['csv_data']['excluded_gradients'][0] = []
-                    self.result['report']['csv_data']['excluded_gradients'][0] += previous_result['report']['csv_data']['excluded_gradients']
-                list_report_paths_1 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_1
-                if "output_directory" in previous_result["input"]:
-                    input_directory = previous_result["input"]["output_directory"]
-                if 'image_information' in previous_result['input']:
-                    for number_1 in previous_result['input']['image_information']['sizes']:
-                        if number_1 not in previous_result['input']['image_information']['image_size']:
-                            self.result['report']['csv_data']['original_number_of_gradients'][0] = number_1
-                print("input_image_1:", input_image_1)
+            for results in range(len(self.result_history[0]["output"])):
+                key_name = 'input_image'+ str(results)
+                image_path_dict[key_name] = {}
+                image_path_dict[key_name]['input_path'] = [self.result_history[0]["output"][results]["output"]["output_directory"]]
+                image_path_dict[key_name]['index'] = results
+            
+            input_keys = list(image_path_dict.keys())
+            for inputs in input_keys:
+                list_report_paths = []
+                while inputs == None:
+                    info = image_path_dict[inputs]
+                    previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + info['input_path'] + "/result.yml", 'r'))
+                    input_image = previous_result["input"]["image_path"]
+                    if previous_result['report']['csv_data']['excluded_gradients']:
+                        if not self.result['report']['csv_data']['excluded_gradients'][info['index']]:
+                            self.result['report']['csv_data']['excluded_gradients'][info['index']] = []
+                        self.result['report']['csv_data']['excluded_gradients'][info['index']] += previous_result['report']['csv_data']['excluded_gradients']
+                    list_report_paths = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths
+                    if "output_directory" in previous_result["input"]:
+                        image_path_dict[inputs]['input_path'] = previous_result["input"]["output_directory"]
+                    if 'image_information' in previous_result['input']:
+                        for number in previous_result['input']['image_information']['sizes']:
+                            if number not in previous_result['input']['image_information']['image_size']:
+                                self.result['report']['csv_data']['original_number_of_gradients'][info['index']] = number
+                    all_list_report_paths.append(list_report_paths)
         
-            input_directory = self.result_history[0]["output"][1]["output"]["output_directory"]
-            while input_image_2 == None:
-                previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + input_directory + "/result.yml", 'r'))
-                input_image_2 = previous_result["input"]["image_path"]
-                if previous_result['report']['csv_data']['excluded_gradients']:
-                    if not self.result['report']['csv_data']['excluded_gradients'][1]:
-                        self.result['report']['csv_data']['excluded_gradients'][1] = []
-                    self.result['report']['csv_data']['excluded_gradients'][1] += previous_result['report']['csv_data']['excluded_gradients']
-                list_report_paths_2 = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths_2
-                if "output_directory" in previous_result["input"]:
-                    input_directory = previous_result["input"]["output_directory"]
-                if 'image_information' in previous_result['input']:
-                    for number_2 in previous_result['input']['image_information']['sizes']:
-                        if number_2 not in previous_result['input']['image_information']['image_size']:
-                            self.result['report']['csv_data']['original_number_of_gradients'][1] = number_2
-                print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
-                
-            self.result['report']['module_report_paths'] = [list_report_paths_1, list_report_paths_2, os.path.abspath(self.output_dir) + '/report.md']
-            input_image_1 = os.path.abspath(input_image_1)
-            input_image_2 = os.path.abspath(input_image_2)
+            print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
+            
+            self.result['report']['module_report_paths'] = [all_list_report_paths, os.path.abspath(self.output_dir) + '/report.md']
 
-
+        input_index = 0
         with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
             f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))
-            f.write('### {}\n'.format("input image 1: " + str(input_image_1)).encode('utf-8'))
-            f.write('### {}\n'.format("input image 2: " + str(input_image_2)).encode('utf-8'))
+            for input_image, values in image_path_dict.items():
+                input_index += 1
+                f.write('### {}\n'.format(f"input image {str(input_index)}: " + str(values['input_path'])).encode('utf-8'))
             f.seek(0)
             markdown.markdownFromFile(input=f, output=os.path.abspath(self.output_dir) + '/report.html')
 
-        self.result['report']['csv_data']['image_name'] = [input_image_1, input_image_2, os.path.abspath(self.result['output']['image_path'])]
+        self.result['report']['csv_data']['image_name'] = [all_list_report_paths, os.path.abspath(self.result['output']['image_path'])]
 
 ### User defined methods
 ### scripts
@@ -247,21 +243,22 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
     def merge_images(self,outputfilename,pe_files:list,b0_threshold):
         fsl=tools.FSL(self.software_info['FSL']['path'])
         fsl._set_num_threads(self.num_threads)
-        
         output=fsl.fslmerge(outputfilename,pe_files)
+        ## making merged bvals,bvecs
+        image_path_dict = {'bval': [], 'bvec':[]}
         ## making merged bvals,bvecs
         bvals_fn=Path(self.output_dir).joinpath(Path(outputfilename).name.split('.')[0]+'.bval')
         bvecs_fn=Path(self.output_dir).joinpath(Path(outputfilename).name.split('.')[0]+'.bvec')
 
-        input_bvals_fn_0=Path(self.output_dir).joinpath(Path(pe_files[0]).name.split('.')[0]+'.bval')
-        input_bvecs_fn_0=Path(self.output_dir).joinpath(Path(pe_files[0]).name.split('.')[0]+'.bvec')
-        input_bvals_fn_1=Path(self.output_dir).joinpath(Path(pe_files[1]).name.split('.')[0]+'.bval')
-        input_bvecs_fn_1=Path(self.output_dir).joinpath(Path(pe_files[1]).name.split('.')[0]+'.bvec')
+        for img in pe_files:
+            image_path_dict['bval'].append(Path(self.output_dir).joinpath(Path(img).name.split('.')[0]+'.bval'))
+            image_path_dict['bvec'].append(Path(self.output_dir).joinpath(Path(img).name.split('.')[0]+'.bvec'))
         
         with open(bvals_fn,'w') as fw:
-            bvals1=open(input_bvals_fn_0,'r').read()
-            bvals2=open(input_bvals_fn_1,'r').read()
-            bvals=bvals1+bvals2
+            bvals = ''
+            for path in image_path_dict['bval']:
+                bvals1=open(path,'r').read()
+                bvals += bvals1
             bvals_int=list(map(int,bvals.split()))
             for idx,b in enumerate(bvals_int):
                 if b<=b0_threshold:
@@ -270,11 +267,11 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             fw.write(bvals)
 
         with open(bvecs_fn,'w') as fw:
-            bvecs1=open(input_bvecs_fn_0,'r').read()
-            bvecs2=open(input_bvecs_fn_1,'r').read()
-            bvecs=bvecs1+bvecs2
+            bvecs = ''
+            for path in image_path_dict['bvec']:
+                bvecs1=open(path,'r').read()
+                bvecs += bvecs1
             fw.write(bvecs)
-
 
         logger(output.stdout)
         logger(output.stderr)

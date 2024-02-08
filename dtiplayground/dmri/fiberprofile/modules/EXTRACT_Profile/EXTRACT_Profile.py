@@ -62,36 +62,38 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         if input_is_dti:
             # check to see if the scalar images have already been generated
             # if not, generate them
-            dtiprocess = tools.DTIProcess(self.software_info['dtiprocess']['path'])
-            # Determine which scalars need to be generated
-            scalars_to_generate = []
-            for scalar in ['FA', 'MD', 'AD', 'RD']:
-                scalar_col_header = parameter_to_col_map[scalar]
-                scalars_to_generate.append(scalar)
-                df[scalar_col_header] = ''  # initialize the column as a string
-
-            for index, row in df.iterrows():
-                subject_id = str(row[parameter_to_col_map['Case ID']])
-                path_to_original_dti_image = row[parameter_to_col_map['Original DTI Image']]
-                scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
-                output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
-                # check if scalar_img_folder_path already exists
-                if scalar_img_folder_path.exists() and not recompute_scalars:
-                    logger(f"Skipping recomputation of scalars {', '. join(scalars_to_generate)} for subject " + subject_id)
-                else:
-                    scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
-                    options = ['--correction', 'none', '--saveScalarsAsFloat']
-                    # run dtiprocess to generate scalar images
-                    dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
-
-                # update the dataframe with the paths to the scalar images
-                for scalar in scalars_to_generate:
-                    scalar_col = parameter_to_col_map[scalar]
-                    scalar_img_path_str = output_stem.__str__() + '_' + scalar + '.nrrd'
-                    df.at[index, scalar_col] = scalar_img_path_str
-
-        # write the modified dataframe to the output directory
-        df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'), index=False)
+            self.generateScalarImages(df, path_to_csv, output_base_dir, recompute_scalars)
+        #
+        #     dtiprocess = tools.DTIProcess(self.software_info['dtiprocess']['path'])
+        #     # Determine which scalars need to be generated
+        #     scalars_to_generate = []
+        #     for scalar in ['FA', 'MD', 'AD', 'RD']:
+        #         scalar_col_header = parameter_to_col_map[scalar]
+        #         scalars_to_generate.append(scalar)
+        #         df[scalar_col_header] = ''  # initialize the column as a string
+        #
+        #     for index, row in df.iterrows():
+        #         subject_id = str(row[parameter_to_col_map['Case ID']])
+        #         path_to_original_dti_image = row[parameter_to_col_map['Original DTI Image']]
+        #         scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
+        #         output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
+        #         # check if scalar_img_folder_path already exists
+        #         if scalar_img_folder_path.exists() and not recompute_scalars:
+        #             logger(f"Skipping recomputation of scalars {', '. join(scalars_to_generate)} for subject " + subject_id)
+        #         else:
+        #             scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
+        #             options = ['--correction', 'none', '--saveScalarsAsFloat']
+        #             # run dtiprocess to generate scalar images
+        #             dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, scalars_to_generate, options)
+        #
+        #         # update the dataframe with the paths to the scalar images
+        #         for scalar in scalars_to_generate:
+        #             scalar_col = parameter_to_col_map[scalar]
+        #             scalar_img_path_str = output_stem.__str__() + '_' + scalar + '.nrrd'
+        #             df.at[index, scalar_col] = scalar_img_path_str
+        #
+        # # write the modified dataframe to the output directory
+        # df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'), index=False)
 
         parameterized_fibers_path = Path(output_base_dir).joinpath('parameterized_fibers')
         parameterized_fibers_path.mkdir(parents=True, exist_ok=True)
@@ -186,55 +188,54 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         self.result['output']['success'] = True
         return self.result
 
-    """
-    Runs the fiberprocess binary using the Python wrapper in the common tools.
-    """
 
-    def runFiberProcess(self, args=None):
-        inputParams = self.getPreviousResult()['output']
-        path_to_csv = inputParams["file_path"]
-        atlas_path = self.protocol["atlas"]
-        tracts = self.protocol["tracts"]
+    def generateScalarImages(self, df: pd.DataFrame, path_to_csv: str, parameter_to_col_map: dict, output_base_dir: str,
+                         recompute_scalars: bool = False):
+        """
+        Generate scalar images and update the dataframe with paths to the scalar images.
 
-        properties_to_profile = self.protocol["propertiesToProfile"]
+        Parameters:
+        - df: pandas DataFrame containing information about DTI images and scalar paths.
+        - parameter_to_col_map: Mapping of parameters to column names in the DataFrame.
+        - output_base_dir: Base directory for storing scalar images.
+        - recompute_scalars: Boolean indicating whether to recompute scalar images if already present.
 
-        # call fiberprocess
-        print(self.software_info)
+        Returns:
+        None
+        """
+        dtiprocess = tools.DTIProcess(self.software_info['dtiprocess']['path'])
 
-    """
-    Runs the fiberpostprocess binary using the Python wrapper in the common tools.
-    """
+        for scalar in ['FA', 'MD', 'AD', 'RD']:
+            scalar_col_header = parameter_to_col_map[scalar]
+            df[scalar_col_header] = ''  # initialize the column as a string
 
-    def runFiberPostProcess(self, args=None):
-        inputParams = self.getPreviousResult()['output']
-        path_to_csv = inputParams["file_path"]
-        atlas_path = self.protocol["atlas"]
-        tracts = self.protocol["tracts"]
+        for index, row in df.iterrows():
+            subject_id = str(row[parameter_to_col_map['Case ID']])
+            path_to_original_dti_image = row[parameter_to_col_map['Original DTI Image']]
+            scalar_img_folder_path = Path(output_base_dir).joinpath("scalar_images").joinpath(subject_id)
+            output_stem = scalar_img_folder_path.joinpath(Path(path_to_original_dti_image).stem).__str__()
 
-        properties_to_profile = self.protocol["propertiesToProfile"]
+            # check if scalar_img_folder_path already exists
+            if scalar_img_folder_path.exists() and not recompute_scalars:
+                logger(
+                    f"Skipping recomputation of scalars {', '.join(['FA', 'MD', 'AD', 'RD'])} for subject " + subject_id)
+            else:
+                scalar_img_folder_path.mkdir(parents=True, exist_ok=True)
+                options = ['--correction', 'none', '--saveScalarsAsFloat']
+                # run dtiprocess to generate scalar images
+                dtiprocess.measure_scalar_list(path_to_original_dti_image, output_stem, ['FA', 'MD', 'AD', 'RD'],
+                                               options)
 
-        # call fiberpostprocess
-        fiberpostprocess = tools.FiberPostProcses(self.software_info['fiberpostprocess']['path'])
-        fiberpostprocess_output_path = Path(self.output_dir).joinpath('tensor.nrrd').__str__()
-        options = []
-        fiberpostprocess.run(path_to_csv, atlas_path, tracts, properties_to_profile, fiberpostprocess_output_path,
-                             options=options)
+            # update the dataframe with the paths to the scalar images
+            for scalar in ['FA', 'MD', 'AD', 'RD']:
+                scalar_col = parameter_to_col_map[scalar]
+                scalar_img_path_str = output_stem.__str__() + '_' + scalar + '.nrrd'
+                df.at[index, scalar_col] = scalar_img_path_str
 
-    """
-    Runs the dtitractstat binary using the Python wrapper in the common tools.
-    """
+        # write the modified dataframe to the output directory
+        df.to_csv(Path(output_base_dir).joinpath(Path(path_to_csv).stem.__str__() + '_with_scalars.csv'),
+                  index=False)
 
-    def runDTITractStat(self, args=None):
-        inputParams = self.getPreviousResult()['output']
-        path_to_csv = inputParams["file_path"]
-        atlas_path = self.protocol["atlas"]
-        tracts = self.protocol["tracts"]
+    # Example usage:
+    # generate_scalars(df, parameter_to_col_map, output_base_dir, recompute_scalars=False)
 
-        properties_to_profile = self.protocol["propertiesToProfile"]
-
-        # call dtitractstat
-        dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
-        dtitractstat_output_path = Path(self.output_dir).joinpath('tensor.nrrd').__str__()
-        options = []
-        dtitractstat.run(path_to_csv, atlas_path, tracts, properties_to_profile, dtitractstat_output_path,
-                         options=options)

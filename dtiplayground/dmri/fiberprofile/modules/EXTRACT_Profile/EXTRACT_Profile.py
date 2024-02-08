@@ -139,9 +139,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         options = []
                         fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                         fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
-                    # TODO: FIx this
-                    if False:
-                    # if Path(dtitractstat_output_path).exists() and not recompute_scalars:
+                    if Path(dtitractstat_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping dtitractstat of scalar {prop} for subject {subject_id}")
                     else:
                         # run dtitractstat

@@ -36,8 +36,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         properties_to_profile = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
         result_case_columnwise = self.protocol["resultCaseColumnwise"]
         input_is_dti = self.protocol["inputIsDTI"]
-        overwrite = protocol_options['overwrite']
-        overwrite = overwrite if overwrite is not None else False
+        overwrite = self.options['overwrite']
 
         df = pd.read_csv(path_to_csv)
 

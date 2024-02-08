@@ -741,7 +741,6 @@ def get_args():
     ## generate-default-protocols
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
     parser_make_protocols.add_argument('-i','--input-files',help='Input image paths',type=str,nargs='+',required=True)
-    parser_make_protocols.add_argument('--overwrite',help='Overwrite existing files/steps (True) or use these files (False)',type=bool,default=None)
     parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
     parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",

@@ -27,18 +27,22 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         inputParams = self.getPreviousResult()['output']
         protocol_options = args[0]
         self.software_info = protocol_options['software_info']['softwares']
-        # << TODOS>>
+
+        # Reading some parameters
         path_to_csv = inputParams["file_path"]
-        df = pd.read_csv(path_to_csv)
+        output_base_dir = self.output_dir  # output directory string
         atlas_path = self.protocol["atlas"]
         tracts = self.protocol["tracts"].split(',')
-        output_base_dir = self.output_dir  # output directory string
         properties_to_profile = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
+        result_case_columnwise = self.protocol["resultCaseColumnwise"]
+        input_is_dti = self.protocol["inputIsDTI"]
+        overwrite = protocol_options['overwrite']
+        overwrite = overwrite if overwrite is not None else False
 
-        # TODO: link these parameters to the protocol
-        input_is_dti = True
-        recompute_scalars = False
-        result_case_columnwise = True
+        df = pd.read_csv(path_to_csv)
+
+        recompute_scalars = overwrite
+
 
         # Get parameter to col map, overriding with user inputs if necessary
         # Generate default map

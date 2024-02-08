@@ -18,7 +18,11 @@ protocol: #define protocol parameters here
         caption: Comma delimited list of file names of tracts in atlas directory
         default_value: null
         description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
-    # TODO: Add support for multiple properties to profile
+    inputIsDTI:
+        type: boolean
+        caption: Input is DTI
+        default_value: true
+        description: Input image is a DTI, so the properties to profile are derived from it.
     propertiesToProfile: # tensor related properties (e.g. FA, MD, etc.) require an input DTI volume
         type: list
         caption: Properties to profile
@@ -29,6 +33,11 @@ protocol: #define protocol parameters here
         caption: Property to column header map
         default_value: null
         description: Map of parameters of column headers to use for each property to profile
+    resultCaseColumnwise:
+        type: boolean
+        caption: Store cases as columns in result
+        default_value: true
+        description: In output CSV, store cases as columns instead of rows
     # TODO: Add support for a "per tract origin file" option where a user can specify their origins per tract in a file
     planeOfOrigin:
         type: list

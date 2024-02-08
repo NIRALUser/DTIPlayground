@@ -163,8 +163,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
                     # extract fvp data
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
-                    logger(fvp_data.head().__str__())
-                    logger(fvp_data.tail().__str__())
+
                     # write fvp data to csv
                     if tract_stat_df is None:
                         if result_case_columnwise:

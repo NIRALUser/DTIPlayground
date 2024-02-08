@@ -151,7 +151,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                             parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(
                                 tract_name_stem + "_parameterized.vtk")
                             # TODO: Change this condition back
-                            if parameterized_fiber_output_path.exists() and not recompute_scalars and False:
+                            if parameterized_fiber_output_path.exists() and not recompute_scalars:
                                 logger(f"Skipping parameterized fiber generation of tract {tract}")
                             else:
                                 logger(f"Generating parameterized fiber profile for tract {tract}")
@@ -180,7 +180,6 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
                         tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
 
-                logger(tract_stat_df.__str__())
                 tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
 
         self.result['output']['success'] = True

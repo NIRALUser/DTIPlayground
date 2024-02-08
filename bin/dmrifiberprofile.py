@@ -635,7 +635,6 @@ def command_run(args):
     options={
         "config_dir" : args.config_dir,
         "input_file_paths" : args.input_file_list,
-        "overwrite": args.overwrite,
         "protocol_path" : args.protocols,
         "output_dir" : args.output_dir,
         "default_protocols":args.default_protocols,
@@ -755,12 +754,11 @@ def get_args():
     ## run command
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
     parser_run.add_argument('-i','--input-file-list',help='Input file paths',type=str,nargs='+',required=True)
-    parser_run.add_argument('--overwrite',help='Overwrite existing files/steps (True) or use these files (False)',type=bool,default=None)
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output',type=str)
-    parser_run.add_argument('--num-threads',help="Number of threads to use",default=None,type=int,required=False)
+    parser_run.add_argument('t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
     run_exclusive_group.add_argument('--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')

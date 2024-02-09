@@ -758,7 +758,7 @@ def get_args():
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output',type=str)
-    parser_run.add_argument('t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
+    parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
     run_exclusive_group.add_argument('--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')

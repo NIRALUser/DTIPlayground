@@ -37,6 +37,12 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         result_case_columnwise = self.protocol["resultCaseColumnwise"]
         input_is_dti = self.protocol["inputIsDTI"]
         overwrite = self.options['overwrite']
+        analyzeImageInAtlasSpace = self.protocol["analyzeImageInAtlasSpace"]
+        step_size = self.protocol["stepSize"]
+        plane_of_origin = self.protocol["planeOfOrigin"]
+        support_bandwidth = self.protocol["supportBandwidth"]
+        noNaN = self.protocol["noNaN"]
+        mask = self.protocol["mask"]
 
         df = pd.read_csv(path_to_csv)
 
@@ -128,6 +134,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         options += ['--scalarName', scalar_name]
                         options += ['--ScalarImage', scalar_img_path]
                         options += ['--no_warp']
+                        if analyzeImageInAtlasSpace:
+                            options += ['--displacement_field', row[parameter_to_col_map['Deformation Field']]]
                         fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
                         fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path,
                                          options=options)
@@ -138,6 +146,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     else:
                         # run fiberpostprocess
                         options = []
+                        if mask is not None:
+                            options += ['--mask', mask]
+                        if noNaN:
+                            options += ['--noNan']
                         fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                         fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
                     if Path(dtitractstat_output_path).exists() and not recompute_scalars:
@@ -150,7 +162,6 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                             tract_name_stem: str = Path(tract).stem
                             parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(
                                 tract_name_stem + "_parameterized.vtk")
-                            # TODO: Change this condition back
                             if parameterized_fiber_output_path.exists() and not recompute_scalars:
                                 logger(f"Skipping parameterized fiber generation of tract {tract}")
                             else:
@@ -158,6 +169,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                 tract_absolute_filename = Path(atlas_path).joinpath(
                                     tract)
                                 options += ['-f', parameterized_fiber_output_path.__str__()]
+                                options += ['--step_size', step_size]
+                                if noNaN:
+                                    options += ['--noNaN']
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 

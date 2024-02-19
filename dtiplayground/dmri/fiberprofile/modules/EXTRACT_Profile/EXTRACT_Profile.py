@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 
@@ -29,24 +30,24 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         self.software_info = protocol_options['software_info']['softwares']
 
         # Reading some parameters
-        path_to_csv = inputParams["file_path"]
-        output_base_dir = self.output_dir  # output directory string
-        atlas_path = self.protocol["atlas"]
-        tracts = self.protocol["tracts"].split(',')
-        properties_to_profile = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
-        result_case_columnwise = self.protocol["resultCaseColumnwise"]
-        input_is_dti = self.protocol["inputIsDTI"]
-        overwrite = self.options['overwrite']
-        analyzeImageInAtlasSpace = self.protocol["analyzeImageInAtlasSpace"]
-        step_size = self.protocol["stepSize"]
-        plane_of_origin = self.protocol["planeOfOrigin"]
-        support_bandwidth = self.protocol["supportBandwidth"]
-        noNaN = self.protocol["noNaN"]
-        mask = self.protocol["mask"]
+        path_to_csv: str = inputParams["file_path"]
+        output_base_dir: str = self.output_dir  # output directory string
+        atlas_path: str = self.protocol["atlas"]
+        tracts: List[str] = self.protocol["tracts"].split(',')
+        properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
+        result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
+        input_is_dti: bool = self.protocol["inputIsDTI"]
+        overwrite: bool = self.options['overwrite']
+        analyzeImageInAtlasSpace: bool = self.protocol["analyzeImageInAtlasSpace"]
+        step_size: int = self.protocol["stepSize"]
+        plane_of_origin: str = self.protocol["planeOfOrigin"]
+        support_bandwidth: int = self.protocol["supportBandwidth"]
+        noNaN: str = self.protocol["noNaN"]
+        mask: str = self.protocol["mask"]
 
         df = pd.read_csv(path_to_csv)
 
-        recompute_scalars = overwrite
+        recompute_scalars: bool = overwrite
 
 
         # Get parameter to col map, overriding with user inputs if necessary
@@ -170,8 +171,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                     tract)
                                 options += ['-f', parameterized_fiber_output_path.__str__()]
                                 options += ['--step_size', step_size]
+                                options += ['--bandwidth', support_bandwidth]
+                                options += ['--auto_plane_origin', plane_of_origin.lower()]
                                 if noNaN:
-                                    options += ['--noNaN']
+                                    options += ['--remove_nan_fibers']
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
 

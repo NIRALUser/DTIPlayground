@@ -39,9 +39,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         input_is_dti: bool = self.protocol["inputIsDTI"]
         overwrite: bool = self.options['overwrite']
         analyzeImageInAtlasSpace: bool = self.protocol["analyzeImageInAtlasSpace"]
-        step_size: str = self.protocol["stepSize"]
+        step_size: str = str(self.protocol["stepSize"])
         plane_of_origin: str = self.protocol["planeOfOrigin"]
-        support_bandwidth: str = self.protocol["supportBandwidth"]
+        support_bandwidth: str = str(self.protocol["supportBandwidth"])
         noNaN: str = self.protocol["noNaN"]
         mask: str = self.protocol["mask"]
 

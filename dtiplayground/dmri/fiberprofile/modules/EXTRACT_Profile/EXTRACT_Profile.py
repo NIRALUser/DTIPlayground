@@ -28,6 +28,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         inputParams = self.getPreviousResult()['output']
         protocol_options = args[0]
         self.software_info = protocol_options['software_info']['softwares']
+        print(f"Software info: {self.software_info}")
 
         # Reading some parameters
         path_to_csv: str = inputParams["file_path"]

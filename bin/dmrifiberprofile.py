@@ -1,7 +1,7 @@
 #!python
 
 import shutil
-import os 
+import os
 import importlib
 from pathlib import Path
 import argparse,yaml
@@ -16,7 +16,7 @@ import dtiplayground.dmri.common
 import dtiplayground.dmri.common.module
 from dtiplayground.config import INFO as info
 
-logger=dtiplayground.dmri.common.logger.write 
+logger=dtiplayground.dmri.common.logger.write
 color= dtiplayground.dmri.common.Color
 
 ### unit functions
@@ -43,7 +43,7 @@ def resolve_softwarepaths(spathobj, globalvars):
     else:
         tooldir=os.environ['DTIPLAYGROUNDTOOLS']
         if Path(os.environ['DTIPLAYGROUNDTOOLS']).exists():
-            
+
             logger("DTI playground tools are found in {}".format(tooldir),color.OK)
         else:
             logger("DTI playground tools are not found in {}".format(tooldir),color.ERROR)
@@ -55,7 +55,7 @@ def resolve_softwarepaths(spathobj, globalvars):
             logger("FSL directory is found at {}".format(os.environ['FSL']),color.OK)
         else:
             logger("FSL directory is set in environment variable FSL, but doesn't exist",color.WARNING)
-    
+
     sp = spathobj['softwares']
     for k,v in sp.items():
         resolved_path = os.path.expandvars(v['path'])
@@ -77,7 +77,7 @@ def check_initialized(args):
         if not config_file.exists():  return False
         if not environment_file.exists(): return False
         return True
-    else: 
+    else:
         return False
 
 def load_configurations(config_dir:str):
@@ -99,7 +99,7 @@ def after_initialized(func): #decorator for other functions other than command_i
             environment_file=home_dir.joinpath('environment.yml')
             initialize_logger(args)
             return func(args)
-        else: 
+        else:
             # raise Exception("Not initialized, please run init command at the first use")
             logger("Configuration directory is not found or some files are missing, commencing initialization ...",dtiplayground.dmri.common.Color.WARNING)
             command_init(args)
@@ -114,7 +114,7 @@ def log_off(func):
         dtiplayground.dmri.common.logger.setVerbosity(False)
         res=func(*args,**kwargs)
         dtiplayground.dmri.common.logger.setVerbosity(True)
-        return res 
+        return res
     return wrapper
 
 def search_fsl(lookupdirs=None):
@@ -138,7 +138,7 @@ def search_fsl(lookupdirs=None):
         search_dirs=[]
         if lookupdirs is None or len(lookupdirs) < 1:
             search_dir = input("Specify the directory of installed FSL [/] :")
-            if not search_dir: 
+            if not search_dir:
                 search_dirs = ['/']
             else:
                 search_dirs = [search_dir]
@@ -152,7 +152,7 @@ def search_fsl(lookupdirs=None):
             candidates = search_dir.glob("**/bin/fsl")
             logger("Searching FSL in {}".format(search_dir.__str__()),color.PROCESS)
             for c in candidates:
-                
+
                 c = Path(c)
                 if c.__str__().lower().endswith('/bin/fsl'):
                     fslpath = c.resolve().parent.parent
@@ -181,12 +181,12 @@ def search_fsl(lookupdirs=None):
     else:
         return None
 
-def search_dtiplayground_tools(lookupdirs=None):   
+def search_dtiplayground_tools(lookupdirs=None):
     target_path=None
     search_dirs=[]
     if lookupdirs is None or len(lookupdirs) < 1:
         search_dir = input("Specify the directory of installed DTI Playground tools [/] :")
-        if not search_dir: 
+        if not search_dir:
             search_dirs = ['/']
         else:
             search_dirs = [search_dir]
@@ -223,7 +223,7 @@ def search_dtiplayground_tools(lookupdirs=None):
         return res
     else:
         return None
-    
+
 def update_software_paths(args, globalvars):
     home_dir=Path(args.config_dir)
     software_info_path=Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/common/data/software_paths.yml")
@@ -256,12 +256,12 @@ def command_find_tools(args):
     ## search FSL
     fsl_info = search_fsl(lookupdirs=lookup_dirs)
     if fsl_info is not None:
-        globalvars.update(fsl_info) 
+        globalvars.update(fsl_info)
         logger("Selected FSL directory is : {}".format(fsl_info['fsl']['path']),color.INFO)
     else:
         logger("FSL was not found",color.ERROR)
     ## search DTI Playground Tools
-    
+
     dpt_info = search_dtiplayground_tools(lookupdirs=lookup_dirs)
     if dpt_info is not None:
         globalvars.update(dpt_info)
@@ -331,7 +331,7 @@ def command_install_tools(args):
             globalvars['fsl']={
                 'path' : fsldir.resolve().__str__(),
                 'info' : info
-            }            
+            }
 
     ### DTI playground tools (build with docker, centos7 for now)
     tempdir.mkdir(parents=True,exist_ok=True)
@@ -345,7 +345,7 @@ def command_install_tools(args):
                 fetch_dtiplaygroundtools = ["git","clone","https://github.com/niraluser/dtiplaygroundtools.git"]
                 subprocess.run(fetch_dtiplaygroundtools)
                 logger("Source codes downloaded")
-            
+
             os.chdir(srcdir.joinpath('dockerfiles'))
             build_command = ['./build.sh']
             logger("Building software packages ... ")
@@ -456,7 +456,7 @@ def command_init(args):
     yaml.dump(environment,open(environment_filename,'w'))
     logger("Environment file written to : {}".format(str(environment_filename)),color.INFO)
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),color.OK)
-    
+
     return True
 
 
@@ -492,7 +492,7 @@ def check_if_module_exists(args,module_name):
         return True
     if user_module_root_dir.joinpath(module_name).exists():
         return True
-    return False 
+    return False
 
 @after_initialized
 def command_add_module(args):
@@ -510,7 +510,7 @@ def command_add_module(args):
         logger("Module {} exists in {} or {}".format(module_name, user_module_root_dir.__str__(), system_module_root_dir.__str__()), color.ERROR)
         return False
 
-    if base_module_name is None: ### NEW module 
+    if base_module_name is None: ### NEW module
         logger("Making directories and files ... ", color.PROCESS)
         module_dir.mkdir(parents=True,exist_ok=False)
         module_template_fn =Path(dtiplayground.__file__).resolve().parent.joinpath("dmri/fiberprofile/templates/module_template.py")
@@ -604,10 +604,9 @@ def command_make_protocols(args):
     ## reparametrization
     options={
         "config_dir" : args.config_dir,
-        "input_image_paths" : args.input_images,
+        "input_file_paths" : args.input_files,
         "module_list": args.module_list,
         "output_path" : args.output,
-        "baseline_threshold" : args.b0_threshold,
         "output_format" : args.output_format,
         "no_output_image" : args.no_output_image,
         "global_variables" : parse_global_variables(args.global_variables)
@@ -619,7 +618,7 @@ def command_make_protocols(args):
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
     template=yaml.safe_load(open(template_path,'r'))
     proto=dtiplayground.dmri.fiberprofile.protocols.Protocols(options['config_dir'],global_vars=options['global_variables'])
-    proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
+    proto.loadDataSheets(options['input_file_paths'])
     if options['module_list'] is not None and  len(options['module_list'])==0:
             options['module_list']=None
     proto.makeDefaultProtocols(options['module_list'],template=template,options=options)
@@ -635,16 +634,14 @@ def command_run(args):
     ## reparametrization
     options={
         "config_dir" : args.config_dir,
-        "input_image_paths" : args.input_image_list,
+        "input_file_paths" : args.input_file_list,
         "protocol_path" : args.protocols,
         "output_dir" : args.output_dir,
         "default_protocols":args.default_protocols,
         "num_threads":args.num_threads,
         "execution_id":args.execution_id,
-        "baseline_threshold" : args.b0_threshold,
         "output_format" : args.output_format,
         "output_file_base" : args.output_file_base,
-        "no_output_image" : args.no_output_image,
         "global_variables" : parse_global_variables(args.global_variables)
     }
     if args.output_format is not None:
@@ -654,7 +651,7 @@ def command_run(args):
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
     template=yaml.safe_load(open(template_path,'r'))
     proto=dtiplayground.dmri.fiberprofile.protocols.Protocols(options['config_dir'], global_vars=options['global_variables'])
-    proto.loadImages(options['input_image_paths'],b0_threshold=options['baseline_threshold'])
+    proto.loadDataSheets(options['input_file_paths'])
     if options['output_dir'] is None:
         raise Exception("Output directory is missing")
     else:
@@ -671,11 +668,11 @@ def command_run(args):
         proto.setNumThreads(options['num_threads'])
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
-    dtiplayground.dmri.common.logger.setLogfile(logfilename)  
+    dtiplayground.dmri.common.logger.setLogfile(logfilename)
     logger("\r----------------------------------- Fiber profiling Begins ----------------------------------------\n")
     res=proto.runPipeline(options=options)
     logger("\r----------------------------------- Fiber profiling Done ----------------------------------------\n")
-    return res 
+    return res
 ### Arguments 
 
 def get_args():
@@ -703,7 +700,7 @@ def get_args():
                                    description="dmrifiberprofile allows the generation and processing of tract profile data from white matter fiber tracts.",
                                    epilog="Written by SK Park (sangkyoon_park@med.unc.edu), Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2022")
     subparsers=parser.add_subparsers(help="Commands")
-    
+
     ## init command
     parser_init=subparsers.add_parser('init',help='Initialize configurations')
     parser_init.set_defaults(func=command_init)
@@ -720,7 +717,7 @@ def get_args():
     parser_new_module.set_defaults(func=command_add_module)
 
 
-    ## remove user module 
+    ## remove user module
     parser_remove_module=subparsers.add_parser('remove-module', help='Remove a user module from user module directory')
     parser_remove_module.add_argument('name', help="Module name")
     parser_remove_module.set_defaults(func=command_remove_module)
@@ -742,30 +739,28 @@ def get_args():
 
     ## generate-default-protocols
     parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
-    parser_make_protocols.add_argument('-i','--input-images',help='Input image paths',type=str,nargs='+',required=True)
+    parser_make_protocols.add_argument('-i','--input-files',help='Input image paths',type=str,nargs='+',required=True)
     parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
     parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
-                                        help='Default protocols with specified list of modules, only works with default protocols. Example : -d DIFFUSION_Check SLICE_Check',
+                                        help='Default protocols with specified list of modules, only works with '
+                                             'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
                                         default=None,nargs='*')
-    parser_make_protocols.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
     parser_make_protocols.add_argument('--no-output-image',help="No output image file will be generated",default=False,action='store_true')
     parser_make_protocols.set_defaults(func=command_make_protocols)
-        
+
 
     ## run command
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
-    parser_run.add_argument('-i','--input-image-list',help='Input image paths',type=str,nargs='+',required=True)
+    parser_run.add_argument('-i','--input-file-list',help='Input file paths',type=str,nargs='+',required=True)
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
+    parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output',type=str)
     parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
-    parser_run.add_argument('--no-output-image',help="No output output image file will be generated",default=False,action='store_true')
-    parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
-    parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output  (NRRD | NIFTI)',type=str)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
-    run_exclusive_group.add_argument('-p','--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
+    run_exclusive_group.add_argument('--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
     parser_run.set_defaults(func=command_run)
 
@@ -786,12 +781,12 @@ def get_args():
     if args.version:
         sys.exit(1)
 
-    return args 
+    return args
 
 ## threading environment
 args=get_args()
 if hasattr(args,'num_threads'):
-    os.environ['OMP_NUM_THREADS']=str(args.num_threads) ## this should go before loading any dipy function. 
+    os.environ['OMP_NUM_THREADS']=str(args.num_threads) ## this should go before loading any dipy function.
     os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(args.num_threads) ## for ANTS threading
 
 import dtiplayground.dmri.fiberprofile

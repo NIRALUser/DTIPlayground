@@ -75,7 +75,10 @@ options:
         - value: IDENTITY_Process
           caption: Identity Process
           description: Just pass image to the next module
-      default_value: ## default elements 
+        - value: EXTRACT_Profile
+          caption: Extract Profile
+          description: Extract profile for fiber tract(s)
+      default_value: ## default elements
         - IDENTITY_Process
 
       description: Pipeline queue which executes as first in first processed.

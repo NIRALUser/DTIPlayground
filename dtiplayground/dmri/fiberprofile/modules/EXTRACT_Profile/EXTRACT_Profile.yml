@@ -1,0 +1,79 @@
+name: EXTRACT_Profile
+caption: EXTRACT_Profile
+description: Custom module
+version: "0.1"
+dependency: []
+module_type: fiberprofile
+process_attributes:
+    - utility
+result: null
+protocol: #define protocol parameters here
+    atlas: # Not used directly. Added to beginning of each tract file path
+        type: directory
+        caption: Atlas directory
+        default_value: null
+        description: Directory containing set of fiber tracts in the atlas to be analyzed
+    tracts:
+        type: string
+        caption: Comma delimited list of file names of tracts in atlas directory
+        default_value: null
+        description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
+    inputIsDTI:
+        type: boolean
+        caption: Input is DTI
+        default_value: true
+        description: Input image is a DTI, so the properties to profile are derived from it.
+    propertiesToProfile: # tensor related properties (e.g. FA, MD, etc.) require an input DTI volume
+        type: list
+        caption: Properties to profile
+        default_value: null
+        description: List of selected properties to profile along tracts
+    useDisplacementField:
+        type: boolean
+        caption: Use displacement field to transform image to atlas space
+        default_value: true
+        description: Convert image to atlas space using displacement field. If set to false, the image will not be transformed to atlas space.
+    parameterToColumnHeaderMap: # Optional map of parameters (e.g., scalar names, case id) to column headers
+        type: dictionary
+        caption: Property to column header map
+        default_value: null
+        description: Map of parameters of column headers to use for each property to profile
+    resultCaseColumnwise:
+        type: boolean
+        caption: Store cases as columns in result
+        default_value: true
+        description: In output CSV, store cases as columns instead of rows
+    # TODO: Add support for a "per tract origin file" option where a user can specify their origins per tract in a file
+    planeOfOrigin:
+        type: list
+        caption: Type of plane of origin
+        candidates:
+            - value: Median
+              caption: Median
+              description: Origin of profile will be median of tract
+            - value: CoG
+              caption: Center of gravity
+              description: Origin of profile will be center of gravity
+        default_value: Median
+        description: Determines plane that sets the origin of the profile arc length
+    stepSize:
+        type: integer
+        caption: Step size
+        default_value: 1
+        description: How far long the tract to step for each new fiber profile location
+    supportBandwidth:
+        type: integer
+        caption: Support/bandwidth
+        default_value: 1
+        description: Kernel support for DTITractStat
+    noNaN:
+        type: boolean
+        caption: No NaN
+        default_value: false
+        description: Remove fibers with NaN values (used both for FiberPostProcess and DTITractStat)
+    mask:
+        type: file
+        caption: Mask
+        default_value: null
+        description: Optional mask file to use during profile extraction. Mask has to be defined in atlas space.
+

@@ -51,6 +51,7 @@ class DMRIPrepApp(AppBase):
         logger("Software path file is written to : {}".format(str(software_filename)),color.INFO)
         system_module_paths = [Path(dtiplayground.__file__).resolve().parent.joinpath('dmri/preprocessing/modules')]
         modules=module.load_modules(system_module_paths = system_module_paths, user_module_paths=config['user_module_directories'])
+        # The below line spells "environment" wrong
         environment=module.generate_module_envionrment(modules,str(home_dir))
         yaml.dump(environment,open(environment_filename,'w'))
         logger("Environment file written to : {}".format(str(environment_filename)),color.INFO) 

@@ -28,9 +28,9 @@ protocol: #define protocol parameters here
         caption: Properties to profile
         default_value: null
         description: List of selected properties to profile along tracts
-    analyzeImageInAtlasSpace:
+    useDisplacementField:
         type: boolean
-        caption: Analyze image in atlas space
+        caption: Use displacement field to transform image to atlas space
         default_value: true
         description: Convert image to atlas space using displacement field. If set to false, the image will not be transformed to atlas space.
     parameterToColumnHeaderMap: # Optional map of parameters (e.g., scalar names, case id) to column headers

@@ -38,7 +38,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
         input_is_dti: bool = self.protocol["inputIsDTI"]
         overwrite: bool = self.options['overwrite']
-        analyzeImageInAtlasSpace: bool = self.protocol["analyzeImageInAtlasSpace"]
+        use_displacement_field: bool = self.protocol["useDisplacementField"]
         step_size: str = str(self.protocol["stepSize"])
         plane_of_origin: str = self.protocol["planeOfOrigin"]
         support_bandwidth: str = str(self.protocol["supportBandwidth"])
@@ -135,7 +135,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         options += ['--scalarName', scalar_name]
                         options += ['--ScalarImage', scalar_img_path]
                         options += ['--no_warp']
-                        if analyzeImageInAtlasSpace:
+                        if use_displacement_field:
                             options += ['--displacement_field', row[parameter_to_col_map['Deformation Field']]]
                         fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
                         fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path,

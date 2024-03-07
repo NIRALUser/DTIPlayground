@@ -637,15 +637,15 @@ def command_run(args):
         "input_file_paths" : args.input_file_list,
         "protocol_path" : args.protocols,
         "output_dir" : args.output_dir,
-        "default_protocols":args.default_protocols,
+        "default_protocols": None, # Change this back to args.default_protocols if/when implemented
         "num_threads":args.num_threads,
         "execution_id":args.execution_id,
-        "output_format" : args.output_format,
+        # "output_format" : args.output_format,
         "output_file_base" : args.output_file_base,
         "global_variables" : parse_global_variables(args.global_variables)
     }
-    if args.output_format is not None:
-        options['output_format']=args.output_format.lower()
+    # if args.output_format is not None:
+    #     options['output_format']=args.output_format.lower()
     ## load config file and run pipeline
     config,environment = load_configurations(options['config_dir'])
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
@@ -738,17 +738,17 @@ def get_args():
     parser_install_tools.set_defaults(func=command_install_tools)
 
     ## generate-default-protocols
-    parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
-    parser_make_protocols.add_argument('-i','--input-files',help='Input image paths',type=str,nargs='+',required=True)
-    parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
-    parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
-    parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
-                                        help='Default protocols with specified list of modules, only works with '
-                                             'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
-                                        default=None,nargs='*')
-    parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
-    parser_make_protocols.add_argument('--no-output-image',help="No output image file will be generated",default=False,action='store_true')
-    parser_make_protocols.set_defaults(func=command_make_protocols)
+    # parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
+    # parser_make_protocols.add_argument('-i','--input-datasheet',help='Input data sheet with image paths',type=str,nargs='+',required=True)
+    # parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
+    # parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
+    # parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
+    #                                     help='Default protocols with specified list of modules, only works with '
+    #                                          'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
+    #                                     default=None,nargs='*')
+    # parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
+    # parser_make_protocols.add_argument('--no-output-image',help="No output image file will be generated",default=False,action='store_true')
+    # parser_make_protocols.set_defaults(func=command_make_protocols)
 
 
     ## run command
@@ -757,11 +757,11 @@ def get_args():
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
-    parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output',type=str)
+    # parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output',type=str)
     parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=None,type=int,required=False)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
     run_exclusive_group.add_argument('--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
-    run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
+    # run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
     parser_run.set_defaults(func=command_run)
 
     ## log related

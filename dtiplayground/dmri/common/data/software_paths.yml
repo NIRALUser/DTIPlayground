@@ -20,7 +20,11 @@ softwares:
     path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/dtiestim
   fiberprocess:
     path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/fiberprocess
-  BRAINSFit: 
+  fiberpostprocess:
+    path: ${DTIPLAYGROUNDTOOLS}/DTIFiberTractStatistics/bin/fiberpostprocess
+  dtitractstat:
+    path: ${DTIPLAYGROUNDTOOLS}/DTIFiberTractStatistics/bin/dtitractstat
+  BRAINSFit:
     path: ${DTIPLAYGROUNDTOOLS}/BRAINSTools/bin/BRAINSFit
   GreedyAtlas: 
     path: ${DTIPLAYGROUNDTOOLS}/AtlasWerks/bin/GreedyAtlas

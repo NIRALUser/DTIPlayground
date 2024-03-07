@@ -738,17 +738,17 @@ def get_args():
     parser_install_tools.set_defaults(func=command_install_tools)
 
     ## generate-default-protocols
-    parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
-    parser_make_protocols.add_argument('-i','--input-files',help='Input image paths',type=str,nargs='+',required=True)
-    parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
-    parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
-    parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
-                                        help='Default protocols with specified list of modules, only works with '
-                                             'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
-                                        default=None,nargs='*')
-    parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
-    parser_make_protocols.add_argument('--no-output-image',help="No output image file will be generated",default=False,action='store_true')
-    parser_make_protocols.set_defaults(func=command_make_protocols)
+    # parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
+    # parser_make_protocols.add_argument('-i','--input-datasheet',help='Input data sheet with image paths',type=str,nargs='+',required=True)
+    # parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
+    # parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
+    # parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
+    #                                     help='Default protocols with specified list of modules, only works with '
+    #                                          'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
+    #                                     default=None,nargs='*')
+    # parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
+    # parser_make_protocols.add_argument('--no-output-image',help="No output image file will be generated",default=False,action='store_true')
+    # parser_make_protocols.set_defaults(func=command_make_protocols)
 
 
     ## run command

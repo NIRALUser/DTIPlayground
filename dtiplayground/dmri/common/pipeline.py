@@ -347,8 +347,8 @@ class Pipeline:
 
     def checkImage(self):
          if len(self.images) == 0 and len(self.file_paths) == 0:
-            logger("[ERROR] Image is not loaded.",common.Color.ERROR)
-            raise Exception("Image is not set")       
+            logger("[ERROR] Datasheet is not loaded.",common.Color.ERROR)
+            raise Exception("Datasheet is not set")
     def checkPipeline(self):
         if self.pipeline is None:
             logger("[ERROR] Protocols are not set.",common.Color.ERROR)

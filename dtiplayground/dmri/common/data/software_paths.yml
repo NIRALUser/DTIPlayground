@@ -21,7 +21,7 @@ softwares:
   fiberprocess:
     path: ${DTIPLAYGROUNDTOOLS}/DTIProcess/bin/fiberprocess
   fiberpostprocess:
-    path: ${DTIPLAYGROUNDTOOLS}/DTIFiberTractStatistics/bin/fiberpostprocess
+    path: ${DTIPLAYGROUNDTOOLS}/DTIFiberTractStatistics/bin/FiberPostProcess
   dtitractstat:
     path: ${DTIPLAYGROUNDTOOLS}/DTIFiberTractStatistics/bin/dtitractstat
   BRAINSFit:

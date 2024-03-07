@@ -637,7 +637,7 @@ def command_run(args):
         "input_file_paths" : args.input_file_list,
         "protocol_path" : args.protocols,
         "output_dir" : args.output_dir,
-        # "default_protocols":args.default_protocols,
+        "default_protocols": None, # Change this back to args.default_protocols if/when implemented
         "num_threads":args.num_threads,
         "execution_id":args.execution_id,
         # "output_format" : args.output_format,

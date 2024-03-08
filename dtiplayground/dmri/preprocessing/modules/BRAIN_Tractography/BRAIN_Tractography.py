@@ -6,7 +6,6 @@ import yaml
 import copy
 import traceback 
 
-from dipy.tracking.benchmarks.bench_streamline import length
 from dipy.core.gradients import gradient_table
 from dipy.data import load_nifti, get_sphere, default_sphere
 from dipy.direction import peaks_from_model
@@ -22,13 +21,22 @@ from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
 from dipy.tracking.streamline import Streamlines
 from dipy.io.vtk import save_vtk_streamlines, load_vtk_streamlines
 
+#dipy package conditional importing
+import importlib
+from pkg_resources import get_distribution
+importlib.import_module("dipy")
+dipy_version = get_distribution("dipy").version
+if dipy_version >= 1.7:
+    from dipy.tracking.metrics import length
+else:
+    from dipy.tracking.benchmarks.bench_streamline import length
+
 from pathlib import Path
 
 import dtiplayground.dmri.preprocessing as prep
 import dtiplayground.dmri.common as common
 import dtiplayground.dmri.common.tools as tools 
 from dtiplayground.dmri.common.dwi import DWI
-import copy
 
 color = common.Color
 

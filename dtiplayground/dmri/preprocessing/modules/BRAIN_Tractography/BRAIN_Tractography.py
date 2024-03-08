@@ -26,7 +26,7 @@ import importlib
 from pkg_resources import get_distribution
 importlib.import_module("dipy")
 dipy_version = get_distribution("dipy").version
-if dipy_version >= 1.7:
+if float(dipy_version) >= 1.7:
     from dipy.tracking.metrics import length
 else:
     from dipy.tracking.benchmarks.bench_streamline import length

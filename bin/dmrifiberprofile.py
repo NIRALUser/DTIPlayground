@@ -607,8 +607,6 @@ def command_make_protocols(args):
         "input_file_paths" : args.input_files,
         "module_list": args.module_list,
         "output_path" : args.output,
-        "output_format" : args.output_format,
-        "no_output_image" : args.no_output_image,
         "global_variables" : parse_global_variables(args.global_variables)
     }
     if options['output_path'] is not None:
@@ -626,7 +624,7 @@ def command_make_protocols(args):
     # print(outstr)
     if options['output_path'] is not None:
         open(options['output_path'],'w').write(outstr)
-        logger("Protocol file has been writte to : {}".format(options['output_path']),color.OK)
+        logger("Protocol file has been written to : {}".format(options['output_path']),color.OK)
 
 
 @after_initialized
@@ -738,17 +736,15 @@ def get_args():
     parser_install_tools.set_defaults(func=command_install_tools)
 
     ## generate-default-protocols
-    # parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
-    # parser_make_protocols.add_argument('-i','--input-datasheet',help='Input data sheet with image paths',type=str,nargs='+',required=True)
-    # parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
-    # parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
-    # parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
-    #                                     help='Default protocols with specified list of modules, only works with '
-    #                                          'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
-    #                                     default=None,nargs='*')
-    # parser_make_protocols.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output (NRRD | NIFTI)',type=str)
-    # parser_make_protocols.add_argument('--no-output-image',help="No output image file will be generated",default=False,action='store_true')
-    # parser_make_protocols.set_defaults(func=command_make_protocols)
+    parser_make_protocols=subparsers.add_parser('make-protocols',help='Generate default protocols',epilog=module_help_str)
+    parser_make_protocols.add_argument('-i','--input-files',help='Input data sheet(s) with image paths',type=str,nargs='+',required=True)
+    parser_make_protocols.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
+    parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
+    parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
+                                        help='Default protocols with specified list of modules, only works with '
+                                             'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
+                                        default=None,nargs='*')
+    parser_make_protocols.set_defaults(func=command_make_protocols)
 
 
     ## run command

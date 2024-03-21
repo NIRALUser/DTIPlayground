@@ -1,4 +1,5 @@
 from dtiplayground.dmri.common.pipeline import *
+from dtiplayground.dmri.common.pipeline import _num
 # from dtiplayground.dmri.common.pipeline import _generate_exec_sequence, _generate_output_directories_mapping
 
 def _generate_exec_sequence(pipeline,file_paths:list,output_dir,modules, io_options): ## generate sequence using uuid to avoid the issue from redundant module use
@@ -61,6 +62,16 @@ def _generate_output_directories_mapping(output_dir,exec_sequence): ## map exec 
         module_output_dirs[uid]=str(module_output_dir)
     return module_output_dirs
 
+def _load_protocol(filename):
+    res = yaml.safe_load(open(filename,'r'))
+    res['io'].setdefault('num_threads',1)
+    res['io']['num_threads']=int(res['io']['num_threads'])
+    for idx,p in enumerate(res['pipeline']):
+        module_name, parameter = p
+        protocol = parameter['protocol']
+        for k, v in protocol.items():
+            res['pipeline'][idx][1]['protocol'][k] = _num(v)
+    return res
 
 class Protocols(Pipeline):
     def __init__(self,*args,**kwargs):
@@ -75,7 +86,43 @@ class Protocols(Pipeline):
         self.modules=modules
 
         return self.modules
+    def checkRunnable(self):
+        logger("Checking runability ...",common.Color.PROCESS)
+        self.checkDatasheet()
+        self.checkPipeline()
+        self.checkDependencies()
 
+    def checkDatasheet(self):
+         if len(self.file_paths) == 0:
+            logger("[ERROR] Datasheet is not loaded.",common.Color.ERROR)
+            raise Exception("Datasheet is not set")
+    def checkPipeline(self):
+        if self.pipeline is None:
+            logger("[ERROR] Protocols are not set.",common.Color.ERROR)
+            raise Exception("Pipe line error")
+
+
+
+    def checkDependencies(self):
+        for parr in self.pipeline:
+            p, options = parr
+            if not self.modules[p]['valid']:
+                msg=self.modules[p]['validity_message']
+                logger("[ERROR] Dependency is not met for the module : {} , {}".format(p,msg),common.Color.WARNING)
+                raise Exception("Module {} is not configured correctly.".format(p))
+
+    def loadProtocols(self, filename):
+        try:
+            self.rawdata = _load_protocol(filename)
+            self.version = self.rawdata['version']
+            self.pipeline = self.furnishPipeline(self.rawdata['pipeline'])
+            self.io = self.rawdata['io']
+            self.protocol_filename = filename
+            return True
+        except Exception as e:
+            logger("Exception occurred : {}".format(str(e)))
+            traceback.print_exc()
+            return False
      # Override default runPipeline method with fiberprofile specific functionality
     @common.measure_time
     def runPipeline(self,options={}): ## default is QC module (to be abstracted)
@@ -109,7 +156,6 @@ class Protocols(Pipeline):
             ## run pipeline
             opts={
                     "software_info": self.getSoftwareInfo(),
-                    "baseline_threshold" : self.io['baseline_threshold'],
                     "global_variables" : self.global_variables,
                     **options
                  }

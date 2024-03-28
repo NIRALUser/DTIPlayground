@@ -55,7 +55,7 @@ Modifying the default protocol
 If using the `EXTRACT_Profile` module, there are two fields in the default protocol file that **must be modified before running.** These fields are null by default.
 
 1. `atlas` - The directory containing the tracts to be profiled. Must be provided as an absolute path.
-2. `tracts` - The list of tracts to be profiled. Must be provided as a comma-separated list of file names. These file names will be concatenated with the path specified by `atlas` to form the full path to the tracts.
+2. `tracts` - The list of tracts to be profiled. Must be provided as a comma-separated list of file names, including the .vtk extension. These file names will be concatenated with the path specified by `atlas` to form the full path to the tracts.
 
 If you try to use this protocol without modifying these fields first, you will receive an error message.
 
@@ -74,7 +74,7 @@ Below are the options contained in the `EXTRACT_Profile` protocol.
         tracts:
             type: string
             default_value: null
-            description: Selected set of tracts to use. Each entry must uniquely map to a VTK fiber file in the atlas location.
+            description: Selected set of tracts to use. Comma-delimited list of file names with .vtk extension included. Each entry must uniquely map to a VTK fiber file in the atlas location.
 
         inputIsDTI:
             type: boolean

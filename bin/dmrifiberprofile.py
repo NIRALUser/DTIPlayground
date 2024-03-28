@@ -742,7 +742,7 @@ def get_args():
     parser_make_protocols.add_argument('-o','--output',help='Output protocol file(*.yml)',type=str)
     parser_make_protocols.add_argument('-d','--module-list',metavar="MODULE",
                                         help='Default protocols with specified list of modules, only works with '
-                                             'default protocols. Example : -d DIFFUSION_Check SLICE_Check',
+                                             'default protocols. Example : -d EXTRACT_Profile',
                                         default=None,nargs='*')
     parser_make_protocols.set_defaults(func=command_make_protocols)
 

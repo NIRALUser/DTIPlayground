@@ -1,6 +1,6 @@
-============
+================
 DMRIFiberProfile
-============
+================
 
 dmrifiberprofile is a tool that analyzes fiber tracts based on DTI volumes or scalar images.
 

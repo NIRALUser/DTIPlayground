@@ -24,7 +24,7 @@ protocol: #define protocol parameters here
         default_value: true
         description: Input image is a DTI, so the properties to profile are derived from it.
     propertiesToProfile: # tensor related properties (e.g. FA, MD, etc.) require an input DTI volume
-        type: list
+        type: string
         caption: Properties to profile
         default_value: FA, MD, RD, AD
         description: List of selected properties to profile along tracts

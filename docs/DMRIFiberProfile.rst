@@ -55,7 +55,7 @@ Modifying the default protocol
 If using the `EXTRACT_Profile` module, there are two fields in the default protocol file that **must be modified before running.** These fields are null by default.
 
 1. `atlas` - The directory containing the tracts to be profiled. Must be provided as an absolute path.
-2. `tracts` - The list of tracts to be profiled. Must be provided as a comma-separated list of file names, including the .vtk extension. These file names will be concatenated with the path specified by `atlas` to form the full path to the tracts.
+2. `tracts` - The list of tracts to be profiled. Must be provided as a comma-separated list of file names (spaces don't matter), including the .vtk extension. These file names will be concatenated with the path specified by `atlas` to form the full path to the tracts.
 
 If you try to use this protocol without modifying these fields first, you will receive an error message.
 
@@ -131,6 +131,25 @@ Below are the options contained in the `EXTRACT_Profile` protocol.
             default_value: null
             description: Optional mask file to use during profile extraction. The mask has to be defined in atlas space.
 
+Here's an example of what the `EXTRACT_Profile` protocol might look like with the `atlas` and `tracts` fields filled in:
+
+.. code-block:: yaml
+
+    protocol:
+      atlas: /proj/NIRAL/users/alecjn/test_scripts/DTIPlayground-Tests/tests/input/fiberprofile/atlas
+      inputIsDTI: true
+      mask: null
+      noNaN: false
+      parameterToColumnHeaderMap:
+        FA: FA for original
+        Original DTI Image: Original DTI
+      planeOfOrigin: Median
+      propertiesToProfile: FA, MD
+      resultCaseColumnwise: true
+      stepSize: 1
+      supportBandwidth: 1
+      tracts: Arc_L_FrontoParietal-2_extracted_done.vtk, Corpus_Callosum-2_extracted_done.vtk
+      useDisplacementField: true
 
 4. run - Run pipeline
 ~~~~~~~~~~~~~~~~~~~~~~~~~

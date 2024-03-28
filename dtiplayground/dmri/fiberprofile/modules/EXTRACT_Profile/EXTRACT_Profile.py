@@ -30,20 +30,36 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         self.software_info = protocol_options['software_info']['softwares']
 
         # Reading some parameters
-        path_to_csv: str = inputParams["file_path"]
-        output_base_dir: str = self.output_dir  # output directory string
-        atlas_path: str = self.protocol["atlas"]
-        tracts: List[str] = self.protocol["tracts"].split(',')
-        properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
-        result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
-        input_is_dti: bool = self.protocol["inputIsDTI"]
-        overwrite: bool = self.options['overwrite']
-        use_displacement_field: bool = self.protocol["useDisplacementField"]
-        step_size: str = str(self.protocol["stepSize"])
-        plane_of_origin: str = self.protocol["planeOfOrigin"]
-        support_bandwidth: str = str(self.protocol["supportBandwidth"])
-        noNaN: str = self.protocol["noNaN"]
-        mask: str = self.protocol["mask"]
+        try:
+            path_to_csv: str = inputParams["file_path"]
+            output_base_dir: str = self.output_dir  # output directory string
+            atlas_path: str = self.protocol["atlas"]
+            if not isinstance(atlas_path, str):
+                raise ValueError(f"Atlas path must be a string specifying directory with tracts. Current value: {atlas_path}")
+            tracts_string: str = self.protocol["tracts"]
+            if not isinstance(tracts_string, str):
+                raise ValueError("Tracts must be a string of comma delimited tracts to profile")
+            tracts: List[str] = tracts_string.split(',')
+            properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
+            result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
+            input_is_dti: bool = self.protocol["inputIsDTI"]
+            overwrite: bool = self.options['overwrite']
+            use_displacement_field: bool = self.protocol["useDisplacementField"]
+            step_size: str = str(self.protocol["stepSize"])
+            plane_of_origin: str = self.protocol["planeOfOrigin"]
+            support_bandwidth: str = str(self.protocol["supportBandwidth"])
+            noNaN: str = self.protocol["noNaN"]
+            mask: str = self.protocol["mask"]
+        except KeyError as e:
+            self.result['output']['success'] = False
+            self.result['output']['error'] = f"Missing parameter {e}"
+            logger(f"Missing parameter: {e}")
+            exit(1)
+        except ValueError as e:
+            self.result['output']['success'] = False
+            self.result['output']['error'] = f"Invalid parameter {e}"
+            logger(f"Invalid parameter: {e}")
+            exit(1)
 
         df = pd.read_csv(path_to_csv)
 

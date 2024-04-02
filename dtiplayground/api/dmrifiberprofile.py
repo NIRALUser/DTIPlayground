@@ -1,10 +1,10 @@
 ##################################################################################
-### Module : dmriatlasbuilder.py
-### Description : Atlasbuilder api
+### Module : dmrifiberprofile.py
+### Description : fiberprofile api
 ###
 ###
 ###
-### Written by : scalphunter@gmail.com ,  2022/10/08
+### Written by : alecj.nipp@gmail.com
 ### Copyrights reserved by NIRAL
 ##################################################################################
 
@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 import multiprocessing
 from multiprocessing import Process
-class DMRIPrepAPI:
+class DMRIFiberProfileAPI:
     def __init__(self,server,**kwargs):
         self.server = server
         self.app=self.server.app
@@ -29,7 +29,7 @@ class DMRIPrepAPI:
 
     def initEndpoints(self):
 
-        @self.app.route('/api/v1/dmriprep',methods=['GET'])
+        @self.app.route('/api/v1/dmrifiberprofile',methods=['GET'])
         def _get_app_info():
             sc=200
             res=None
@@ -47,27 +47,27 @@ class DMRIPrepAPI:
                 resp.headers['Content-Type']='application/json'
                 return resp  
 
-        # @self.app.route('/api/v1/dmriprep/generate-default-protocols',methods=['POST'])
-        # def _post_dmriprep_generate_protocols():
-        #     sc=200
-        #     res=None
-        #     req=None
-        #     request_id=utils.get_request_id()
-        #     try:
-        #         req=request.get_json()
-        #         res= self.generate_default_protocols(req)
-        #         res= utils.add_request_id(res)
-        #     except Exception as e:
-        #         sc=500
-        #         exc=traceback.format_exc()
-        #         res=utils.error_message("{}\n{}".format(str(e),exc),500,request_id)
-        #     finally:
-        #         resp=Response(json.dumps(res),status=sc)
-        #         resp.headers['Content-Type']='application/json'
-        #         return resp
+        @self.app.route('/api/v1/dmrifiberprofile/generate-default-protocols',methods=['POST'])
+        def _post_dmriprep_generate_protocols():
+            sc=200
+            res=None
+            req=None
+            request_id=utils.get_request_id()
+            try:
+                req=request.get_json()
+                res= self.generate_default_protocols(req)
+                res= utils.add_request_id(res)
+            except Exception as e:
+                sc=500
+                exc=traceback.format_exc()
+                res=utils.error_message("{}\n{}".format(str(e),exc),500,request_id)
+            finally:
+                resp=Response(json.dumps(res),status=sc)
+                resp.headers['Content-Type']='application/json'
+                return resp
 
-        @self.app.route('/api/v1/dmriprep',methods=['POST'])
-        def _execute_dmriprep():
+        @self.app.route('/api/v1/dmrifiberprofile',methods=['POST'])
+        def _execute_dmrifiberprofile():
             sc=200
             res=None
             req=None
@@ -85,7 +85,7 @@ class DMRIPrepAPI:
                 resp.headers['Content-Type']='application/json'
                 return resp  
 
-        @self.app.route('/api/v1/dmriprep/template',methods=['GET'])
+        @self.app.route('/api/v1/dmrifiberprofile/template',methods=['GET'])
         def _get_module_template():
             sc=200
             res=None
@@ -109,10 +109,10 @@ class DMRIPrepAPI:
 
     def getAppInfo(self, extra_dirs = []):
         from dtiplayground.config import INFO
-        version = INFO['dmriprep']['version']
+        version = INFO['dmrifiberprofile']['version']
 
         res = {
-            'application' : 'dmriprep',
+            'application' : 'dmrifiberprofile',
             'version': version,
             'modules': self.getModuleList(extra_dirs),
             'protocol_template': self.getProtocolTemplateConfig()
@@ -122,7 +122,7 @@ class DMRIPrepAPI:
 
     def generate_default_protocols(self,req):
         from dtiplayground.config import INFO
-        req.setdefault('version', INFO['dmriprep']['version'])
+        req.setdefault('version', INFO['dmrifiberprofile']['version'])
 
         params = {
             'version' : req['version'],
@@ -227,7 +227,7 @@ class DMRIPrepAPI:
         params.setdefault('global_variables', {})
 
     
-        def dmriprep_proc(param):
+        def dmrifiberprofile_proc(param):
 
             
             with open(output_dir.joinpath('log.txt'),'w') as sys.stdout:
@@ -235,11 +235,7 @@ class DMRIPrepAPI:
                 ### begin
                 os.environ['OMP_NUM_THREADS']=str(protocol['io']['num_threads']) ## this should go before loading any dipy function. 
                 os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(protocol['io']['num_threads']) ## for ANTS threading
-                import  dtiplayground.dmri.common as common
-                import dtiplayground.dmri.preprocessing
-                import dtiplayground.dmri.preprocessing.modules as m
-                import dtiplayground.dmri.preprocessing.protocols as p
-                from dtiplayground.dmri.preprocessing.app import DMRIPrepApp
+                from dtiplayground.dmri.fiberprofile.app import DMRIPrepApp
                 
                 inputs = [protocol['io']['input_image_1']]
                 protocol['io'].setdefault('input_image_2',None)

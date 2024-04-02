@@ -33,7 +33,7 @@ options:
   ### io template
   io:
     output_directory: 
-      type: directory # file dialog for ui
+      type: dirpath-remote # file dialog for ui
       caption: Output Directory
       default_value: null
       description: Output directory storing the results and generated files 
@@ -44,6 +44,17 @@ options:
       description: Final output base name
   #### Execution related
   execution:
+    options:
+      overwrite:
+        type: boolean
+        caption: Overwrite
+        default_value: false
+        description: Overwrite the files
+      skip:
+        type: boolean
+        caption: Skip This Module
+        default_value: false
+        description: Skip this module and pass the data to the next module
     pipeline:
       type: queue
       caption: Pipeline Queue

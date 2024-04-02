@@ -20,6 +20,7 @@ color= dtiplayground.dmri.common.Color
 from dtiplayground.api.application import ApplicationAPI 
 from dtiplayground.api.dmriatlasbuilder import DMRIAtlasbuilderAPI
 from dtiplayground.api.dmriprep import DMRIPrepAPI
+from dtiplayground.api.dmrifiberprofile import DMRIFiberProfileAPI
 
 class DTIPlaygroundServer(object):
     def __init__(self,*args,**kwargs):
@@ -53,6 +54,7 @@ class DTIPlaygroundServer(object):
         self.app.config['SUBMODULES']['ApplicationAPI']=ApplicationAPI(self)
         self.app.config['SUBMODULES']['DMRIAtlasbuilderAPI']=DMRIAtlasbuilderAPI(self)
         self.app.config['SUBMODULES']['DMRIPrepAPI']=DMRIPrepAPI(self)
+        self.app.config['SUBMODULES']['DMRIFiberProfile']=DMRIFiberProfileAPI(self)
 
         @self.app.route('/', defaults={'path': ''})
         @self.app.route('/<path>') ## for routers

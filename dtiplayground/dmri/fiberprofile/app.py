@@ -95,7 +95,7 @@ class DMRIFiberProfileApp(AppBase):
             config,environment = self._load_configurations()
             template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
             template=yaml.safe_load(open(template_path,'r'))
-            proto=fiberprofile.Protocols(options['config_dir'], global_vars=options['global_variables'])
+            proto=fiberprofile.protocols.Protocols(options['config_dir'], global_vars=options['global_variables'])
             proto.loadDataSheets(options['input_image_files'])
             if options['output_dir'] is None:
                 raise Exception("Output directory is missing")
@@ -143,7 +143,7 @@ class DMRIFiberProfileApp(AppBase):
             config,environment = self._load_configurations()
             template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
             template=yaml.safe_load(open(template_path,'r'))
-            proto=fiberprofile.Protocols(options['config_dir'],global_vars=options['global_variables'])
+            proto=fiberprofile.protocols.Protocols(options['config_dir'],global_vars=options['global_variables'])
             proto.loadDataSheets(options['input_file_paths'])
             if options['module_list'] is not None and  len(options['module_list'])==0:
                     options['module_list']=None

@@ -30,7 +30,7 @@ class DMRIFiberProfileAPI:
     def initEndpoints(self):
 
         @self.app.route('/api/v1/dmrifiberprofile',methods=['GET'])
-        def _get_app_info():
+        def _get_dmrifiberprofile_app_info():
             sc=200
             res=None
             req=None
@@ -48,7 +48,7 @@ class DMRIFiberProfileAPI:
                 return resp  
 
         @self.app.route('/api/v1/dmrifiberprofile/generate-default-protocols',methods=['POST'])
-        def _post_dmriprep_generate_protocols():
+        def _post_dmrifiberprofile_generate_protocols():
             sc=200
             res=None
             req=None
@@ -86,7 +86,7 @@ class DMRIFiberProfileAPI:
                 return resp  
 
         @self.app.route('/api/v1/dmrifiberprofile/template',methods=['GET'])
-        def _get_module_template():
+        def _get_module_template_dmrifiberprofile():
             sc=200
             res=None
             req=None
@@ -235,37 +235,27 @@ class DMRIFiberProfileAPI:
                 ### begin
                 os.environ['OMP_NUM_THREADS']=str(protocol['io']['num_threads']) ## this should go before loading any dipy function. 
                 os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(protocol['io']['num_threads']) ## for ANTS threading
-                from dtiplayground.dmri.fiberprofile.app import DMRIPrepApp
+                from dtiplayground.dmri.fiberprofile.app import DMRIFiberProfileApp
                 
-                inputs = [protocol['io']['input_image_1']]
-                protocol['io'].setdefault('input_image_2',None)
-                if protocol['io']['input_image_2'] is not None:
-                     if "," in protocol['io']['input_image_2']:
-                        mult_image_list = protocol['io']['input_image_2'].split(',')
-                        inputs += mult_image_list
-                     else:
-                         inputs.append(protocol['io']['input_image_2'])
+                inputs = [protocol['io']['input_datasheet']]
                 options={
-                    "input_image_paths" : inputs,
+                    "input_file_paths" : inputs,
                     "protocol_path" : str(protocol_fn),
                     "output_dir" : protocol['io']['output_directory'],
                     "num_threads":  protocol['io']['num_threads'],
                     "default_protocols": None,
                     "execution_id": param['execution_id'],
-                    "baseline_threshold" : protocol['io']['baseline_threshold'],
-                    "output_format" : protocol['io']['output_format'],
                     "output_file_base" : protocol['io']['output_filename_base'],
-                    "no_output_image" :  protocol['io']['no_output_image'],
                     "global_variables" : {}
                 }
-                app=DMRIPrepApp(config_root=str(self.server.config_dir))
+                app=DMRIFiberProfileApp(config_root=str(self.server.config_dir))
                 app.run(options)
 
         res = { 
             'execution_id' : params['execution_id'],
             'output_dir' : output_dir.__str__()
         }
-        proc = Process(target= dmriprep_proc, name=params['execution_id'],args=[params])
+        proc = Process(target= dmrifiberprofile_proc, name=params['execution_id'],args=[params])
         proc.start()
 
         res['pid']=proc.pid
@@ -284,7 +274,7 @@ class DMRIFiberProfileAPI:
 
     def getProtocolTemplateConfig(self):
         # config_dir = self.getConfigDirectory();
-        import dtiplayground.dmri.preprocessing.templates as t
+        import dtiplayground.dmri.fiberprofile.templates as t
         ptc_fn = Path(t.__file__).parent.joinpath('protocol_template.yml')
         # ptc_fn = config_dir.joinpath('protocol_template.yml')
         with open(ptc_fn,'r') as f:
@@ -382,12 +372,12 @@ class DMRIFiberProfileAPI:
 
     def getConfigDirectory(self):
         from dtiplayground.config import INFO
-        version = INFO['dmriprep']['version']
-        return Path(os.path.expandvars('$HOME')).joinpath('.niral-dti/dmriprep-{}'.format(version));
+        version = INFO['dmrifiberprofile']['version']
+        return Path(os.path.expandvars('$HOME')).joinpath('.niral-dti/dmrifiberprofile-{}'.format(version));
 
     def getUserModuleDirectory(self):
-        return Path(os.path.expandvars('$HOME')).joinpath('.niral-dti/modules/dmriprep').__str__()
+        return Path(os.path.expandvars('$HOME')).joinpath('.niral-dti/modules/dmrifiberprofile').__str__()
 
     def getSystemModulePath(self):
-        import dtiplayground.dmri.preprocessing.modules as modules
+        import dtiplayground.dmri.fiberprofile.modules as modules
         return Path(modules.__file__).parent.__str__()

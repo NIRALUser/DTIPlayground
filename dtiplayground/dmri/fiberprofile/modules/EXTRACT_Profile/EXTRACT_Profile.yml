@@ -9,7 +9,7 @@ process_attributes:
 result: null
 protocol: #define protocol parameters here
     atlas: # Not used directly. Added to beginning of each tract file path
-        type: directory
+        type: dirpath-remote
         caption: Atlas directory
         default_value: null
         description: Directory containing set of fiber tracts in the atlas to be analyzed

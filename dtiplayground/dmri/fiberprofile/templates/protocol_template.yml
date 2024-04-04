@@ -32,6 +32,11 @@ options:
 
   ### io template
   io:
+    input_datasheet:
+      type: filepath-remote # file dialog for ui
+      caption: Input Data Sheet
+      default_value: null
+      description: Input data sheet containing file paths for the tensor/scalar images and deformation fields
     output_directory: 
       type: dirpath-remote # file dialog for ui
       caption: Output Directory

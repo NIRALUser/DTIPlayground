@@ -39,7 +39,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             tracts_string: str = self.protocol["tracts"]
             if not isinstance(tracts_string, str):
                 raise ValueError("Tracts must be a string of comma delimited tracts to profile")
-            tracts: List[str] = tracts_string.split(',')
+            tracts: List[str] = [tract.strip() for tract in tracts_string.split(',')]
+            if len(tracts) == 0:
+                raise ValueError("Tracts must be a non-empty list of tracts to profile")
             properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
             result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
             input_is_dti: bool = self.protocol["inputIsDTI"]
@@ -129,8 +131,11 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 tract_output_path: Path = prop_output_path.joinpath(tract_name_stem)
                 tract_output_path.mkdir(parents=True, exist_ok=True)
                 logger(f"Extracting profile for tract {tract}")
-                tract_absolute_filename = Path(atlas_path).joinpath(
-                    tract)  # concatenate the atlas path with the tract name
+                if tract[0] == '/': # tract is absolute path
+                    tract_absolute_filename = Path(tract)
+                else:
+                    tract_absolute_filename = Path(atlas_path).joinpath(
+                        tract)  # concatenate the atlas path with the tract name
                 # Create dataframe to track statistics for this tract
                 tract_stat_df: pd.DataFrame = None
                 for row_index, row in df.iterrows():
@@ -183,8 +188,11 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                 logger(f"Skipping parameterized fiber generation of tract {tract}")
                             else:
                                 logger(f"Generating parameterized fiber profile for tract {tract}")
-                                tract_absolute_filename = Path(atlas_path).joinpath(
-                                    tract)
+                                if tract[0] == '/':  # tract is absolute path
+                                    tract_absolute_filename = Path(tract)
+                                else:
+                                    tract_absolute_filename = Path(atlas_path).joinpath(
+                                        tract)  # concatenate the atlas path with the tract name
                                 options += ['-f', parameterized_fiber_output_path.__str__()]
                                 options += ['--step_size', step_size]
                                 options += ['--bandwidth', support_bandwidth]

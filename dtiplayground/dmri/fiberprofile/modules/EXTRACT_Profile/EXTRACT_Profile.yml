@@ -14,7 +14,7 @@ protocol: #define protocol parameters here
         default_value: null
         description: Directory containing set of fiber tracts in the atlas to be analyzed
     tracts:
-        type: string
+        type: filepath-remote-mult
         caption: Comma delimited list of file names of tracts in atlas directory
         default_value: null
         description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.

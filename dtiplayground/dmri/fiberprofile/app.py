@@ -89,8 +89,6 @@ class DMRIFiberProfileApp(AppBase):
                 "global_variables" : _options['global_variables']
             }
 
-            if options['output_format'] is not None:
-                options['output_format']=options['output_format'].lower()
             ## load config file and run pipeline
             config,environment = self._load_configurations()
             template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
@@ -125,18 +123,12 @@ class DMRIFiberProfileApp(AppBase):
 
         @self.after_initialized
         def make_protocol(options):
-            options.setdefault('baseline_threshold', 10)
-            options.setdefault('output_format', None)
             options.setdefault('global_variables',{})
-            options.setdefault('no_output_image', False)
             options={
                 "config_dir" : self.app['application_dir'],
-                "input_image_paths" : options['input_images'],
+                "input_file_paths" : options['input_files'],
                 "module_list": options['module_list'],
                 "output_path" : options['output'],
-                "baseline_threshold" : options['b0_threshold'],
-                "output_format" : options['output_format'],
-                "no_output_image" : options['no_output_image'],
                 "global_variables" : options['global_variables']
             }
             ## load config file

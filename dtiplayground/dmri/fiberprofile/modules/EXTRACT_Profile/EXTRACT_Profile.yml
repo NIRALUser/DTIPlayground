@@ -1,6 +1,6 @@
 name: EXTRACT_Profile
 caption: EXTRACT_Profile
-description: Custom module
+description: Extract fiber tract statistics from images
 version: "0.1"
 dependency: []
 module_type: fiberprofile
@@ -36,7 +36,14 @@ protocol: #define protocol parameters here
     parameterToColumnHeaderMap: # Optional map of parameters (e.g., scalar names, case id) to column headers
         type: dictionary
         caption: Property to column header map
-        default_value: null
+        default_value:
+            Case ID: id
+            Original DTI Image: Original DTI image
+            Deformation Field: Concatenated Deformation field
+            FA: FA from original
+            MD: MD from original
+            AD: AD from original
+            RD: RD from original
         description: Map of parameters of column headers to use for each property to profile
     resultCaseColumnwise:
         type: boolean

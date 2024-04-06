@@ -1,3 +1,4 @@
+import os.path
 from pathlib import Path
 from typing import List
 
@@ -33,15 +34,19 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         try:
             path_to_csv: str = inputParams["file_path"]
             output_base_dir: str = self.output_dir  # output directory string
-            atlas_path: str = self.protocol["atlas"]
-            if not isinstance(atlas_path, str):
-                raise ValueError(f"Atlas path must be a string specifying directory with tracts. Current value: {atlas_path}")
+
             tracts_string: str = self.protocol["tracts"]
             if not isinstance(tracts_string, str):
                 raise ValueError("Tracts must be a string of comma delimited tracts to profile")
             tracts: List[str] = [tract.strip() for tract in tracts_string.split(',')]
             if len(tracts) == 0:
                 raise ValueError("Tracts must be a non-empty list of tracts to profile")
+            atlas_path: str = self.protocol["atlas"]
+            if not isinstance(atlas_path, str):
+                for tract in tracts:
+                    if not os.path.isabs(tract):
+                        raise ValueError(
+                            f"Tract paths must all be absolute if no atlas path is provided. Atlas path current value: {atlas_path}. Either provide atlas dir or convert this path to absolute: {tract}")
             properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
             result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
             input_is_dti: bool = self.protocol["inputIsDTI"]

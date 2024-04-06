@@ -15,17 +15,17 @@ options:
 
   ### Template metadata
   system:
-    available_types: 
+    available_types:
       - boolean
       - integer
       - float
       - string
       - file
-      - directory 
+      - directory
       - list
       - queue
       - matrix
-      - object-array 
+      - object-array
 
   ### settings template
   settings: null # TBD
@@ -37,16 +37,21 @@ options:
       caption: Input Data Sheet
       default_value: null
       description: Input data sheet containing file paths for the tensor/scalar images and deformation fields
-    output_directory: 
+    output_directory:
       type: dirpath-remote # file dialog for ui
       caption: Output Directory
       default_value: null
-      description: Output directory storing the results and generated files 
+      description: Output directory storing the results and generated files
     output_filename_base:
       type: string
       default_value: null
       caption: Output basename
       description: Final output base name
+    num_threads:
+      type: number
+      caption: Number of Threads to Use
+      default_value: 1
+      description: Number of threads to use for the process
   #### Execution related
   execution:
     options:

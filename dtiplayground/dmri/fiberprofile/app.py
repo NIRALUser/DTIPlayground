@@ -14,6 +14,8 @@ import dtiplayground.dmri.common.module as module
 from dtiplayground.dmri.common.appbase import AppBase
 
 import dtiplayground.dmri.fiberprofile as fiberprofile
+
+from dtiplayground.dmri.fiberprofile.protocols import Protocols
 logger=common.logger.write 
 color= common.Color
 
@@ -93,8 +95,8 @@ class DMRIFiberProfileApp(AppBase):
             config,environment = self._load_configurations()
             template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
             template=yaml.safe_load(open(template_path,'r'))
-            proto=fiberprofile.protocols.Protocols(options['config_dir'], global_vars=options['global_variables'])
-            proto.loadDataSheets(options['input_image_files'])
+            proto=Protocols(options['config_dir'], global_vars=options['global_variables'])
+            proto.loadDataSheets(options['input_file_paths'])
             if options['output_dir'] is None:
                 raise Exception("Output directory is missing")
             else:
@@ -135,7 +137,7 @@ class DMRIFiberProfileApp(AppBase):
             config,environment = self._load_configurations()
             template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
             template=yaml.safe_load(open(template_path,'r'))
-            proto=fiberprofile.protocols.Protocols(options['config_dir'],global_vars=options['global_variables'])
+            proto=Protocols(options['config_dir'],global_vars=options['global_variables'])
             proto.loadDataSheets(options['input_file_paths'])
             if options['module_list'] is not None and  len(options['module_list'])==0:
                     options['module_list']=None
@@ -144,7 +146,7 @@ class DMRIFiberProfileApp(AppBase):
             # print(outstr)
             if options['output_path'] is not None:
                 open(options['output_path'],'w').write(outstr)
-                logger("Protocol file has been writte to : {}".format(options['output_path']),color.OK)
+                logger("Protocol file has been written to : {}".format(options['output_path']),color.OK)
 
             return True 
         return make_protocol(_options)

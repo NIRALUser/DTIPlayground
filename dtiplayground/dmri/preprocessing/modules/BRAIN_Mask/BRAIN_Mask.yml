@@ -17,7 +17,10 @@ protocol:
             description: Use FSL for Brainmasking
           # - value: antspynet
           #   caption: AntsPyNet
-          #   description: AntsPyNet's brain_extraction() method 
+          #   description: AntsPyNet's brain_extraction() method
+          - value: customMask
+            caption: Custom Brain Mask
+            description: Use custom Brainmasking
         default_value: fsl
         description: Method to extract the brain 
       averagingMethod:
@@ -43,3 +46,9 @@ protocol:
             description: Fractional Anistropy
         default_value: t2
         description: Modality of the input image
+      customMaskPath: 
+        type: filepath-remote
+        caption: Custom Brain Mask
+        default_value: 
+        description: Provide custom mask to override default
+        if : { "method" : "customMask" }

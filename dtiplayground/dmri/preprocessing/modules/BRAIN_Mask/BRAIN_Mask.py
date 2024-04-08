@@ -31,12 +31,19 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         self.baseline_threshold=protocol_options['baseline_threshold']
         res=self.run_mask(method=self.protocol['method'],
                           #modality=self.protocol['modality'],
-                          averagingMethod=self.protocol['averagingMethod'])
+                          averagingMethod=self.protocol['averagingMethod'],
+                          customMaskPath=self.protocol['customMaskPath'])
         self.result['output']['success']=True
         return self.result
         
 
 ### User defined methods
+    
+    def verify_path(self, file_path):
+        if len(file_path) > 0 and file_path and Path(file_path).exists():
+            return True
+        else: return False
+
     def mask_antspynet(self,params):
         import ants 
         import antspynet
@@ -127,7 +134,31 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         res=None
         return res
 
-    def run_mask(self, method, averagingMethod): #run_mask(self,method, modality,averagingMethod)
+    def custom_mask(self, params):
+        logger("Custom Mask is running ...",prep.Color.INFO)
+        input_image_base=Path(self.output_dir).joinpath("input").__str__()
+        output_image_base=Path(self.output_dir).joinpath("mask").__str__()
+
+        input_image_path=input_image_base+".nii.gz"
+        output_mask_path=output_image_base+".nii.gz"
+        output_mask_path_nrrd=output_image_base+".nrrd"
+        src_image=params['image']
+        custom_mask_path=params['customMaskPath']
+        if not self.verify_path(custom_mask_path):
+            logger("Mask path cannot be verified",prep.Color.ERROR)
+            return False
+        src_image.writeImage(input_image_path,dest_type='nifti')
+        mask=DWI(custom_mask_path)
+        mask.setSpaceDirection(self.getSourceImageInformation()['space'])
+        mask.writeImage(output_mask_path_nrrd,dest_type='nrrd')
+        mask.writeImage(output_mask_path,dest_type='nifti')
+        self.addOutputFile(output_mask_path, 'Mask')
+        self.addOutputFile(output_mask_path_nrrd, 'Mask')
+        self.addGlobalVariable('mask_path',output_mask_path_nrrd)
+        res=None
+        return res
+
+    def run_mask(self, method, averagingMethod, customMaskPath):
         res=None 
         params={}
         logger("Mask is being computed ... ",prep.Color.PROCESS)
@@ -144,6 +175,12 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
                 'averagingMethod': averagingMethod
             }
             res=self.mask_antspynet(params)
+        elif method=='customMask':
+            params={
+                'image': self.image,
+                'customMaskPath': customMaskPath
+            }
+            res=self.custom_mask(params)
         logger("Mask generation is completed",prep.Color.OK)
         return res
 

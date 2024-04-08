@@ -98,8 +98,13 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         dti_fit = dti.TensorModel(gtab,fit_method=fitMethod,**kwargs)
         logger("Running with {}, {}".format(fitMethod, kwargs),prep.Color.PROCESS)
         #fitted = dti_fit.fit(data) ## dti_fit.fit(data, mask) mask array (boolean)
-        fitted = dti_fit.fit(data,mask)
-        logger("Fitting completed",prep.Color.OK)
+        try:
+            fitted = dti_fit.fit(data,mask)
+            logger("Fitting completed",prep.Color.OK)
+        except ValueError as e:
+            logger("Mask is not the same shape as data.",prep.Color.ERROR)
+            raise ValueError
+
 
         ## convert 3x3 symmetric matrices to xx,xy,xz,yy,yz,zz vectors
         logger("Reducing 3x3 symmetric matrix to vector")

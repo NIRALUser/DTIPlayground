@@ -280,10 +280,10 @@ class Pipeline:
             self.io['output_directory']=str(self.output_dir)
         if 'baseline_threshold' in options:
             self.io['baseline_threshold']=options['baseline_threshold']
-        self.io['output_format']=None
+        # self.io['output_format']=None
         if 'output_format' in options:
             self.io['output_format']=options['output_format']
-        self.io['no_output_image']= False
+        # self.io['no_output_image']= False
         if 'no_output_image' in options:
             self.io['no_output_image']=options['no_output_image']
         if pipeline is not None:

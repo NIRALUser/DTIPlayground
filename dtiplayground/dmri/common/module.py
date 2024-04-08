@@ -398,15 +398,17 @@ class DTIPlaygroundModule: #base class
 
 
     @common.measure_time
-    def run(self,*args,**kwargs): #wrapper 
+    def run(self,*args,**kwargs): #wrapper
+        is_image_processor = "file_path" not in self.getPreviousResult()['output'] # this module processes images (not files)
         opts=args[0]
-        baseline_threshold=opts['baseline_threshold']
+        if is_image_processor:
+            baseline_threshold=opts['baseline_threshold']
         if 'global_vars' in kwargs:
             self.result['output']['global_variables'].update(kwargs['global_vars'])
             self.global_variables.update(kwargs['global_vars'])
 
         # do this if this module acts on a file, not an image (e.g. a CSV)
-        if "file_path" in self.getPreviousResult()['output']:
+        if not is_image_processor:
             res = self.process(*args, **kwargs)  ## main computation for user implementation
             return self.result["output"]
 

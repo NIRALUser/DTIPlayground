@@ -187,6 +187,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
                     # fiberpostprocess complete, delete the fiberprocess output
                     if cleanupMethod == CleanupMethod.DURING:
+                        logger(f"Cleaning up fiberprocess output for subject {subject_id} and tract {tract}")
                         Path(fiberprocess_output_path).unlink()
 
                     if Path(dtitractstat_output_path).exists() and not recompute_scalars:
@@ -218,6 +219,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
                     # dtitractstat complete, delete the fiberpostprocess output
                     if cleanupMethod == CleanupMethod.DURING:
+                        logger(f"Cleaning up fiberpostprocess output for subject {subject_id} and tract {tract}")
                         Path(fiberpostprocess_output_path).unlink()
                     # extract fvp data
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
@@ -240,6 +242,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
                     # dtitractstat output data stored, delete the dtitractstat file output
                     if cleanupMethod == CleanupMethod.DURING:
+                        logger(f"Cleaning up dtitractstat output for subject {subject_id} and tract {tract}")
                         Path(dtitractstat_output_path).unlink()
                 # save the tract_stat_df to a csv
                 tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)

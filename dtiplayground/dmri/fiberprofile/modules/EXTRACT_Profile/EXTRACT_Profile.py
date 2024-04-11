@@ -10,7 +10,9 @@ from dtiplayground.dmri.common import tools
 
 logger = common.logger.write
 
-
+class CleanupMethod():
+    DURING = 'duringProcessing'
+    NONE = 'noCleanup'
 class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
     def __init__(self, config_dir, *args, **kwargs):
         super().__init__(config_dir)
@@ -57,6 +59,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             support_bandwidth: str = str(self.protocol["supportBandwidth"])
             noNaN: str = self.protocol["noNaN"]
             mask: str = self.protocol["mask"]
+            cleanupMethod: str = self.protocol["cleanup"]
+            if cleanupMethod not in [CleanupMethod.DURING, CleanupMethod.NONE]:
+                raise ValueError(f"Invalid cleanup method: {cleanupMethod}")
         except KeyError as e:
             self.result['output']['success'] = False
             self.result['output']['error'] = f"Missing parameter {e}"
@@ -179,6 +184,11 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                             options += ['--noNan']
                         fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                         fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
+
+                    # fiberpostprocess complete, delete the fiberprocess output
+                    if cleanupMethod == CleanupMethod.DURING:
+                        Path(fiberprocess_output_path).unlink()
+
                     if Path(dtitractstat_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping dtitractstat of scalar {prop} for subject {subject_id}")
                     else:
@@ -206,7 +216,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                     options += ['--remove_nan_fibers']
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
-
+                    # dtitractstat complete, delete the fiberpostprocess output
+                    if cleanupMethod == CleanupMethod.DURING:
+                        Path(fiberpostprocess_output_path).unlink()
                     # extract fvp data
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
 
@@ -226,6 +238,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
                         tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
 
+                    # dtitractstat output data stored, delete the dtitractstat file output
+                    if cleanupMethod == CleanupMethod.DURING:
+                        Path(dtitractstat_output_path).unlink()
+                # save the tract_stat_df to a csv
                 tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
 
         self.result['output']['success'] = True

@@ -63,6 +63,18 @@ protocol: #define protocol parameters here
               description: Origin of profile will be center of gravity
         default_value: Median
         description: Determines plane that sets the origin of the profile arc length
+    cleanup:
+        type: list
+        caption: Cleanup method
+        default_value: duringProcessing
+        candidates:
+            - value: duringProcessing
+              caption: During processing
+              description: Remove temporary files the moment they're no longer needed
+            - value: noCleanup
+              caption: No cleanup
+              description: Do not remove temporary files
+        description: Remove temporary files after processing
     stepSize:
         type: integer
         caption: Step size

@@ -181,6 +181,8 @@ class Pipeline:
             logger("Loading Data Sheet: {}".format(str(fp)), common.Color.PROCESS)
             self.result_history[fp] = [{"output": {"file_path": str(Path(fp).absolute()),
                                                    }}]
+        if ext != '.csv':
+            raise Exception("Only csv files are supported for datasheets")
     def setOutputDirectory(self, output_dir=None):
         if output_dir is None:
             self.output_dir=Path(self.getImagePath()).parent

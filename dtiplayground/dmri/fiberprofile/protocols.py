@@ -123,6 +123,27 @@ class Protocols(Pipeline):
             logger("Exception occurred : {}".format(str(e)))
             traceback.print_exc()
             return False
+
+    def makeDefaultProtocols(self,pipeline=None,template=None,options={}):
+        self.checkDatasheet()
+        logger("Default protocols are being generated using image information",common.Color.PROCESS)
+        if template==None:
+            template=yaml.safe_load(open(self.template_filename,'r'))
+
+        ### generate default protocols
+        self.io={}
+        self.version=template['version']
+        for k,elm in template['options']['io'].items():
+            self.io[k]=elm['default_value']
+        if self.file_paths is not None:
+            self.io['input_datasheet']=self.file_paths[0]
+        if self.output_dir is not None:
+            self.io['output_directory']=str(self.output_dir)
+        if pipeline is not None:
+            self.pipeline=self.furnishPipeline(pipeline)
+        else:
+            self.pipeline=self.furnishPipeline(template['options']['execution']['pipeline']['default_value'])
+        logger("Default protocols are generated.",common.Color.OK)
      # Override default runPipeline method with fiberprofile specific functionality
     @common.measure_time
     def runPipeline(self,options={}): ## default is QC module (to be abstracted)

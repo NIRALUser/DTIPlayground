@@ -1,3 +1,5 @@
+import os.path
+import shutil
 from pathlib import Path
 from typing import List
 
@@ -9,7 +11,10 @@ from dtiplayground.dmri.common import tools
 
 logger = common.logger.write
 
-
+class CleanupMethod():
+    DURING = 'duringProcessing'
+    END = 'endOfProcessing'
+    NONE = 'noCleanup'
 class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
     def __init__(self, config_dir, *args, **kwargs):
         super().__init__(config_dir)
@@ -33,13 +38,19 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         try:
             path_to_csv: str = inputParams["file_path"]
             output_base_dir: str = self.output_dir  # output directory string
-            atlas_path: str = self.protocol["atlas"]
-            if not isinstance(atlas_path, str):
-                raise ValueError(f"Atlas path must be a string specifying directory with tracts. Current value: {atlas_path}")
+
             tracts_string: str = self.protocol["tracts"]
             if not isinstance(tracts_string, str):
                 raise ValueError("Tracts must be a string of comma delimited tracts to profile")
-            tracts: List[str] = tracts_string.split(',')
+            tracts: List[str] = [tract.strip() for tract in tracts_string.split(',')]
+            if len(tracts) == 0:
+                raise ValueError("Tracts must be a non-empty list of tracts to profile")
+            atlas_path: str = self.protocol["atlas"]
+            if not isinstance(atlas_path, str):
+                for tract in tracts:
+                    if not os.path.isabs(tract):
+                        raise ValueError(
+                            f"Tract paths must all be absolute if no atlas path is provided. Atlas path current value: {atlas_path}. Either provide atlas dir or convert this path to absolute: {tract}")
             properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
             result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
             input_is_dti: bool = self.protocol["inputIsDTI"]
@@ -50,6 +61,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             support_bandwidth: str = str(self.protocol["supportBandwidth"])
             noNaN: str = self.protocol["noNaN"]
             mask: str = self.protocol["mask"]
+            cleanupMethod: str = self.protocol["cleanup"]
+            if cleanupMethod not in [CleanupMethod.DURING, CleanupMethod.NONE, CleanupMethod.END]:
+                raise ValueError(f"Invalid cleanup method: {cleanupMethod}")
         except KeyError as e:
             self.result['output']['success'] = False
             self.result['output']['error'] = f"Missing parameter {e}"
@@ -129,8 +143,11 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 tract_output_path: Path = prop_output_path.joinpath(tract_name_stem)
                 tract_output_path.mkdir(parents=True, exist_ok=True)
                 logger(f"Extracting profile for tract {tract}")
-                tract_absolute_filename = Path(atlas_path).joinpath(
-                    tract)  # concatenate the atlas path with the tract name
+                if tract[0] == '/': # tract is absolute path
+                    tract_absolute_filename = Path(tract)
+                else:
+                    tract_absolute_filename = Path(atlas_path).joinpath(
+                        tract)  # concatenate the atlas path with the tract name
                 # Create dataframe to track statistics for this tract
                 tract_stat_df: pd.DataFrame = None
                 for row_index, row in df.iterrows():
@@ -169,6 +186,12 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                             options += ['--noNan']
                         fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                         fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
+
+                    # fiberpostprocess complete, delete the fiberprocess output
+                    if cleanupMethod == CleanupMethod.DURING:
+                        logger(f"Cleaning up fiberprocess output for subject {subject_id} and tract {tract}")
+                        Path(fiberprocess_output_path).unlink()
+
                     if Path(dtitractstat_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping dtitractstat of scalar {prop} for subject {subject_id}")
                     else:
@@ -183,17 +206,24 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                 logger(f"Skipping parameterized fiber generation of tract {tract}")
                             else:
                                 logger(f"Generating parameterized fiber profile for tract {tract}")
-                                tract_absolute_filename = Path(atlas_path).joinpath(
-                                    tract)
+                                if tract[0] == '/':  # tract is absolute path
+                                    tract_absolute_filename = Path(tract)
+                                else:
+                                    tract_absolute_filename = Path(atlas_path).joinpath(
+                                        tract)  # concatenate the atlas path with the tract name
                                 options += ['-f', parameterized_fiber_output_path.__str__()]
                                 options += ['--step_size', step_size]
                                 options += ['--bandwidth', support_bandwidth]
                                 options += ['--auto_plane_origin', plane_of_origin.lower()]
+                                options += ['--remove_clean_fiber']
                                 if noNaN:
                                     options += ['--remove_nan_fibers']
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
                         dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
-
+                    # dtitractstat complete, delete the fiberpostprocess output
+                    if cleanupMethod == CleanupMethod.DURING:
+                        logger(f"Cleaning up fiberpostprocess output for subject {subject_id} and tract {tract}")
+                        Path(fiberpostprocess_output_path).unlink()
                     # extract fvp data
                     fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
 
@@ -213,8 +243,14 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
                         tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
 
+                    # dtitractstat output data stored, delete the dtitractstat file output
+                    if cleanupMethod == CleanupMethod.DURING:
+                        logger(f"Cleaning up dtitractstat output for subject {subject_id} and tract {tract}")
+                        Path(dtitractstat_output_path).unlink()
+                # save the tract_stat_df to a csv
                 tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
-
+                if cleanupMethod == CleanupMethod.END or cleanupMethod == CleanupMethod.DURING:
+                    shutil.rmtree(tract_output_path)
         self.result['output']['success'] = True
         return self.result
 

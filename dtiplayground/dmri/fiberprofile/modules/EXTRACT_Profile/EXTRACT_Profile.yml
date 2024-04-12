@@ -1,6 +1,6 @@
 name: EXTRACT_Profile
 caption: EXTRACT_Profile
-description: Custom module
+description: Extract fiber tract statistics from images
 version: "0.1"
 dependency: []
 module_type: fiberprofile
@@ -9,12 +9,12 @@ process_attributes:
 result: null
 protocol: #define protocol parameters here
     atlas: # Not used directly. Added to beginning of each tract file path
-        type: directory
+        type: dirpath-remote
         caption: Atlas directory
         default_value: null
         description: Directory containing set of fiber tracts in the atlas to be analyzed
     tracts:
-        type: string
+        type: filepath-remote-mult
         caption: Comma delimited list of file names of tracts in atlas directory
         default_value: null
         description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
@@ -36,7 +36,14 @@ protocol: #define protocol parameters here
     parameterToColumnHeaderMap: # Optional map of parameters (e.g., scalar names, case id) to column headers
         type: dictionary
         caption: Property to column header map
-        default_value: null
+        default_value:
+            Case ID: id
+            Original DTI Image: Original DTI image
+            Deformation Field: Concatenated Deformation field
+            FA: FA from original
+            MD: MD from original
+            AD: AD from original
+            RD: RD from original
         description: Map of parameters of column headers to use for each property to profile
     resultCaseColumnwise:
         type: boolean
@@ -56,6 +63,21 @@ protocol: #define protocol parameters here
               description: Origin of profile will be center of gravity
         default_value: Median
         description: Determines plane that sets the origin of the profile arc length
+    cleanup:
+        type: list
+        caption: Cleanup method
+        default_value: duringProcessing
+        candidates:
+            - value: duringProcessing
+              caption: During processing
+              description: Remove temporary files the moment they're no longer needed
+            - value: endOfProcessing
+              caption: End of processing
+              description: Remove temporary files after processing is complete
+            - value: noCleanup
+              caption: No cleanup
+              description: Do not remove temporary files
+        description: Remove temporary files after processing
     stepSize:
         type: integer
         caption: Step size

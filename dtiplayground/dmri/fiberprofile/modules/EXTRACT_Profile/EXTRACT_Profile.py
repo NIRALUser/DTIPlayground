@@ -62,7 +62,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             noNaN: str = self.protocol["noNaN"]
             mask: str = self.protocol["mask"]
             cleanupMethod: str = self.protocol["cleanup"]
-            if cleanupMethod not in [CleanupMethod.DURING, CleanupMethod.NONE]:
+            if cleanupMethod not in [CleanupMethod.DURING, CleanupMethod.NONE, CleanupMethod.END]:
                 raise ValueError(f"Invalid cleanup method: {cleanupMethod}")
         except KeyError as e:
             self.result['output']['success'] = False

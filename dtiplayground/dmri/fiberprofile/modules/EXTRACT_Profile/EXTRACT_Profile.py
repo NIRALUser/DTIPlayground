@@ -1,4 +1,5 @@
 import os.path
+import shutil
 from pathlib import Path
 from typing import List
 
@@ -249,7 +250,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 # save the tract_stat_df to a csv
                 tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
                 if cleanupMethod == CleanupMethod.END or cleanupMethod == CleanupMethod.DURING:
-                    Path.unlink(tract_output_path)
+                    shutil.rmtree(tract_output_path)
         self.result['output']['success'] = True
         return self.result
 

@@ -71,6 +71,9 @@ protocol: #define protocol parameters here
             - value: duringProcessing
               caption: During processing
               description: Remove temporary files the moment they're no longer needed
+            - value: endOfProcessing
+              caption: End of processing
+              description: Remove temporary files after processing is complete
             - value: noCleanup
               caption: No cleanup
               description: Do not remove temporary files

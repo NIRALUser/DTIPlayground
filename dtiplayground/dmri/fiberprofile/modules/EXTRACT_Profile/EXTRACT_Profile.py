@@ -12,6 +12,7 @@ logger = common.logger.write
 
 class CleanupMethod():
     DURING = 'duringProcessing'
+    END = 'endOfProcessing'
     NONE = 'noCleanup'
 class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
     def __init__(self, config_dir, *args, **kwargs):
@@ -213,6 +214,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                 options += ['--step_size', step_size]
                                 options += ['--bandwidth', support_bandwidth]
                                 options += ['--auto_plane_origin', plane_of_origin.lower()]
+                                options += ['--remove_clean_fiber']
                                 if noNaN:
                                     options += ['--remove_nan_fibers']
                         dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
@@ -246,7 +248,8 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         Path(dtitractstat_output_path).unlink()
                 # save the tract_stat_df to a csv
                 tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
-
+                if cleanupMethod == CleanupMethod.END or cleanupMethod == CleanupMethod.DURING:
+                    Path.unlink(tract_output_path)
         self.result['output']['success'] = True
         return self.result
 

@@ -1,7 +1,7 @@
 
 INFO = {
   "dtiplayground": { 
-    "version" : "0.5.8b7"
+    "version" : "0.5.8b8"
   },
   "dmriplayground": {
     "version" : "0.5.8b6"
@@ -16,6 +16,6 @@ INFO = {
     "version" : "0.0.2b1"
   },
   "dmrifiberprofile" : {
-    "version" : "0.5.8b4"
+    "version" : "0.5.8b5"
   }
 }

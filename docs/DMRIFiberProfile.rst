@@ -4,6 +4,36 @@ DMRIFiberProfile
 
 dmrifiberprofile is a tool that analyzes fiber tracts based on DTI volumes or scalar images.
 
+.. image:: _static/fiberprofile_ui.png
+
+GUI Mode
+====================
+
+DTIPlaygroundLab (Web UI)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Run::
+
+    $ dmriplaygroundlab
+
+Then go to the DMRIFiberProfile menu. In the INPUT tab, enter the file path to the input datasheet containing the paths to the images to be analyzed.  You can click the paper clip icon to browse for the file in a GUI. Do the same for selecting the output directory.
+
+Next, click on the PROTOCOL tab to define the pipeline. For tract profile extraction, double-click the EXTRACT_Profile module to add it to the pipeline.
+
+.. image:: _static/extract_profile_ui.png
+
+Fill in the fields in the EXTRACT_Profile module protocol. You **must** provide a comma-separated list of VTK files to profile. If an atlas directory is provided, these file paths may be relative (e.g., `tract1.vtk`). If no atlas directory is provided, the file paths must be absolute (e.g., `/proj/NIRAL/users/alecj/fibers/tract1.vtk`).
+
+Check the box for "Input is DTI" if the input images are DTI volumes. If the input images are scalar images, uncheck this box. The program will search for scalar images corresponding to the scalar properties you want to profile.
+
+The "Properties to Column Header Map" allows you to map parameters to the column headers in your input datasheet. Default column headers are provided, but they may not match your CSV. If they don't, you can edit the "Column Header" field. For example, if your case IDs are in a column called "Subject ID," you should enter this in the "Column Header" field for the "Case ID" parameter.
+
+Once you've entered the requisite fields, you can click the GENERATE PROTOCOLS button to generate the protocol file. This file will be saved in the output directory you specified in the INPUT tab.
+
+Finally, click the EXECUTE button to run the pipeline. Alternatively, you can copy the command and run it directly in the terminal.::
+
+$ dmrifiberprofile run -i INPUT_DATASHEET -p OUTPUT_DIR/protocols.yml
+
 CLI Mode (Linux/Windows-WSL)
 ================================
 
@@ -57,7 +87,9 @@ If using the `EXTRACT_Profile` module, there are two fields in the default proto
 1. `atlas` - The directory containing the tracts to be profiled. Must be provided as an absolute path.
 2. `tracts` - The list of tracts to be profiled. Must be provided as a comma-separated list of file names (spaces don't matter), including the .vtk extension. These file names will be concatenated with the path specified by `atlas` to form the full path to the tracts.
 
-If you try to use this protocol without modifying these fields first, you will receive an error message.
+Optionally, you can also leave the `atlas` field blank and provide a list of absolute file paths in the `tracts` field.
+
+If you try to use this protocol without providing tracts and an atlas, you will receive an error message.
 
 Anatomy of EXTRACT_Profile protocol
 -----------------------------------

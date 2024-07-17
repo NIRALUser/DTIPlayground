@@ -1,6 +1,4 @@
 
-
-  
 import dtiplayground.dmri.preprocessing as prep
 from dtiplayground.dmri.common.dwi import DWI
 import dtiplayground.dmri.common
@@ -123,19 +121,32 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         image_path_dict = {}
         all_list_report_paths = []
         var_num_grad = self.result['report']['csv_data']['original_number_of_gradients']
+        # TODO: change number of gradient computation => function that returns information based on grad info
+        # currently info is based on assumption that number of gradients is different from any axis size
+        # this assumption is made in several parts of the code
+        #print (self.result['input'][0]["output"]['image_path'])
         if self.result['input'][0]["output"]['image_path']:
             list_image_paths = self.result['input']
-            all_list_report_paths += list_image_paths
             for path in range(len(list_image_paths)):
                 key_name = 'input_image'+ str(path+1)
                 image_path_dict[key_name] = {}
                 image_path_dict[key_name]['input_path'] = list_image_paths[path]["output"]['image_path']
                 image_path_dict[key_name]['index'] = path
+                all_list_report_paths += [os.path.abspath(list_image_paths[path]["output"]['image_path'])]
+                sizes = None
+                image_size = None
                 if 'image_information' in list_image_paths[path]:
-                    for number in list_image_paths[path]['sizes']:
-                        if number not in list_image_paths[path]['image_information']['image_size']:
+                    sizes = list_image_paths[path]['image_information']['sizes']
+                    image_size = list_image_paths[path]['image_information']['image_size']
+                if 'image_information' in list_image_paths[path]['output']:
+                    sizes = list_image_paths[path]['output']['image_information']['sizes']
+                    image_size = list_image_paths[path]['output']['image_information']['image_size']
+                if sizes:    
+                    for number in sizes:
+                        if number not in image_size:
                             if not var_num_grad:
                                 self.result['report']['csv_data']['original_number_of_gradients'] = [number]
+                                var_num_grad = number
                             else:
                                 self.result['report']['csv_data']['original_number_of_gradients'] += [number]
 
@@ -145,13 +156,14 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             for results in range(len(self.result_history[0]["output"])):
                 key_name = 'input_image'+ str(results)
                 image_path_dict[key_name] = {}
-                image_path_dict[key_name]['input_path'] = [self.result_history[0]["output"][results]["output"]["output_directory"]]
+                image_path_dict[key_name]['input_path'] = self.result_history[0]["output"][results]["output"]["output_directory"]
                 image_path_dict[key_name]['index'] = results
             
             input_keys = list(image_path_dict.keys())
             for inputs in input_keys:
                 list_report_paths = []
-                while inputs == None:
+                input_image = None
+                while input_image == None:
                     info = image_path_dict[inputs]
                     previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + info['input_path'] + "/result.yml", 'r'))
                     input_image = previous_result["input"]["image_path"]
@@ -160,18 +172,21 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                             self.result['report']['csv_data']['excluded_gradients'][info['index']] = []
                         self.result['report']['csv_data']['excluded_gradients'][info['index']] += previous_result['report']['csv_data']['excluded_gradients']
                     list_report_paths = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths
+                    all_list_report_paths += [os.path.abspath(input_image)] 
                     if "output_directory" in previous_result["input"]:
                         image_path_dict[inputs]['input_path'] = previous_result["input"]["output_directory"]
                     if 'image_information' in previous_result['input']:
                         for number in previous_result['input']['image_information']['sizes']:
                             if number not in previous_result['input']['image_information']['image_size']:
                                 self.result['report']['csv_data']['original_number_of_gradients'][info['index']] = number
-                    all_list_report_paths.append(list_report_paths)
+                    #print("input_image:", input_image)
         
-            print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
+        print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
             
-            self.result['report']['module_report_paths'] = [all_list_report_paths, os.path.abspath(self.output_dir) + '/report.md']
-
+        #print("number inputs :", len(self.result['report']['csv_data']['original_number_of_gradients']))
+        
+        self.result['report']['module_report_paths'] = [all_list_report_paths, os.path.abspath(self.output_dir) + '/report.md']
+        
         input_index = 0
         with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:
             f.write('## {}\n'.format("Module: " + self.result['module_name']).encode('utf-8'))

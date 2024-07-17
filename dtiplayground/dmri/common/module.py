@@ -437,6 +437,9 @@ class DTIPlaygroundModule: #base class
         if self.result['input']['image_path']:
             input_image = self.result['input']['image_path']
             for number in self.result['input']['image_information']['sizes']:
+                #get number of original gradients, HUGE assumption - number of gradients cannot be the same as any dimension
+                # size, otherwise this code does not work
+                # TODO: change this code to look at header information to identify axis with DWI gradient number
                 if number not in self.result['input']['image_information']['image_size']:
                     self.result['report']['csv_data']['original_number_of_gradients'] = number
         elif type(self.result_history[0]["output"]) == dict: #single input

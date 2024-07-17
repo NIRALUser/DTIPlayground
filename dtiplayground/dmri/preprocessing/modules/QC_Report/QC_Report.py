@@ -92,12 +92,13 @@ class QC_Report(prep.modules.DTIPrepModule):
         else: #SUSCEPTIBILITY_Correct in protocol
             number_input_gradients = self.result_history[1]['report']['csv_data']['original_number_of_gradients'][0] + self.result_history[1]['report']['csv_data']['original_number_of_gradients'][1]
             excluded_gradients = [[], [], []]
-            if self.result_history[1]['report']['csv_data']['excluded_gradients'][0]:
-                excluded_gradients[0] = self.result_history[1]['report']['csv_data']['excluded_gradients'][0]
-            if self.result_history[1]['report']['csv_data']['excluded_gradients'][1]:
-                excluded_gradients [1] = self.result_history[1]['report']['csv_data']['excluded_gradients'][1]
-            if self.result_history[1]['report']['csv_data']['excluded_gradients'][2]:
-                excluded_gradients [2] = self.result_history[1]['report']['csv_data']['excluded_gradients'][2]
+            if self.result_history[1]['report']['csv_data']['excluded_gradients']:
+                if self.result_history[1]['report']['csv_data']['excluded_gradients'][0]:
+                    excluded_gradients[0] = self.result_history[1]['report']['csv_data']['excluded_gradients'][0]
+                if self.result_history[1]['report']['csv_data']['excluded_gradients'][1]:
+                    excluded_gradients [1] = self.result_history[1]['report']['csv_data']['excluded_gradients'][1]
+                if self.result_history[1]['report']['csv_data']['excluded_gradients'][2]:
+                    excluded_gradients [2] = self.result_history[1]['report']['csv_data']['excluded_gradients'][2]
             for module in self.result_history[2:]:
                 if module['report']['csv_data']['excluded_gradients']:
                     excluded_gradients[2] += module['report']['csv_data']['excluded_gradients']

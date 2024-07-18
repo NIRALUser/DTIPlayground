@@ -167,19 +167,19 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                     info = image_path_dict[inputs]
                     previous_result = yaml.safe_load(open(str(Path(self.output_dir).parent.parent) + "/" + info['input_path'] + "/result.yml", 'r'))
                     input_image = previous_result["input"]["image_path"]
+                    if (input_image):
+                        all_list_report_paths += [os.path.abspath(input_image)] 
                     if previous_result['report']['csv_data']['excluded_gradients']:
                         if not self.result['report']['csv_data']['excluded_gradients'][info['index']]:
                             self.result['report']['csv_data']['excluded_gradients'][info['index']] = []
                         self.result['report']['csv_data']['excluded_gradients'][info['index']] += previous_result['report']['csv_data']['excluded_gradients']
                     list_report_paths = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths
-                    all_list_report_paths += [os.path.abspath(input_image)] 
                     if "output_directory" in previous_result["input"]:
                         image_path_dict[inputs]['input_path'] = previous_result["input"]["output_directory"]
                     if 'image_information' in previous_result['input']:
                         for number in previous_result['input']['image_information']['sizes']:
                             if number not in previous_result['input']['image_information']['image_size']:
                                 self.result['report']['csv_data']['original_number_of_gradients'][info['index']] = number
-                    #print("input_image:", input_image)
         
         print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
             

@@ -6,8 +6,16 @@ dmriprep is a tool that performs quality control over diffusion
 weighted images. Quality control is very essential preprocess in 
 DTI research, in which the bad gradients with artifacts are to be 
 excluded or corrected by using various computational methods. The 
-software and library provides a module based package with which users 
-can make his own QC pipeline as well as new pipeline modules.
+software and library provides a module-based package with which users 
+can create their own QC pipeline as well as new pipeline modules.
+
+The general framework of dmriprep is:
+-	The input is a dMRI/DWI datasets
+-	The final output of a workflow/protocol is a dMRI dataset
+-	Individual modules might generate their own additional outputs
+
+Thus, for example, a tensor estimation module will write out a tensor image, a tractography module will write out a tractography result, etc, and in addition, the final output that is written at the end of any pipeline (which will be called *QCed.nrrd/QCed.nii.gz depending on format) will be a dMRI/DWI dataset. This final dMRI data is either the output of the last dMRI modifying module in the pipeline or the same as the input dMRI data if the protocol does not contain a module that modifies the dMRI data.
+
 
 About the Preprocessing part : `README about Preprocessing <https://github.com/NIRALUser/DTIPlayground/blob/master/dtiplayground/dmri/preprocessing/README.md>`_
 

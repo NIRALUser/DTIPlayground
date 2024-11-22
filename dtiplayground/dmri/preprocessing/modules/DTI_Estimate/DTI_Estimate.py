@@ -123,7 +123,8 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
                     new_quadform[d1,d2,d3]=uppertriangle(mat)
 
         # TODO : make nrrd file for new_quadform image volume (kind will be "3D-symmetric-matrix") , ref: http://teem.sourceforge.net/nrrd/format.html
-        temp_dti_image = copy.copy(self.image)
+        temp_dti_image = DWI()
+        temp_dti_image.copyFrom(self.image, image=False, gradients=False)
         temp_dti_image.setImage(new_quadform,modality='DTI', kinds=['space','space','space','3D-symmetric-matrix'])
         dti_filename=Path(self.output_dir).joinpath('tensor.nrrd').__str__()
         sp_dir=self.getSourceImageInformation()['space']

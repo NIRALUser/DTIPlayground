@@ -395,7 +395,7 @@ class DWI:
             self.gradients= copy.copy(dwi.gradients)
         self.information = copy.copy(dwi.information)
         self.image_type = copy.copy(dwi.image_type)
-        self.oritinal_data = copy.copy(dwi.original_data)
+        self.original_data = copy.copy(dwi.original_data)
 
     @staticmethod
     def mergeImages(*imgs):

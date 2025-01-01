@@ -1,4 +1,3 @@
-  
 import dtiplayground.dmri.preprocessing as prep
 from dtiplayground.dmri.common import measure_time
 import dtiplayground.dmri.common.tools as tools 
@@ -171,12 +170,14 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
             fitMethod="wls"
             logger("WARNING: The method {} is not available with the method. Changing it to {}.".format(optimizationMethod,fitMethod), prep.Color.WARNING)
 
-
+        temp_dti_image = DWI()
+        temp_dti_image.copyFrom(self.image, image=True, gradients=True)
         dtiestim=tools.DTIEstim(self.software_info['dtiestim']['path'])
         input_image_path = Path(self.output_dir).joinpath('input.nrrd').__str__()
         output_tensor_path = Path(self.output_dir).joinpath('tensor.nrrd').__str__()
-        self.writeImage(str(input_image_path),dest_type='nrrd')
-
+        sp_dir=self.getSourceImageInformation()['space']
+        temp_dti_image.setSpaceDirection(target_space=sp_dir)
+        temp_dti_image.writeImage(str(input_image_path),dest_type='nrrd')
         options = [ '-m',fitMethod,
                     '--correction', correctionMethod]
 

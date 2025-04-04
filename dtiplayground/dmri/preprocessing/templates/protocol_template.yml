@@ -131,6 +131,9 @@ options:
         - value: DTI_Estimate
           caption: Estimate DTI 
           description: Estimation of DTI scalars by DIPY or dtiestim
+        - value: MULTI_SHELL_Estimate
+          caption: Estimate Various Types of DWI
+          description: Estimation of DWI using DIPY, MRTRIX3, or AMICCO
         - value: DTI_Register
           caption: Register DTI (ANTs) 
           description: Register DTI Image using DTI-Reg with ANTs libs

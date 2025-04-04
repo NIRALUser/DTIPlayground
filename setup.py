@@ -1,9 +1,32 @@
 import sys,os
 from setuptools import setup, find_packages
-import json
+import subprocess
 from os.path import join as pjoin, dirname, exists
 from glob import glob
 from dtiplayground.config import INFO as info
+
+def install_conda_packages():
+    '''
+    We are using the conda flag -c to specify the channel so please add the channel
+    and package_name as a string seperated by a space. Please pass -y at the end
+    '''
+    conda_packages = [
+        ["mrtrix3", "mrtrix3", '-y']
+    ]
+    try:
+        print("Checking for Conda dependencies...")
+        for packages in conda_packages:
+            subprocess.run(["conda", "install", "-c"] + packages, check=True)
+    except subprocess.CalledProcessError:
+        print("Error installing Conda packages. Please install them manually.")
+
+def is_conda_env():
+    return "CONDA_PREFIX" in os.environ
+
+if is_conda_env():
+    install_conda_packages()
+else:
+    print("Warning: You are not in a Conda environment. Some dependencies may fail to install.")
 
 using_setuptools = 'setuptools' in sys.modules
 extra_setuptools_args = {}
@@ -51,6 +74,8 @@ setup(
         'reportlab',
         'pypdf2',
         'pandas',
+        'dmri-amico',
+        'mrtrix3'
        ],
 
  )

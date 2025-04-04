@@ -1,0 +1,107 @@
+name: MULTI_SHELL_Estimate
+caption: MULTI_SHELL Estimate
+description: MULTI_SHELL Estimate
+version: "0.1"
+dependency: []
+result: null
+global_variables:
+  dti_path: null
+  
+module_type: prep
+process_attributes:
+    - utility
+    - identity
+protocol:
+      tool: 
+        type: list
+        caption: Tool
+        default_value: dipy
+        candidates:
+          - value: dipy
+            caption: DIPY
+            description: Use DIPY library
+          - value: amico
+            caption: AMICO
+            description: Use NOODI model as part of AMICO INPUT NIFTI
+          - value: mrtrix3
+            caption: mrtrix3
+            description: use mrtrix3 library, agnostic of modality INPUT NIFTI
+        description: Tools to estimate variations of DWI (dipy/noodi/mrtrix3)
+      model:
+        type: list
+        caption: Model
+        default_value: dti
+        candidates:
+          - value: dti
+            caption: DTI
+            description: Diffusion Tensor
+            if : { "tool" : "dipy" }
+          - value: msdki
+            caption: MSDKI
+            description: Mean Diffusion Kurtosis
+            if : { "tool" : "dipy" }
+          - value: fwdti
+            caption: FWDTI
+            description: Free Water Elimination Diffusion
+            if : { "tool" : "dipy" }
+          - value: ivim
+            caption: IVIM
+            description: Free Water Elimination Diffusion
+            if : { "tool" : "dipy" }
+        if : { "tool" : "dipy" }
+      optimizationMethod_dti:
+        type: list
+        caption: Optimization Method DTI
+        default_value: wls
+        description: Optimizaition Method
+        candidates:
+          - value : wls
+            caption: Weighted Least Squares
+            description: Weighted Least Squares
+          - value : lls
+            caption: Linear Least Squares
+            description: Linear Least Squares
+          - value : nls
+            caption: Non-Linear Least Squares
+            description: Non-Linear Least Squares
+            if : { "tool" : "dipy" }
+          - value: ols
+            caption: Ordinary Least Squares
+            description: Ordinary Least Squares
+            if : { "tool": "amico"}
+          - value : restore
+            caption: RESTORE
+            description: RESTORE
+            if : { "tool" : "dipy" }
+        if : { "model" : "dti", "tool" : "dipy,amico" }
+      optimizationMethod_fwdti:
+        type: list
+        caption: Optimization Method FreeWater DTI
+        default_value: nls
+        description: Diffusion Kurtosis
+        candidates:
+          - value : wls
+            caption: Weighted Least Squares
+            description: Weighted Least Squares
+          - value : nls
+            caption: Non-linear Least Square
+            description: Non-linear Least Square
+        if : { "model" : "fwdti", "tool" : "dipy" }
+      split_b_D: 
+        type: float
+        caption: split_b_D
+        default_value: 400
+        description: The b-value to split the data on for two-stage fit. This will be used while estimating the value of D
+        if : { "model" : "ivim", "tool" : "dipy" }
+      split_b_S0: 
+        type: float
+        caption: split_b_S0
+        default_value: 200
+        description: The b-value to split the data on for two-stage fit. This will be used while estimating the value of D
+        if : { "model" : "ivim", "tool" : "dipy" }
+      maskPath: 
+        type: filepath-remote
+        caption: Brain Mask
+        default_value: ''
+        description: Provide mask or OG image will be used
+        if : { "tool" : "amico" }

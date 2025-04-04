@@ -226,6 +226,8 @@ class ApplicationAPI:
                 # out = (res >= param_min) * res
                 # out[out >= param_max] = param_max
                 out = self.filecache['dwi'].getImageSlice4D(axis_idx,slice_idx,grad_idx,normalized=True, display_range=[param_min, param_max])
+                if len(out.shape) == 3:
+                    out = out[0]
                 ok,res=cv2.imencode('.jpeg',out, [int(cv2.IMWRITE_JPEG_QUALITY), 50]) ### compress 
                 if ok:                       
                     data=io.BytesIO(res).read() 

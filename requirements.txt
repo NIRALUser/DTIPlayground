@@ -16,4 +16,5 @@ flask_jwt_extended
 opencv-python
 numpy
 fury
+dmri-amico
 

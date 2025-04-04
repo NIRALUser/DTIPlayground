@@ -19,4 +19,5 @@ sphinx_rtd_theme
 flask
 flask_cors
 flask_jwt_extended
+dmri-amico
 

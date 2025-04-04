@@ -1,0 +1,7 @@
+name: dtiplayground-env
+channels:
+  - conda-forge
+  - defaults
+  - mrtrix3
+dependencies:
+  - mrtrix3

@@ -34,3 +34,5 @@ The Preprocessing module contains a lot of modules that are used to preprocess t
 [ReadMe about the module UTIL_Header](modules/UTIL_Header/README.md)
 - UTIL_Merge : will merge 2 images to one image.
 [ReadMe about the module UTIL_Merge](modules/UTIL_Merge/README.md)
+- MULTI_SHELL_Estimate : will run DTI by several methods like : runDIPY, runMRTRIX3, runAMICCO.
+[ReadMe about the module MULTI_SHELL_Estimate](modules/MULTI_SHELL_Estimate/README.md)

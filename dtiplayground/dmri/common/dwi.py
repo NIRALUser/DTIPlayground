@@ -143,12 +143,10 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     parent_dir=Path(filename).parent
     if bvals_file is None: bvals_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bval')
     if bvecs_file is None: bvecs_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvec')
-
     if not bvals_file.exists():
         bvals_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvals')
     if not bvecs_file.exists():
         bvecs_file=parent_dir.joinpath(Path(Path(filename).stem).stem+'.bvecs')
-    
     loaded_image_object= nib.load(filename)
     header=loaded_image_object.header
     org_data=loaded_image_object.get_fdata().astype(np.dtype(header.get_data_dtype()))
@@ -653,6 +651,26 @@ class DWI:
             out_grad.append(temp)
         yaml.safe_dump(out_grad,open(filename,'w'))
 
+    def saveGradientFile(self, output_filename, b0_threshold=None):
+        if b0_threshold is None:
+            b0_threshold = 10  # Default threshold for b0 images
+
+        # Extract b-values and b-vectors
+        bvals = np.array([g['b_value'] for g in self.getGradients()])
+        bvecs = np.array([g['unit_gradient'] for g in self.getGradients()])
+
+        # Ensure bvecs shape is (N, 3)
+        if bvecs.shape[1] != 3:
+            logger("B-vectors must be in [X Y Z] format",common.Color.ERROR)
+            return ''
+
+        # Stack to form a 4xN matrix (X, Y, Z, b)
+        gradient_data = np.column_stack((bvecs, bvals))
+
+        # Save to a text file
+        np.savetxt(output_filename, gradient_data, fmt="%.6f", delimiter=" ")
+        print(f"Gradient file saved to: {output_filename}")
+
     def isGradientBaseline(self,gradient_index:int):
         return self.getGradients()[gradient_index]['baseline']
 
@@ -764,8 +782,4 @@ class DWI:
         self.getGradients()
         ## reindexing
 
-
-
-        
-        
 

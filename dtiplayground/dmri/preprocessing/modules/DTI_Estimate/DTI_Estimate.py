@@ -87,8 +87,6 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
                 logger('Mask file found : {}'.format(self.global_vars['mask_path']),prep.Color.OK)
                 temp_img=DWI(mpath)
                 mask=temp_img.images
-                # print(mask)
-                # print(mask.shape)
             else:
                 logger('Mask not found, estimating whole image...',prep.Color.WARNING)
         else:
@@ -114,7 +112,7 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
                     outvec.append(matrix[i,j])
             return np.array(outvec)
         quad_form = fitted.quadratic_form
-        new_quadform = np.ndarray(shape=(quad_form.shape[0],quad_form.shape[1],quad_form.shape[2],6),dtype=float)
+        new_quadform = np.empty(quad_form.shape[:-1] + (6,), dtype=float)
         for d1 in range(quad_form.shape[0]):
             for d2 in range(quad_form.shape[1]):
                 for d3 in range(quad_form.shape[2]):

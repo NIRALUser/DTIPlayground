@@ -18,7 +18,7 @@ def install_conda_packages():
         for packages in conda_packages:
             subprocess.run(["conda", "install", "-c"] + packages, check=True)
     except subprocess.CalledProcessError:
-        print("Error installing Conda packages. Please install them manually.")
+        print(f"Error installing {packages[1]}. Please install manually.")
 
 def is_conda_env():
     return "CONDA_PREFIX" in os.environ
@@ -74,8 +74,7 @@ setup(
         'reportlab',
         'pypdf2',
         'pandas',
-        'dmri-amico',
-        'mrtrix3'
+        'dmri-amico'
        ],
 
  )

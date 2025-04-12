@@ -9,7 +9,7 @@ import yaml
 from pathlib import Path
 import copy
 import subprocess
-import os
+import shutil
 import numpy as np
 import amico
 
@@ -264,9 +264,21 @@ class MULTI_SHELL_Estimate(prep.modules.DTIPrepModule):
         return None
     
 
+    def checkMRTRIX3(self, cmd='dwi2adc'):
+        """Check if MRtrix3 is installed by verifying a command like 'dwi2adc'."""
+        if shutil.which(cmd) is None:
+            return False
+        return True
 
     @measure_time
     def runMRTRIX3(self):
+        mrtrix_checker = checkMRTRIX3()
+        if not mrtrix_checker:
+            logger(f"mrtrix3 is not installed, follow instructions on the next two lines", prep.Color.ERROR)
+            logger(f"Conda Install: https://www.mrtrix.org/download/", prep.Color.INFO)
+            logger(f"Binary Install: https://mrtrix.readthedocs.io/en/latest/installation/package_install.html", prep.Color.INFO)
+            return None
+
         gradient_filename=Path(self.output_dir).joinpath('gradients.txt').__str__()
         output_filename=Path(self.output_dir).joinpath('output_image.nii.gz').__str__()
         self.image.saveGradientFile(gradient_filename)
@@ -274,13 +286,14 @@ class MULTI_SHELL_Estimate(prep.modules.DTIPrepModule):
         try:
             # as of right now mrtrix3 pipes all outputs to stderr
             value = subprocess.run(command, capture_output=True, shell=True, text=True)
-            print([value.stdout, value.stderr])
             if len(value.stderr) > 0 and 'error' not in value.stderr.lower() and '100' in value.stderr.lower():
                 self.addOutputFile(output_filename, 'ADC')
             else:
                 logger(f"Error running {command}\n{value.stderr}", prep.Color.ERROR)
         except Exception as e:
             logger(f"Error running {command}\nError: {e}", prep.Color.ERROR)
+        
+        return None
 
     def runAMICCO(self, optimizationMethod, model='dti'):
         optionmap = dipy_conversion[model]
@@ -331,3 +344,5 @@ class MULTI_SHELL_Estimate(prep.modules.DTIPrepModule):
         ae.load_kernels()
         ae.fit()
         ae.save_results()
+
+        return None

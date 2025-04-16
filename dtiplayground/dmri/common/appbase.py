@@ -319,12 +319,8 @@ class AppBase:
                 import dtiplayground.dmri.common.data
 
                 fslinstaller_fn=Path(dtiplayground.dmri.common.data.__file__).parent.joinpath('fslinstaller.py')
-                try:
-                    command=['python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] 
-                    subprocess.run(command)
-                except Exception as e:
-                    logger.error(f"Error: {e}, 'python' command not found. If python3 works on machine create an alias\nalias python=python3\nsource ~/.bashrc  # or source ~/.zshrc, depending on the shell")
-                    return
+                command=[sys.executable, fslinstaller_fn ,'-d',fsldir.resolve().__str__()] 
+                subprocess.run(command)
 
                 info = {
                     'name' : 'fsl',
@@ -363,7 +359,7 @@ class AppBase:
                             fetch_dtiplaygroundtools = ["git","clone","https://github.com/niraluser/dtiplaygroundtools.git"]
                             subprocess.run(fetch_dtiplaygroundtools)
                         except Exception as e:
-                            logger.error(f"Error: {e}, the system package git must be installed")
+                            logger(f"Error: {e}, the system package 'git' must be installed",color.ERROR)
                             return
 
                         logger("Source codes downloaded")
@@ -388,7 +384,7 @@ class AppBase:
                             fetch_package = ['wget',remote_package,'-P',outputdir.resolve().__str__()]
                             subprocess.run(fetch_package)
                         except Exception as e:
-                            logger.error(f"Error: {e}, the system package wget must be installed")
+                            logger(f"Error: {e}, the system package 'wget' must be installed",color.ERROR)
                             return
 
                     untar_command = ['tar','xvfz',tar_filename.resolve().__str__(), '-C', rootdir.resolve().__str__()]

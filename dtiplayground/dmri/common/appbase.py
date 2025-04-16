@@ -319,8 +319,13 @@ class AppBase:
                 import dtiplayground.dmri.common.data
 
                 fslinstaller_fn=Path(dtiplayground.dmri.common.data.__file__).parent.joinpath('fslinstaller.py')
-                command=['python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] 
-                subprocess.run(command)
+                try:
+                    command=['python', fslinstaller_fn ,'-d',fsldir.resolve().__str__()] 
+                    subprocess.run(command)
+                except Exception as e:
+                    logger.error(f"Error: {e}, 'python' command not found. If python3 works on machine create an alias\nalias python=python3\nsource ~/.bashrc  # or source ~/.zshrc, depending on the shell")
+                    return
+
                 info = {
                     'name' : 'fsl',
                     'version' : open(fsldir.joinpath('etc/fslversion'),'r').read().strip()
@@ -354,8 +359,13 @@ class AppBase:
                 if build:
                     if not srcdir.exists():
                         logger("Fetching source code ...")
-                        fetch_dtiplaygroundtools = ["git","clone","https://github.com/niraluser/dtiplaygroundtools.git"]
-                        subprocess.run(fetch_dtiplaygroundtools)
+                        try:
+                            fetch_dtiplaygroundtools = ["git","clone","https://github.com/niraluser/dtiplaygroundtools.git"]
+                            subprocess.run(fetch_dtiplaygroundtools)
+                        except Exception as e:
+                            logger.error(f"Error: {e}, the system package git must be installed")
+                            return
+
                         logger("Source codes downloaded")
                     
                     os.chdir(srcdir.joinpath('dockerfiles'))
@@ -373,9 +383,14 @@ class AppBase:
                 else: # prebuilt package (default)
                     tar_filename = outputdir.joinpath('dtiplayground-tools.tar.gz')
                     if not tar_filename.exists():
-                        remote_package = "https://github.com/NIRALUser/DTIPlaygroundTools/releases/download/v0.0.1/dtiplayground-tools.tar.gz"
-                        fetch_package = ['wget',remote_package,'-P',outputdir.resolve().__str__()]
-                        subprocess.run(fetch_package)
+                        try:
+                            remote_package = "https://github.com/NIRALUser/DTIPlaygroundTools/releases/download/v0.0.1/dtiplayground-tools.tar.gz"
+                            fetch_package = ['wget',remote_package,'-P',outputdir.resolve().__str__()]
+                            subprocess.run(fetch_package)
+                        except Exception as e:
+                            logger.error(f"Error: {e}, the system package wget must be installed")
+                            return
+
                     untar_command = ['tar','xvfz',tar_filename.resolve().__str__(), '-C', rootdir.resolve().__str__()]
                     logger("Installing softwares to the output directory {}".format(outputdir.resolve().__str__()))
                     subprocess.run(untar_command)

@@ -150,6 +150,8 @@ def _quad_fit(bval, domain=[0,1000], fimage=[3.0,3.5]): #returns std multiple be
         return fimage[1]
     elif bval < domain[0] : 
         return fimage[0]
+    elif domain[0] == domain[1] :
+        return fimage[0]
     a= (fimage[1]-fimage[0])/((domain[1]-domain[0])**2)
     c= fimage[0]
     return a*(bval**2)+c

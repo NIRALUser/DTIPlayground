@@ -196,6 +196,12 @@ class FSL(ExternalToolWrapper):
         if verbose : arguments.append('--verbose')
         if repol: arguments.append('--repol')
 
+        arguments.append('--b_range=24') 
+        ## argument needed to make sure shells are not unnecessarily merged. This setting allows
+        ## shells to be separated no more than 50. The default is 100 and far too large for some
+        ## protocols with shells separated by less.
+        ## ToDO: make this an argument the user can edit
+
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)
 

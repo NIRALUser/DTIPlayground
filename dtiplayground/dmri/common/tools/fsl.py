@@ -98,6 +98,7 @@ class FSL(ExternalToolWrapper):
                 '--out={}'.format(out),
                 '--fout={}'.format(fout),
                 '--iout={}'.format(iout),
+                '--nthr={}'.format(self.num_threads),
                 '--config={}'.format(config)
         ]
         self.setArguments(arguments)

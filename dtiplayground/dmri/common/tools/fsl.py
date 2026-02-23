@@ -12,11 +12,11 @@ class FSL(ExternalToolWrapper):
         self.binary_path=binary_path
         self.arguments=[]
         self.fslhome=binary_path
-        # self.num_threads=4
+        self.num_threads=4
         self.dev_mode=False
         os.environ['FSLDIR']=self.fslhome 
         os.environ['FSLOUTPUTTYPE']="NIFTI_GZ"
-        # os.environ['OMP_NUM_THREADS']=str(self.num_threads)
+        os.environ['OMP_NUM_THREADS']=str(self.num_threads)
 
     def _set_num_threads(self,nth):
         self.num_threads=nth 
@@ -178,6 +178,7 @@ class FSL(ExternalToolWrapper):
                 '--bvals={}'.format(bvals),
                 '--bvecs={}'.format(bvecs),
                 '--out={}'.format(out),
+                '--nthr={}'.format(self.num_threads),
                 '--topup={}'.format(topup)
             ]
             if estimate_move_by_susceptibility:
@@ -190,6 +191,7 @@ class FSL(ExternalToolWrapper):
                 '--index={}'.format(index_file),
                 '--bvals={}'.format(bvals),
                 '--bvecs={}'.format(bvecs),
+                '--nthr={}'.format(self.num_threads),
                 '--out={}'.format(out)
             ]
         if data_is_shelled: arguments.append('--data_is_shelled')

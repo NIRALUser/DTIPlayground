@@ -15,6 +15,6 @@ flask_cors
 flask_jwt_extended
 opencv-python
 numpy==1.26.4
-fury
+fury==0.10.0
 dmri-amico
 

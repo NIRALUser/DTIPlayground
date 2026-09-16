@@ -270,32 +270,44 @@ def matrices_to_tensors(m):
 def sample_tensors(bundle, tensor_image, displacement_field=None, interpolation='logEuclidean'):
     """Diffusion tensor (6 components) at every fiber point, sampled at x + u(x) like sample_scalar.
     interpolation:
-      'linear'       : trilinear interpolation of the tensor components (as fiberprocess -T)
+      'linear'       : trilinear interpolation of the tensor components (as fiberprocess -T);
+                       voxels with an all-zero tensor (background) are left out
       'logEuclidean' : trilinear interpolation of the matrix logarithms, then matrix exponential (no swelling effect);
-                       voxels without a positive definite tensor (e.g. background) are left out and the weights of
-                       the other neighbours are renormalized; points without any valid neighbour get NaN"""
+                       voxels without a positive definite tensor (e.g. background) are left out
+    Left out voxels don't contribute and the weights of the other neighbours are renormalized; points without any
+    valid neighbour get NaN."""
     image = tensor_image if isinstance(tensor_image, TensorImage) else TensorImage(tensor_image)
     lookup = _lookup_points(bundle, displacement_field)
     method = interpolation.lower().replace('-', '').replace('_', '')
     if method == 'linear':
-        return image.interpolate(lookup)
+        valid = (np.all(np.isfinite(image.array), axis=3) & np.any(image.array != 0, axis=3)).astype(np.float64)
+        return _interpolate_valid(image, np.where(valid[..., None] > 0, image.array, 0.0), valid, lookup)
     if method != 'logeuclidean':
         raise Exception("Unknown tensor interpolation : {} (logEuclidean or linear)".format(interpolation))
 
-    log_array, valid = image.log_tensors()
-    ## weighted average of the valid neighbours = interpolate(valid * log) / interpolate(valid)
-    weights = Image.__new__(Image)
-    weights.size, weights.origin, weights.physical_to_index = image.size, image.origin, image.physical_to_index
-    weights.array = valid
-    weight = weights.interpolate(lookup)
-    weights.array = log_array  # log_array is already 0 where the tensor is not valid
-    log_sum = weights.interpolate(lookup)
+    log_array, valid = image.log_tensors()  # log_array is 0 where the tensor is not valid
+    mean_log = _interpolate_valid(image, log_array, valid, lookup)
     tensors = np.full((len(lookup), 6), np.nan)
-    ok = weight > 1e-12
-    mean_log = tensors_to_matrices(log_sum[ok] / weight[ok][:, None])
-    eigenvalues, eigenvectors = np.linalg.eigh(mean_log)
+    ok = np.all(np.isfinite(mean_log), axis=1)
+    eigenvalues, eigenvectors = np.linalg.eigh(tensors_to_matrices(mean_log[ok]))
     tensors[ok] = matrices_to_tensors((eigenvectors * np.exp(eigenvalues)[:, None, :]) @ np.swapaxes(eigenvectors, 1, 2))
     return tensors
+
+
+def _interpolate_valid(image, array, valid, lookup):
+    """Trilinear interpolation using only valid voxels: interpolate(valid * array) / interpolate(valid), NaN where no
+    neighbour is valid. array must be 0 where the voxel is not valid. Identical to plain interpolation where all
+    neighbours are valid."""
+    grid = Image.__new__(Image)
+    grid.size, grid.origin, grid.physical_to_index = image.size, image.origin, image.physical_to_index
+    grid.array = valid
+    weight = grid.interpolate(lookup)
+    grid.array = array
+    total = grid.interpolate(lookup)
+    result = np.full(total.shape, np.nan)
+    ok = weight > 1e-12
+    result[ok] = total[ok] / weight[ok][:, None]
+    return result
 
 
 def tensor_scalars(tensors):

@@ -6,7 +6,7 @@ import subprocess as sp
 import os 
 import re
 
-_eddy_options_cache={} # binary path -> set of option names listed in its usage text
+_options_cache={} # binary path -> set of option names listed in its usage text
 
 
 class FSL(ExternalToolWrapper):
@@ -103,9 +103,11 @@ class FSL(ExternalToolWrapper):
                 '--out={}'.format(out),
                 '--fout={}'.format(fout),
                 '--iout={}'.format(iout),
-                '--nthr={}'.format(self.num_threads),
                 '--config={}'.format(config)
         ]
+        ## --nthr only exists in newer topup builds (not in FSL 6.0.3), topup refuses unknown options
+        if 'nthr' in self._supported_options(binary_name):
+            arguments.append('--nthr={}'.format(self.num_threads))
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)
 
@@ -205,7 +207,7 @@ class FSL(ExternalToolWrapper):
 
         ## --nthr and --b_range only exist in newer eddy builds (not in FSL 6.0.3 / 6.0.6.4).
         ## eddy refuses to run when given an option it does not know, so only pass supported ones.
-        supported=self._eddy_options(binary_name)
+        supported=self._supported_options(binary_name)
         if 'nthr' in supported:
             arguments.append('--nthr={}'.format(self.num_threads))
         if b_range is not None and b_range > 0:
@@ -218,15 +220,15 @@ class FSL(ExternalToolWrapper):
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)
 
-    def _eddy_options(self,binary_name):
+    def _supported_options(self,binary_name):
         binary=Path(self.binary_path).joinpath('bin').joinpath(binary_name).__str__()
-        if binary not in _eddy_options_cache:
+        if binary not in _options_cache:
             try:
-                output=sp.run([binary],capture_output=True,text=True,timeout=60) ## without arguments eddy prints its usage
-                _eddy_options_cache[binary]=set(re.findall(r'--([A-Za-z0-9_]+)',output.stdout+output.stderr))
+                output=sp.run([binary],capture_output=True,text=True,timeout=60) ## without arguments eddy/topup print their usage
+                _options_cache[binary]=set(re.findall(r'--([A-Za-z0-9_]+)',output.stdout+output.stderr))
             except (OSError,sp.TimeoutExpired):
-                _eddy_options_cache[binary]=set()
-        return _eddy_options_cache[binary]
+                _options_cache[binary]=set()
+        return _options_cache[binary]
 
     @measure_time
     def execute(self,binary_name,arguments=None,stdin=None):

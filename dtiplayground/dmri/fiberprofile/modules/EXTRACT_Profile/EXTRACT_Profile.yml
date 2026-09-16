@@ -98,4 +98,9 @@ protocol: #define protocol parameters here
         caption: Mask
         default_value: null
         description: Optional mask file to use during profile extraction. Mask has to be defined in atlas space.
+    maskThreshold:
+        type: float
+        caption: Mask threshold
+        default_value: 0.5
+        description: Fibers whose average mask value along the fiber is below this threshold are removed (only used with a mask)
 

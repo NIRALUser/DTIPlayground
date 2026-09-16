@@ -42,7 +42,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             tracts_string: str = self.protocol["tracts"]
             if not isinstance(tracts_string, str):
                 raise ValueError("Tracts must be a string of comma delimited tracts to profile")
-            tracts: List[str] = [tract.strip() for tract in tracts_string.split(',')]
+            tracts: List[str] = [tract.strip() for tract in tracts_string.split(',') if tract.strip() != '']
             if len(tracts) == 0:
                 raise ValueError("Tracts must be a non-empty list of tracts to profile")
             atlas_path: str = self.protocol["atlas"]
@@ -51,7 +51,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     if not os.path.isabs(tract):
                         raise ValueError(
                             f"Tract paths must all be absolute if no atlas path is provided. Atlas path current value: {atlas_path}. Either provide atlas dir or convert this path to absolute: {tract}")
-            properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',')]
+            properties_to_profile: List[str] = [x.strip() for x in self.protocol["propertiesToProfile"].split(',') if x.strip() != '']
             result_case_columnwise: bool = self.protocol["resultCaseColumnwise"]
             input_is_dti: bool = self.protocol["inputIsDTI"]
             overwrite: bool = self.options['overwrite']
@@ -61,6 +61,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             support_bandwidth: str = str(self.protocol["supportBandwidth"])
             noNaN: str = self.protocol["noNaN"]
             mask: str = self.protocol["mask"]
+            mask_threshold: float = float(self.protocol.get("maskThreshold", 0.5))
             cleanupMethod: str = self.protocol["cleanup"]
             if cleanupMethod not in [CleanupMethod.DURING, CleanupMethod.NONE, CleanupMethod.END]:
                 raise ValueError(f"Invalid cleanup method: {cleanupMethod}")
@@ -151,41 +152,47 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 # Create dataframe to track statistics for this tract
                 tract_stat_df: pd.DataFrame = None
                 for row_index, row in df.iterrows():
-                    subject_id = row.iloc[0]
+                    subject_id = str(row[parameter_to_col_map['Case ID']])
                     # Find path to scalar image in the dataframe
                     scalar_img_path = row[parameter_to_col_map[prop]]
                     fiberprocess_output_path: str = tract_output_path.joinpath(
-                        f'{subject_id}_' + tract.replace('_extracted_done', f'_{prop}_profile')).__str__()
+                        f'{subject_id}_' + Path(tract).name.replace('_extracted_done', f'_{prop}_profile')).__str__() ## file name only, tract may be an absolute path
                     fiberpostprocess_output_path: str = fiberprocess_output_path.__str__().replace('.vtk',
                                                                                                    '_processed.vtk')
                     dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
                     scalar_name = prop
+                    fiberprocess_options = []
+                    fiberprocess_options += ['--scalarName', scalar_name]
+                    fiberprocess_options += ['--ScalarImage', scalar_img_path]
+                    fiberprocess_options += ['--no_warp']
+                    if use_displacement_field:
+                        fiberprocess_options += ['--displacement_field', row[parameter_to_col_map['Deformation Field']]]
+                    fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
                     if Path(fiberprocess_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping fiberprocess of scalar {prop} for subject {subject_id}")
                     else:
                         # run fiberprocess
-                        options = []
-                        options += ['--scalarName', scalar_name]
-                        options += ['--ScalarImage', scalar_img_path]
-                        options += ['--no_warp']
-                        if use_displacement_field:
-                            options += ['--displacement_field', row[parameter_to_col_map['Deformation Field']]]
-                        fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
                         fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path,
-                                         options=options)
+                                         options=fiberprocess_options)
 
 
                     if Path(fiberpostprocess_output_path).exists() and not recompute_scalars:
                         logger(f"Skipping fiberpostprocess of scalar {prop} for subject {subject_id}")
                     else:
                         # run fiberpostprocess
+                        ## FiberPostProcess drops the sampled scalar from the fiber file when it removes fibers (--clean),
+                        ## which makes the profile 0, so after masking the scalar is sampled again on the kept fibers.
                         options = []
-                        if mask is not None:
-                            options += ['--mask', mask]
+                        use_mask = mask is not None and str(mask).strip() != ''
+                        if use_mask:
+                            ## --mask is a flag, the mask image is the attribute file; --clean removes fibers whose average mask value is below the threshold
+                            options += ['--mask', '--attributeFile', mask, '--clean', '--threshold', str(mask_threshold)]
                         if noNaN:
                             options += ['--noNan']
                         fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
                         fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
+                        if use_mask:
+                            fiberprocess.run(fiberpostprocess_output_path, fiberpostprocess_output_path, options=fiberprocess_options)
 
                     # fiberpostprocess complete, delete the fiberprocess output
                     if cleanupMethod == CleanupMethod.DURING:

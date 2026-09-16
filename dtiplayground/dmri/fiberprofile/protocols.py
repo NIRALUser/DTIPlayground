@@ -253,7 +253,7 @@ class Protocols(Pipeline):
                 et=time.time()-bt
                 self.result_history[file_path][-1]['processing_time']=et
                 logger("[{}] Processed time : {:.2f}s".format(p,et),common.Color.DEV)
-                if save and not self.io['no_output_image']: ### for the last, dump image and informations
+                if save and not self.io.get('no_output_image', False): ### for the last, dump image and informations (not in the fiberprofile io template)
                     ## Save final Qced image
                     logger("Preparing final output ... ",common.Color.PROCESS)
                     # final output stuff

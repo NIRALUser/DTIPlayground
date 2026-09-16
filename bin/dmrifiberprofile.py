@@ -33,7 +33,7 @@ def resolve_softwarepaths(spathobj, globalvars):
             os.environ['FSL'] = p.resolve().__str__()
 
     if  'DTIPLAYGROUNDTOOLS' not in os.environ:
-        os.environ['DTIPLAYGROUNDTOOLS']=os.path.expandvars("$HOME/.niral/dtiplayground-tools")
+        os.environ['DTIPLAYGROUNDTOOLS']=os.path.expandvars("$HOME/.niral-dti/dtiplayground-tools")
         tooldir=os.environ['DTIPLAYGROUNDTOOLS']
         if Path(tooldir).exists():
             logger("DTI Playground tools directory found at {}".format(tooldir), color.OK)

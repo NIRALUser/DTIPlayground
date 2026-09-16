@@ -24,9 +24,9 @@ from dipy.io.vtk import save_vtk_streamlines, load_vtk_streamlines
 #dipy package conditional importing
 import importlib
 from packaging import version
-from pkg_resources import get_distribution
+from importlib.metadata import version as package_version ## pkg_resources is not available in newer python/setuptools
 importlib.import_module("dipy")
-dipy_version = get_distribution("dipy").version
+dipy_version = package_version("dipy")
 if version.parse(dipy_version) >= version.parse("1.7"):
     from dipy.tracking.metrics import length
 else:

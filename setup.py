@@ -47,7 +47,6 @@ setup(
         'flask_cors',
         'flask_jwt_extended',
         'numpy>=1.21,<2',
-        'fury',
         'markdown',
         'reportlab',
         'pypdf2',

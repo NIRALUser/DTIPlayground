@@ -16,5 +16,6 @@ flask_jwt_extended
 opencv-python
 numpy==1.26.4
 fury==0.10.0
+vtk>=9.1
 dmri-amico
 

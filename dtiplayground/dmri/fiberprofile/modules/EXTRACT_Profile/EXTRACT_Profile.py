@@ -3,11 +3,13 @@ import shutil
 from pathlib import Path
 from typing import List
 
+import numpy as np
 import pandas as pd
 
 import dtiplayground.dmri.common as common
 import dtiplayground.dmri.fiberprofile as base
 from dtiplayground.dmri.common import tools
+import dtiplayground.dmri.common.fibers as fibers
 
 logger = common.logger.write
 
@@ -56,10 +58,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             input_is_dti: bool = self.protocol["inputIsDTI"]
             overwrite: bool = self.options['overwrite']
             use_displacement_field: bool = self.protocol["useDisplacementField"]
-            step_size: str = str(self.protocol["stepSize"])
+            step_size: float = float(self.protocol["stepSize"])
             plane_of_origin: str = self.protocol["planeOfOrigin"]
-            support_bandwidth: str = str(self.protocol["supportBandwidth"])
-            noNaN: str = self.protocol["noNaN"]
+            support_bandwidth: float = float(self.protocol["supportBandwidth"])
+            noNaN: bool = self.protocol["noNaN"]
             mask: str = self.protocol["mask"]
             mask_threshold: float = float(self.protocol.get("maskThreshold", 0.5))
             cleanupMethod: str = self.protocol["cleanup"]
@@ -134,130 +136,90 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
 
         parameterized_fibers_path = Path(output_base_dir).joinpath('parameterized_fibers')
         parameterized_fibers_path.mkdir(parents=True, exist_ok=True)
-        # iterate over the rows of the CSV
-        for prop in properties_to_profile:
-            logger(f"Extracting property {prop} from column header '{parameter_to_col_map[prop]}'")
-            prop_output_path: Path = Path(output_base_dir).joinpath(prop)
-            for tract in tracts:
-                # create the directory for the output for the scalar property
-                tract_name_stem: str = Path(tract).stem
+        use_mask = mask is not None and str(mask).strip() != ''
+        intermediate_dirs = []
+        for tract in tracts:
+            tract_name_stem: str = Path(tract).stem
+            if os.path.isabs(tract):
+                tract_absolute_filename = Path(tract)
+            else:
+                tract_absolute_filename = Path(atlas_path).joinpath(tract)  # concatenate the atlas path with the tract name
+            logger(f"Preparing tract {tract_absolute_filename}")
+
+            # tract geometry (atlas space) is the same for all subjects: mask, plane, arc lengths and sample positions
+            bundle = fibers.read_fibers(tract_absolute_filename)
+            if use_mask:
+                keep = fibers.fiber_mask_average(bundle, mask) > mask_threshold
+                logger(f"Mask {mask}: {int(np.sum(keep))} of {bundle.number_of_fibers} fibers have an average mask value above {mask_threshold}")
+                if not np.any(keep):
+                    raise Exception(f"No fiber of tract {tract} is inside the mask {mask}")
+                bundle = bundle.select(keep)
+            origin, normal = fibers.find_plane(bundle, plane_of_origin)
+            logger(f"Plane of origin ({plane_of_origin}) : origin {origin.tolist()}, normal {normal.tolist()}")
+            arcs = fibers.arc_lengths(bundle, origin, normal)
+            grid = fibers.profile_grid(arcs, step_size)
+
+            parameterized_fiber_output_path: Path = parameterized_fibers_path.joinpath(tract_name_stem + "_parameterized.vtk")
+            if parameterized_fiber_output_path.exists() and not overwrite:
+                logger(f"Skipping parameterized fiber generation of tract {tract}")
+            else:
+                logger(f"Generating parameterized fibers for tract {tract}")
+                fibers.write_parameterized_fibers(bundle, arcs, grid, parameterized_fiber_output_path)
+
+            for prop in properties_to_profile:
+                logger(f"Extracting property {prop} from column header '{parameter_to_col_map[prop]}' for tract {tract}")
+                prop_output_path: Path = Path(output_base_dir).joinpath(prop)
                 tract_output_path: Path = prop_output_path.joinpath(tract_name_stem)
                 tract_output_path.mkdir(parents=True, exist_ok=True)
-                logger(f"Extracting profile for tract {tract}")
-                if tract[0] == '/': # tract is absolute path
-                    tract_absolute_filename = Path(tract)
-                else:
-                    tract_absolute_filename = Path(atlas_path).joinpath(
-                        tract)  # concatenate the atlas path with the tract name
-                # Create dataframe to track statistics for this tract
-                tract_stat_df: pd.DataFrame = None
+                intermediate_dirs.append(tract_output_path)
+                profiles = {}  # subject id -> profile values on the grid
                 for row_index, row in df.iterrows():
                     subject_id = str(row[parameter_to_col_map['Case ID']])
-                    # Find path to scalar image in the dataframe
-                    scalar_img_path = row[parameter_to_col_map[prop]]
-                    fiberprocess_output_path: str = tract_output_path.joinpath(
-                        f'{subject_id}_' + Path(tract).name.replace('_extracted_done', f'_{prop}_profile')).__str__() ## file name only, tract may be an absolute path
-                    fiberpostprocess_output_path: str = fiberprocess_output_path.__str__().replace('.vtk',
-                                                                                                   '_processed.vtk')
-                    dtitractstat_output_path: str = fiberpostprocess_output_path.replace('.vtk', '.fvp')
-                    scalar_name = prop
-                    fiberprocess_options = []
-                    fiberprocess_options += ['--scalarName', scalar_name]
-                    fiberprocess_options += ['--ScalarImage', scalar_img_path]
-                    fiberprocess_options += ['--no_warp']
-                    if use_displacement_field:
-                        fiberprocess_options += ['--displacement_field', row[parameter_to_col_map['Deformation Field']]]
-                    fiberprocess = tools.FiberProcess(self.software_info['fiberprocess']['path'])
-                    if Path(fiberprocess_output_path).exists() and not recompute_scalars:
-                        logger(f"Skipping fiberprocess of scalar {prop} for subject {subject_id}")
-                    else:
-                        # run fiberprocess
-                        fiberprocess.run(tract_absolute_filename.__str__(), fiberprocess_output_path,
-                                         options=fiberprocess_options)
+                    profile_name = f'{subject_id}_' + Path(tract).name.replace('_extracted_done', f'_{prop}_profile')  ## file name only, tract may be an absolute path
+                    fiber_output_path = tract_output_path.joinpath(profile_name)
+                    fvp_output_path = tract_output_path.joinpath(Path(profile_name).stem + '.fvp')
 
-
-                    if Path(fiberpostprocess_output_path).exists() and not recompute_scalars:
-                        logger(f"Skipping fiberpostprocess of scalar {prop} for subject {subject_id}")
-                    else:
-                        # run fiberpostprocess
-                        ## FiberPostProcess drops the sampled scalar from the fiber file when it removes fibers (--clean),
-                        ## which makes the profile 0, so after masking the scalar is sampled again on the kept fibers.
-                        options = []
-                        use_mask = mask is not None and str(mask).strip() != ''
-                        if use_mask:
-                            ## --mask is a flag, the mask image is the attribute file; --clean removes fibers whose average mask value is below the threshold
-                            options += ['--mask', '--attributeFile', mask, '--clean', '--threshold', str(mask_threshold)]
+                    values = None
+                    if fvp_output_path.exists() and not overwrite:
+                        fvp_data = pd.read_csv(fvp_output_path, skiprows=[0, 1, 2, 3])
+                        if len(fvp_data) == len(grid) and np.allclose(fvp_data["Arc_Length"].to_numpy(), grid, atol=1e-4):
+                            logger(f"Skipping profile of {prop} for subject {subject_id}, using {fvp_output_path}")
+                            values = fvp_data["Parameter_Value"].to_numpy()
+                    if values is None:
+                        displacement_field = None
+                        if use_displacement_field:
+                            displacement_field = row[parameter_to_col_map['Deformation Field']]
+                            if not isinstance(displacement_field, str) or displacement_field.strip() == '':
+                                raise Exception(f"No deformation field for subject {subject_id} (column '{parameter_to_col_map['Deformation Field']}')")
+                        sampled = fibers.sample_scalar(bundle, row[parameter_to_col_map[prop]], displacement_field)
+                        subject_bundle = fibers.FiberBundle(bundle.points, bundle.offsets, {prop: sampled, 'ArcLength': arcs})
                         if noNaN:
-                            options += ['--noNan']
-                        fiberpostprocess = tools.FiberPostProcess(self.software_info['fiberpostprocess']['path'])
-                        fiberpostprocess.run(fiberprocess_output_path.__str__(), fiberpostprocess_output_path, options=options)
-                        if use_mask:
-                            fiberprocess.run(fiberpostprocess_output_path, fiberpostprocess_output_path, options=fiberprocess_options)
+                            keep = fibers.fibers_without_nan(bundle, sampled)
+                            if not np.all(keep):
+                                logger(f"Removing {int(np.sum(~keep))} fibers with NaN {prop} values for subject {subject_id}")
+                            subject_bundle = subject_bundle.select(keep)
+                        fibers.write_fibers(subject_bundle, fiber_output_path)
+                        profile = fibers.gaussian_profile(subject_bundle.point_data['ArcLength'], subject_bundle.point_data[prop], grid, support_bandwidth)
+                        fibers.write_fvp(fvp_output_path, profile, prop, step_size, support_bandwidth)
+                        values = profile['mean']
+                        if cleanupMethod == CleanupMethod.DURING:
+                            logger(f"Cleaning up intermediate files for subject {subject_id} and tract {tract}")
+                            fiber_output_path.unlink()
+                            fvp_output_path.unlink()
+                    profiles[subject_id] = values
 
-                    # fiberpostprocess complete, delete the fiberprocess output
-                    if cleanupMethod == CleanupMethod.DURING:
-                        logger(f"Cleaning up fiberprocess output for subject {subject_id} and tract {tract}")
-                        Path(fiberprocess_output_path).unlink()
+                # save the profiles of all subjects (same arc length samples) to a csv
+                if result_case_columnwise:
+                    tract_stat_df = pd.DataFrame({"Arc Length": grid, **profiles})
+                else:
+                    tract_stat_df = pd.DataFrame([[subject_id] + list(values) for subject_id, values in profiles.items()],
+                                                 columns=['case_id'] + ['{:g}'.format(a) for a in grid])
+                tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False, float_format='%.6g')  ## same precision as the .fvp files
 
-                    if Path(dtitractstat_output_path).exists() and not recompute_scalars:
-                        logger(f"Skipping dtitractstat of scalar {prop} for subject {subject_id}")
-                    else:
-                        # run dtitractstat
-                        options = ['--parameter_list', prop, '--scalarName', prop]
-                        if row_index == 0:
-                            logger(f"Generating parameterized fiber profile for tract {tract}")
-                            tract_name_stem: str = Path(tract).stem
-                            parameterized_fiber_output_path: Path = Path(parameterized_fibers_path).joinpath(
-                                tract_name_stem + "_parameterized.vtk")
-                            if parameterized_fiber_output_path.exists() and not recompute_scalars:
-                                logger(f"Skipping parameterized fiber generation of tract {tract}")
-                            else:
-                                logger(f"Generating parameterized fiber profile for tract {tract}")
-                                if tract[0] == '/':  # tract is absolute path
-                                    tract_absolute_filename = Path(tract)
-                                else:
-                                    tract_absolute_filename = Path(atlas_path).joinpath(
-                                        tract)  # concatenate the atlas path with the tract name
-                                options += ['-f', parameterized_fiber_output_path.__str__()]
-                                options += ['--step_size', step_size]
-                                options += ['--bandwidth', support_bandwidth]
-                                options += ['--auto_plane_origin', plane_of_origin.lower()]
-                                options += ['--remove_clean_fiber']
-                                if noNaN:
-                                    options += ['--remove_nan_fibers']
-                        dtitractstat = tools.DTITractStat(self.software_info['dtitractstat']['path'])
-                        dtitractstat.run(fiberpostprocess_output_path, dtitractstat_output_path, options=options)
-                    # dtitractstat complete, delete the fiberpostprocess output
-                    if cleanupMethod == CleanupMethod.DURING:
-                        logger(f"Cleaning up fiberpostprocess output for subject {subject_id} and tract {tract}")
-                        Path(fiberpostprocess_output_path).unlink()
-                    # extract fvp data
-                    fvp_data = pd.read_csv(dtitractstat_output_path, skiprows=[0, 1, 2, 3])
-
-                    # write fvp data to csv
-                    if tract_stat_df is None:
-                        if result_case_columnwise:
-                            tract_stat_df = pd.DataFrame(columns=["Arc Length"])
-                            tract_stat_df["Arc Length"] = fvp_data["Arc_Length"].tolist()
-                        else:
-                            col_list = ['case_id'] + fvp_data["Arc_Length"].tolist()
-                            tract_stat_df = pd.DataFrame(columns=col_list)
-
-                    if result_case_columnwise:
-                        new_col = fvp_data["Parameter_Value"].tolist()
-                        tract_stat_df[subject_id] = new_col
-                    else:
-                        new_row_list = [subject_id] + fvp_data["Parameter_Value"].tolist()
-                        tract_stat_df.loc[len(tract_stat_df)] = dict(zip(tract_stat_df.columns, new_row_list))
-
-                    # dtitractstat output data stored, delete the dtitractstat file output
-                    if cleanupMethod == CleanupMethod.DURING:
-                        logger(f"Cleaning up dtitractstat output for subject {subject_id} and tract {tract}")
-                        Path(dtitractstat_output_path).unlink()
-                # save the tract_stat_df to a csv
-                tract_stat_df.to_csv(prop_output_path.joinpath(f'{tract_name_stem}_{prop}.csv'), index=False)
-                if cleanupMethod == CleanupMethod.END or cleanupMethod == CleanupMethod.DURING:
-                    shutil.rmtree(tract_output_path)
+        if cleanupMethod == CleanupMethod.END or cleanupMethod == CleanupMethod.DURING:
+            for d in dict.fromkeys(intermediate_dirs):
+                if d.exists():
+                    shutil.rmtree(d)
         self.result['output']['success'] = True
         return self.result
 

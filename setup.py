@@ -48,6 +48,7 @@ setup(
         'flask_jwt_extended',
         'numpy>=1.21,<2',
         'fury>=0.10.0,<0.13', ## needed by dipy to save tract files (BRAIN_Tractography)
+        'vtk>=9.1', ## fiber file reading/writing (fiber profiles)
         'markdown',
         'reportlab',
         'pypdf2',

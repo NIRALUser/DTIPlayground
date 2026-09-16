@@ -79,20 +79,20 @@ protocol: #define protocol parameters here
               description: Do not remove temporary files
         description: Remove temporary files after processing
     stepSize:
-        type: integer
+        type: float
         caption: Step size
         default_value: 1
-        description: How far long the tract to step for each new fiber profile location
+        description: Distance (mm) along the tract between profile samples; samples are at multiples of the step size from the plane of origin
     supportBandwidth:
-        type: integer
+        type: float
         caption: Support/bandwidth
         default_value: 1
-        description: Kernel support for DTITractStat
+        description: Standard deviation (mm) of the Gaussian kernel; points within this distance of a sample are averaged
     noNaN:
         type: boolean
         caption: No NaN
         default_value: false
-        description: Remove fibers with NaN values (used both for FiberPostProcess and DTITractStat)
+        description: Remove fibers with NaN values of the profiled property (for each subject)
     mask:
         type: file
         caption: Mask

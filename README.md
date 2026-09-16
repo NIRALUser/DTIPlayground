@@ -331,6 +331,16 @@ MIT
 
 ### Change Log
 
+##### 2026-09-16 (v0.6.0)
+- dmrifiberprofile - fiber profile extraction reimplemented in Python (dtiplayground.dmri.common.fibers); fiberprocess, FiberPostProcess and dtitractstat are no longer needed
+- dmrifiberprofile - DTI input: tensors are interpolated along the fibers (log-Euclidean by default, or linear as fiberprocess) and FA, MD, AD, RD computed from them; dtiprocess is no longer needed
+- dmrifiberprofile - bugs of the C++ tools fixed, which changes profile values: scalar values assigned to the wrong fibers after removing fibers that don't cross the plane, arc length starting at a cosine, imprecise plane normal, 'median' plane crash, first subject processed with different options, empty parameterized fiber file, mask and noNaN options
+- dmrifiberprofile - all subjects share the same arc length samples (multiples of the step size from the plane); points with NaN values are ignored; runs no longer fail at the end
+- dmriprep - EDDYMOTION_Correct / SUSCEPTIBILITY_Correct: --nthr and --b_range only passed to FSL versions that support them (FSL 6.0.3 failed); new bRange option
+- dmriprep - BRAIN_Tractography: reference tract voxelized in Python (failed with DWI input); pkg_resources removed
+- dmriprep - thread count from the protocol, run-dir output base name, fractional b0 threshold
+- dtiplayground - dependency version ranges (numpy < 2), Python 3.9 - 3.12, vtk dependency; Docker image on ubuntu 22.04; docker-compose rewritten
+
 ##### 2023-02-23
 - dmriplaygroundlabs - Modern Web UI
 - dmriplayground - installation, bug fixed

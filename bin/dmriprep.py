@@ -117,7 +117,7 @@ def command_run_dir(args):
     options['num_threads'] = protocol['io']['num_threads']
     options['output_format'] = protocol['io']['output_format']
     options['baseline_threshold'] = protocol['io']['baseline_threshold']
-    options['output_filename_base'] = protocol['io']['output_filename_base']
+    options['output_file_base'] = protocol['io'].get('output_filename_base')
     options['input_image_paths'] = [protocol['io']['input_image_1']]
     if 'input_image_2' in protocol['io']:
         if protocol['io']['input_image_2'] is not None:
@@ -186,7 +186,7 @@ def get_args():
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
-    parser_run.add_argument('-t','--num-threads',help="Number of threads to use",default=1,type=int,required=False)
+    parser_run.add_argument('-t','--num-threads',help="Number of threads to use (default: num_threads in the protocol, 1 if not set)",default=None,type=int,required=False)
     parser_run.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output  (NRRD | NIFTI)',type=str)
@@ -223,9 +223,12 @@ def get_args():
 
 ## threading environment
 args=get_args()
-if hasattr(args,'num_threads'):
-    os.environ['OMP_NUM_THREADS']=str(args.num_threads) ## this should go before loading any dipy function. 
-    os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(args.num_threads) ## for ANTS threading
+num_threads=getattr(args,'num_threads',None)
+if num_threads is None and getattr(args,'protocols',None) is not None: ## no -t given, use the protocol's value
+    num_threads=yaml.safe_load(open(args.protocols,'r'))['io'].get('num_threads')
+if num_threads is not None:
+    os.environ['OMP_NUM_THREADS']=str(num_threads) ## this should go before loading any dipy function. 
+    os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(num_threads) ## for ANTS threading
 
 import dtiplayground.dmri.preprocessing
 import dtiplayground.dmri.preprocessing.modules

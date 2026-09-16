@@ -492,12 +492,13 @@ class AppBase:
                 return None     
 
     def _resolve_softwarepaths(self,spathobj, globalvars):
-        if 'dtiplayground-tools' in globalvars:
+        ## path is None until the tools are installed or found
+        if 'dtiplayground-tools' in globalvars and globalvars['dtiplayground-tools'].get('path') is not None:
             p = Path(globalvars['dtiplayground-tools']['path'])
             if p.exists():
                 os.environ['DTIPLAYGROUNDTOOLS'] = p.resolve().__str__()
 
-        if 'fsl' in globalvars:
+        if 'fsl' in globalvars and globalvars['fsl'].get('path') is not None:
             p = Path(globalvars['fsl']['path'])
             if p.exists():
                 os.environ['FSL'] = p.resolve().__str__()

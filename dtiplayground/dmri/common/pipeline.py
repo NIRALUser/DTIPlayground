@@ -25,7 +25,8 @@ def _load_protocol(filename):
     res = yaml.safe_load(open(filename,'r'))
     res['io'].setdefault('num_threads',1)
     res['io']['num_threads']=int(res['io']['num_threads'])
-    res['io']['baseline_threshold']=int(res['io']['baseline_threshold'])
+    res['io'].setdefault('baseline_threshold',10)
+    res['io']['baseline_threshold']=float(res['io']['baseline_threshold'])
     for idx,p in enumerate(res['pipeline']):
         module_name, parameter = p
         protocol = parameter['protocol']
@@ -135,6 +136,7 @@ class Pipeline:
         self.original_image_information=None
         self.original_image_format='nrrd'
         self.images=[]
+        self.file_paths=[] # datasheet inputs (e.g. csv), used instead of images by some apps
         self.image_cache={} # cache for the previous results
 
         #Execution variables
@@ -235,9 +237,6 @@ class Pipeline:
                 self.io['no_output_image']= False
             if 'output_format' not in self.io:
                 self.io['output_format']=None
-            if 'baseline_threshold' not in self.io:
-                self.io['baseline_threshold']=10
-                self.io['baseline_threshold']=float(self.io['baseline_threshold'])
             self.protocol_filename=filename
             return True
         except Exception as e:

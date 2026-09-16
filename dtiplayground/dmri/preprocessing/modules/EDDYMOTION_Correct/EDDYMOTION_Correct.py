@@ -229,7 +229,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                                 estimate_move_by_susceptibility=protocols['estimateMoveBySusceptibility'],
                                 topup=topup_filename,
                                 data_is_shelled=protocols['dataIsShelled'],
-                                repol=protocols['interpolateBadData'])
+                                repol=protocols['interpolateBadData'],
+                                b_range=protocols.get('bRange'))
             else:
                 logger("Computing eddy ... ",prep.Color.PROCESS)
                 res=fsl.eddy_openmp(imain=input_nifti,
@@ -242,7 +243,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                                 estimate_move_by_susceptibility=False,
                                 topup=None,
                                 data_is_shelled=protocols['dataIsShelled'],
-                                repol=protocols['interpolateBadData'])
+                                repol=protocols['interpolateBadData'],
+                                b_range=protocols.get('bRange'))
         else:
             logger("Eddymotion corrected output exists: {}".format(processed_nifti),prep.Color.OK)
             self.image=self.loadImage(processed_nifti)

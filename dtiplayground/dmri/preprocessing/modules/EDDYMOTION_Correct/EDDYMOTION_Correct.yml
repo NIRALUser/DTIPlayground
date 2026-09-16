@@ -28,6 +28,11 @@ protocol:
         caption: Data is shelled
         default_value: True
         description: If the data is shelled, check this to be true
+      bRange:
+        type: integer
+        caption: Shell b-value range
+        default_value: 24
+        description: B-values within this range of each other are treated as the same shell (eddy --b_range). Keeps close shells from being merged. Set to 0 to use eddy's default. Ignored by eddy versions without --b_range.
       qcReport:
         type: boolean
         caption: Generate QC report

@@ -4,6 +4,9 @@ import dtiplayground.dmri.common
 from pathlib import Path 
 import subprocess as sp
 import os 
+import re
+
+_eddy_options_cache={} # binary path -> set of option names listed in its usage text
 
 
 class FSL(ExternalToolWrapper):
@@ -12,11 +15,13 @@ class FSL(ExternalToolWrapper):
         self.binary_path=binary_path
         self.arguments=[]
         self.fslhome=binary_path
-        self.num_threads=4
+        try: ## keep the thread count set by the caller (e.g. from the protocol)
+            self.num_threads=int(os.environ.get('OMP_NUM_THREADS',4))
+        except ValueError:
+            self.num_threads=4
         self.dev_mode=False
         os.environ['FSLDIR']=self.fslhome 
         os.environ['FSLOUTPUTTYPE']="NIFTI_GZ"
-        os.environ['OMP_NUM_THREADS']=str(self.num_threads)
 
     def _set_num_threads(self,nth):
         self.num_threads=nth 
@@ -163,7 +168,8 @@ class FSL(ExternalToolWrapper):
                     topup=None, # topuped file (if susceptibility_correct==True)
                     data_is_shelled=True,
                     repol=True,
-                    verbose=True
+                    verbose=True,
+                    b_range=None # b-values within this range are treated as one shell (None: use eddy's default)
                     ):
         binary_name='eddy_openmp'
         if not Path(self.binary_path).joinpath('bin').joinpath(binary_name).exists():
@@ -179,7 +185,6 @@ class FSL(ExternalToolWrapper):
                 '--bvals={}'.format(bvals),
                 '--bvecs={}'.format(bvecs),
                 '--out={}'.format(out),
-                '--nthr={}'.format(self.num_threads),
                 '--topup={}'.format(topup)
             ]
             if estimate_move_by_susceptibility:
@@ -192,21 +197,36 @@ class FSL(ExternalToolWrapper):
                 '--index={}'.format(index_file),
                 '--bvals={}'.format(bvals),
                 '--bvecs={}'.format(bvecs),
-                '--nthr={}'.format(self.num_threads),
                 '--out={}'.format(out)
             ]
         if data_is_shelled: arguments.append('--data_is_shelled')
         if verbose : arguments.append('--verbose')
         if repol: arguments.append('--repol')
 
-        arguments.append('--b_range=24') 
-        ## argument needed to make sure shells are not unnecessarily merged. This setting allows
-        ## shells to be separated no more than 50. The default is 100 and far too large for some
-        ## protocols with shells separated by less.
-        ## ToDO: make this an argument the user can edit
+        ## --nthr and --b_range only exist in newer eddy builds (not in FSL 6.0.3 / 6.0.6.4).
+        ## eddy refuses to run when given an option it does not know, so only pass supported ones.
+        supported=self._eddy_options(binary_name)
+        if 'nthr' in supported:
+            arguments.append('--nthr={}'.format(self.num_threads))
+        if b_range is not None and b_range > 0:
+            ## eddy's default range can merge shells that are close together in some protocols
+            if 'b_range' in supported:
+                arguments.append('--b_range={}'.format(int(b_range))) ## protocol values may be loaded as float
+            else:
+                self.logger.write("{} does not support --b_range, using eddy's default shell grouping".format(binary_name))
 
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)
+
+    def _eddy_options(self,binary_name):
+        binary=Path(self.binary_path).joinpath('bin').joinpath(binary_name).__str__()
+        if binary not in _eddy_options_cache:
+            try:
+                output=sp.run([binary],capture_output=True,text=True,timeout=60) ## without arguments eddy prints its usage
+                _eddy_options_cache[binary]=set(re.findall(r'--([A-Za-z0-9_]+)',output.stdout+output.stderr))
+            except (OSError,sp.TimeoutExpired):
+                _eddy_options_cache[binary]=set()
+        return _eddy_options_cache[binary]
 
     @measure_time
     def execute(self,binary_name,arguments=None,stdin=None):
@@ -221,7 +241,7 @@ class FSL(ExternalToolWrapper):
         return output  ## output.returncode, output.stdout output.stderr, output.args, output.check_returncode()
 
     @measure_time
-    def execute_pipe(self,binary_name,stdin=None):
+    def execute_pipe(self,binary_name,arguments=None,stdin=None):
         binary=Path(self.binary_path).joinpath('bin').joinpath(binary_name).__str__()
         command=[binary]+self.getArguments()
         if arguments is not None: command=[binary]+arguments

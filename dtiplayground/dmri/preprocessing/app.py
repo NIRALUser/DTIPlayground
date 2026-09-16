@@ -115,6 +115,8 @@ class DMRIPrepApp(AppBase):
                 proto.loadProtocols(options["protocol_path"])
             else :
                 proto.makeDefaultProtocols(options['default_protocols'],template=template,options=options)
+            if options['num_threads'] is None: ## not given on the command line, use the protocol's value
+                options['num_threads']=proto.io.get('num_threads')
             if options['num_threads'] is not None:
                 proto.setNumThreads(options['num_threads'])
             Path(options['output_dir']).mkdir(parents=True,exist_ok=True)

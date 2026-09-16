@@ -471,12 +471,13 @@ def profile_grid(arcs, step):
 def gaussian_profile(arcs, values, grid, bandwidth):
     """Gaussian weighted mean (std = bandwidth) of the values within +-bandwidth of each sample position.
     Returns a dict of arrays: arc_length, number_of_points, mean, std (std is the unweighted deviation from the mean,
-    as in dtitractstat). Samples without points are NaN."""
+    as in dtitractstat). Points with NaN values (e.g. fiber points outside the brain in subject space) are ignored;
+    samples without valid points are NaN."""
     if bandwidth <= 0:
         raise Exception("Bandwidth must be positive : {}".format(bandwidth))
     arcs = np.asarray(arcs, dtype=np.float64)
     values = np.asarray(values, dtype=np.float64)
-    used = ~np.isnan(arcs)
+    used = ~np.isnan(arcs) & ~np.isnan(values)
     order = np.argsort(arcs[used], kind='stable')
     a = arcs[used][order]
     v = values[used][order]

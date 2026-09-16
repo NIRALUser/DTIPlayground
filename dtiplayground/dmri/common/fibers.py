@@ -218,6 +218,37 @@ def sample_scalar(bundle, scalar_image, displacement_field=None):
     return image.interpolate(lookup)
 
 
+def voxelize(bundle, reference_image, output_file, label=1):
+    """Label map (unsigned short) on the voxel grid of the reference image: voxels containing a fiber point get the label
+    (fiberprocess --voxelize). Only the geometry of the reference image is used, so DWI, DTI or scalar images work."""
+    reader = sitk.ImageFileReader()
+    reader.SetFileName(str(reference_image))
+    reader.ReadImageInformation()
+    if reader.GetDimension() < 3:
+        raise Exception("Reference image must be 3D : {}".format(reference_image))
+    size = np.array(reader.GetSize()[:3], dtype=np.int64)
+    spacing = reader.GetSpacing()[:3]
+    origin = reader.GetOrigin()[:3]
+    direction = np.array(reader.GetDirection(), dtype=np.float64).reshape(reader.GetDimension(), reader.GetDimension())[:3, :3]
+    physical_to_index = np.linalg.inv(direction @ np.diag(spacing))
+
+    ci = (ras_to_lps(bundle.points) - np.array(origin)) @ physical_to_index.T
+    index = np.rint(ci).astype(np.int64)  ## round half to even, as fiberprocess
+    inside = np.all((index >= 0) & (index < size), axis=1)
+    if not np.all(inside):
+        logger("{} fiber points are outside of the image {} and are ignored".format(int(np.sum(~inside)), reference_image), common.Color.WARNING)
+    labels = np.zeros(size[::-1], dtype=np.uint16)  # z, y, x
+    ix, iy, iz = index[inside].T
+    labels[iz, iy, ix] = label
+
+    image = sitk.GetImageFromArray(labels)
+    image.SetSpacing(spacing)
+    image.SetOrigin(origin)
+    image.SetDirection(direction.flatten().tolist())
+    sitk.WriteImage(image, str(output_file), True)
+    return labels
+
+
 ### FiberPostProcess: masking and NaN fibers
 
 def fiber_mask_average(bundle, mask_image):

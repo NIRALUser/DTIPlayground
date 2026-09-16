@@ -36,7 +36,8 @@ from pathlib import Path
 
 import dtiplayground.dmri.preprocessing as prep
 import dtiplayground.dmri.common as common
-import dtiplayground.dmri.common.tools as tools 
+import dtiplayground.dmri.common.tools as tools
+import dtiplayground.dmri.common.fibers as fibers
 from dtiplayground.dmri.common.dwi import DWI
 
 color = common.Color
@@ -320,12 +321,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
     ## Dilation and voxelization of the mapped reference tracts , getting labelmap
         labelMapFile = Path(self.output_dir).joinpath('labelmap.nrrd').__str__()
-        arguments = ['--voxelize', labelMapFile,
-                     '--fiber_file', outputFiberTract,
-                     '-T', inputDTI]
-        fiberprocess = tools.FiberProcess(softwares=self.softwares)
-        fiberprocess.dev_mode = True
-        if self.overwriteFile(labelMapFile) : fiberprocess.execute(arguments=arguments)
+        if self.overwriteFile(labelMapFile) : fibers.voxelize(fibers.read_fibers(outputFiberTract), inputDTI, labelMapFile) ## only the voxel grid of inputDTI is used
         self.addGlobalVariable('labelmap_path', labelMapFile)
 
     ## Dilation and voxelization of the reference tracts

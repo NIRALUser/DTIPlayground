@@ -1,7 +1,7 @@
 Installation & Quickstart
 ============================
 
-We recommend users to make a virtual environment first using python >= 3.8.6
+We recommend users to make a virtual environment first using python 3.9 - 3.12 (3.11 recommended)
 
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
 
@@ -11,7 +11,7 @@ For Windows users, install WSL and linux distribution (tested with ubuntu 20.04,
 Prerequisite
 ~~~~~~~~~~~~~~~~~~~~~
 
-* Python3.8 or conda environment is required
+* Python 3.9 - 3.12 or conda environment is required
 
 Install Using PIP (Linux/Windows WSL)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,11 +43,15 @@ Install Using Conda (Linux/Windows WSL)
 
 Create the environment and install::
 
-    $ conda create -n dtienv-py38 python=3.8
-    $ conda activate dtienv-py38
+    $ conda create -n dtienv-py311 python=3.11
+    $ conda activate dtienv-py311
     $ pip install --upgrade dtiplayground
     $ dmriplayground init
     $ dmriplaygroundlab
+
+The ``mrtrix3`` option of the MULTI_SHELL_Estimate module needs MRtrix3, which is not installed by pip. In a conda environment::
+
+    $ conda install -c mrtrix3 mrtrix3
 
 
 

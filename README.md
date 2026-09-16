@@ -10,7 +10,7 @@ For detailed information about installation and usage, please go here: [Document
 
 #### Prerequisite
 
-Python3.8 or conda environment is required
+Python 3.9 - 3.12 (3.11 recommended) or a conda environment is required
 
 User needs to set path of python2 like below
 
@@ -21,7 +21,7 @@ $ ln -s /usr/bin/python2.7 /usr/bin/python2
 
 #### Using PIP
 
-Python 3.8.6 or above is required (Python 3.8.6 ~ 3.9.x preferred)
+Python 3.9 - 3.12 is required (3.11 recommended)
 
 ```
 $ pip install dtiplayground
@@ -43,10 +43,18 @@ It will automatically install dtiplayground module as well if there is no pre in
 Create the environment
 
 ```
-$ conda create -n dtienv-py38 python=3.8
-$ conda activate dtienv-py38
+$ conda create -n dtienv-py311 python=3.11
+$ conda activate dtienv-py311
 $ pip install --upgrade dtiplayground
 $ dmriplaygroundlab
+```
+
+#### Optional: MRtrix3
+
+The `mrtrix3` option of the MULTI_SHELL_Estimate module needs MRtrix3, which is not installed by pip. In a conda environment:
+
+```
+$ conda install -c mrtrix3 mrtrix3
 ```
 
 
@@ -120,7 +128,7 @@ $ dmriprep-ui
 
 *FSL/DTIPlaygroundTools required*
 
-For windows users, install WSL2 and linux packages with python >=3.8.6. 
+For windows users, install WSL2 and linux packages with python 3.9 - 3.12. 
 
 1. **init** - Initialize configuration (default: `$HOME/.niral-dti/dmriprep-<version>`)
 
@@ -289,7 +297,7 @@ MIT
 ##### Application dependencies
 
 [GENERAL]
-- Python >= 3.8.6 and development packages (e.g. python-dev or python-devel)
+- Python 3.9 - 3.12 and development packages (e.g. python-dev or python-devel)
 
 [POST INSTALLATION (OPTION)] : below tools can be installed using `$ dmriplayground install-tools` command
 - FSL >= 6.0 

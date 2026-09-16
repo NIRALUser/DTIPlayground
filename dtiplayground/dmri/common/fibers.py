@@ -197,12 +197,130 @@ def ras_to_lps(points):
     return points * np.array([-1.0, -1.0, 1.0])
 
 
+### Tensor images
+
+_SPACE_TO_LPS = {  # sign flips from the NRRD space to LPS
+    'left-posterior-superior': [1, 1, 1], 'LPS': [1, 1, 1],
+    'right-anterior-superior': [-1, -1, 1], 'RAS': [-1, -1, 1],
+    'left-anterior-superior': [1, -1, 1], 'LAS': [1, -1, 1],
+}
+
+
+class TensorImage(Image):
+    """Diffusion tensor NRRD image (kinds 3D-symmetric-matrix, 3D-masked-symmetric-matrix or 3D-matrix).
+    array[x, y, z, 6] holds (xx, xy, xz, yy, yz, zz). Tensor values are used as stored (no measurement frame rotation),
+    which doesn't change FA, MD, AD or RD."""
+
+    def __init__(self, filename):
+        import nrrd
+        self.filename = str(filename)
+        data, header = nrrd.read(self.filename)
+        kinds = [k.lower() for k in header.get('kinds', [])]
+        tensor_axis = [i for i, k in enumerate(kinds) if 'matrix' in k]
+        if len(tensor_axis) != 1 or data.ndim != 4:
+            raise Exception("Not a diffusion tensor NRRD image (expected a 3D-symmetric-matrix / 3D-matrix axis) : {}".format(self.filename))
+        kind = kinds[tensor_axis[0]]
+        data = np.moveaxis(data, tensor_axis[0], 3).astype(np.float64)
+        if kind == '3d-masked-symmetric-matrix':
+            data = data[..., 1:7] * (data[..., :1] > 0.5)
+        elif kind == '3d-symmetric-matrix':
+            data = data[..., :6]
+        elif kind == '3d-matrix':
+            data = data[..., [0, 1, 2, 4, 5, 8]]
+        else:
+            raise Exception("Unsupported tensor kind {} : {}".format(kind, self.filename))
+        self.array = np.ascontiguousarray(data)
+        self.size = np.array(self.array.shape[:3], dtype=np.int64)
+
+        space = header.get('space', 'left-posterior-superior')
+        if space not in _SPACE_TO_LPS:
+            raise Exception("Unsupported NRRD space {} : {}".format(space, self.filename))
+        flip = np.array(_SPACE_TO_LPS[space], dtype=np.float64)
+        directions = np.array([d for d in header['space directions'] if d is not None and not np.all(np.isnan(np.asarray(d, dtype=float)))], dtype=np.float64)
+        index_to_physical = (directions * flip).T  # columns = physical step per index axis (LPS)
+        self.origin = np.asarray(header.get('space origin', np.zeros(3)), dtype=np.float64) * flip
+        self.physical_to_index = np.linalg.inv(index_to_physical)
+        self._log_array = None
+        self._log_valid = None
+
+    def log_tensors(self):
+        """Matrix logarithm of every voxel tensor (6 components) and a mask of positive definite tensors."""
+        if self._log_array is None:
+            tensors = self.array.reshape(-1, 6)
+            valid = np.all(np.isfinite(tensors), axis=1)
+            log6 = np.zeros_like(tensors)
+            eigenvalues, eigenvectors = np.linalg.eigh(tensors_to_matrices(np.where(valid[:, None], tensors, 0.0)))
+            valid &= eigenvalues[:, 0] > 0
+            log_eigenvalues = np.log(np.where(eigenvalues > 0, eigenvalues, 1.0))
+            log6[valid] = matrices_to_tensors((eigenvectors[valid] * log_eigenvalues[valid][:, None, :]) @ np.swapaxes(eigenvectors[valid], 1, 2))
+            self._log_array = log6.reshape(self.array.shape)
+            self._log_valid = valid.reshape(self.array.shape[:3]).astype(np.float64)
+        return self._log_array, self._log_valid
+
+
+def tensors_to_matrices(t):
+    """(N, 6) xx, xy, xz, yy, yz, zz -> (N, 3, 3)"""
+    return np.stack([t[:, [0, 1, 2]], t[:, [1, 3, 4]], t[:, [2, 4, 5]]], axis=1)
+
+
+def matrices_to_tensors(m):
+    return np.stack([m[:, 0, 0], m[:, 0, 1], m[:, 0, 2], m[:, 1, 1], m[:, 1, 2], m[:, 2, 2]], axis=1)
+
+
+def sample_tensors(bundle, tensor_image, displacement_field=None, interpolation='logEuclidean'):
+    """Diffusion tensor (6 components) at every fiber point, sampled at x + u(x) like sample_scalar.
+    interpolation:
+      'linear'       : trilinear interpolation of the tensor components (as fiberprocess -T)
+      'logEuclidean' : trilinear interpolation of the matrix logarithms, then matrix exponential (no swelling effect);
+                       voxels without a positive definite tensor (e.g. background) are left out and the weights of
+                       the other neighbours are renormalized; points without any valid neighbour get NaN"""
+    image = tensor_image if isinstance(tensor_image, TensorImage) else TensorImage(tensor_image)
+    lookup = _lookup_points(bundle, displacement_field)
+    method = interpolation.lower().replace('-', '').replace('_', '')
+    if method == 'linear':
+        return image.interpolate(lookup)
+    if method != 'logeuclidean':
+        raise Exception("Unknown tensor interpolation : {} (logEuclidean or linear)".format(interpolation))
+
+    log_array, valid = image.log_tensors()
+    ## weighted average of the valid neighbours = interpolate(valid * log) / interpolate(valid)
+    weights = Image.__new__(Image)
+    weights.size, weights.origin, weights.physical_to_index = image.size, image.origin, image.physical_to_index
+    weights.array = valid
+    weight = weights.interpolate(lookup)
+    weights.array = log_array  # log_array is already 0 where the tensor is not valid
+    log_sum = weights.interpolate(lookup)
+    tensors = np.full((len(lookup), 6), np.nan)
+    ok = weight > 1e-12
+    mean_log = tensors_to_matrices(log_sum[ok] / weight[ok][:, None])
+    eigenvalues, eigenvectors = np.linalg.eigh(mean_log)
+    tensors[ok] = matrices_to_tensors((eigenvectors * np.exp(eigenvalues)[:, None, :]) @ np.swapaxes(eigenvectors, 1, 2))
+    return tensors
+
+
+def tensor_scalars(tensors):
+    """FA, MD, AD (largest eigenvalue) and RD (mean of the two smaller eigenvalues) of (N, 6) tensors."""
+    tensors = np.asarray(tensors, dtype=np.float64)
+    finite = np.all(np.isfinite(tensors), axis=1)
+    eigenvalues = np.full((len(tensors), 3), np.nan)
+    eigenvalues[finite] = np.linalg.eigvalsh(tensors_to_matrices(tensors[finite]))  # ascending
+    md = eigenvalues.mean(axis=1)
+    with np.errstate(invalid='ignore', divide='ignore'):
+        fa = np.sqrt(1.5) * np.sqrt(np.sum((eigenvalues - md[:, None]) ** 2, axis=1)) / np.sqrt(np.sum(eigenvalues ** 2, axis=1))
+    return {'FA': fa, 'MD': md, 'AD': eigenvalues[:, 2], 'RD': (eigenvalues[:, 0] + eigenvalues[:, 1]) / 2.0}
+
+
 ### fiberprocess: sampling scalar images along fibers
 
 def sample_scalar(bundle, scalar_image, displacement_field=None):
     """Scalar value at every fiber point. With a displacement field (LPS, mm, defined on the fiber/atlas space),
     the image is sampled at x + u(x); the fiber geometry itself is not changed (fiberprocess --no_warp)."""
     image = scalar_image if isinstance(scalar_image, Image) else Image(scalar_image)
+    return image.interpolate(_lookup_points(bundle, displacement_field))
+
+
+def _lookup_points(bundle, displacement_field=None):
+    """LPS positions where images are sampled: fiber points moved by the displacement field (if any)."""
     lookup = ras_to_lps(bundle.points)
     if displacement_field is not None:
         field = displacement_field if isinstance(displacement_field, Image) else Image(displacement_field)
@@ -215,7 +333,7 @@ def sample_scalar(bundle, scalar_image, displacement_field=None):
                    .format(int(np.sum(~inside)), field.filename), common.Color.WARNING)
         lookup = lookup.copy()
         lookup[inside] += field.interpolate(lookup[inside])
-    return image.interpolate(lookup)
+    return lookup
 
 
 def voxelize(bundle, reference_image, output_file, label=1):

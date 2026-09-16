@@ -22,7 +22,19 @@ protocol: #define protocol parameters here
         type: boolean
         caption: Input is DTI
         default_value: true
-        description: Input image is a DTI, so the properties to profile are derived from it.
+        description: Input image is a DTI (column 'Original DTI Image'). The tensors are interpolated along the fibers and FA, MD, AD, RD are computed from them. Otherwise each property is sampled from its own scalar image column.
+    tensorInterpolation:
+        type: list
+        caption: Tensor interpolation
+        candidates:
+            - value: logEuclidean
+              caption: Log-Euclidean
+              description: Linear interpolation of the matrix logarithms of the tensors (no swelling effect). Voxels without a positive definite tensor are left out.
+            - value: linear
+              caption: Linear
+              description: Linear interpolation of the tensor components (as fiberprocess)
+        default_value: logEuclidean
+        description: Interpolation of the DTI along the fibers (only if the input is a DTI)
     propertiesToProfile: # tensor related properties (e.g. FA, MD, etc.) require an input DTI volume
         type: string
         caption: Properties to profile

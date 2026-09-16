@@ -49,6 +49,12 @@ setup(
         'numpy>=1.21,<2',
         'fury>=0.10.0,<0.13', ## needed by dipy to save tract files (BRAIN_Tractography)
         'vtk>=9.1', ## fiber file reading/writing (fiber profiles)
+        ## fiber profile analysis tools (dmrifiberprofile impute / qc-registration / qc-profiles)
+        'torch>=2.1',
+        'matplotlib>=3.7',
+        'scikit-image>=0.21',
+        'scikit-learn>=1.3',
+        'scipy>=1.10',
         'markdown',
         'reportlab',
         'pypdf2',

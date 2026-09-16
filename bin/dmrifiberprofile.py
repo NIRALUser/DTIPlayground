@@ -760,6 +760,9 @@ def get_args():
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
     parser_run.set_defaults(func=command_run)
 
+    ## fiber profile analysis tools (flip-tensor, compute-axis, gather, impute, qc-registration, qc-profiles)
+    importlib.import_module('dtiplayground.dmri.fiberprofile.analysis').add_commands(subparsers)
+
     ## log related
     parser.add_argument('--config-dir',help='Configuration directory',default=str(config_dir))
     parser.add_argument('--log',help='log file',default=str(config_dir.joinpath('log.txt')))
@@ -793,7 +796,7 @@ if __name__=='__main__':
     try:
         dtiplayground.dmri.common.logger.setTimestamp(True)
         result=args.func(args)
-        exit(0)
+        exit(result if type(result) is int else 0) ## analysis commands return an exit code
     except Exception as e:
         dtiplayground.dmri.common.logger.setVerbosity(True)
         msg=traceback.format_exc()

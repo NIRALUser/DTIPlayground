@@ -231,6 +231,31 @@ You can just copy module directory to `$HOME/.niral-dti/modules/dmriprep` and ch
 
 
 
+## DMRIFiberProfile analysis tools (dmrifiberprofile)
+
+Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifiberprofile` provides tools for the analysis and QC of fiber profiles (ported from the FiberProfileAnalysis scripts). Use `dmrifiberprofile <command> --help` for all options.
+
+| Command | Purpose |
+|---|---|
+| `flip-tensor` | Reflect the tensor frame of a DTI NRRD along axes (fixes tensor orientation / LPS-RAS sign mismatches, e.g. a flip found by `qc-registration`) |
+| `compute-axis` | 1D axis of fiber tracts (average curve per arc length bin) as `<tract>_axis.vtk`; optionally with the profiles mapped onto the axis |
+| `gather` | Collect subject profiles into `<tract>/<tract>_<metric>.csv` (rows: arc length, columns: datasets), from `.fvp` trees and/or EXTRACT_Profile outputs |
+| `impute` | Fill missing profile values with a per-dataset SIREN on the (x, y, z, arc length) of the tract axes |
+| `qc-registration` | QC of the registration to the atlas: similarity (MAE, SSIM, NCC), angular error, contiguity of disagreement, CSF check, age-conditional normative model, combined outlier flag |
+| `qc-profiles` | Age-binned profile statistics (`_agebinstats.csv`) and plots; profile QC against prior (normative) statistics with value and shape outliers; cleaned profile tables |
+
+Typical workflow:
+
+```
+$ dmrifiberprofile gather --profiles-dir Output_Profiles --fibers-dir Atlas/FibersParam --out-dir Profiles
+$ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
+$ dmrifiberprofile impute --profiles-dir Profiles --axis-dir FiberAxis --out-dir Profiles_Imputed
+$ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative-dir Atlas/normativeModel --out-dir RegistrationQC
+$ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean
+```
+
+`compute-axis` computes arc lengths like EXTRACT_Profile (`--plane-of-origin median` by default) so that the axis matches profiles computed with dtiplayground; `--arc-source stored` uses the `SamplingDistance2Origin` array of parametrized fibers from the older C++ tools instead. `impute` uses a GPU when available (`--device`).
+
 ## DMRIAtlas (dmriatlas)
 
 DMRIAtlas is a software to make an atlas from multiple diffusion tensor images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 

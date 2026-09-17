@@ -3,7 +3,7 @@
 ##### Introduction
 DTI_Register registers the DTI to a reference DTI (e.g. an atlas) with DTI-Reg: an initial affine transform of the scalar images (BRAINSFit), refined by a diffeomorphic ANTS registration of the scalar images; the tensors are resampled log-Euclidean with reorientation. The defaults are those of the FiberAnalysis pipeline.
 
-Outputs: `registered_dti.nrrd` (DTI in reference space), `displacementField.nrrd` (for every reference position, the displacement to the corresponding position in the DTI: the field EXTRACT_Profile uses to sample the DTI along reference-space fibers), `inverse_displacementField.nrrd`, and `initialAffine.txt` with the initial affine transform.
+Outputs: `registered_dti.nrrd` (DTI in reference space), `registered_<name>` for the diffusion metrics of the DTI folder (see registerMetrics), `displacementField.nrrd` (for every reference position, the displacement to the corresponding position in the DTI: the field EXTRACT_Profile uses to sample the DTI along reference-space fibers), `inverse_displacementField.nrrd`, and `initialAffine.txt` with the initial affine transform.
 
 ##### Protocol Parameters
 
@@ -24,6 +24,8 @@ Outputs: `registered_dti.nrrd` (DTI in reference space), `displacementField.nrrd
 - initialAffineFile: ITK transform file used with initialAffine 'file'
 - BRAINSFitTransforms: BRAINSFit transform stages, default Rigid,Affine
 - BRAINSFitInitializeTransformMode: default useCenterOfHeadAlign
+- registerMetrics: apply the displacement field to the diffusion metrics in the folder of the input DTI that share its file name prefix (e.g. `<scan>_dwi_QCed_FA.nii.gz`, `_NODDI_NDI.nii.gz` or `_FWtensor.nrrd` for `<scan>_dwi_QCed_tensor.nrrd`), default true. Tensor images are resampled log-Euclidean with reorientation (ResampleDTIlogEuclidean, as DTI-Reg resamples the DTI), scalar images linearly; written as `registered_<name>`
+- metricExclude: comma delimited parts of file names that are not registered, default `mask`; integer images and images that are neither scalar nor tensor (e.g. NODDI directions) are not registered either
 - BRAINSFitSamplingPercentage: fraction (0-1) of the voxels sampled by BRAINSFit, default 0.5 (reproducible to ~0.4 mm; smaller values are faster but less reproducible)
 
 ##### Examples

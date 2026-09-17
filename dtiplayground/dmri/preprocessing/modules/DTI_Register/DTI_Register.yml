@@ -13,6 +13,7 @@ global_variables:
   inverse_displacement_field_path: null
   registered_dti_path: null
   initial_affine_path: null
+  registered_metric_paths: null
   reference_dti_path: null
 module_type: prep
 process_attributes:
@@ -187,3 +188,13 @@ protocol:
         description: Fraction (0-1) of the voxels sampled for the BRAINSFit metric. Default 0.5; smaller values are faster but less reproducible (BRAINSFit default 0.002 gave initial affines several mm apart between repeated runs)
         tag:
           - BRAINSFit
+      registerMetrics:
+        type: boolean
+        caption: Register Diffusion Metrics
+        default_value: true
+        description: Apply the displacement field to the diffusion metrics in the folder of the input DTI that share its file name prefix (e.g. <scan>_dwi_QCed_FA.nii.gz for <scan>_dwi_QCed_tensor.nrrd). Tensor images (e.g. free-water corrected tensors) are resampled log-Euclidean with reorientation like the DTI, scalar images linearly. Written as registered_<name>
+      metricExclude:
+        type: string
+        caption: Excluded Metrics
+        default_value: mask
+        description: Comma delimited parts of file names that are not registered (e.g. brain masks); integer images and images that are neither scalar nor tensor are not registered either

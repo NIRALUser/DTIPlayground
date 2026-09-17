@@ -123,6 +123,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
         # if self.protocol['useRegistered']:
         #    self.loadImage(registeredImagePath) 
         self.addOutputFile(registeredImagePath, 'DTI_Registered')
+        if self.protocol.get('registerMetrics', True) and self.dtiImagePath is not None:
+            self.registerMetrics(inputImagePath, refImagePath, displacementFieldPath, tensorCorrection, nbThreads)
         self.addOutputFile(displacementFieldPath, 'DTI_DisplacementField')
         self.addOutputFile(inv_displacementFieldPath, 'DTI_Inverse_DisplacementField')
 
@@ -174,3 +176,67 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.addGlobalVariable('initial_affine_path', affinePath)
         self.addOutputFile(affinePath, 'DTI_InitialAffine')
         return affinePath
+
+    def registerMetrics(self, inputImagePath, refImagePath, displacementFieldPath, tensorCorrection, nbThreads):
+        """Apply the displacement field to the diffusion metrics in the folder of the input DTI that share its file name
+        prefix (e.g. <scan>_dwi_QCed_ of <scan>_dwi_QCed_tensor.nrrd): tensor images are resampled log-Euclidean with
+        reorientation like the DTI, scalar images with linear interpolation. Written as registered_<name>."""
+        import SimpleITK as sitk
+        import nrrd
+        output_dir = Path(self.output_dir)
+        source = Path(inputImagePath)
+        prefix = source.name[:-len('tensor.nrrd')] if source.name.endswith('tensor.nrrd') else source.name.split('.')[0] + '_'
+        exclude = [x.strip().lower() for x in str(self.protocol.get('metricExclude', 'mask') or '').split(',') if x.strip() != '']
+        candidates = sorted(f for f in source.parent.iterdir()
+                            if f.is_file() and f.name.startswith(prefix) and f != source and f.name.endswith(('.nrrd', '.nii.gz', '.nii')))
+        field = None
+        registered = {}
+        for f in candidates:
+            name = f.name[len(prefix):]
+            if any(x in name.lower() for x in exclude):
+                logger("Not registering {} (excluded: {})".format(f.name, ', '.join(exclude)),prep.Color.INFO)
+                continue
+            is_tensor = False
+            if f.name.endswith('.nrrd'):
+                header = nrrd.read_header(str(f))
+                is_tensor = any(str(k).endswith('symmetric-matrix') for k in header.get('kinds', [])) or \
+                    (header.get('dimension') == 4 and 6 in [int(x) for x in header.get('sizes', [])])
+            output = output_dir.joinpath('registered_' + name).__str__()
+            if not is_tensor:
+                reader = sitk.ImageFileReader()
+                reader.SetFileName(str(f))
+                try:
+                    reader.ReadImageInformation()
+                except RuntimeError as e:
+                    logger("Not registering {} (unreadable: {})".format(f.name, str(e).splitlines()[-1]),prep.Color.WARNING)
+                    continue
+                components = reader.GetNumberOfComponents()
+                dimension = reader.GetDimension()
+            if is_tensor:
+                logger("Registering tensor image {}".format(f.name),prep.Color.PROCESS)
+                resample = tools.ResampleDTIlogEuclidean(self.softwares['ResampleDTIlogEuclidean']['path'])
+                resample.dev_mode = True
+                resample.execute([str(f), output, '-R', refImagePath, '--correctionType', tensorCorrection,
+                                  '-D', displacementFieldPath, '--deformationFieldType', 'displacement',
+                                  '-n', str(nbThreads)])
+            elif dimension == 3 and components == 1:
+                if reader.GetPixelID() not in (sitk.sitkFloat32, sitk.sitkFloat64):
+                    logger("Not registering {} (integer image, e.g. a label map)".format(f.name),prep.Color.INFO)
+                    continue
+                logger("Registering scalar image {}".format(f.name),prep.Color.PROCESS)
+                if field is None:
+                    field_image = sitk.Cast(sitk.ReadImage(displacementFieldPath), sitk.sitkVectorFloat64)
+                    reference = sitk.Image(field_image.GetSize(), sitk.sitkFloat32)
+                    reference.CopyInformation(field_image)
+                    field = sitk.DisplacementFieldTransform(field_image)
+                image = sitk.ReadImage(str(f), sitk.sitkFloat32)
+                sitk.WriteImage(sitk.Resample(image, reference, field, sitk.sitkLinear, 0.0), output, True)
+            else:
+                logger("Not registering {} (neither a scalar nor a tensor image: {} components)".format(f.name, components),prep.Color.INFO)
+                continue
+            registered[name] = output
+            self.addOutputFile(output, 'Registered_' + name.split('.')[0])
+        self.result['output']['registered_metric_paths'] = registered
+        self.addGlobalVariable('registered_metric_paths', registered)
+        logger("Registered {} diffusion metric images of {}".format(len(registered), source.parent),prep.Color.OK)
+        return registered

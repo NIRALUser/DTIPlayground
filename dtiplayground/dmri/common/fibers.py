@@ -27,6 +27,8 @@ import dtiplayground.dmri.common as common
 
 logger = common.logger.write
 
+STORED_ARC_LENGTH = 'SamplingDistance2Origin'  # arc length array of parameterized fibers
+
 
 class FiberBundle:
     """Fibers stored as one point array (N x 3, RAS) with per fiber offsets and per point data arrays."""
@@ -470,13 +472,25 @@ def arc_lengths(bundle, origin, normal):
     return arcs
 
 
-def profile_grid(arcs, step):
-    """Sample positions: multiples of step (0 = plane) covering the arc length range."""
+def stored_arc_lengths(bundle):
+    """Arc lengths stored in parameterized fibers (point data SamplingDistance2Origin), None if the fibers have none."""
+    if STORED_ARC_LENGTH not in bundle.point_data:
+        return None
+    return np.asarray(bundle.point_data[STORED_ARC_LENGTH], dtype=np.float64).reshape(-1)
+
+
+def profile_grid(arcs, step, rounded=False):
+    """Sample positions: multiples of step (0 = plane) covering the arc length range. With rounded, the grid covers
+    the nearest multiples of the smallest and largest arc length (stored arc lengths are bin averages)."""
     if step <= 0:
         raise Exception("Step size must be positive : {}".format(step))
     valid = arcs[~np.isnan(arcs)]
-    first = int(math.ceil(valid.min() / step - 1e-9))
-    last = int(math.floor(valid.max() / step + 1e-9))
+    if rounded:
+        first = int(np.rint(valid.min() / step))
+        last = int(np.rint(valid.max() / step))
+    else:
+        first = int(math.ceil(valid.min() / step - 1e-9))
+        last = int(math.floor(valid.max() / step + 1e-9))
     return np.arange(first, last + 1) * step
 
 
@@ -548,5 +562,5 @@ def write_parameterized_fibers(bundle, arcs, grid, filename):
         raise Exception("No parameterized fibers to write")
     resampled = FiberBundle(np.concatenate(points), offsets,
                             {'FiberLocationIndex': np.concatenate(location).astype(np.int32),
-                             'SamplingDistance2Origin': np.concatenate(distance).astype(np.float32)})
+                             STORED_ARC_LENGTH: np.concatenate(distance).astype(np.float32)})
     write_fibers(resampled, filename)

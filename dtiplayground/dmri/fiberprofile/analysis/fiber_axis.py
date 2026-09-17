@@ -5,10 +5,10 @@
 #   within each bin, and the averaged points are written as a single polyline ordered by arc length with the bin arc
 #   length as point data 'SamplingDistance2Origin'.
 #
-#   The arc length is by default computed like EXTRACT_Profile (plane of origin + signed arc length along the fibers,
-#   dtiplayground.dmri.common.fibers), so the axis matches the profiles computed by dtiplayground. With
-#   arc_source='stored' the 'SamplingDistance2Origin' array of the fiber file is used (parametrized fibers written by
-#   the older C++ dtitractstat).
+#   The arc length is by default (arc_source='auto') the 'SamplingDistance2Origin' array of parametrized fibers (as
+#   EXTRACT_Profile with arcLength 'stored'), otherwise computed like EXTRACT_Profile (plane of origin + signed arc
+#   length along the fibers, dtiplayground.dmri.common.fibers), so the axis matches the profiles computed by
+#   dtiplayground. arc_source='stored' requires the array, 'dtiplayground' always computes the arc length.
 #
 
 import csv
@@ -21,17 +21,24 @@ import dtiplayground.dmri.common.fibers as fibers
 
 log = logging.getLogger("compute-axis")
 
-ARRAY_NAME = "SamplingDistance2Origin"
+ARRAY_NAME = fibers.STORED_ARC_LENGTH
 
 
-def fiber_arc_lengths(bundle, arc_source="dtiplayground", plane_of_origin="median"):
+def resolve_arc_source(bundle, arc_source):
+    """'auto' -> 'stored' if the fibers have stored arc lengths, else 'dtiplayground'."""
+    if arc_source not in ("auto", "stored", "dtiplayground"):
+        raise ValueError("Unknown arc length source: {} (auto, stored or dtiplayground)".format(arc_source))
+    if arc_source == "auto":
+        return "stored" if ARRAY_NAME in bundle.point_data else "dtiplayground"
+    return arc_source
+
+
+def fiber_arc_lengths(bundle, arc_source="auto", plane_of_origin="median"):
     """Arc length of every fiber point (NaN for points of fibers that don't cross the plane)."""
-    if arc_source == "stored":
+    if resolve_arc_source(bundle, arc_source) == "stored":
         if ARRAY_NAME not in bundle.point_data:
             raise ValueError("Point-data array '{}' not found. Available arrays: {}".format(ARRAY_NAME, sorted(bundle.point_data)))
-        return np.asarray(bundle.point_data[ARRAY_NAME], dtype=np.float64).reshape(-1)
-    if arc_source != "dtiplayground":
-        raise ValueError("Unknown arc length source: {} (dtiplayground or stored)".format(arc_source))
+        return fibers.stored_arc_lengths(bundle)
     origin, normal = fibers.find_plane(bundle, plane_of_origin)
     return fibers.arc_lengths(bundle, origin, normal)
 
@@ -153,9 +160,10 @@ def read_axis(path):
 
 
 def fiber_axis(fiber_file, output_file, bin_width=1.0, method="mean", outlier_sigma=3.0, clip=True, clip_factor=4.0,
-               arc_source="dtiplayground", plane_of_origin="median", binary=False):
+               arc_source="auto", plane_of_origin="median", binary=False):
     """Compute and write the axis of one fiber file. Returns (axis points, arc lengths)."""
     bundle = fibers.read_fibers(fiber_file)
+    arc_source = resolve_arc_source(bundle, arc_source)
     arclength = fiber_arc_lengths(bundle, arc_source, plane_of_origin)
     axis_points, axis_arc, n_outliers = compute_axis(bundle.points, arclength, bin_width, method, outlier_sigma)
     n_start = n_end = 0
@@ -257,11 +265,12 @@ def add_parser(subparsers):
     p.add_argument("inputs", nargs="+", help="Fiber files (.vtk/.vtp) or folders of fiber files")
     p.add_argument("-o", "--output", default=None,
                    help="Output axis file (single input) or folder (several inputs; default: next to each input)")
-    p.add_argument("--arc-source", choices=["dtiplayground", "stored"], default="dtiplayground",
-                   help="Arc length: 'dtiplayground' computes it like EXTRACT_Profile (default), 'stored' uses the "
-                        "SamplingDistance2Origin array of the fiber file")
+    p.add_argument("--arc-source", choices=["auto", "stored", "dtiplayground"], default="auto",
+                   help="Arc length: 'stored' uses the SamplingDistance2Origin array of parametrized fibers, "
+                        "'dtiplayground' computes it like EXTRACT_Profile, 'auto' (default) uses the stored arc length "
+                        "when present")
     p.add_argument("--plane-of-origin", choices=["median", "cog"], default="median",
-                   help="Plane of origin for --arc-source dtiplayground (default: median, as EXTRACT_Profile)")
+                   help="Plane of origin when the arc length is computed (default: median, as EXTRACT_Profile)")
     p.add_argument("-b", "--bin-width", type=float, default=1.0, help="Arc length bin width (default: 1.0)")
     p.add_argument("-m", "--method", choices=("mean", "median"), default="mean",
                    help="Per-bin aggregation: 'mean' (default) drops points deviating more than --outlier-sigma std from "

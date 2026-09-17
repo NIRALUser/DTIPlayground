@@ -238,6 +238,7 @@ Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifibe
 | Command | Purpose |
 |---|---|
 | `flip-tensor` | Reflect the tensor frame of a DTI NRRD along axes (fixes tensor orientation / LPS-RAS sign mismatches, e.g. a flip found by `qc-registration`) |
+| `parametrize-fibers` | Resample fiber tracts on the arc length grid (one point per arc length bin) with point data `FiberLocationIndex` and `SamplingDistance2Origin`; replaces `dtitractstat -f` |
 | `compute-axis` | 1D axis of fiber tracts (average curve per arc length bin) as `<tract>_axis.vtk`; optionally with the profiles mapped onto the axis |
 | `gather` | Collect subject profiles into `<tract>/<tract>_<metric>.csv` (rows: arc length, columns: datasets), from `.fvp` trees and/or EXTRACT_Profile outputs |
 | `impute` | Fill missing profile values with a per-dataset SIREN on the (x, y, z, arc length) of the tract axes |
@@ -247,6 +248,7 @@ Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifibe
 Typical workflow:
 
 ```
+$ dmrifiberprofile parametrize-fibers Atlas/FibersRaw -o Atlas/FibersParam
 $ dmrifiberprofile gather --profiles-dir Output_Profiles --fibers-dir Atlas/FibersParam --out-dir Profiles
 $ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
 $ dmrifiberprofile impute --profiles-dir Profiles --axis-dir FiberAxis --out-dir Profiles_Imputed
@@ -254,7 +256,7 @@ $ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative
 $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean
 ```
 
-`compute-axis` computes arc lengths like EXTRACT_Profile (`--plane-of-origin median` by default) so that the axis matches profiles computed with dtiplayground; `--arc-source stored` uses the `SamplingDistance2Origin` array of parametrized fibers from the older C++ tools instead. `impute` uses a GPU when available (`--device`).
+`parametrize-fibers` computes the plane of origin and arc lengths like EXTRACT_Profile and stores the arc lengths in the fibers, so the atlas defines them once: EXTRACT_Profile (protocol option `arcLength: stored`, the default) and `compute-axis` (`--arc-source auto`, the default) use the stored arc lengths of parametrized fibers and compute them only for fibers without (`arcLength: compute` / `--arc-source dtiplayground` always compute them). Parametrized fibers from the older C++ tools store different arc lengths; re-parametrize the raw tracts with `parametrize-fibers`. `impute` uses a GPU when available (`--device`).
 
 ## DMRIAtlas (dmriatlas)
 

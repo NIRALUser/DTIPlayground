@@ -61,6 +61,9 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             use_displacement_field: bool = self.protocol["useDisplacementField"]
             step_size: float = float(self.protocol["stepSize"])
             plane_of_origin: str = self.protocol["planeOfOrigin"]
+            arc_length_source: str = self.protocol.get("arcLength", "stored")
+            if arc_length_source not in ['stored', 'compute']:
+                raise ValueError(f"Invalid arc length: {arc_length_source} (stored or compute)")
             support_bandwidth: float = float(self.protocol["supportBandwidth"])
             noNaN: bool = self.protocol["noNaN"]
             mask: str = self.protocol["mask"]
@@ -123,10 +126,17 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 if not np.any(keep):
                     raise Exception(f"No fiber of tract {tract} is inside the mask {mask}")
                 bundle = bundle.select(keep)
-            origin, normal = fibers.find_plane(bundle, plane_of_origin)
-            logger(f"Plane of origin ({plane_of_origin}) : origin {origin.tolist()}, normal {normal.tolist()}")
-            arcs = fibers.arc_lengths(bundle, origin, normal)
-            grid = fibers.profile_grid(arcs, step_size)
+            arcs = fibers.stored_arc_lengths(bundle) if arc_length_source == 'stored' else None
+            if arcs is not None:
+                logger(f"Using the arc lengths stored in the tract ({fibers.STORED_ARC_LENGTH})")
+                grid = fibers.profile_grid(arcs, step_size, rounded=True)
+            else:
+                if arc_length_source == 'stored':
+                    logger(f"Tract has no stored arc lengths ({fibers.STORED_ARC_LENGTH}), computing them", common.Color.WARNING)
+                origin, normal = fibers.find_plane(bundle, plane_of_origin)
+                logger(f"Plane of origin ({plane_of_origin}) : origin {origin.tolist()}, normal {normal.tolist()}")
+                arcs = fibers.arc_lengths(bundle, origin, normal)
+                grid = fibers.profile_grid(arcs, step_size)
 
             parameterized_fiber_output_path: Path = parameterized_fibers_path.joinpath(tract_name_stem + "_parameterized.vtk")
             if parameterized_fiber_output_path.exists() and not overwrite:

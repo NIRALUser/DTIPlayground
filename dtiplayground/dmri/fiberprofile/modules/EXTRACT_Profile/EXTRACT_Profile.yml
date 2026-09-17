@@ -75,6 +75,18 @@ protocol: #define protocol parameters here
               description: Origin of profile will be center of gravity
         default_value: Median
         description: Determines plane that sets the origin of the profile arc length
+    arcLength:
+        type: list
+        caption: Arc length
+        candidates:
+            - value: stored
+              caption: Stored
+              description: Use the arc lengths stored in parametrized tracts (point data SamplingDistance2Origin, e.g. written by dmrifiberprofile parametrize-fibers); computed from the plane of origin if the tract has none
+            - value: compute
+              caption: Compute
+              description: Always compute the arc lengths from the plane of origin
+        default_value: stored
+        description: Source of the arc length of the fiber points
     cleanup:
         type: list
         caption: Cleanup method

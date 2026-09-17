@@ -14,6 +14,24 @@ logger = common.logger.write
 
 TENSOR_PROPERTIES = ['FA', 'MD', 'AD', 'RD']
 
+
+def property_sources(properties, input_is_dti, parameter_to_col_map):
+    """Source of every property: ('tensor', column, scalar name) or ('scalar', column, None).
+    With a DTI input, FA, MD, AD, RD are computed from the tensors of 'Original DTI Image', and <prefix>FA, ... from
+    the tensors of '<prefix> DTI Image' when the map has that key (e.g. FWFA from 'FW DTI Image'). Every other property
+    is sampled from its own scalar image."""
+    sources = {}
+    for prop in properties:
+        name = prop.upper()
+        if input_is_dti and len(name) >= 2 and name[-2:] in TENSOR_PROPERTIES:
+            prefix = prop[:-2]
+            key = 'Original DTI Image' if prefix == '' else f'{prefix} DTI Image'
+            if key in parameter_to_col_map:
+                sources[prop] = ('tensor', parameter_to_col_map[key], name[-2:])
+                continue
+        sources[prop] = ('scalar', parameter_to_col_map[prop], None)
+    return sources
+
 class CleanupMethod():
     DURING = 'duringProcessing'
     END = 'endOfProcessing'
@@ -101,11 +119,16 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
         if user_parameter_to_col_map is not None:
             parameter_to_col_map.update(user_parameter_to_col_map)
 
-        if input_is_dti:
-            # properties are computed from the tensors interpolated along the fibers
-            unsupported = [prop for prop in properties_to_profile if prop.upper() not in TENSOR_PROPERTIES]
-            if len(unsupported) > 0:
-                raise Exception(f"Properties {unsupported} can't be computed from a DTI (supported: {', '.join(TENSOR_PROPERTIES)})")
+        # tensor properties are computed from the tensors interpolated along the fibers, the others sampled from their image
+        sources = property_sources(properties_to_profile, input_is_dti, parameter_to_col_map)
+        for prop, (kind, column, _) in sources.items():
+            logger(f"Property {prop}: " + (f"computed from the tensors of column '{column}'" if kind == 'tensor' else f"image of column '{column}'"))
+        needed_columns = [parameter_to_col_map['Case ID']] + sorted({column for _, column, _ in sources.values()})
+        if use_displacement_field:
+            needed_columns.append(parameter_to_col_map['Deformation Field'])
+        missing = [column for column in needed_columns if column not in df.columns]
+        if len(missing) > 0:
+            raise Exception(f"Columns {missing} are not in the datasheet {path_to_csv}")
 
         # tract geometry (atlas space) is the same for all subjects: mask, plane, arc lengths and sample positions
         parameterized_fibers_path = Path(output_base_dir).joinpath('parameterized_fibers')
@@ -152,10 +175,17 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             subject_id = str(row[parameter_to_col_map['Case ID']])
             displacement_field = None
             images = {}  # images of this subject, read once for all tracts
+            subject_properties = []  # properties with an image for this subject (empty datasheet cell: not profiled)
+            for prop in properties_to_profile:
+                image_path = row[sources[prop][1]]
+                if isinstance(image_path, str) and image_path.strip() != '':
+                    subject_properties.append(prop)
+                else:
+                    logger(f"No image for {prop} of subject {subject_id} (column '{sources[prop][1]}' is empty), {prop} is not profiled", common.Color.WARNING)
             for info in tract_infos:
                 tract = info['tract']
                 todo = []
-                for prop in properties_to_profile:
+                for prop in subject_properties:
                     tract_output_path: Path = Path(output_base_dir).joinpath(prop).joinpath(info['name'])
                     tract_output_path.mkdir(parents=True, exist_ok=True)
                     if tract_output_path not in intermediate_dirs:
@@ -179,18 +209,19 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         raise Exception(f"No deformation field for subject {subject_id} (column '{parameter_to_col_map['Deformation Field']}')")
                     displacement_field = fibers.Image(displacement_field_path)
                 logger(f"Sampling {', '.join(p for p, _, _ in todo)} of subject {subject_id} along tract {tract}")
-                if input_is_dti:
-                    if 'dti' not in images:
-                        images['dti'] = fibers.TensorImage(row[parameter_to_col_map['Original DTI Image']])
-                    tensors = fibers.sample_tensors(info['bundle'], images['dti'], displacement_field, tensor_interpolation)
-                    scalars = fibers.tensor_scalars(tensors)
-                    sampled = {prop: scalars[prop.upper()] for prop, _, _ in todo}
-                else:
-                    sampled = {}
-                    for prop, _, _ in todo:
-                        if prop not in images:
-                            images[prop] = fibers.Image(row[parameter_to_col_map[prop]])
-                        sampled[prop] = fibers.sample_scalar(info['bundle'], images[prop], displacement_field)
+                sampled = {}
+                tensor_scalars = {}  # column -> scalars of the tensors sampled along this tract
+                for prop, _, _ in todo:
+                    kind, column, scalar_name = sources[prop]
+                    if (kind, column) not in images:
+                        images[(kind, column)] = fibers.TensorImage(row[column]) if kind == 'tensor' else fibers.Image(row[column])
+                    if kind == 'tensor':
+                        if column not in tensor_scalars:
+                            tensors = fibers.sample_tensors(info['bundle'], images[(kind, column)], displacement_field, tensor_interpolation)
+                            tensor_scalars[column] = fibers.tensor_scalars(tensors)
+                        sampled[prop] = tensor_scalars[column][scalar_name]
+                    else:
+                        sampled[prop] = fibers.sample_scalar(info['bundle'], images[(kind, column)], displacement_field)
 
                 for prop, fiber_output_path, fvp_output_path in todo:
                     subject_bundle = fibers.FiberBundle(info['bundle'].points, info['bundle'].offsets, {prop: sampled[prop], 'ArcLength': info['arcs']})

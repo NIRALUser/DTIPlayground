@@ -1,0 +1,59 @@
+## EXTRACT_Profile protocol for the normative profiles of the reference dataset
+##   dmrifiberprofile run -i reference.csv -p protocol.yml -o ReferenceProfiles
+## - atlas: parametrized fibers of the atlas (dmrifiberprofile parametrize-fibers FibersRaw -o FibersParam_dtiplayground);
+##   arcLength 'stored' uses their arc lengths, so all profiles share the sample grid of the atlas
+## - the images are sampled in native space: the fibers are mapped to each scan with its deformation field
+##   (useDisplacementField true), so tensors don't need to be deformed (reoriented) to the atlas
+## - FA, MD, AD, RD: computed from the tensors of column 'DTI' interpolated along the fibers (logEuclidean)
+## - FWFA, FWMD, FWAD, FWRD: computed the same way from the free-water corrected tensors, column 'FW DTI'
+##   (map key 'FW DTI Image')
+## - FWF, NDI, ODI: no tensor quantities, sampled from their maps (NODDI)
+## - an empty datasheet cell (e.g. no free water / NODDI for a single-shell scan): that property isn't profiled for the scan
+
+version: 0.1
+io:
+  input_datasheet: reference.csv
+  num_threads: 1
+  output_directory: null
+  output_filename_base: null
+pipeline:
+- - EXTRACT_Profile
+  - options:
+      overwrite: false
+      skip: false
+      write_image: false
+    protocol:
+      atlas: /tools/atlas/DTI/DTI_IBISEP_Feb26/FibersParam_dtiplayground
+      tracts: AC_olfactory.vtk, AC_temporal.vtk, Arc_FT_L.vtk, Arc_FT_R.vtk, Arc_FrontoParietal_L.vtk, Arc_FrontoParietal_R.vtk,
+        Arc_TemporoParietal_L.vtk, Arc_TemporoParietal_R.vtk, CGC_L.vtk, CGC_R.vtk, CGH_L.vtk, CGH_R.vtk, CG_orbitofrontal_L.vtk,
+        CG_orbitofrontal_R.vtk, CorpusCallosum_Frontal.vtk, CorpusCallosum_Genu.vtk, CorpusCallosum_Genu_Lateral.vtk, CorpusCallosum_Motor.vtk,
+        CorpusCallosum_Parietal.vtk, CorpusCallosum_Premotor.vtk, CorpusCallosum_Splenium.vtk, CorpusCallosum_Tapetum.vtk,
+        CorticoFugal_Motor_L.vtk, CorticoFugal_Motor_R.vtk, CorticoFugal_Parietal_L.vtk, CorticoFugal_Parietal_R.vtk, CorticoFugal_PreFrontal_L.vtk,
+        CorticoFugal_PreFrontal_R.vtk, CorticoFugal_PreMotor_L.vtk, CorticoFugal_PreMotor_R.vtk, CorticoSpinal_L.vtk, CorticoSpinal_R.vtk,
+        CorticoThalamic_Motor_L.vtk, CorticoThalamic_Motor_R.vtk, CorticoThalamic_Parietal_L.vtk, CorticoThalamic_Parietal_R.vtk,
+        CorticoThalamic_PreFrontal_L.vtk, CorticoThalamic_PreFrontal_R.vtk, CorticoThalamic_PreMotor_L.vtk, CorticoThalamic_PreMotor_R.vtk,
+        Fornix_L.vtk, Fornix_R.vtk, Fornix_narrow_L.vtk, Fornix_narrow_R.vtk, ICP_L.vtk, ICP_R.vtk, IFOF_L.vtk, IFOF_R.vtk,
+        ILF_L.vtk, ILF_R.vtk, MCP_PontoCerebellar_Posterior.vtk, MCP_PontoCerebellor_Anterior.vtk, MCP_Superior.vtk, MdLF_L.vtk,
+        MdLF_R.vtk, OpticRadiation_L.vtk, OpticRadiation_R.vtk, Optic_Tract_L.vtk, Optic_Tract_R.vtk, SCP_L.vtk, SCP_R.vtk,
+        SLF_II_L.vtk, SLF_II_R.vtk, StriaTerminalis_L.vtk, StriaTerminalis_R.vtk, UNC_L.vtk, UNC_R.vtk, UNC_sup_L.vtk, UNC_sup_R.vtk
+      inputIsDTI: true
+      tensorInterpolation: logEuclidean
+      propertiesToProfile: FA, MD, AD, RD, FWFA, FWMD, FWAD, FWRD, FWF, NDI, ODI
+      useDisplacementField: true
+      parameterToColumnHeaderMap:
+        Case ID: id
+        Original DTI Image: DTI
+        FW DTI Image: FW DTI
+        Deformation Field: Deformation field
+        FWF: FWF
+        NDI: NDI
+        ODI: ODI
+      resultCaseColumnwise: true
+      arcLength: stored
+      planeOfOrigin: Median
+      stepSize: 1
+      supportBandwidth: 3
+      noNaN: false
+      mask: null
+      maskThreshold: 0.5
+      cleanup: duringProcessing

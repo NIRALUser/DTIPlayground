@@ -22,7 +22,7 @@ protocol: #define protocol parameters here
         type: boolean
         caption: Input is DTI
         default_value: true
-        description: Input image is a DTI (column 'Original DTI Image'). The tensors are interpolated along the fibers and FA, MD, AD, RD are computed from them. Otherwise each property is sampled from its own scalar image column.
+        description: "Input image is a DTI (column 'Original DTI Image'). The tensors are interpolated along the fibers and FA, MD, AD, RD are computed from them; <prefix>FA, <prefix>MD, <prefix>AD, <prefix>RD are computed from the tensors of the column '<prefix> DTI Image' if the column map has that key (e.g. FWFA from 'FW DTI Image'). Other properties, or all properties if this is off, are sampled from their own scalar image column. A property whose image cell is empty for a subject is not profiled for that subject."
     tensorInterpolation:
         type: list
         caption: Tensor interpolation
@@ -56,7 +56,7 @@ protocol: #define protocol parameters here
             MD: MD from original
             AD: AD from original
             RD: RD from original
-        description: Map of parameters of column headers to use for each property to profile
+        description: "Datasheet column of each parameter: Case ID, Original DTI Image, Deformation Field, '<prefix> DTI Image' (additional tensor images, e.g. FW DTI Image), and the image of each scalar property"
     resultCaseColumnwise:
         type: boolean
         caption: Store cases as columns in result

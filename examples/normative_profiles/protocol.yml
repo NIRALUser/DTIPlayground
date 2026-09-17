@@ -54,6 +54,7 @@ pipeline:
       stepSize: 1
       supportBandwidth: 3
       noNaN: false
+      writeFiberFiles: false
       mask: null
       maskThreshold: 0.5
       cleanup: duringProcessing

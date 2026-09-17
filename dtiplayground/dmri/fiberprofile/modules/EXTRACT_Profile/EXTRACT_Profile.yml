@@ -117,6 +117,11 @@ protocol: #define protocol parameters here
         caption: No NaN
         default_value: false
         description: Remove fibers with NaN values of the profiled property (for each subject)
+    writeFiberFiles:
+        type: boolean
+        caption: Write fiber files
+        default_value: false
+        description: Write the fibers of each subject with the sampled property values and arc lengths (one VTK file per subject, property and tract, e.g. to view the values along the fibers). Not needed for the profiles; removed by the cleanup like the .fvp profiles
     mask:
         type: file
         caption: Mask

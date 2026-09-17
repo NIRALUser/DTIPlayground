@@ -84,6 +84,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 raise ValueError(f"Invalid arc length: {arc_length_source} (stored or compute)")
             support_bandwidth: float = float(self.protocol["supportBandwidth"])
             noNaN: bool = self.protocol["noNaN"]
+            write_fiber_files: bool = bool(self.protocol.get("writeFiberFiles", False))
             mask: str = self.protocol["mask"]
             mask_threshold: float = float(self.protocol.get("maskThreshold", 0.5))
             tensor_interpolation: str = self.protocol.get("tensorInterpolation", "logEuclidean")
@@ -230,12 +231,14 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         if not np.all(keep):
                             logger(f"Removing {int(np.sum(~keep))} fibers with NaN {prop} values for subject {subject_id} and tract {tract}")
                         subject_bundle = subject_bundle.select(keep)
-                    fibers.write_fibers(subject_bundle, fiber_output_path)
+                    if write_fiber_files:
+                        fibers.write_fibers(subject_bundle, fiber_output_path)
                     profile = fibers.gaussian_profile(subject_bundle.point_data['ArcLength'], subject_bundle.point_data[prop], info['grid'], support_bandwidth)
                     fibers.write_fvp(fvp_output_path, profile, prop, step_size, support_bandwidth)
                     profiles[(info['name'], prop)][subject_id] = profile['mean']
                     if cleanupMethod == CleanupMethod.DURING:
-                        fiber_output_path.unlink()
+                        if write_fiber_files:
+                            fiber_output_path.unlink()
                         fvp_output_path.unlink()
 
         # save the profiles of all subjects (same arc length samples) to a csv per tract and property

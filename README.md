@@ -369,6 +369,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-17 (v0.7.4)
+- dmriprep - DTI_Register: defaults of the FiberAnalysis pipeline (ANTS iterations 100x50x20, CC radius 2, Gaussian sigma 1, transformation step 0.25, histogram matching, FA with abs tensor correction); initial affine computed with BRAINSFit (Rigid,Affine, center of head, sampling fraction 0.5, all configurable), read from a file, or none; WarpImageMultiTransform of the configured ANTs is used
+
 ##### 2026-09-17 (v0.7.3)
 - dmrifiberprofile - EXTRACT_Profile: the fibers of each subject with the sampled values (one VTK file per subject, property and tract) are only written with the new option writeFiberFiles (default false); the profiles are unchanged
 

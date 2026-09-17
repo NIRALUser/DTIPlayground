@@ -258,6 +258,17 @@ $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir
 
 `parametrize-fibers` computes the plane of origin and arc lengths like EXTRACT_Profile and stores the arc lengths in the fibers, so the atlas defines them once: EXTRACT_Profile (protocol option `arcLength: stored`, the default) and `compute-axis` (`--arc-source auto`, the default) use the stored arc lengths of parametrized fibers and compute them only for fibers without (`arcLength: compute` / `--arc-source dtiplayground` always compute them). Parametrized fibers from the older C++ tools store different arc lengths; re-parametrize the raw tracts with `parametrize-fibers`. `impute` uses a GPU when available (`--device`).
 
+Normative profiles (the `normProfiles` of an atlas) are the age-bin statistics of the profiles of a reference dataset, computed with the atlas' parametrized fibers:
+
+```
+$ dmrifiberprofile parametrize-fibers Atlas/FibersRaw -o Atlas/FibersParam
+$ dmrifiberprofile run -i reference.csv -p protocol.yml -o ReferenceProfiles     # EXTRACT_Profile, atlas: Atlas/FibersParam
+$ dmrifiberprofile gather --profiles-dir ReferenceProfiles --fibers-dir Atlas/FibersParam --out-dir normProfiles
+$ dmrifiberprofile qc-profiles --profiles-dir normProfiles --plots-dir normProfiles_plots
+```
+
+The case ids of the datasheet must contain the age as `ses-<months>m` (e.g. `sub-011228_ses-012m`). For images already deformed to the atlas (e.g. `*_DeformedDTI.nrrd`) set `useDisplacementField: false`; scalar maps (e.g. free water or NODDI metrics) are profiled in a second run with `inputIsDTI: false` and one datasheet column per property (`parameterToColumnHeaderMap`). `qc-profiles` writes `<tract>/<tract>_<metric>_agebinstats.csv` next to the gathered tables; the folder is then used as `--prior-stats-dir` for the QC of new datasets. In Docker, a GPU is used by `impute` when the container is started with `--gpus all` (NVIDIA container toolkit).
+
 ## DMRIAtlas (dmriatlas)
 
 DMRIAtlas is a software to make an atlas from multiple diffusion tensor images. It performs affine/diffeomorphic registrations and finally generates the atlas for all the reference image. 
@@ -357,6 +368,12 @@ MIT
 - Multi node computing with Kubernetes
 
 ### Change Log
+
+##### 2026-09-17 (v0.7.0)
+- dmrifiberprofile - fiber profile analysis and QC tools (from FiberProfileAnalysis): flip-tensor, parametrize-fibers, compute-axis, gather, impute, qc-registration, qc-profiles; new dependencies torch, matplotlib, scikit-image, scikit-learn, scipy
+- dmrifiberprofile - parametrize-fibers replaces dtitractstat -f: parametrized fibers store the arc lengths computed like EXTRACT_Profile
+- dmrifiberprofile - EXTRACT_Profile option arcLength: stored arc lengths of parametrized tracts are used by default (computed for tracts without); compute-axis uses them too (--arc-source auto). Fibers parametrized by the C++ tools store different arc lengths and should be re-parametrized
+- dmrifiberprofile - exits with the return code of the command; no crash when the configuration directory doesn't exist yet
 
 ##### 2026-09-16 (v0.6.0)
 - dmrifiberprofile - fiber profile extraction reimplemented in Python (dtiplayground.dmri.common.fibers); fiberprocess, FiberPostProcess and dtitractstat are no longer needed

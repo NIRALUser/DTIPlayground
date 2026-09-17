@@ -65,6 +65,7 @@ def resolve_softwarepaths(spathobj, globalvars):
 
 def initialize_logger(args):
     ## default log setting
+    Path(args.log).parent.mkdir(parents=True, exist_ok=True)  ## default log is in the config dir, which may not exist yet
     dtiplayground.dmri.common.logger.setLogfile(args.log)
     dtiplayground.dmri.common.logger.setTimestamp(not args.no_log_timestamp)
     dtiplayground.dmri.common.logger.setVerbosity(not args.no_verbosity)

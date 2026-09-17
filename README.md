@@ -369,6 +369,10 @@ MIT
 
 ### Change Log
 
+##### 2026-09-17 (v0.7.1)
+- dmrifiberprofile - EXTRACT_Profile: with a DTI input, <prefix>FA, MD, AD, RD are computed from the tensors of the column mapped as '<prefix> DTI Image' (e.g. FWFA from free-water corrected tensors), other properties are sampled from their own image in the same run; an empty datasheet cell leaves that property out for the subject
+- examples/normative_profiles - protocol, datasheet and datasheet script to compute the normative profiles of an atlas, sampling native tensors and maps with the deformation field of each scan
+
 ##### 2026-09-17 (v0.7.0)
 - dmrifiberprofile - fiber profile analysis and QC tools (from FiberProfileAnalysis): flip-tensor, parametrize-fibers, compute-axis, gather, impute, qc-registration, qc-profiles; new dependencies torch, matplotlib, scikit-image, scikit-learn, scipy
 - dmrifiberprofile - parametrize-fibers replaces dtitractstat -f: parametrized fibers store the arc lengths computed like EXTRACT_Profile

@@ -34,6 +34,21 @@ protocol:
         caption: Reference Image Path 
         default_value: null
         description: Reference (Fixed Image)
+      referenceNormativeModel:
+        type: dirpath-remote
+        caption: Reference Normative Model
+        default_value: null
+        description: Normative model of the reference atlas (folder with manifest.json and <age bin>/DTI_mean.nrrd, written by 'dmrifiberprofile qc-registration --build-normative'). The DTI is then registered to the mean tensor of the age bin of the subject instead of the reference image; without an age, or a matching bin, the reference image is used
+      age:
+        type: float
+        caption: Age
+        default_value: null
+        description: Age of the subject in the unit of the age bins of the normative model (months); read from the image path with ageRegex if not set
+      ageRegex:
+        type: string
+        caption: Age Pattern
+        default_value: ses-(\d+)m
+        description: Regular expression for the age in the path of the input image (group 1), used when age is not set
       ANTsPath:
         type: dirpath-remote
         caption: ANTS directory

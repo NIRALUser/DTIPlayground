@@ -1,6 +1,6 @@
   
 import dtiplayground.dmri.preprocessing as prep
-import yaml, os
+import yaml, os, re
 from pathlib import Path
 
 import dtiplayground.dmri.common.tools as tools 
@@ -49,10 +49,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
 
     def registerWithANTs(self,**protocol):
         output_dir = Path(self.output_dir)
-        refImagePath = self.protocol['referenceImage']
-        if not Path(refImagePath).exists():
-            logger("Reference image doesn't exist. Please check the file {} exists.".format(refImagePath),prep.Color.ERROR)
-            raise Exception("File not found")
+        refImagePath = self.referenceImage()
         inputImagePath = output_dir.joinpath('input.nrrd').__str__()
         registeredImagePath = output_dir.joinpath('registered_dti.nrrd').__str__()
         # outputImagePath = output_dir.joinpath('output.nrrd').__str__()
@@ -240,3 +237,70 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.addGlobalVariable('registered_metric_paths', registered)
         logger("Registered {} diffusion metric images of {}".format(len(registered), source.parent),prep.Color.OK)
         return registered
+
+    def referenceImage(self):
+        """Fixed image of the registration: the mean tensor of the age appropriate bin of the normative model when one is
+        given (referenceNormativeModel, a folder written by 'dmrifiberprofile qc-registration --build-normative' with a
+        <bin>/DTI_mean.nrrd per age bin), otherwise the reference image of the protocol."""
+        refImagePath = self.protocol['referenceImage']
+        model = self.protocol.get('referenceNormativeModel')
+        if model is not None and str(model).strip() != '':
+            mean = self.normativeMean(Path(str(model)))
+            if mean is not None:
+                refImagePath = mean
+        if refImagePath is None or not Path(refImagePath).exists():
+            logger("Reference image doesn't exist. Please check the file {} exists.".format(refImagePath),prep.Color.ERROR)
+            raise Exception("File not found")
+        logger("Reference (fixed) image : {}".format(refImagePath),prep.Color.INFO)
+        return str(refImagePath)
+
+    def normativeMean(self, model_dir):
+        """<bin>/DTI_mean.nrrd of the age bin of this subject, None (with a warning) if it can't be determined."""
+        import json
+        manifest = model_dir.joinpath('manifest.json')
+        if not manifest.exists():
+            logger("Normative model {} has no manifest.json, using the reference image".format(model_dir),prep.Color.WARNING)
+            return None
+        bins = json.load(open(manifest)).get('bins', [])
+        age = self.subjectAge()
+        if age is None:
+            logger("No age for this image (protocol 'age' or 'ageRegex' on the image path), using the reference image",prep.Color.WARNING)
+            return None
+        ranges = []
+        for b in bins:
+            lo, _, hi = str(b).rstrip('m').partition('-')
+            try:
+                ranges.append((float(lo), float(hi), b))
+            except ValueError:
+                logger("Ignoring age bin {} of {} (not '<from>-<to>m')".format(b, model_dir),prep.Color.WARNING)
+        if len(ranges) == 0:
+            logger("Normative model {} has no age bins, using the reference image".format(model_dir),prep.Color.WARNING)
+            return None
+        ranges.sort()
+        ranges[-1] = (ranges[-1][0], float('inf'), ranges[-1][2])  ## the oldest bin is open ended
+        label = next((b for lo, hi, b in ranges if lo <= age <= hi), None)
+        if label is None:  ## between two bins (e.g. 3.5 with bins 0-3 and 4-9) : the closest one
+            lo, hi, label = min(ranges, key=lambda r: min(abs(age - r[0]), abs(age - r[1])))
+            logger("Age {} is between the bins of {} ({}), using the closest bin {}".format(age, model_dir, ', '.join(b for _, _, b in ranges), label),prep.Color.WARNING)
+        mean = model_dir.joinpath(label).joinpath('DTI_mean.nrrd')
+        if not mean.exists():
+            logger("Normative model has no mean tensor {}, using the reference image".format(mean),prep.Color.WARNING)
+            return None
+        logger("Age {} : registering to the mean tensor of bin {} of the normative model".format(age, label),prep.Color.INFO)
+        return str(mean)
+
+    def subjectAge(self):
+        """Age of this image: the protocol 'age', otherwise 'ageRegex' (group 1, in the same unit as the bins) matched on
+        the path of the input DTI or of the source image."""
+        age = self.protocol.get('age')
+        if age is not None and str(age).strip() != '':
+            return float(age)
+        pattern = self.protocol.get('ageRegex')
+        if pattern is None or str(pattern).strip() == '':
+            return None
+        paths = [self.dtiImagePath, getattr(self.image, 'filename', None), str(self.output_dir)]
+        for path in [p for p in paths if p]:
+            match = re.search(str(pattern), str(path))
+            if match:
+                return float(match.group(1))
+        return None

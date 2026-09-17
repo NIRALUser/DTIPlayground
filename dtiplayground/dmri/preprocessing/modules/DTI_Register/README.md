@@ -1,7 +1,7 @@
 ### DTI_Register
 
 ##### Introduction
-DTI_Register registers the DTI to a reference DTI (e.g. an atlas) with DTI-Reg: an initial affine transform of the scalar images (BRAINSFit), refined by a diffeomorphic ANTS registration of the scalar images; the tensors are resampled log-Euclidean with reorientation. The defaults are those of the FiberAnalysis pipeline.
+DTI_Register registers the DTI to a reference DTI (e.g. an atlas, or the age appropriate mean tensor of a normative model, see referenceNormativeModel) with DTI-Reg: an initial affine transform of the scalar images (BRAINSFit), refined by a diffeomorphic ANTS registration of the scalar images; the tensors are resampled log-Euclidean with reorientation. The defaults are those of the FiberAnalysis pipeline.
 
 Outputs: `registered_dti.nrrd` (DTI in reference space), `registered_<name>` for the diffusion metrics of the DTI folder (see registerMetrics), `displacementField.nrrd` (for every reference position, the displacement to the corresponding position in the DTI: the field EXTRACT_Profile uses to sample the DTI along reference-space fibers), `inverse_displacementField.nrrd`, and `initialAffine.txt` with the initial affine transform.
 
@@ -9,6 +9,9 @@ Outputs: `registered_dti.nrrd` (DTI in reference space), `registered_<name>` for
 
 - method: ANTs (default)
 - referenceImage: reference (fixed) DTI
+- referenceNormativeModel: normative model of the reference atlas (folder with `manifest.json` and `<age bin>/DTI_mean.nrrd`, written by `dmrifiberprofile qc-registration --build-normative`). The DTI is then registered to the mean tensor of the age bin of the subject, so the target is age appropriate; the mean tensors are on the grid of the atlas, so the result is still in atlas space. Without a model, an age or a usable bin, referenceImage is used (with a warning)
+- age: age of the subject in the unit of the age bins (months); read from the image path with ageRegex if not set
+- ageRegex: regular expression for the age in the path of the input image (group 1), default `ses-(\d+)m`
 - ANTsPath: ANTs installation directory (default is dtiplayground-tools/ANTs)
 - ANTsMethod: useScalar-ANTS (default)
 - registrationType: GreedyDiffeo (default)

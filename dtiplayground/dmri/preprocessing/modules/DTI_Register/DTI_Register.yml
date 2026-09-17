@@ -12,6 +12,7 @@ global_variables:
   displacement_field_path: null
   inverse_displacement_field_path: null
   registered_dti_path: null
+  initial_affine_path: null
   reference_dti_path: null
 module_type: prep
 process_attributes:
@@ -70,22 +71,119 @@ protocol:
       similarityParameter:
         type: number
         caption: Similarity Parameter
-        default_value: 4
-        description: Similarity Parameter
+        default_value: 2
+        description: Similarity Parameter (radius of the CC metric)
         tag:
           - ANTS
       ANTsIterations:
         type: string
         caption: Iterations
-        default_value: 100x50x25
+        default_value: 100x50x20
         description: Iteration parameter for ANTS
         tag:
           - ANTS
       gaussianSigma:
         type: number
         caption: Gaussian Sigma
-        default_value: 3
+        default_value: 1
         description: Gaussian Sigma
         tag:
           - ANTS
-
+      ANTsTransformationStep:
+        type: number
+        caption: Transformation Step
+        default_value: 0.25
+        description: Gradient step of the ANTS transformation
+        tag:
+          - ANTS
+      ANTsUseHistogramMatching:
+        type: boolean
+        caption: Histogram Matching
+        default_value: true
+        description: Match the histograms of the scalar images before the ANTS registration
+        tag:
+          - ANTS
+      scalarMeasurement:
+        type: list
+        caption: Scalar Measurement
+        default_value: FA
+        candidates:
+          - value: FA
+            caption: FA
+            description: Register the FA images of the tensors
+          - value: MD
+            caption: MD
+            description: Register the MD images of the tensors
+        description: Scalar image of the tensors used for the registration (DTI-Reg and BRAINSFit)
+      tensorCorrection:
+        type: list
+        caption: Tensor Correction
+        default_value: abs
+        candidates:
+          - value: abs
+            caption: Absolute value
+            description: Negative eigenvalues are replaced by their absolute value
+          - value: zero
+            caption: Zero
+            description: Negative eigenvalues are set to zero
+          - value: nearest
+            caption: Nearest
+            description: Nearest positive definite tensor
+          - value: none
+            caption: None
+            description: No correction
+        description: Correction of tensors with negative eigenvalues when computing the scalar images and resampling
+      initialAffine:
+        type: list
+        caption: Initial Affine
+        default_value: BRAINSFit
+        candidates:
+          - value: BRAINSFit
+            caption: BRAINSFit
+            description: Affine registration of the scalar images with BRAINSFit (fixed = reference, moving = DTI)
+          - value: file
+            caption: File
+            description: Use the transform given in initialAffineFile
+          - value: none
+            caption: None
+            description: No initial affine transform
+        description: Initial affine transform of the DTI to the reference, refined by the ANTS registration
+      initialAffineFile:
+        type: string
+        caption: Initial Affine File
+        default_value: null
+        description: ITK transform file (fixed = reference, moving = DTI), used if initialAffine is 'file'
+      BRAINSFitTransforms:
+        type: string
+        caption: BRAINSFit Transforms
+        default_value: Rigid,Affine
+        description: Comma delimited BRAINSFit transform stages (Rigid, ScaleVersor3D, ScaleSkewVersor3D, Affine), run in this order
+        tag:
+          - BRAINSFit
+      BRAINSFitInitializeTransformMode:
+        type: list
+        caption: BRAINSFit Initialization
+        default_value: useCenterOfHeadAlign
+        candidates:
+          - value: useCenterOfHeadAlign
+            caption: Center of head
+            description: Align the centers of the heads
+          - value: useMomentsAlign
+            caption: Moments
+            description: Align the centers of mass and principal axes
+          - value: useGeometryAlign
+            caption: Geometry
+            description: Align the image centers
+          - value: 'Off'
+            caption: 'Off'
+            description: No initialization
+        description: Initialization of the BRAINSFit registration
+        tag:
+          - BRAINSFit
+      BRAINSFitSamplingPercentage:
+        type: number
+        caption: BRAINSFit Sampling Percentage
+        default_value: 0.5
+        description: Fraction (0-1) of the voxels sampled for the BRAINSFit metric. Default 0.5; smaller values are faster but less reproducible (BRAINSFit default 0.002 gave initial affines several mm apart between repeated runs)
+        tag:
+          - BRAINSFit

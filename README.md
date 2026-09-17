@@ -369,6 +369,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-17 (v0.7.6)
+- dmriprep - DTI_Register: with a normative model of the reference atlas (referenceNormativeModel), the DTI is registered to the mean tensor of the age bin of the subject (age / ageRegex), so the registration target is age appropriate
+
 ##### 2026-09-17 (v0.7.5)
 - dmriprep - DTI_Register: the displacement field is applied to all diffusion metrics in the folder of the input DTI (tensor images log-Euclidean with reorientation, scalar images linearly; options registerMetrics, metricExclude)
 

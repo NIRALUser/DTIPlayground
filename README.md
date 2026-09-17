@@ -369,6 +369,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-17 (v0.7.5)
+- dmriprep - DTI_Register: the displacement field is applied to all diffusion metrics in the folder of the input DTI (tensor images log-Euclidean with reorientation, scalar images linearly; options registerMetrics, metricExclude)
+
 ##### 2026-09-17 (v0.7.4)
 - dmriprep - DTI_Register: defaults of the FiberAnalysis pipeline (ANTS iterations 100x50x20, CC radius 2, Gaussian sigma 1, transformation step 0.25, histogram matching, FA with abs tensor correction); initial affine computed with BRAINSFit (Rigid,Affine, center of head, sampling fraction 0.5, all configurable), read from a file, or none; WarpImageMultiTransform of the configured ANTs is used
 

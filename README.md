@@ -369,6 +369,10 @@ MIT
 
 ### Change Log
 
+##### 2026-09-17 (v0.7.7)
+- dmriprep - global variables given on the command line (run -g key value ...) reach the modules again; they were discarded when the pipeline was created
+- dmriprep - DTI_Register: reference image, normative model and age can be given as global variables (reference_dti, reference_normative_model, age), so the module runs with default protocols from one command line
+
 ##### 2026-09-17 (v0.7.6)
 - dmriprep - DTI_Register: with a normative model of the reference atlas (referenceNormativeModel), the DTI is registered to the mean tensor of the age bin of the subject (age / ageRegex), so the registration target is age appropriate
 

@@ -369,6 +369,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-17 (v0.7.3)
+- dmrifiberprofile - EXTRACT_Profile: the fibers of each subject with the sampled values (one VTK file per subject, property and tract) are only written with the new option writeFiberFiles (default false); the profiles are unchanged
+
 ##### 2026-09-17 (v0.7.2)
 - dmrifiberprofile - qc-registration --build-normative: per age bin also the mean/std/count images of every deformed metric map of the reference scans (FA, MD, RD, AD, ...) and the log-Euclidean mean tensor (DTI_mean.nrrd)
 

@@ -145,7 +145,8 @@ class Pipeline:
         self.previous_process=None #this is to ensure to access previous results (image and so on)
         self.software_info=None # binary path of softwares (such as fsl)
         self.num_threads=4 # number of threads to use 
-        self.global_variables={} # global variables to track from each module (arbitrary key-value dict)
+        ## global variables to track from each module (arbitrary key-value dict), initialized above with the ones given
+        ## by the caller (dmriprep run -g ...), which must not be discarded here
 
         #Module related
         self.config,self.environment=load_configurations(self.config_dir)

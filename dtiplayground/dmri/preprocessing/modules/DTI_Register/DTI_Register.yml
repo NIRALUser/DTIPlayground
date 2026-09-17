@@ -6,6 +6,8 @@ dependency: []
 result: null
 commandline_variables:
   reference_dti: null
+  reference_normative_model: null
+  age: null
 
 global_variables: 
   dti_path: null

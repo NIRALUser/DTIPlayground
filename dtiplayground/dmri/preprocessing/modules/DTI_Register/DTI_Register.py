@@ -242,8 +242,10 @@ class DTI_Register(prep.modules.DTIPrepModule):
         """Fixed image of the registration: the mean tensor of the age appropriate bin of the normative model when one is
         given (referenceNormativeModel, a folder written by 'dmrifiberprofile qc-registration --build-normative' with a
         <bin>/DTI_mean.nrrd per age bin), otherwise the reference image of the protocol."""
-        refImagePath = self.protocol['referenceImage']
-        model = self.protocol.get('referenceNormativeModel')
+        ## the protocol wins; global variables (dmriprep run -g reference_dti ... ) are the fallback, so the module can be
+        ## run with default protocols from the command line
+        refImagePath = self.protocol['referenceImage'] or self.global_variables.get('reference_dti')
+        model = self.protocol.get('referenceNormativeModel') or self.global_variables.get('reference_normative_model')
         if model is not None and str(model).strip() != '':
             mean = self.normativeMean(Path(str(model)))
             if mean is not None:
@@ -292,7 +294,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
     def subjectAge(self):
         """Age of this image: the protocol 'age', otherwise 'ageRegex' (group 1, in the same unit as the bins) matched on
         the path of the input DTI or of the source image."""
-        age = self.protocol.get('age')
+        age = self.protocol.get('age') or self.global_variables.get('age')
         if age is not None and str(age).strip() != '':
             return float(age)
         pattern = self.protocol.get('ageRegex')

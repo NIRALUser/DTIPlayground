@@ -31,6 +31,18 @@ Outputs: `registered_dti.nrrd` (DTI in reference space), `registered_<name>` for
 - metricExclude: comma delimited parts of file names that are not registered, default `mask`; integer images and images that are neither scalar nor tensor (e.g. NODDI directions) are not registered either
 - BRAINSFitSamplingPercentage: fraction (0-1) of the voxels sampled by BRAINSFit, default 0.5 (reproducible to ~0.4 mm; smaller values are faster but less reproducible)
 
+##### Command line
+
+The module can be run without a protocol file, with the reference and the age given as global variables:
+
+```
+dmriprep run -i <image> -o <output dir> -d DTI_Register \
+    -g dti_path <subject DTI> reference_dti <atlas DTI> reference_normative_model <normative model dir> age <months>
+```
+
+`dti_path` is the DTI to register (set by DTI_Estimate in a full pipeline); `reference_normative_model` and `age` are
+optional (the age is otherwise read from the image path). Options of the protocol take precedence over these variables.
+
 ##### Examples
 
 

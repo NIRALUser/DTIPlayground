@@ -87,7 +87,11 @@ so check that number before switching the rule.
 Modes
 -----
 * ``--build-normative`` : compute the normative model from ``--reference-dir``
-  into ``--normative-dir`` and exit.
+  into ``--normative-dir`` and exit.  Per age bin it writes the voxelwise
+  ``<METRIC>_mean`` / ``_std`` / ``_count`` of every metric map found in the
+  reference scans (``*_Deformed<METRIC>.nii.gz``, e.g. FA, MD, RD, AD), the
+  angular model, and the log-Euclidean mean tensor ``DTI_mean.nrrd``
+  (+ ``DTI_count``) of the deformed tensors (in the atlas tensor frame).
 * default (QC)          : score ``--data-dir`` subjects, write a table and outlier
   flags.  NIfTI disagreement maps + a per-subject preview PNG (atlas FA, DTI FA,
   FA diff, FA SSIM, angular error z, largest blobs) are written **only for
@@ -266,7 +270,7 @@ def find_atlas(atlas_dir):
 
 
 DEFORMED_RE = re.compile(
-    r"^(?P<sub>sub-[^_]+)_(?P<ses>ses-[^_]+)_(?P<mid>.+)_Deformed(?P<metric>FA|MD|RD|AD|DTI)\.(?:nii\.gz|nrrd)$")
+    r"^(?P<sub>sub-[^_]+)_(?P<ses>ses-[^_]+)_(?P<mid>.+)_Deformed(?P<metric>[A-Za-z0-9]+)\.(?:nii\.gz|nrrd)$")
 PREFIX_RE = re.compile(r"^(?P<prefix>.+?_dwi)(?:_.*)?$")
 
 
@@ -316,8 +320,9 @@ def find_sessions(root, age_table=None, age_re=AGE_RE):
                 "prefix": prefix, "age": age, "scalars": {}, "tensor": None,
             })
             if metric == "DTI":
-                entry["tensor"] = f
-            elif metric in ALL_SCALARS:
+                if f.endswith(".nrrd"):
+                    entry["tensor"] = f
+            elif f.endswith(".nii.gz"):
                 entry["scalars"][metric] = f
     if no_age:
         log.warning("no age information for %d session(s) (e.g. %s)%s", len(no_age),
@@ -355,6 +360,42 @@ def principal_directions(tensor_path, mask, flip=(1, 1, 1)):
     out = np.zeros(mask.shape + (3,), dtype=np.float32)
     out[idx] = pd
     return out
+
+
+def _symmetric_matrices(comp):
+    """(N, 3, 3) matrices from (6, N) components [xx, xy, xz, yy, yz, zz]."""
+    c = np.asarray(comp, dtype=np.float64)
+    return c[[0, 1, 2, 1, 3, 4, 2, 4, 5]].T.reshape(-1, 3, 3)
+
+
+def _eigen_function(w, v, func):
+    """(6, N) components of v diag(func(w)) vᵀ."""
+    M = np.matmul(v * func(w)[:, None, :], v.transpose(0, 2, 1))
+    return M.reshape(-1, 9)[:, [0, 1, 2, 4, 5, 8]].T
+
+
+def matrix_function(comp, func):
+    """func applied to the eigenvalues of symmetric 3x3 matrices given as (6, N) components [xx, xy, xz, yy, yz, zz].
+    Returns (6, N); with func=np.log the eigenvalues must be positive."""
+    w, v = np.linalg.eigh(_symmetric_matrices(comp))
+    return _eigen_function(w, v, func)
+
+
+def log_tensors(tensor_path, mask, flip=(1, 1, 1)):
+    """Matrix logarithms (6, N) of the positive definite tensors within *mask*, and the (X,Y,Z) mask of those voxels.
+    *flip* reflects the tensor frame (D -> F D F) like principal_directions."""
+    comp, _ = nrrd.read(tensor_path)  # (6, X, Y, Z)
+    idx = np.where(mask)
+    c = comp[:, idx[0], idx[1], idx[2]].astype(np.float64)
+    f = np.asarray(flip, dtype=np.float64)
+    c *= np.array([f[0] * f[0], f[0] * f[1], f[0] * f[2], f[1] * f[1], f[1] * f[2], f[2] * f[2]])[:, None]
+    finite = np.all(np.isfinite(c), axis=0)
+    c = c[:, finite]
+    w, v = np.linalg.eigh(_symmetric_matrices(c))
+    positive = w[:, 0] > 0
+    valid = np.zeros(mask.shape, dtype=bool)
+    valid[tuple(i[finite][positive] for i in idx)] = True
+    return _eigen_function(w[positive], v[positive], np.log), valid
 
 
 def detect_tensor_flip(sessions, atlas_pd, atlas_fa, mask_thr, angular_fa_min, n_probe=3):
@@ -534,9 +575,18 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
     shape = atlas_fa.shape
     atlas_wm = atlas_fa > angular_fa_min
 
-    manifest = {"bins": [b[2] for b in bins], "scalar_metrics": scalar_metrics,
+    # mean images of every metric map of the reference scans (QC metrics first), not only the QC metrics
+    found = sorted({m for s in sessions for m in s["scalars"]})
+    mean_metrics = [m for m in scalar_metrics if m in found] + [m for m in ALL_SCALARS if m in found and m not in scalar_metrics] \
+        + [m for m in found if m not in scalar_metrics and m not in ALL_SCALARS]
+    do_tensor = any(s["tensor"] for s in sessions)
+    tensor_header = nrrd.read_header(next(s["tensor"] for s in sessions if s["tensor"])) if do_tensor else None
+    log.info("normative mean images: %s%s", ", ".join(mean_metrics), ", DTI (log-Euclidean)" if do_tensor else "")
+
+    manifest = {"bins": [b[2] for b in bins], "scalar_metrics": mean_metrics,
                 "angular": do_angular, "mask_threshold": mask_thr,
-                "angular_fa_min": angular_fa_min, "min_count": min_count, "tensor_flip": flip_name}
+                "angular_fa_min": angular_fa_min, "min_count": min_count, "tensor_flip": flip_name,
+                "tensor_mean": "logEuclidean" if do_tensor else None}
 
     for lo, hi, label in bins:
         subs = [s for s in sessions if lo <= s["age"] <= hi]
@@ -549,7 +599,11 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
 
         # scalar accumulators
         acc = {m: {"sum": np.zeros(shape, np.float64), "sqsum": np.zeros(shape, np.float64),
-                   "cnt": np.zeros(shape, np.float64)} for m in scalar_metrics}
+                   "cnt": np.zeros(shape, np.float64)} for m in mean_metrics}
+        # log-Euclidean tensor accumulator: sum of the matrix logarithms (6 comps) + count
+        if do_tensor:
+            L = np.zeros((6,) + shape, np.float64)
+            Lcnt = np.zeros(shape, np.float64)
         # angular dyadic accumulator T = sum(v vᵀ): 6 unique comps + count
         if do_angular:
             T = np.zeros((6,) + shape, np.float64)
@@ -558,7 +612,7 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
         for s in subs:
             sfa, _ = load_scalar(s["scalars"]["FA"])
             mask = brain_mask(sfa, atlas_fa, mask_thr)
-            for m in scalar_metrics:
+            for m in mean_metrics:
                 if m not in s["scalars"]:
                     continue
                 v, _ = load_scalar(s["scalars"][m])
@@ -573,9 +627,14 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
                 T[2][ii] += pd[:, 0] * pd[:, 2]; T[3][ii] += pd[:, 1] * pd[:, 1]
                 T[4][ii] += pd[:, 1] * pd[:, 2]; T[5][ii] += pd[:, 2] * pd[:, 2]
                 Tcnt[ii] += 1.0
+            if do_tensor and s["tensor"]:
+                logs, valid = log_tensors(s["tensor"], mask, flip)
+                ii = np.where(valid)
+                L[:, ii[0], ii[1], ii[2]] += logs
+                Lcnt[ii] += 1.0
 
         # scalar mean/std
-        for m in scalar_metrics:
+        for m in mean_metrics:
             cnt = acc[m]["cnt"]
             ok = cnt >= min_count
             mean = np.full(shape, np.nan, np.float32)
@@ -607,6 +666,18 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
             nib.save(nib.Nifti1Image(tau1, ref_affine), os.path.join(bin_dir, "angular_coherence.nii.gz"))
             nib.save(nib.Nifti1Image(Tcnt.astype(np.float32), ref_affine),
                      os.path.join(bin_dir, "angular_count.nii.gz"))
+
+        # log-Euclidean mean tensor: exp(mean(log D)), zero where fewer than min_count tensors
+        if do_tensor:
+            mean_tensor = np.zeros((6,) + shape, np.float32)
+            ok = np.where(Lcnt >= min_count)
+            if ok[0].size:
+                mean_tensor[:, ok[0], ok[1], ok[2]] = matrix_function(L[:, ok[0], ok[1], ok[2]] / Lcnt[ok], np.exp)
+            header = {k: tensor_header[k] for k in ("space", "space directions", "space origin", "kinds", "measurement frame")
+                      if k in tensor_header}
+            header["encoding"] = "gzip"
+            nrrd.write(os.path.join(bin_dir, "DTI_mean.nrrd"), mean_tensor, header)
+            nib.save(nib.Nifti1Image(Lcnt.astype(np.float32), ref_affine), os.path.join(bin_dir, "DTI_count.nii.gz"))
 
     with open(os.path.join(normative_dir, "manifest.json"), "w") as fh:
         json.dump(manifest, fh, indent=2)
@@ -996,7 +1067,8 @@ def configure_parser(p):
     p.add_argument("--out-dir", default="RegistrationQC", help="QC output folder")
     p.add_argument("--reference-dir", default=None, help="Reference cohort for --build-normative (default: --data-dir)")
     p.add_argument("--normative-dir", default=None, help="Age-conditional normative model folder (read or write)")
-    p.add_argument("--build-normative", action="store_true", help="Build the normative model and exit")
+    p.add_argument("--build-normative", action="store_true",
+                   help="Build the normative model (mean/std of all metric maps, angular model, mean tensor) and exit")
     p.add_argument("--bins", default="0-3,4-9,10-60", help="Age bins (months, inclusive; oldest open-ended)")
     p.add_argument("--age-csv", default=None,
                    help="CSV/TSV with per-subject (and optionally per-session) ages, for cohorts whose "

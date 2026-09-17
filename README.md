@@ -242,7 +242,7 @@ Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifibe
 | `compute-axis` | 1D axis of fiber tracts (average curve per arc length bin) as `<tract>_axis.vtk`; optionally with the profiles mapped onto the axis |
 | `gather` | Collect subject profiles into `<tract>/<tract>_<metric>.csv` (rows: arc length, columns: datasets), from `.fvp` trees and/or EXTRACT_Profile outputs |
 | `impute` | Fill missing profile values with a per-dataset SIREN on the (x, y, z, arc length) of the tract axes |
-| `qc-registration` | QC of the registration to the atlas: similarity (MAE, SSIM, NCC), angular error, contiguity of disagreement, CSF check, age-conditional normative model, combined outlier flag |
+| `qc-registration` | QC of the registration to the atlas: similarity (MAE, SSIM, NCC), angular error, contiguity of disagreement, CSF check, age-conditional normative model, combined outlier flag. `--build-normative` builds the age-binned normative model from a reference dataset: mean/std/count of every deformed metric map (FA, MD, RD, AD, ...), the angular model and the log-Euclidean mean tensor (`DTI_mean.nrrd`) per age bin |
 | `qc-profiles` | Age-binned profile statistics (`_agebinstats.csv`) and plots; profile QC against prior (normative) statistics with value and shape outliers; cleaned profile tables |
 
 Typical workflow:

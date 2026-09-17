@@ -369,6 +369,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-17 (v0.7.2)
+- dmrifiberprofile - qc-registration --build-normative: per age bin also the mean/std/count images of every deformed metric map of the reference scans (FA, MD, RD, AD, ...) and the log-Euclidean mean tensor (DTI_mean.nrrd)
+
 ##### 2026-09-17 (v0.7.1)
 - dmrifiberprofile - EXTRACT_Profile: with a DTI input, <prefix>FA, MD, AD, RD are computed from the tensors of the column mapped as '<prefix> DTI Image' (e.g. FWFA from free-water corrected tensors), other properties are sampled from their own image in the same run; an empty datasheet cell leaves that property out for the subject
 - examples/normative_profiles - protocol, datasheet and datasheet script to compute the normative profiles of an atlas, sampling native tensors and maps with the deformation field of each scan

@@ -8,7 +8,9 @@ QC for the deformable alignment of subject diffusion tensors/metrics to a prior
 diffusion-MRI atlas.
 
 Each subject session has tensor-derived metric maps warped into atlas space
-(``.../AtlasReg/*_Deformed<METRIC>.nii.gz`` and ``*_DeformedDTI.nrrd``).  The
+(``.../AtlasReg/*_Deformed<METRIC>.nii.gz`` and ``*_DeformedDTI.nrrd``, or the
+outputs of the dmriprep DTI_Register module ``<scan>_Registered_<METRIC>.nii.gz``
+and ``<scan>_DTI_Registered.nrrd`` in any folder below the data folder).  The
 atlas provides the same maps (``Atlas_*_<METRIC>.nii.gz`` + ``*_DTI.nrrd``).
 
 The QC compares each subject to the atlas and (optionally) to an age-conditional
@@ -89,7 +91,7 @@ Modes
 * ``--build-normative`` : compute the normative model from ``--reference-dir``
   into ``--normative-dir`` and exit.  Per age bin it writes the voxelwise
   ``<METRIC>_mean`` / ``_std`` / ``_count`` of every metric map found in the
-  reference scans (``*_Deformed<METRIC>.nii.gz``, e.g. FA, MD, RD, AD), the
+  reference scans (``*_Deformed<METRIC>.nii.gz`` / ``*_Registered_<METRIC>.nii.gz``, e.g. FA, MD, RD, AD), the
   angular model, and the log-Euclidean mean tensor ``DTI_mean.nrrd``
   (+ ``DTI_count``) of the deformed tensors (in the atlas tensor frame).
 * default (QC)          : score ``--data-dir`` subjects, write a table and outlier
@@ -293,8 +295,50 @@ def parse_deformed(basename):
     return m.group("sub"), m.group("ses"), prefix, m.group("metric")
 
 
+## outputs of the dmriprep DTI_Register module: <scan>_DTI_Registered.nrrd (tensor) and
+## <scan>_Registered_<metric>.nii.gz (metric maps next to the input DTI, e.g. FA, DTI_FA or tensor_fa)
+REGISTERED_RE = re.compile(
+    r"^(?P<mid>.+?)_(?:DTI_Registered\.nrrd|Registered_(?P<metric>[A-Za-z0-9_]+)\.nii\.gz)$")
+SUBJECT_RE = re.compile(r"(?:^|_)(sub-[^_]+)")
+SESSION_RE = re.compile(r"(?:^|_)(ses-[^_]+)")
+
+
+def parse_registered(path):
+    """(subject, session, prefix, metric) of a DTI_Register output, or None.
+
+    The subject and session are read from the file name (``sub-<id>_ses-<id>_...``), else from the
+    folder names of the path; the metric is ``DTI`` for the tensor, else the name after ``Registered_``
+    without a ``DTI_`` / ``tensor_`` prefix, in upper case (``tensor_fa`` -> ``FA``).
+    """
+    m = REGISTERED_RE.match(os.path.basename(path))
+    if m is None:
+        return None
+    mid = m.group("mid")
+    parts = [mid] + list(reversed(os.path.dirname(os.path.abspath(path)).split(os.sep)))
+    subject = next((s.group(1) for s in map(lambda x: SUBJECT_RE.search(x), parts) if s), None)
+    session = next((s.group(1) for s in map(lambda x: SESSION_RE.search(x), parts) if s), None)
+    if subject is None or session is None:
+        return None
+    rest = re.sub(r"^(?:_?(?:sub|ses)-[^_]+)+_?", "", mid) or mid
+    pm = PREFIX_RE.match(rest)
+    prefix = pm.group("prefix") if pm else rest
+    metric = m.group("metric")
+    if metric is None:
+        metric = "DTI"
+    else:
+        metric = re.sub(r"^(?:DTI|tensor)_", "", metric, flags=re.IGNORECASE).upper()
+    return subject, session, prefix, metric
+
+
 def find_sessions(root, age_table=None, age_re=AGE_RE):
     """Discover scans (one per subject/session/prefix) with metric/tensor paths.
+
+    Two layouts are recognised under *root*:
+
+    * ``sub-*/ses-*/AtlasReg/*_Deformed<METRIC>.nii.gz`` and ``*_DeformedDTI.nrrd``
+    * outputs of the dmriprep DTI_Register module in any folder below *root*:
+      ``<scan>_Registered_<METRIC>.nii.gz`` and ``<scan>_DTI_Registered.nrrd``, the subject and session
+      taken from the scan name (``sub-<id>_ses-<id>_...``) or else from the folder names
 
     Multiple acquisitions in the same session (different prefixes) become
     separate scan entries keyed by the full ``sub_ses_prefix`` identifier.
@@ -305,29 +349,56 @@ def find_sessions(root, age_table=None, age_re=AGE_RE):
     """
     scans = {}  # (subject, session, prefix) -> entry
     no_age = []
+
+    def add(subject_dir, session, subject, prefix, metric, f):
+        key = (subject, session, prefix)
+        if key not in scans:
+            age = age_for_session(subject_dir, session, age_table, age_re)
+            if age is None and os.path.join(subject, session) not in no_age:
+                no_age.append(os.path.join(subject, session))
+            scans[key] = {"id": f"{subject}_{session}_{prefix}", "subject": subject, "session": session,
+                          "prefix": prefix, "age": age, "scalars": {}, "tensor": None}
+        entry = scans[key]
+        if metric == "DTI":
+            if f.endswith(".nrrd"):
+                if entry["tensor"] is None:
+                    entry["tensor"] = f
+                elif entry["tensor"] != f:
+                    log.warning("%s: more than one registered tensor, using %s (not %s)", entry["id"], entry["tensor"], f)
+        elif f.endswith(".nii.gz"):
+            if metric not in entry["scalars"]:
+                entry["scalars"][metric] = f
+            elif entry["scalars"][metric] != f:
+                log.warning("%s: more than one registered %s map, using %s (not %s)", entry["id"], metric,
+                            entry["scalars"][metric], f)
+
     for reg in sorted(glob.glob(os.path.join(root, "sub-*", "ses-*", "AtlasReg"))):
         ses_dir = os.path.dirname(reg)
         session = os.path.basename(ses_dir)
         subject_dir = os.path.basename(os.path.dirname(ses_dir))
-        age = age_for_session(subject_dir, session, age_table, age_re)
-        if age is None:
-            no_age.append(ses_dir)
         for f in sorted(glob.glob(os.path.join(reg, "*_Deformed*.nii.gz"))
                         + glob.glob(os.path.join(reg, "*_DeformedDTI.nrrd"))):
             parsed = parse_deformed(os.path.basename(f))
             if parsed is None:
                 continue
             subject, ses, prefix, metric = parsed
-            key = (subject, session, prefix)
-            entry = scans.setdefault(key, {
-                "id": f"{subject}_{session}_{prefix}", "subject": subject, "session": session,
-                "prefix": prefix, "age": age, "scalars": {}, "tensor": None,
-            })
-            if metric == "DTI":
-                if f.endswith(".nrrd"):
-                    entry["tensor"] = f
-            elif f.endswith(".nii.gz"):
-                entry["scalars"][metric] = f
+            add(subject_dir, session, subject, prefix, metric, f)
+    for f in sorted(glob.glob(os.path.join(root, "**", "*_DTI_Registered.nrrd"), recursive=True)
+                    + glob.glob(os.path.join(root, "**", "*_Registered_*.nii.gz"), recursive=True)):
+        parsed = parse_registered(f)
+        if parsed is None:
+            continue
+        subject, session, prefix, metric = parsed
+        add(subject, session, subject, prefix, metric, f)
+    ## metric maps that weren't written (e.g. DTI_Register of a tensor without maps next to it): computed from the tensor
+    derived = [s["id"] for s in scans.values() if s["tensor"] and any(m not in s["scalars"] for m in ALL_SCALARS)]
+    for s in scans.values():
+        if s["tensor"]:
+            for m in ALL_SCALARS:
+                s["scalars"].setdefault(m, TensorMetric(s["tensor"], m))
+    if derived:
+        log.info("%d scan(s) without all of the %s maps (e.g. %s): the missing maps are computed from the registered tensor",
+                 len(derived), "/".join(ALL_SCALARS), ", ".join(derived[:3]))
     if no_age:
         log.warning("no age information for %d session(s) (e.g. %s)%s", len(no_age),
                     ", ".join("/".join(d.split(os.sep)[-2:]) for d in no_age[:3]),
@@ -340,7 +411,55 @@ def find_sessions(root, age_table=None, age_re=AGE_RE):
 # ---------------------------------------------------------------------------
 # Tensor / directions
 # ---------------------------------------------------------------------------
+class TensorMetric(str):
+    """A scalar map computed from a tensor NRRD (used when the metric map itself is missing): the path of the tensor,
+    with the metric (FA, MD, AD or RD) in ``.metric``."""
+    def __new__(cls, tensor_path, metric):
+        obj = super().__new__(cls, tensor_path)
+        obj.metric = metric
+        return obj
+
+
+_tensor_metric_cache = {}
+
+
+def tensor_metrics(tensor_path):
+    """{FA, MD, AD, RD: (X,Y,Z) float32} of a tensor NRRD (zeros where the tensor is zero or not finite), and the
+    RAS affine of its grid."""
+    if tensor_path in _tensor_metric_cache:
+        return _tensor_metric_cache[tensor_path]
+    comp, header = nrrd.read(tensor_path)
+    axis, kind = tensor_axis(comp, header)
+    comp = np.moveaxis(comp, axis, 0).astype(np.float64)
+    valid = np.all(np.isfinite(comp), axis=0) & np.any(comp != 0, axis=0)
+    D, idx, _ = _masked_tensors(tensor_path, valid)
+    w = np.linalg.eigvalsh(D)[:, ::-1]  # descending
+    md = w.mean(axis=1)
+    norm = np.sqrt((w ** 2).sum(axis=1))
+    fa = np.where(norm > 0, np.sqrt(1.5 * ((w - md[:, None]) ** 2).sum(axis=1)) / np.where(norm > 0, norm, 1), 0)
+    values = {"FA": np.clip(fa, 0, 1), "MD": md, "AD": w[:, 0], "RD": w[:, 1:].mean(axis=1)}
+    maps = {}
+    for m, v in values.items():
+        out = np.zeros(valid.shape, dtype=np.float32)
+        out[idx] = v
+        maps[m] = out
+    ## voxel -> physical affine of the spatial axes, in RAS like NIfTI
+    sd = np.array([np.asarray(d, dtype=np.float64) for d in header["space directions"]
+                   if d is not None and np.all(np.isfinite(np.asarray(d, dtype=np.float64)))])
+    affine = np.eye(4)
+    affine[:3, :3] = sd.T
+    affine[:3, 3] = np.asarray(header.get("space origin", np.zeros(3)), dtype=np.float64)
+    if str(header.get("space", "")).lower() in ("left-posterior-superior", "lps"):
+        affine = np.diag([-1.0, -1.0, 1.0, 1.0]) @ affine
+    _tensor_metric_cache.clear()  # keep only the tensor being scored
+    _tensor_metric_cache[tensor_path] = (maps, affine)
+    return maps, affine
+
+
 def load_scalar(path):
+    if isinstance(path, TensorMetric):
+        maps, affine = tensor_metrics(str(path))
+        return maps[path.metric], affine
     img = nib.load(path)
     return np.asanyarray(img.dataobj, dtype=np.float32), img.affine
 
@@ -1123,7 +1242,8 @@ def _tensor_flip_arg(value):
 
 
 def configure_parser(p):
-    p.add_argument("--data-dir", default="RegistrationData", help="Root with sub-*/ses-*/AtlasReg + Atlas/")
+    p.add_argument("--data-dir", default="RegistrationData", help="Root with sub-*/ses-*/AtlasReg (or DTI_Register outputs <scan>_Registered_<METRIC>.nii.gz, "
+                        "<scan>_DTI_Registered.nrrd in any subfolder) + Atlas/")
     p.add_argument("--atlas-dir", default=None, help="Atlas folder (default: <data-dir>/Atlas)")
     p.add_argument("--out-dir", default="RegistrationQC", help="QC output folder")
     p.add_argument("--reference-dir", default=None, help="Reference cohort for --build-normative (default: --data-dir)")
@@ -1236,8 +1356,8 @@ def run_args(args, p) -> int:
             p.error("--build-normative requires --normative-dir")
         sessions = find_sessions(ref_dir, age_table, age_re)
         if not sessions:
-            log.error("no reference sessions found under %s -- expected "
-                      "%s/sub-*/ses-*/AtlasReg/*_Deformed*.nii.gz", ref_dir, ref_dir)
+            log.error("no reference sessions found under %s -- expected %s/sub-*/ses-*/AtlasReg/*_Deformed*.nii.gz "
+                      "or DTI_Register outputs sub-<id>_ses-<id>_*_Registered_<METRIC>.nii.gz below it", ref_dir, ref_dir)
             return 1
         dated = [s for s in sessions if s["age"] is not None]
         if len(dated) < len(sessions):
@@ -1311,7 +1431,7 @@ def run_args(args, p) -> int:
     sessions = find_sessions(args.data_dir, age_table, age_re)
     if not sessions:
         log.error("no sessions found under %s -- expected %s/sub-*/ses-*/AtlasReg/*_Deformed*.nii.gz "
-                  "(session folder names must carry the age, e.g. ses-V06_age-06mo)",
+                  "or DTI_Register outputs sub-<id>_ses-<id>_*_Registered_<METRIC>.nii.gz below it",
                   args.data_dir, args.data_dir)
         return 1
     flip_name = resolve_flip(sessions)
@@ -1355,7 +1475,8 @@ def run_args(args, p) -> int:
 
     if not rows:
         log.error("none of the %d session(s) under %s had a deformed FA map, so nothing was scored; "
-                  "check that AtlasReg contains *_DeformedFA.nii.gz (or adjust --scalar-metrics)",
+                  "check that AtlasReg contains *_DeformedFA.nii.gz or that DTI_Register wrote "
+                  "*_Registered_FA.nii.gz (or adjust --scalar-metrics)",
                   len(sessions), args.data_dir)
         return 1
 

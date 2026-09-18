@@ -372,6 +372,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.15)
+- dmriprep - MULTI_SHELL_Estimate: DKI/MSDKI/FWDTI tensors were invalid (5D) NRRDs and the MSDKI kurtosis tensor was empty; new full DKI model (MK, AK, RK, MKT, KFA, kurtosis tensor); FWDTI saves the free water fraction; AMICO NODDI failed and now fits the output of the previous modules (NIfTI or NRRD input); mrtrix3 dwi2adc fixed; IVIM D* output renamed DSTAR
+
 ##### 2026-09-18 (v0.7.14)
 - dmrifiberprofile - qc-registration: tensor directions in physical space from the NRRD headers; --tensor-flip uses the corrections of detect-tensor-flip (flips, voxel frame); every subject is checked on its own (TENSOR_frame_best, TENSOR_frame_gain_deg, warning when another correction fits the atlas better)
 

@@ -41,6 +41,45 @@ def flip_signs(axes):
     return np.array([-1.0 if a in axes else 1.0 for a in "xyz"])
 
 
+def header_frames(header):
+    """(header frame, voxel frame, voxel axes, origin) of a tensor NRRD header, in physical LPS coordinates: the
+    frames map the stored components to physical space (measurement frame of the header, or the unit voxel axes);
+    the voxel axes are the space directions (columns)."""
+    space = str(header.get("space", "left-posterior-superior")).lower()
+    to_lps = np.diag([-1.0 if space in ("right-anterior-superior", "ras") else 1.0] * 2 + [1.0])
+    sd = header.get("space directions")
+    sd = [d for d in (sd if sd is not None else []) if d is not None and np.all(np.isfinite(np.asarray(d, dtype=float)))]
+    directions = to_lps @ (np.array(sd, dtype=np.float64).T if len(sd) == 3 else np.eye(3))
+    origin = header.get("space origin")
+    origin = to_lps @ (np.asarray(origin, dtype=np.float64) if origin is not None else np.zeros(3))
+    mf = header.get("measurement frame")
+    frame = to_lps @ (np.asarray(mf, dtype=np.float64).T if mf is not None else np.eye(3))
+    return frame, directions / np.linalg.norm(directions, axis=0), directions, origin
+
+
+def correction_matrix(header, correction="none"):
+    """Stored components -> physical LPS directions for a correction ('none', 'x', 'voxel,x', ...)."""
+    from dtiplayground.dmri.fiberprofile.analysis.flip_tensor import parse_correction
+    frame, axes = parse_correction(correction)
+    header_frame, voxel_frame, _, _ = header_frames(header)
+    return (voxel_frame if frame == "voxel" else header_frame) @ np.diag(flip_signs(axes))
+
+
+def candidate_corrections(header):
+    """Distinct corrections of a tensor NRRD header: [(name, matrix)], the header frame first; corrections giving the
+    same tensors (R and -R, voxel frame equal to a flip) are listed once."""
+    out, seen = [], set()
+    for frame in ("header", "voxel"):
+        for axes in FLIPS:
+            name = correction_name(frame, axes)
+            E = correction_matrix(header, name)
+            key = matrix_key(E)
+            if key not in seen:
+                seen.add(key)
+                out.append((name, E))
+    return out
+
+
 def matrix_key(E):
     """Key of the stored -> physical matrix E up to its sign (E and -E give the same tensors)."""
     flat = E.ravel()
@@ -78,17 +117,8 @@ class TensorField:
         self.e1 = v[..., :, -1]  # principal direction in the stored (measurement) frame
         self.mask = self.fa > fa_min
 
-        space = str(header.get("space", "left-posterior-superior")).lower()
-        to_lps = np.diag([-1.0 if space in ("right-anterior-superior", "ras") else 1.0] * 2 + [1.0])
-        sd = header.get("space directions")
-        sd = [d for d in (sd if sd is not None else []) if d is not None and np.all(np.isfinite(np.asarray(d, dtype=float)))]
-        ## physical space: LPS (as ITK)
-        self.directions = to_lps @ (np.array(sd, dtype=np.float64).T if len(sd) == 3 else np.eye(3))  # columns: voxel axes
-        origin = header.get("space origin")
-        self.origin = to_lps @ (np.asarray(origin, dtype=np.float64) if origin is not None else np.zeros(3))
-        mf = header.get("measurement frame")
-        self.frame = to_lps @ (np.asarray(mf, dtype=np.float64).T if mf is not None else np.eye(3))  # stored -> physical
-        self.voxel_frame = self.directions / np.linalg.norm(self.directions, axis=0)  # stored in voxel axes -> physical
+        ## physical space: LPS (as ITK); frames: stored components -> physical; directions: voxel axes (columns)
+        self.frame, self.voxel_frame, self.directions, self.origin = header_frames(header)
         self.spacing = np.linalg.norm(self.directions, axis=0)
 
     def frame_matrix(self, frame="header"):

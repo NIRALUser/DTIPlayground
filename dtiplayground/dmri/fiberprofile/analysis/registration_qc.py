@@ -125,12 +125,16 @@ import nibabel as nib
 import nrrd
 from scipy import ndimage, stats
 
+from dtiplayground.dmri.fiberprofile.analysis.detect_flip import candidate_corrections, correction_matrix
+from dtiplayground.dmri.fiberprofile.analysis.flip_tensor import COMPONENTS, parse_correction, correction_name, tensor_axis
+
 log = logging.getLogger("reg_qc")
 
 AGE_RE = re.compile(r"ses-(\d+)m")
 ALL_SCALARS = ["FA", "MD", "RD", "AD"]
-# Candidate tensor-frame axis reflections (handedness / LPS-RAS sign conventions)
-FLIP_VECS = {"none": (1, 1, 1), "x": (-1, 1, 1), "y": (1, -1, 1), "z": (1, 1, -1)}
+# Tensor frame corrections (as detect-tensor-flip / DTI_Register tensorFlip): flips of x, y, z of the stored components,
+# in the measurement frame of the header or in the frame of the voxel axes ('voxel', 'voxel,x', ...). Directions are
+# compared in physical (LPS) space.
 
 
 # ---------------------------------------------------------------------------
@@ -341,22 +345,32 @@ def load_scalar(path):
     return np.asanyarray(img.dataobj, dtype=np.float32), img.affine
 
 
-def principal_directions(tensor_path, mask, flip=(1, 1, 1)):
-    """Leading eigenvector per masked voxel from a 6-component NRRD tensor.
-
-    Returns (X,Y,Z,3) float32 (zeros outside the mask).  NRRD symmetric-matrix
-    order is [Dxx, Dxy, Dxz, Dyy, Dyz, Dzz].  *flip* reflects the direction axes
-    to correct a tensor-frame handedness/convention mismatch with the atlas.
-    """
-    comp, _ = nrrd.read(tensor_path)  # (6, X, Y, Z)
+def _masked_tensors(tensor_path, mask):
+    """(N,3,3) tensors of the voxels in *mask*, the mask indices, and the NRRD header."""
+    comp, header = nrrd.read(tensor_path)
+    axis, kind = tensor_axis(comp, header)
+    comp = np.moveaxis(comp, axis, 0)
     idx = np.where(mask)
-    c = comp[:, idx[0], idx[1], idx[2]].astype(np.float64)  # (6, N)
-    n = c.shape[1]
-    D = np.empty((n, 3, 3), dtype=np.float64)
-    D[:, 0, 0] = c[0]; D[:, 0, 1] = D[:, 1, 0] = c[1]; D[:, 0, 2] = D[:, 2, 0] = c[2]
-    D[:, 1, 1] = c[3]; D[:, 1, 2] = D[:, 2, 1] = c[4]; D[:, 2, 2] = c[5]
+    c = comp[:, idx[0], idx[1], idx[2]].astype(np.float64)  # (components, N)
+    D = np.zeros((c.shape[1], 3, 3), dtype=np.float64)
+    for k, ij in enumerate(COMPONENTS[kind]):
+        if ij is not None:
+            D[:, ij[0], ij[1]] = c[k]
+            if kind != "3d-matrix":
+                D[:, ij[1], ij[0]] = c[k]
+    return D, idx, header
+
+
+def principal_directions(tensor_path, mask, correction="none"):
+    """Leading eigenvector per masked voxel of a tensor NRRD, in physical (LPS) space.
+
+    Returns (X,Y,Z,3) float32 (zeros outside the mask). The stored components are mapped to physical space by the
+    measurement frame of the header, or by *correction* ('x', 'voxel', 'voxel,x', ... as detect-tensor-flip) to
+    correct a tensor frame that doesn't match the header.
+    """
+    D, idx, header = _masked_tensors(tensor_path, mask)
     _, vecs = np.linalg.eigh(D)          # ascending eigenvalues
-    pd = (vecs[:, :, -1] * np.asarray(flip, dtype=np.float64)).astype(np.float32)
+    pd = (vecs[:, :, -1] @ correction_matrix(header, correction).T).astype(np.float32)
     out = np.zeros(mask.shape + (3,), dtype=np.float32)
     out[idx] = pd
     return out
@@ -381,16 +395,17 @@ def matrix_function(comp, func):
     return _eigen_function(w, v, func)
 
 
-def log_tensors(tensor_path, mask, flip=(1, 1, 1)):
+def log_tensors(tensor_path, mask, correction="none", target_header=None):
     """Matrix logarithms (6, N) of the positive definite tensors within *mask*, and the (X,Y,Z) mask of those voxels.
-    *flip* reflects the tensor frame (D -> F D F) like principal_directions."""
-    comp, _ = nrrd.read(tensor_path)  # (6, X, Y, Z)
-    idx = np.where(mask)
-    c = comp[:, idx[0], idx[1], idx[2]].astype(np.float64)
-    f = np.asarray(flip, dtype=np.float64)
-    c *= np.array([f[0] * f[0], f[0] * f[1], f[0] * f[2], f[1] * f[1], f[1] * f[2], f[2] * f[2]])[:, None]
-    finite = np.all(np.isfinite(c), axis=0)
-    c = c[:, finite]
+    The tensors are corrected like principal_directions and expressed in the frame of *target_header* (the stored
+    frame of the mean tensor), in physical (LPS) space without one: D -> M D M^T."""
+    D, idx, header = _masked_tensors(tensor_path, mask)
+    M = correction_matrix(header, correction)
+    if target_header is not None:
+        M = correction_matrix(target_header).T @ M  # physical -> stored frame of the target (orthonormal)
+    D = np.einsum("ab,nbc,dc->nad", M, D, M)
+    finite = np.all(np.isfinite(D.reshape(-1, 9)), axis=1)
+    c = D.reshape(-1, 9)[:, [0, 1, 2, 4, 5, 8]].T[:, finite]
     w, v = np.linalg.eigh(_symmetric_matrices(c))
     positive = w[:, 0] > 0
     valid = np.zeros(mask.shape, dtype=bool)
@@ -398,11 +413,26 @@ def log_tensors(tensor_path, mask, flip=(1, 1, 1)):
     return _eigen_function(w[positive], v[positive], np.log), valid
 
 
-def detect_tensor_flip(sessions, atlas_pd, atlas_fa, mask_thr, angular_fa_min, n_probe=3):
-    """Detect the axis reflection aligning subject tensors to the atlas frame.
+def frame_scores(tensor_path, wm, atlas_pd):
+    """Median angle (deg) to the atlas principal directions over *wm* of every distinct tensor frame correction of a
+    tensor NRRD: {name: angle}, in the order of candidate_corrections (header frame first)."""
+    D, idx, header = _masked_tensors(tensor_path, wm)
+    _, vecs = np.linalg.eigh(D)
+    e1 = vecs[:, :, -1]
+    ref = atlas_pd[idx]
+    scores = {}
+    for name, E in candidate_corrections(header):
+        dot = np.clip(np.abs(np.sum((e1 @ E.T) * ref, axis=-1)), 0, 1)
+        scores[name] = float(np.median(np.degrees(np.arccos(dot))))
+    return scores
 
-    Probes a few subjects; for each, picks the reflection minimising the median
-    core-WM angular error to the atlas; returns the majority choice.
+
+def detect_tensor_flip(sessions, atlas_pd, atlas_fa, mask_thr, angular_fa_min, n_probe=3):
+    """Detect the tensor frame correction aligning subject tensors to the atlas frame.
+
+    Probes a few subjects; for each, picks the correction (flips in the header frame or in the voxel frame, see
+    detect-tensor-flip) minimising the median core-WM angular error to the atlas; returns the majority choice
+    (name, median error).
     """
     core_thr = max(angular_fa_min, 0.3)
     votes, medians, used = {}, {}, 0
@@ -413,22 +443,29 @@ def detect_tensor_flip(sessions, atlas_pd, atlas_fa, mask_thr, angular_fa_min, n
         wm = (sfa > mask_thr) & (atlas_fa > core_thr)
         if wm.sum() < 1000:
             continue
-        best = None
-        for name, fv in FLIP_VECS.items():
-            pd = principal_directions(s["tensor"], wm, fv)
-            dot = np.clip(np.abs(np.sum(pd[wm] * atlas_pd[wm], axis=-1)), 0, 1)
-            med = float(np.median(np.degrees(np.arccos(dot))))
-            if best is None or med < best[1]:
-                best = (name, med)
-        votes[best[0]] = votes.get(best[0], 0) + 1
-        medians.setdefault(best[0], []).append(best[1])
+        scores = frame_scores(s["tensor"], wm, atlas_pd)
+        best = min(scores, key=scores.get)
+        votes[best] = votes.get(best, 0) + 1
+        medians.setdefault(best, []).append(scores[best])
         used += 1
         if used >= n_probe:
             break
     if not votes:
-        return "none", FLIP_VECS["none"], np.nan
+        return "none", np.nan
     choice = max(votes, key=votes.get)
-    return choice, FLIP_VECS[choice], float(np.median(medians[choice]))
+    return choice, float(np.median(medians[choice]))
+
+
+def subject_frame(tensor_path, wm, atlas_pd, applied, min_gain_deg=5.0):
+    """Best tensor frame correction of one subject and how much it improves on the one applied to the dataset:
+    (best name, best angle, applied angle, differs) with differs when the best is better by more than min_gain_deg."""
+    scores = frame_scores(tensor_path, wm, atlas_pd)
+    best = min(scores, key=scores.get)
+    applied_name = correction_name(*parse_correction(applied))
+    applied_angle = scores.get(applied_name)
+    if applied_angle is None:  # the applied correction equals another candidate on this grid
+        applied_angle = float(np.median(angular_error_deg(principal_directions(tensor_path, wm, applied), atlas_pd, wm)[wm]))
+    return best, scores[best], applied_angle, (applied_angle - scores[best]) > min_gain_deg
 
 
 def angular_error_deg(pd_a, pd_b, mask):
@@ -568,7 +605,7 @@ def csf_metrics(subj_fa, subj_md, atlas_md, roi):
 # Normative model
 # ---------------------------------------------------------------------------
 def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_angular,
-                    mask_thr, angular_fa_min, min_count, normative_dir, flip=(1, 1, 1), flip_name="none"):
+                    mask_thr, angular_fa_min, min_count, normative_dir, flip_name="none", atlas_pd=None):
     """Compute and save the age-conditional normative model, per bin."""
     os.makedirs(normative_dir, exist_ok=True)
     ref_affine = nib.load(atlas_scalars["FA"]).affine
@@ -621,14 +658,20 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
                 acc[m]["cnt"][mask] += 1.0
             if do_angular and s["tensor"]:
                 wm = mask & atlas_wm
-                pd = principal_directions(s["tensor"], wm, flip)[wm]  # (N,3)
+                pd = principal_directions(s["tensor"], wm, flip_name)[wm]  # (N,3)
+                if atlas_pd is not None:
+                    best, best_deg, applied_deg, differs = subject_frame(s["tensor"], wm & (atlas_fa > max(angular_fa_min, 0.3)), atlas_pd, flip_name)
+                    if differs:
+                        log.warning("%s: tensor frame correction '%s' fits the atlas better than '%s' (%.1f vs %.1f deg); "
+                                    "check its tensor orientation before using it in the normative model",
+                                    s["id"], best, flip_name, best_deg, applied_deg)
                 ii = np.where(wm)
                 T[0][ii] += pd[:, 0] * pd[:, 0]; T[1][ii] += pd[:, 0] * pd[:, 1]
                 T[2][ii] += pd[:, 0] * pd[:, 2]; T[3][ii] += pd[:, 1] * pd[:, 1]
                 T[4][ii] += pd[:, 1] * pd[:, 2]; T[5][ii] += pd[:, 2] * pd[:, 2]
                 Tcnt[ii] += 1.0
             if do_tensor and s["tensor"]:
-                logs, valid = log_tensors(s["tensor"], mask, flip)
+                logs, valid = log_tensors(s["tensor"], mask, flip_name, tensor_header)
                 ii = np.where(valid)
                 L[:, ii[0], ii[1], ii[2]] += logs
                 Lcnt[ii] += 1.0
@@ -882,6 +925,15 @@ def qc_subject(s, atlas, bins, normative_dir, cfg, out_dir=None):
     if cfg["do_angular"] and s["tensor"] is not None and atlas_pd is not None:
         wm = mask & atlas_wm
         pd = principal_directions(s["tensor"], wm, cfg["flip"])
+        core = wm & (atlas_fa > max(cfg["angular_fa_min"], 0.3))  # core white matter, as the dataset detection
+        if core.sum() >= 1000:
+            best, best_deg, applied_deg, differs = subject_frame(s["tensor"], core, atlas_pd, cfg["flip"])
+            row["TENSOR_frame_best"] = best
+            row["TENSOR_frame_gain_deg"] = applied_deg - best_deg
+            if differs:
+                log.warning("%s: tensor frame correction '%s' fits the atlas better than the applied '%s' "
+                            "(%.1f vs %.1f deg): its tensor orientation differs from the other subjects",
+                            s["id"], best, cfg["flip"], best_deg, applied_deg)
         ang = angular_error_deg(pd, atlas_pd, wm)
         row["ANG_meanDeg"] = float(np.mean(ang[wm])) if wm.any() else np.nan
         st, ang_blobs = blob_stats(ang > cfg["ang_blob_deg"], wm, cfg["blob_top_k"])
@@ -1061,6 +1113,15 @@ def robust_mahalanobis(X, names, support=0.85, min_ratio=5.0, corr_max=0.995):
     return np.sqrt(d2), top, dev.mean(axis=1) > 0, used
 
 
+def _tensor_flip_arg(value):
+    if str(value).strip().lower() == "auto":
+        return "auto"
+    try:
+        return correction_name(*parse_correction(value))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc))
+
+
 def configure_parser(p):
     p.add_argument("--data-dir", default="RegistrationData", help="Root with sub-*/ses-*/AtlasReg + Atlas/")
     p.add_argument("--atlas-dir", default=None, help="Atlas folder (default: <data-dir>/Atlas)")
@@ -1085,8 +1146,10 @@ def configure_parser(p):
     p.add_argument("--no-angular", action="store_true", help="Skip the tensor angular-error metric")
     p.add_argument("--mask-threshold", type=float, default=1e-3, help="FA threshold for the brain mask (default: 1e-3)")
     p.add_argument("--angular-fa-min", type=float, default=0.2, help="Atlas FA floor for WM angular region (default: 0.2)")
-    p.add_argument("--tensor-flip", default="auto", choices=["auto", "none", "x", "y", "z"],
-                   help="Correct a subject-vs-atlas tensor-frame axis reflection (default: auto-detect)")
+    p.add_argument("--tensor-flip", default="auto", type=_tensor_flip_arg,
+                   help="Tensor frame correction of the subject tensors: auto (default: detected against the atlas), "
+                        "none, axes to flip (x, y, z, e.g. x or x,z), or voxel for components in the frame of the voxel "
+                        "axes (with flips e.g. voxel,x), as detect-tensor-flip; every subject is also checked on its own")
     p.add_argument("--angular-sigma-floor", type=float, default=0.035, help="Floor on angular dispersion (~sin 2°)")
     p.add_argument("--min-count", type=int, default=2, help="Min reference subjects per voxel for a valid normative")
     p.add_argument("--ignore-threshold-mismatch", action="store_true",
@@ -1157,15 +1220,15 @@ def run_args(args, p) -> int:
 
     def resolve_flip(sessions):
         if not do_angular or atlas_pd is None:
-            return "none", FLIP_VECS["none"]
+            return "none"
         if args.tensor_flip != "auto":
-            return args.tensor_flip, FLIP_VECS[args.tensor_flip]
-        name, fv, med = detect_tensor_flip(sessions, atlas_pd, atlas_fa,
-                                           args.mask_threshold, args.angular_fa_min)
-        log.info("Auto-detected tensor-frame flip: '%s' (median core-WM angular error %.1f°)", name, med)
+            return correction_name(*parse_correction(args.tensor_flip))
+        name, med = detect_tensor_flip(sessions, atlas_pd, atlas_fa,
+                                       args.mask_threshold, args.angular_fa_min)
+        log.info("Auto-detected tensor frame correction: '%s' (median core-WM angular error %.1f°)", name, med)
         if name != "none":
-            log.info("  -> applying axis reflection %s to subject tensors (LPS/RAS convention mismatch)", name)
-        return name, fv
+            log.info("  -> applying the tensor frame correction '%s' to the subject tensors", name)
+        return name
 
     if args.build_normative:
         ref_dir = args.reference_dir or args.data_dir
@@ -1189,10 +1252,10 @@ def run_args(args, p) -> int:
             return 1
         sessions = dated
         log.info("Building normative from %d reference sessions in %s", len(sessions), ref_dir)
-        flip_name, flip = resolve_flip(sessions)
+        flip_name = resolve_flip(sessions)
         build_normative(sessions, atlas_scalar_paths, atlas_fa, bins, scalar_metrics, do_angular,
                         args.mask_threshold, args.angular_fa_min, args.min_count, args.normative_dir,
-                        flip, flip_name)
+                        flip_name, atlas_pd)
         return 0
 
     # --- QC mode ---
@@ -1251,13 +1314,13 @@ def run_args(args, p) -> int:
                   "(session folder names must carry the age, e.g. ses-V06_age-06mo)",
                   args.data_dir, args.data_dir)
         return 1
-    flip_name, flip = resolve_flip(sessions)
+    flip_name = resolve_flip(sessions)
     if normative_dir and do_angular and atlas_pd is not None:
         check_normative_frame(normative_dir, bins, atlas_pd, atlas_fa, args.angular_fa_min, flip_name)
 
     cfg = {"scalar_metrics": scalar_metrics, "do_angular": do_angular, "mask_thr": args.mask_threshold,
            "angular_fa_min": args.angular_fa_min, "angular_sigma_floor": args.angular_sigma_floor,
-           "z_thresh": args.z_thresh, "flip": flip,
+           "z_thresh": args.z_thresh, "flip": flip_name,
            "ssim_blob_pct": args.ssim_blob_pct, "ang_blob_deg": args.ang_blob_deg,
            "blob_top_k": args.blob_top_k}
 

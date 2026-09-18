@@ -29,12 +29,13 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.baseline_threshold=protocol_options['baseline_threshold']
 
         # << TODOS>>
+        ## a tensor given as input image is registered; otherwise dti_path (e.g. from DTI_Estimate)
         self.dtiImagePath = None
-        if 'dti_path' in self.global_variables:
-            self.dtiImagePath=self.global_variables['dti_path']
-        elif self.isTensorImage(getattr(self.image, 'filename', None)):
+        if self.isTensorImage(getattr(self.image, 'filename', None)):
             self.dtiImagePath=str(self.image.filename)
             logger("Input image is a diffusion tensor, registering it directly : {}".format(self.dtiImagePath),prep.Color.INFO)
+        elif 'dti_path' in self.global_variables:
+            self.dtiImagePath=self.global_variables['dti_path']
         self.register(**self.protocol)
 
         logger(yaml.dump(self.image.information))
@@ -203,6 +204,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
         from dtiplayground.dmri.fiberprofile.analysis import detect_flip, flip_tensor
         mode = str(self.protocol.get('tensorFlip') or self.global_variables.get('tensor_flip') or 'none').strip().lower()
         self.tensorCorrection = None
+        for stale in list(Path(self.output_dir).glob('input_flipped*')) + list(Path(self.output_dir).glob('flipped_*')):  # files of a previous corrected run
+            stale.unlink()
         if mode == 'none':
             return inputImagePath
         if mode == 'auto':

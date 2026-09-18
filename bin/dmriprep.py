@@ -90,6 +90,7 @@ def command_run(args):
         "output_format" : args.output_format,
         "output_file_base" : args.output_file_base,
         "no_output_image" : args.no_output_image,
+        "overwrite" : args.overwrite,
         "global_variables" : _parse_global_variables(args.global_variables)
     }
     app = DMRIPrepApp(options['config_dir'])
@@ -102,6 +103,7 @@ def command_run_dir(args):
         "output_dir" : args.output_dir,
         "execution_id":args.execution_id,
         "default_protocols": None,
+        "overwrite" : args.overwrite,
         "global_variables" : _parse_global_variables(args.global_variables)        
     }
     protocol_fn = Path(options['output_dir']).joinpath('protocols.yml')
@@ -188,6 +190,7 @@ def get_args():
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
     parser_run.add_argument('-t','--num-threads',help="Number of threads to use (default: num_threads in the protocol, 1 if not set)",default=None,type=int,required=False)
     parser_run.add_argument('--no-output-image',help="No output Qced file will be generated",default=False,action='store_true')
+    parser_run.add_argument('--overwrite',help="Recompute all modules, also those with a result from a previous run in the output directory (otherwise only modules whose settings changed are recomputed)",default=False,action='store_true')
     parser_run.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold value, default=10',default=10,type=float)
     parser_run.add_argument('-f','--output-format',metavar='OUTPUT FORMAT',default=None,help='OUTPUT format, if not specified, same format will be used for output  (NRRD | NIFTI)',type=str)
     run_exclusive_group=parser_run.add_mutually_exclusive_group()
@@ -199,6 +202,7 @@ def get_args():
     parser_run_dir=subparsers.add_parser('run-dir',help='Run pipeline with directory',epilog=module_help_str)
     parser_run_dir.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run_dir.add_argument('output_dir',help="Output directory",type=str)
+    parser_run_dir.add_argument('--overwrite',help="Recompute all modules, also those with a result from a previous run",default=False,action='store_true')
     parser_run_dir.set_defaults(func=command_run_dir)
 
 

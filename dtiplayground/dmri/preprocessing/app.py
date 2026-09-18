@@ -79,6 +79,7 @@ class DMRIPrepApp(AppBase):
             _options.setdefault('output_format', None)
             _options.setdefault('global_variables',{})
             _options.setdefault('no_output_image', False)
+            _options.setdefault('overwrite', False)
 
             options={
                 "config_dir" : self.app['application_dir'],
@@ -92,6 +93,7 @@ class DMRIPrepApp(AppBase):
                 "output_format" : _options['output_format'],
                 "output_file_base" : _options['output_file_base'],
                 "no_output_image" : _options['no_output_image'],
+                "overwrite" : _options['overwrite'],
                 "global_variables" : _options['global_variables']
             }
 

@@ -122,6 +122,7 @@ class Pipeline:
         kwargs.setdefault('global_vars', {})
         self.logger = kwargs['logger']
         self.global_variables=kwargs['global_vars']
+        self.command_line_variables=dict(kwargs['global_vars']) # given by the caller: take precedence over stored ones
         
         self.image_paths=[]
         self.protocol_filename=None
@@ -379,6 +380,20 @@ class Pipeline:
             return yaml.safe_load(open(gv_filename,'r'))
         else:
             return {}
+    def moduleSettings(self,m):
+        """Settings a module result depends on: its protocol and the global variables given by the caller."""
+        import json
+        return json.loads(json.dumps({"protocol": m.getProtocol(), "command_line_variables": self.command_line_variables},
+                                     default=str, sort_keys=True))
+
+    def changedSettings(self,old,new):
+        """Names of the settings that differ between two moduleSettings."""
+        changed=[]
+        for group in ("protocol","command_line_variables"):
+            a,b=(old or {}).get(group) or {},(new or {}).get(group) or {}
+            changed+=["{}".format(k) for k in sorted(set(a)|set(b)) if a.get(k)!=b.get(k)]
+        return changed
+
     def writeGlobalVariables(self):
         gv_filename=Path(self.output_dir).joinpath('global_variables.yml')
         yaml.safe_dump(self.global_variables,open(gv_filename,'w'))
@@ -414,8 +429,11 @@ class Pipeline:
                     "baseline_threshold" : self.io['baseline_threshold'],
                     "global_variables" : self.global_variables
                  }
-            forced_overwrite=False
+            forced_overwrite=bool(options.get('overwrite',False)) # recompute every module
+            if forced_overwrite:
+                logger("Overwrite: all modules are recomputed",common.Color.INFO)
             self.global_variables.update(self.loadGlobalVariables())
+            self.global_variables.update(self.command_line_variables) # the caller's values win over those of a previous run
             for idx,execution in enumerate(execution_sequence):
                 # uid, p, options=parr 
                 uid=execution['id']
@@ -453,6 +471,18 @@ class Pipeline:
                 if m.getOptions()['overwrite']:
                     forced_overwrite=True 
 
+                settings=self.moduleSettings(m)
+                settings_path=Path(output_dir_map[uid]).joinpath('settings.yml')
+                if resultfile_path.exists() and not m.getOptions()['overwrite'] and not forced_overwrite:
+                    if settings_path.exists():
+                        changed=self.changedSettings(yaml.safe_load(open(settings_path,'r')),settings)
+                        if len(changed)>0:
+                            logger("Settings changed since the previous run ({}): recomputing {} and the following modules".format(', '.join(changed),p),common.Color.WARNING)
+                            forced_overwrite=True
+                    else:
+                        logger("The previous result has no stored settings (older version) and is reused; run with --overwrite to recompute it",common.Color.WARNING)
+                if forced_overwrite:
+                    m.getOptions()['overwrite']=True
                 if resultfile_path.exists() and not m.getOptions()['overwrite'] and not forced_overwrite:
                     result_temp=yaml.safe_load(open(resultfile_path,'r'))
                     logger("Result file exists, just post-processing ...",common.Color.INFO+common.Color.BOLD)
@@ -461,6 +491,8 @@ class Pipeline:
                 else: # in case overwriting or there is no result.yml file
                     outres=m.run(opts,global_vars=self.global_variables)
                     success=outres['success']
+                    if success:
+                        yaml.safe_dump(settings,open(settings_path,'w'))
                 if not success:
                     logger("[ERROR] Process failed in {}".format(p),common.Color.ERROR) 
                     raise Exception("Process failed in {}".format(p))

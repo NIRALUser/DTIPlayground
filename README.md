@@ -177,12 +177,14 @@ To run with existing protocol file:
 
 `-p` option cannot be used with `-d` option.
 
+**Rerunning into an existing output directory:** a module with a result from a previous run is not recomputed, unless its protocol or the global variables given with `-g` changed since that run (compared with the `settings.yml` stored in the module's folder; the module and the following ones are then recomputed). `--overwrite` recomputes all modules. Results of versions before 0.7.11 have no `settings.yml`: they are reused (with a warning) until the run uses `--overwrite`. Global variables given with `-g` take precedence over those stored by a previous run (`global_variables.yml`).
+
 **[NOTE]** when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
 
 5. **run-dir** Run output directory having protocol file
 
 ```
-    $ dmriprep run-dir output/directory 
+    $ dmriprep run-dir output/directory [--overwrite]
 ```
 
 ### Development of a new module 

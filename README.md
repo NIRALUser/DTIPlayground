@@ -372,6 +372,11 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.11)
+- dmriprep - rerunning into an existing output directory recomputes the modules whose protocol or command line global variables changed (stored in settings.yml), and the following ones; run / run-dir --overwrite recompute all modules
+- dmriprep - global variables given with -g take precedence over those stored by a previous run
+- dmriprep - DTI_Register: a tensor given as input image takes precedence over dti_path
+
 ##### 2026-09-18 (v0.7.10)
 - dmrifiberprofile - flip-tensor --voxel-frame and detect-tensor-flip handle tensors whose components are in the frame of the voxel axes (estimated in voxel coordinates, header with another measurement frame): on oblique grids a rotation that no flip corrects
 - dmriprep - DTI_Register: tensorFlip / tensor_flip accepts voxel (and voxel,<axes>); auto chooses among the flips in the header frame and in the voxel frame

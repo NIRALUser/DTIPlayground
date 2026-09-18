@@ -372,6 +372,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.16)
+- dmrifiberprofile - qc-registration: finds the outputs of the dmriprep DTI_Register module (<scan>_DTI_Registered.nrrd, <scan>_Registered_<METRIC>.nii.gz, in any folder below the data folder) besides AtlasReg/*_Deformed*; missing FA/MD/AD/RD maps are computed from the registered tensor
+
 ##### 2026-09-18 (v0.7.15)
 - dmriprep - MULTI_SHELL_Estimate: DKI/MSDKI/FWDTI tensors were invalid (5D) NRRDs and the MSDKI kurtosis tensor was empty; new full DKI model (MK, AK, RK, MKT, KFA, kurtosis tensor); FWDTI saves the free water fraction; AMICO NODDI failed and now fits the output of the previous modules (NIfTI or NRRD input); mrtrix3 dwi2adc fixed; IVIM D* output renamed DSTAR
 

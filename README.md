@@ -370,6 +370,10 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.9)
+- dmrifiberprofile - detect-tensor-flip: finds the flip of the tensor frame (all combinations of x, y, z) that orients a DTI correctly, by the coherence of the principal directions along the tracts and their agreement with a reference tensor (registered, or with an affine transform)
+- dmriprep - DTI_Register: tensorFlip / global variable tensor_flip (none, auto or axes) detects and applies a flip of the tensor frame before the registration
+
 ##### 2026-09-18 (v0.7.8)
 - dmriprep - DTI_Register registers a diffusion tensor given as the input image (-i) directly, so a standalone run no longer needs -g dti_path
 - requires dmri-amico>=2.1.1: version 2.1.0 imports pkg_resources, which newer setuptools no longer provide (ModuleNotFoundError: No module named 'pkg_resources')

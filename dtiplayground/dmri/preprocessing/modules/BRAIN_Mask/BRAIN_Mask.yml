@@ -35,6 +35,12 @@ protocol:
           - value: idwi
             caption: IDWI
             description: Geometric mean of baseline images. If no baseline is found then whole images will be used.
+      betFractionalThreshold:
+        type: float
+        caption: BET Fractional Threshold
+        default_value: 0.5
+        description: FSL bet fractional intensity threshold (-f, between 0 and 1); smaller values give a larger brain outline, larger values a smaller one
+        if : { "method" : "fsl" }
       modality: ## in case of antspynet
         type: list
         candidates:

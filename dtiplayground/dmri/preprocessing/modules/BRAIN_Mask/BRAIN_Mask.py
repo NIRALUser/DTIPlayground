@@ -124,7 +124,11 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             averaged_image = nibabel.Nifti1Image(averaged_image, affine=affine_matrix)
             print(averaged_path)
             nibabel.save(averaged_image, averaged_path)
-        cmd_output=fsl.bet(averaged_path, output_image_path)
+        fractional_threshold=float(self.protocol.get('betFractionalThreshold', 0.5))
+        if not 0 < fractional_threshold < 1:
+            raise ValueError("betFractionalThreshold must be between 0 and 1 (exclusive): {}".format(fractional_threshold))
+        logger("bet fractional intensity threshold (-f) : {}".format(fractional_threshold),prep.Color.INFO)
+        cmd_output=fsl.bet(averaged_path, output_image_path, fractional_threshold=fractional_threshold)
         mask=DWI(output_mask_path)
         mask.setSpaceDirection(self.getSourceImageInformation()['space'])
         mask.writeImage(output_mask_path_nrrd,dest_type='nrrd')

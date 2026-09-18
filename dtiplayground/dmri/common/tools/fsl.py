@@ -68,7 +68,8 @@ class FSL(ExternalToolWrapper):
 
     def bet(self,
             inputfile,
-            outputfile):
+            outputfile,
+            fractional_threshold=None): # bet -f (0..1, bet's default 0.5; smaller gives larger brain outline estimates)
         binary_name='bet'
         arguments=[
                     inputfile,
@@ -76,6 +77,8 @@ class FSL(ExternalToolWrapper):
                     '-m',
                     '-v'
                 ]
+        if fractional_threshold is not None:
+            arguments+=['-f',str(fractional_threshold)]
         self.setArguments(arguments)
         return self.execute(binary_name,arguments)
 

@@ -32,12 +32,29 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.dtiImagePath = None
         if 'dti_path' in self.global_variables:
             self.dtiImagePath=self.global_variables['dti_path']
+        elif self.isTensorImage(getattr(self.image, 'filename', None)):
+            self.dtiImagePath=str(self.image.filename)
+            logger("Input image is a diffusion tensor, registering it directly : {}".format(self.dtiImagePath),prep.Color.INFO)
         self.register(**self.protocol)
 
         logger(yaml.dump(self.image.information))
         self.result['output']['success']=True
 
         return self.result
+
+    @staticmethod
+    def isTensorImage(path):
+        """True if path is a NRRD file with a tensor axis (kinds 3D-symmetric-matrix, 3D-masked-symmetric-matrix or 3D-matrix)."""
+        if path is None or not str(path).lower().endswith(('.nrrd', '.nhdr')) or not Path(path).is_file():
+            return False
+        with open(path, 'rb') as f:
+            for line in f:
+                line = line.decode('latin-1').strip()
+                if line == '':
+                    break
+                if line.lower().startswith('kinds:'):
+                    return any(k in ('3d-symmetric-matrix', '3d-masked-symmetric-matrix', '3d-matrix') for k in line.lower().split()[1:])
+        return False
 
     def register(self,**protocol):
         if protocol['method'] == 'ANTs':

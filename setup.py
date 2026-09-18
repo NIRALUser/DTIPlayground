@@ -59,7 +59,7 @@ setup(
         'reportlab',
         'pypdf2',
         'pandas>=1.4,<3',
-        'dmri-amico'
+        'dmri-amico>=2.1.1', ## 2.1.0 imports pkg_resources, which newer setuptools no longer provide
        ],
 
  )

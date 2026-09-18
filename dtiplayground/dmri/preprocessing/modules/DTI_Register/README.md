@@ -36,11 +36,12 @@ Outputs: `registered_dti.nrrd` (DTI in reference space), `registered_<name>` for
 The module can be run without a protocol file, with the reference and the age given as global variables:
 
 ```
-dmriprep run -i <image> -o <output dir> -d DTI_Register \
-    -g dti_path <subject DTI> reference_dti <atlas DTI> reference_normative_model <normative model dir> age <months>
+dmriprep run -i <subject DTI> -o <output dir> -d DTI_Register \
+    -g reference_dti <atlas DTI> reference_normative_model <normative model dir> age <months>
 ```
 
-`dti_path` is the DTI to register (set by DTI_Estimate in a full pipeline); `reference_normative_model` and `age` are
+A diffusion tensor NRRD given with `-i` is registered directly; otherwise the DTI to register is `dti_path` (set by
+DTI_Estimate in a full pipeline, or given with `-g dti_path <subject DTI>`). `reference_normative_model` and `age` are
 optional (the age is otherwise read from the image path). Options of the protocol take precedence over these variables.
 
 ##### Examples

@@ -372,6 +372,12 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.13)
+- dmriprep - DTI_Estimate: dipy wrote an invalid (5D) tensor NRRD; dtiestim tensors were in the voxel frame (wrong on oblique or non-LPS grids), now rotated into the image space
+- dmriprep - NIfTI images: geometry (oblique space directions, origin) and bvecs (FSL convention) are read and written correctly; results from NIfTI input, dtiestim on oblique grids and EDDYMOTION_Correct (bvecs given to eddy) of earlier versions should be recomputed (--overwrite)
+- dmriprep - BASELINE_Average no longer fails when saving the gradients
+- dmriprep - QC_Report labels the QCed DWIs with their original gradient index and keeps its full report.md
+
 ##### 2026-09-18 (v0.7.12)
 - dmriprep - QC_Report CSV: original_number_of_gradients held the remaining count (now the count before the first module, plus a remaining_number_of_gradients column), number_of_excluded_gradients counts the exclusions of all modules (before only SLICE_Check and INTERLACE_Check), image_name is the input image
 - dmrifiberprofile - qc-profiles uses remaining_number_of_gradients when present

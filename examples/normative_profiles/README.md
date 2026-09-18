@@ -81,7 +81,7 @@ folder under `$HOME`):
 ```
 docker run --rm -it -u $(id -u):$(id -g) -e HOME=$HOME -v $HOME:$HOME -w $PWD \
     -v /tools/atlas/DTI/DTI_IBISEP_Feb26:/tools/atlas/DTI/DTI_IBISEP_Feb26 \
-    --entrypoint dmrifiberprofile niraluser/dtiplayground:0.7.12 \
+    --entrypoint dmrifiberprofile niraluser/dtiplayground:0.7.13 \
     run -i reference.csv -p protocol.yml -o ReferenceProfiles
 ```
 

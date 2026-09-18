@@ -372,6 +372,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.17)
+- dmriprep - BRAIN_Mask: betFractionalThreshold sets the fractional intensity threshold of FSL bet (-f, default 0.5)
+
 ##### 2026-09-18 (v0.7.16)
 - dmrifiberprofile - qc-registration: finds the outputs of the dmriprep DTI_Register module (<scan>_DTI_Registered.nrrd, <scan>_Registered_<METRIC>.nii.gz, in any folder below the data folder) besides AtlasReg/*_Deformed*; missing FA/MD/AD/RD maps are computed from the registered tensor
 

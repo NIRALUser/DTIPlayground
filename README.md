@@ -372,6 +372,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.14)
+- dmrifiberprofile - qc-registration: tensor directions in physical space from the NRRD headers; --tensor-flip uses the corrections of detect-tensor-flip (flips, voxel frame); every subject is checked on its own (TENSOR_frame_best, TENSOR_frame_gain_deg, warning when another correction fits the atlas better)
+
 ##### 2026-09-18 (v0.7.13)
 - dmriprep - DTI_Estimate: dipy wrote an invalid (5D) tensor NRRD; dtiestim tensors were in the voxel frame (wrong on oblique or non-LPS grids), now rotated into the image space
 - dmriprep - NIfTI images: geometry (oblique space directions, origin) and bvecs (FSL convention) are read and written correctly; results from NIfTI input, dtiestim on oblique grids and EDDYMOTION_Correct (bvecs given to eddy) of earlier versions should be recomputed (--overwrite)

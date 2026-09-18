@@ -36,6 +36,7 @@ class QC_Report(prep.modules.DTIPrepModule):
                 global_report = self.AddExcludedGradientsImagesToReport(global_report, excluded_gradients)
             global_report = self.AddGradientImagesToReport(global_report, info_display_QCed_gradients[0])
             html_path = self.GenerateReportFiles(global_report)
+            self.full_report = global_report # written again after the module report of the base class (makeReport)
             with open(html_path, "r", encoding="utf-8") as f:
                 html_data = f.read()
             pdf_path = self.output_dir+"/QC_report.pdf"
@@ -157,10 +158,13 @@ class QC_Report(prep.modules.DTIPrepModule):
     def AddGradientImagesToReport(self, global_report, number_of_gradients):
         global_report += "\n## QCed volume DWIs: \n"
         global_report += "<table><tbody>\n"
+        ## labelled with the original gradient index (the images dwi<i>.jpg follow the remaining volumes)
+        gradients = self.source_image.getGradients()
+        labels = [g.get('original_index', i) for i, g in enumerate(gradients)] if len(gradients) == number_of_gradients else list(range(number_of_gradients))
         for gradient_index in range(number_of_gradients):  
             if gradient_index % 2 == 0:
                 global_report += "<tr>\n"     
-            global_report += "<td><figure><img src="+self.output_dir+"/QC_Report_images/dwi"+str(gradient_index)+".jpg alt='DWI "+str(gradient_index)+"' width='260'><figcaption aligh='center'>DWI "+str(gradient_index)+"</figcaption></figure></td>\n"      
+            global_report += "<td><figure><img src="+self.output_dir+"/QC_Report_images/dwi"+str(gradient_index)+".jpg alt='DWI "+str(labels[gradient_index])+"' width='260'><figcaption aligh='center'>DWI "+str(labels[gradient_index])+"</figcaption></figure></td>\n"      
             if gradient_index % 2 != 0:
                 global_report += "</tr>\n"
         global_report += "</tbody></table>\n"
@@ -193,6 +197,11 @@ class QC_Report(prep.modules.DTIPrepModule):
         csv_path = self.output_dir + "/QC_report.csv"
         qc_report.to_csv(csv_path, index=False)
         self.addOutputFile(csv_path, "QC_report")
+
+    def makeReport(self):
+        super().makeReport() # writes the generic module report.md/html: put the full report back
+        if getattr(self, 'full_report', None) is not None:
+            self.GenerateReportFiles(self.full_report)
 
     def GenerateReportFiles(self, global_report):
         with open(self.output_dir + '/report.md', 'bw+') as f:

@@ -372,6 +372,10 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.12)
+- dmriprep - QC_Report CSV: original_number_of_gradients held the remaining count (now the count before the first module, plus a remaining_number_of_gradients column), number_of_excluded_gradients counts the exclusions of all modules (before only SLICE_Check and INTERLACE_Check), image_name is the input image
+- dmrifiberprofile - qc-profiles uses remaining_number_of_gradients when present
+
 ##### 2026-09-18 (v0.7.11)
 - dmriprep - rerunning into an existing output directory recomputes the modules whose protocol or command line global variables changed (stored in settings.yml), and the following ones; run / run-dir --overwrite recompute all modules
 - dmriprep - global variables given with -g take precedence over those stored by a previous run

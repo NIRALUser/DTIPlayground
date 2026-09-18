@@ -239,9 +239,10 @@ def load_prep_failures(path, excluded_frac, rms2_frac):
 
     A scan fails if excluded gradients exceed *excluded_frac* of the original
     gradients, OR rms_larger_than_2 exceeds *rms2_frac* of the remaining
-    gradients.  The report may list either ``original_number_of_gradients`` or
-    ``remaining_number_of_gradients``; whichever is present is used and the other
-    is derived (original = remaining + excluded).  Returns a set of
+    gradients.  The report may list ``original_number_of_gradients`` and/or
+    ``remaining_number_of_gradients``; a missing one is derived (original =
+    remaining + excluded).  QC_Report before 0.7.12 wrote the remaining count as
+    ``original_number_of_gradients``.  Returns a set of
     ``sub-<sub>_ses-<ses>_<prefix>`` identifiers.
     """
     csv = path
@@ -267,12 +268,12 @@ def load_prep_failures(path, excluded_frac, rms2_frac):
     for _, r in df.iterrows():
         exc = float(r["number_of_excluded_gradients"])
         rms2 = float(r["rms_larger_than_2"])
-        if has_orig:
+        if has_rem:  # remaining reported (with the original since 0.7.12)
+            remaining = float(r["remaining_number_of_gradients"])
+            orig = float(r["original_number_of_gradients"]) if has_orig else remaining + exc
+        else:
             orig = float(r["original_number_of_gradients"])
             remaining = orig - exc
-        else:  # only remaining reported -> reconstruct the original
-            remaining = float(r["remaining_number_of_gradients"])
-            orig = remaining + exc
         fail_exc = orig > 0 and exc > excluded_frac * orig
         fail_rms = remaining > 0 and rms2 > rms2_frac * remaining
         if fail_exc or fail_rms:

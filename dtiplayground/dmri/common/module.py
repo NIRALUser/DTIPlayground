@@ -108,6 +108,7 @@ def empty_result():
     return res 
 
 class DTIPlaygroundModule: #base class
+    report_excluded_gradients = True # the gradients this module excludes count as excluded in the QC report
     def __init__(self,config_dir,*args, **kwargs):
         kwargs.setdefault('logger',common.logger);
         self.logger = kwargs['logger']
@@ -413,7 +414,7 @@ class DTIPlaygroundModule: #base class
             return self.result["output"]
 
         self.image.setB0Threshold(baseline_threshold)
-        self.image.getGradients()
+        self.input_number_of_gradients = len(self.image.getGradients()) # before this module excludes any
         
         res=self.process(*args,**kwargs) ## main computation for user implementation
         ## Post processing
@@ -428,11 +429,20 @@ class DTIPlaygroundModule: #base class
         self.result['report'] = {'module_report_paths': os.path.abspath(self.output_dir) + '/report.md',
                                  'csv_data': {'image_name': None,
                                               'original_number_of_gradients': None,
+                                              'remaining_number_of_gradients': None,
                                               'excluded_gradients': None,
                                               'rms_gt_1': None,
                                               'rms_gt_2': None,
                                               'rms_gt_3': None}, 
                                  'eddymotion_pdf_path': None}
+
+        ## gradients of the input of this module (before its exclusions) and of its output
+        if getattr(self, 'input_number_of_gradients', None) is not None:
+            self.result['report']['csv_data']['original_number_of_gradients'] = self.input_number_of_gradients
+        if self.image is not None and hasattr(self.image, 'getGradients'):
+            self.result['report']['csv_data']['remaining_number_of_gradients'] = len(self.image.getGradients())
+        if self.report_excluded_gradients:
+            self.result['report']['csv_data']['excluded_gradients'] = self.result['output'].get('excluded_gradients_original_indexes')
 
         if self.result['input']['image_path']:
             input_image = self.result['input']['image_path']
@@ -440,7 +450,8 @@ class DTIPlaygroundModule: #base class
                 #get number of original gradients, HUGE assumption - number of gradients cannot be the same as any dimension
                 # size, otherwise this code does not work
                 # TODO: change this code to look at header information to identify axis with DWI gradient number
-                if number not in self.result['input']['image_information']['image_size']:
+                if number not in self.result['input']['image_information']['image_size'] and \
+                        self.result['report']['csv_data']['original_number_of_gradients'] is None:
                     self.result['report']['csv_data']['original_number_of_gradients'] = number
         elif type(self.result_history[0]["output"]) == dict: #single input
             input_image = self.result_history[0]["output"]["image_path"]

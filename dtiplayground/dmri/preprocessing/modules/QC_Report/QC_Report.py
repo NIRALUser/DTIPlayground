@@ -176,12 +176,13 @@ class QC_Report(prep.modules.DTIPrepModule):
 
         if single_input:
             columns = ["image_name"]
-            values = [self.result_history[1]['report']['module_report_paths']]
+            values = [self.result_history[1]['report']['csv_data']['image_name']]
         else:
             columns = ["image_name_1", "image_name_2"]
             values = [self.result_history[1]['report']['csv_data']['image_name'][0], self.result_history[1]['report']['csv_data']['image_name'][1]]
-        columns += ['original_number_of_gradients', 'number_of_excluded_gradients']
-        values += [number_input_gradients, number_of_excluded_gradients]
+        ## original: input of the first module; remaining: the image of this report (after all modules)
+        columns += ['original_number_of_gradients', 'remaining_number_of_gradients', 'number_of_excluded_gradients']
+        values += [number_input_gradients, len(self.image.getGradients()), number_of_excluded_gradients]
         for module in self.result_history[1:]:
             if module["module_name"] == "EDDYMOTION_Correct":
                 columns += ['rms_larger_than_1', 'rms_larger_than_2', 'rms_larger_than_3']

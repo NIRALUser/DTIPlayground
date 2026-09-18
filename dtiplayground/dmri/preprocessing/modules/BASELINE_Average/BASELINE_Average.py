@@ -221,6 +221,7 @@ def rigid_3d(static,moving,
 
 
 class BASELINE_Average(prep.modules.DTIPrepModule):
+    report_excluded_gradients = False # averaged baselines are not excluded by the QC
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
         global logger

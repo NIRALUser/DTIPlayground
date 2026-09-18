@@ -194,14 +194,15 @@ class DTI_Register(prep.modules.DTIPrepModule):
         return affinePath
 
     def flipTensor(self, inputImagePath, refImagePath, initialAffinePath):
-        """Flip of the tensor frame applied before the registration (tensorFlip, or the global variable tensor_flip):
-        none, explicit axes (e.g. 'x' or 'x,z'), or auto: the flip with the best agreement of the principal directions
-        with the reference after the initial affine transform (computed from the scalar image, which a flip doesn't
-        change), or with the best coherence of the principal directions along the tracts without an initial affine.
-        Returns the path of the DTI to register (input_flipped.nrrd if a flip is applied)."""
+        """Correction of the tensor frame applied before the registration (tensorFlip, or the global variable
+        tensor_flip): none, explicit axes to flip (e.g. 'x' or 'x,z'), 'voxel' (components in the frame of the voxel
+        axes, rotated into the space of the header; with flips e.g. 'voxel,x'), or auto: the correction with the best
+        agreement of the principal directions with the reference after the initial affine transform (computed from the
+        scalar image, which the correction doesn't change), or with the best coherence of the principal directions along
+        the tracts without an initial affine. Returns the path of the DTI to register (input_flipped.nrrd if corrected)."""
         from dtiplayground.dmri.fiberprofile.analysis import detect_flip, flip_tensor
         mode = str(self.protocol.get('tensorFlip') or self.global_variables.get('tensor_flip') or 'none').strip().lower()
-        self.tensorFlipAxes = []
+        self.tensorCorrection = None
         if mode == 'none':
             return inputImagePath
         if mode == 'auto':
@@ -212,27 +213,27 @@ class DTI_Register(prep.modules.DTIPrepModule):
                     transform = detect_flip.read_itk_affine(initialAffinePath)
                 except (ValueError, OSError) as e:
                     logger("Initial affine not usable for the flip detection ({}), using the coherence only".format(e),prep.Color.WARNING)
-            logger("Detecting the flip of the tensor frame ({})".format(
+            logger("Detecting the correction of the tensor frame ({})".format(
                 "agreement with the reference after the initial affine" if transform is not None else "coherence along the tracts"),prep.Color.PROCESS)
             rows, best, by_coherence = detect_flip.detect_flip(inputImagePath, refImagePath if transform is not None else None, fa_min, transform)
             for r in rows:
                 if r['same_as'] == '':
-                    logger("  flip {:6s} coherence {:.4f}{}".format(r['flip'], r['coherence'],
+                    logger("  {:12s} coherence {:.4f}{}".format(r['correction'], r['coherence'],
                            '  angle to the reference {:.1f} deg'.format(r['angle']) if transform is not None else ''),prep.Color.INFO)
             if transform is not None and best != by_coherence:
-                logger("Flip by the reference ({}) and by the coherence ({}) disagree; using {}".format(best, by_coherence, best),prep.Color.WARNING)
-            axes = [] if best == 'none' else best.split(',')
+                logger("Correction by the reference ({}) and by the coherence ({}) disagree; using {}".format(best, by_coherence, best),prep.Color.WARNING)
+            correction = best
         else:
-            axes = flip_tensor.parse_axes(mode)
-        self.result['output']['tensor_flip'] = ','.join(axes) if axes else 'none'
-        self.addGlobalVariable('tensor_flip_applied', self.result['output']['tensor_flip'])
-        if not axes:
-            logger("Tensor frame not flipped",prep.Color.OK)
+            correction = flip_tensor.correction_name(*flip_tensor.parse_correction(mode))
+        self.result['output']['tensor_flip'] = correction
+        self.addGlobalVariable('tensor_flip_applied', correction)
+        if correction == 'none':
+            logger("Tensor frame not corrected",prep.Color.OK)
             return inputImagePath
-        self.tensorFlipAxes = axes
+        self.tensorCorrection = correction
         flipped = Path(self.output_dir).joinpath('input_flipped.nrrd').__str__()
-        flip_tensor.flip_tensor_file(inputImagePath, flipped, axes)
-        logger("Flipped the tensor frame along {} before the registration: {}".format(','.join(axes), flipped),prep.Color.OK)
+        flip_tensor.reorient_tensor_file(inputImagePath, flipped, correction)
+        logger("Corrected the tensor frame ({}) before the registration: {}".format(correction, flipped),prep.Color.OK)
         self.addOutputFile(flipped, 'DTI_Flipped')
         return flipped
 
@@ -274,10 +275,10 @@ class DTI_Register(prep.modules.DTIPrepModule):
             if is_tensor:
                 logger("Registering tensor image {}".format(f.name),prep.Color.PROCESS)
                 tensor_path = str(f)
-                if getattr(self, 'tensorFlipAxes', []):  # same frame as the DTI
+                if getattr(self, 'tensorCorrection', None):  # same frame as the DTI
                     from dtiplayground.dmri.fiberprofile.analysis import flip_tensor
                     tensor_path = output_dir.joinpath('flipped_' + name).__str__()
-                    flip_tensor.flip_tensor_file(str(f), tensor_path, self.tensorFlipAxes)
+                    flip_tensor.reorient_tensor_file(str(f), tensor_path, self.tensorCorrection)
                 resample = tools.ResampleDTIlogEuclidean(self.softwares['ResampleDTIlogEuclidean']['path'])
                 resample.dev_mode = True
                 resample.execute([tensor_path, output, '-R', refImagePath, '--correctionType', tensorCorrection,

@@ -177,7 +177,7 @@ protocol:
         type: string
         caption: Tensor Flip
         default_value: null
-        description: "Flip of the tensor frame applied to the DTI before the registration: none (also if empty and the global variable tensor_flip isn't set), auto (detected: agreement of the principal directions with the reference after the initial affine, or their coherence along the tracts without an initial affine), or the axes to flip, e.g. x or x,z"
+        description: "Flip of the tensor frame applied to the DTI before the registration: none (also if empty and the global variable tensor_flip isn't set), auto (detected: agreement of the principal directions with the reference after the initial affine, or their coherence along the tracts without an initial affine), the axes to flip (e.g. x or x,z), or voxel for components in the frame of the voxel axes (rotated into the space of the header; with flips e.g. voxel,x)"
       tensorFlipFAThreshold:
         type: number
         caption: Tensor Flip FA Threshold

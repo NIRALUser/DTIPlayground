@@ -237,8 +237,8 @@ Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifibe
 
 | Command | Purpose |
 |---|---|
-| `flip-tensor` | Reflect the tensor frame of a DTI NRRD along axes (fixes tensor orientation / LPS-RAS sign mismatches, e.g. a flip found by `qc-registration`) |
-| `detect-tensor-flip` | Find the flip of the tensor frame (all combinations of x, y, z) that orients a DTI correctly, by the coherence of the principal directions along the tracts and, with `--reference`, their agreement with an atlas tensor; apply the result with `flip-tensor` before registering |
+| `flip-tensor` | Reflect the tensor frame of a DTI NRRD along axes (fixes tensor orientation / LPS-RAS sign mismatches, e.g. a flip found by `qc-registration`); `--voxel-frame` rotates components stored in the voxel frame into the space of the header |
+| `detect-tensor-flip` | Find the correction of the tensor frame (all combinations of flips of x, y, z, with the components in the header frame or in the voxel frame of oblique grids) that orients a DTI correctly, by the coherence of the principal directions along the tracts and, with `--reference`, their agreement with an atlas tensor; apply the result with `flip-tensor` before registering |
 | `parametrize-fibers` | Resample fiber tracts on the arc length grid (one point per arc length bin) with point data `FiberLocationIndex` and `SamplingDistance2Origin`; replaces `dtitractstat -f` |
 | `compute-axis` | 1D axis of fiber tracts (average curve per arc length bin) as `<tract>_axis.vtk`; optionally with the profiles mapped onto the axis |
 | `gather` | Collect subject profiles into `<tract>/<tract>_<metric>.csv` (rows: arc length, columns: datasets), from `.fvp` trees and/or EXTRACT_Profile outputs |

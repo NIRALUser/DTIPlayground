@@ -1,8 +1,10 @@
 #
 #   fiberprofile/analysis/detect_flip.py
 #
-#   Find the reflection of the tensor frame (flip of x, y, z and their combinations) that makes a diffusion tensor
-#   NRRD correctly oriented. Every combination is scored with up to two criteria:
+#   Find the correction of the tensor frame that makes a diffusion tensor NRRD correctly oriented: a flip of x, y, z
+#   (and their combinations) of the stored components, in the measurement frame of the header or in the frame of the
+#   voxel axes (components estimated in voxel coordinates while the header gives another frame: on an oblique grid
+#   this is a rotation that no flip corrects). Every candidate is scored with up to two criteria:
 #
 #   - coherence (no reference needed): in a correctly oriented tensor field, stepping from a white matter voxel along
 #     its principal direction reaches a voxel with a similar principal direction (the tract continues). A wrong flip
@@ -13,8 +15,10 @@
 #     gives the affine transform from the reference to the image (ITK text file, e.g. initialAffine.txt of DTI_Register;
 #     it is computed from FA, which a flip doesn't change).
 #
-#   A flip is applied to the stored tensor components as by 'flip-tensor' (D' = R D R^T, R = diag(+-1)); R and -R give
-#   the same tensor, so the 8 combinations form 4 distinct results (e.g. 'x,y' equals 'z').
+#   A correction is applied as by 'flip-tensor' (D' = R D R^T, R = diag(+-1), then with the voxel frame the rotation
+#   into the space of the header); R and -R give the same tensor, so the 8 flip combinations form 4 distinct results
+#   (e.g. 'x,y' equals 'z'), and on an axis-aligned grid the voxel frame equals a flip of the header frame. Candidates
+#   giving the same tensors are marked 'same as' the first one (header frame first).
 #
 
 import itertools
@@ -22,7 +26,7 @@ import logging
 
 import numpy as np
 
-from dtiplayground.dmri.fiberprofile.analysis.flip_tensor import COMPONENTS
+from dtiplayground.dmri.fiberprofile.analysis.flip_tensor import COMPONENTS, correction_name
 
 log = logging.getLogger("detect-tensor-flip")
 
@@ -37,9 +41,10 @@ def flip_signs(axes):
     return np.array([-1.0 if a in axes else 1.0 for a in "xyz"])
 
 
-def canonical(axes):
-    """Canonical member of the pair {R, -R}: the one flipping at most one axis."""
-    return tuple(a for a in "xyz" if a not in axes) if len(axes) >= 2 else tuple(axes)
+def matrix_key(E):
+    """Key of the stored -> physical matrix E up to its sign (E and -E give the same tensors)."""
+    flat = E.ravel()
+    return tuple(np.round(E * np.sign(flat[np.argmax(np.abs(flat))]), 4).ravel())
 
 
 class TensorField:
@@ -83,11 +88,16 @@ class TensorField:
         self.origin = to_lps @ (np.asarray(origin, dtype=np.float64) if origin is not None else np.zeros(3))
         mf = header.get("measurement frame")
         self.frame = to_lps @ (np.asarray(mf, dtype=np.float64).T if mf is not None else np.eye(3))  # stored -> physical
+        self.voxel_frame = self.directions / np.linalg.norm(self.directions, axis=0)  # stored in voxel axes -> physical
         self.spacing = np.linalg.norm(self.directions, axis=0)
 
-    def physical_directions(self, signs, idx):
-        """Flipped principal directions of the voxels idx (tuple of index arrays), in physical space."""
-        return (self.e1[idx] * signs) @ self.frame.T
+    def frame_matrix(self, frame="header"):
+        return self.voxel_frame if frame == "voxel" else self.frame
+
+    def physical_directions(self, signs, idx, frame="header"):
+        """Flipped principal directions of the voxels idx (tuple of index arrays), in physical space, with the stored
+        components in the measurement frame of the header or in the voxel frame."""
+        return (self.e1[idx] * signs) @ self.frame_matrix(frame).T
 
     def to_index(self, points):
         return np.linalg.solve(self.directions, (points - self.origin).T).T
@@ -96,11 +106,11 @@ class TensorField:
         return index @ self.directions.T + self.origin
 
 
-def coherence(field, signs, fa_min):
+def coherence(field, signs, fa_min, frame="header"):
     """Mean |cos| between the principal direction of each white matter voxel and that of the voxels one step ahead and
     behind along it (FA weighted; a step leaving the white matter counts as 0)."""
     idx = np.nonzero(field.fa > fa_min)
-    e = field.physical_directions(signs, idx)  # (N,3) physical
+    e = field.physical_directions(signs, idx, frame)  # (N,3) physical
     e_all = np.zeros(field.shape + (3,))
     e_all[idx] = e
     wm = field.fa > fa_min
@@ -136,7 +146,7 @@ def read_itk_affine(path):
     return A, params[9:12] + center - A @ center
 
 
-def atlas_agreement(field, signs, reference, fa_min, transform=None):
+def atlas_agreement(field, signs, reference, fa_min, transform=None, frame="header"):
     """Median angle (degrees) between the principal directions of the reference and the flipped ones of the image,
     over the reference voxels with FA > fa_min whose position in the image (identity, or the affine transform (A, b)
     from the reference to the image) has FA > fa_min; directions of the image are brought back with A^-1."""
@@ -149,7 +159,7 @@ def atlas_agreement(field, signs, reference, fa_min, transform=None):
     both = field.fa[qi] > fa_min
     if both.sum() < 100:
         return np.nan, int(both.sum())
-    e = field.physical_directions(signs, tuple(a[both] for a in qi))
+    e = field.physical_directions(signs, tuple(a[both] for a in qi), frame)
     if transform is not None:
         e = np.linalg.solve(A, e.T).T
         e /= np.linalg.norm(e, axis=1, keepdims=True)
@@ -159,45 +169,52 @@ def atlas_agreement(field, signs, reference, fa_min, transform=None):
 
 
 def detect_flip(image, reference=None, fa_min=0.3, transform=None):
-    """Score all flip combinations of the tensor NRRD image (optionally against a reference tensor NRRD, with the
-    affine transform from the reference to the image: an ITK text file or (A, b)).
-    Returns (rows, best): one row per combination with 'flip', 'same_as', 'coherence', 'angle' (deg), and the canonical
-    name of the best flip (smallest atlas angle when there is a reference, else highest coherence) and the one of the
-    highest coherence."""
+    """Score all corrections of the tensor frame of the tensor NRRD image (flip combinations, in the header frame and in
+    the voxel frame), optionally against a reference tensor NRRD with the affine transform from the reference to the
+    image (an ITK text file or (A, b)).
+    Returns (rows, best, by_coherence): one row per candidate with 'correction', 'frame', 'flip', 'same_as',
+    'coherence', 'angle' (deg), 'voxels'; the name of the best correction (smallest angle to the reference when there is
+    one, else highest coherence; e.g. 'x' or 'voxel,x', usable with DTI_Register tensorFlip) and the one of the highest
+    coherence."""
     field = TensorField(image)
     ref = TensorField(reference) if reference else None
     if isinstance(transform, str):
         transform = read_itk_affine(transform)
     if (field.fa > fa_min).sum() < 100:
         raise ValueError("fewer than 100 voxels with FA > {} in {}".format(fa_min, image))
-    rows, scores = [], {}
-    for axes in FLIPS:
-        key = canonical(axes)
-        if key not in scores:
-            signs = flip_signs(key)
-            coh = coherence(field, signs, fa_min)
-            ang, n = atlas_agreement(field, signs, ref, fa_min, transform) if ref is not None else (np.nan, 0)
-            scores[key] = (coh, ang, n)
-        coh, ang, n = scores[key]
-        rows.append({"flip": flip_name(axes), "same_as": flip_name(key) if key != tuple(axes) else "",
-                     "coherence": coh, "angle": ang, "voxels": n})
+    rows, scores, first = [], {}, {}
+    for frame in ("header", "voxel"):
+        for axes in FLIPS:
+            name = correction_name(frame, axes)
+            signs = flip_signs(axes)
+            key = matrix_key(field.frame_matrix(frame) @ np.diag(signs))
+            if key not in scores:
+                first[key] = name
+                coh = coherence(field, signs, fa_min, frame)
+                ang, n = atlas_agreement(field, signs, ref, fa_min, transform, frame) if ref is not None else (np.nan, 0)
+                scores[key] = (coh, ang, n)
+            coh, ang, n = scores[key]
+            rows.append({"correction": name, "frame": frame, "flip": flip_name(axes),
+                         "same_as": first[key] if first[key] != name else "", "coherence": coh, "angle": ang, "voxels": n})
     if ref is not None and np.isfinite([s[1] for s in scores.values()]).all():
         best = min(scores, key=lambda k: scores[k][1])
     else:
         best = max(scores, key=lambda k: scores[k][0])
     by_coh = max(scores, key=lambda k: scores[k][0])
-    return rows, flip_name(best), flip_name(by_coh)
+    return rows, first[best], first[by_coh]
 
 
 ### command line
 
 def add_parser(subparsers):
-    p = subparsers.add_parser("detect-tensor-flip", help="Find the flip of the tensor frame that orients a DTI correctly",
+    p = subparsers.add_parser("detect-tensor-flip", help="Find the correction of the tensor frame that orients a DTI correctly",
                               description="Score every flip combination of the tensor frame (none, x, y, z, x,y, x,z, y,z, "
-                                          "x,y,z) of a DTI NRRD by the coherence of its principal directions along the "
-                                          "tracts and, with --reference, by their agreement with a reference tensor "
-                                          "(atlas or normative mean tensor; the image must be registered to it). The "
-                                          "flip found can be applied with 'flip-tensor'.")
+                                          "x,y,z) of a DTI NRRD, with the components in the measurement frame of the "
+                                          "header and in the frame of the voxel axes (oblique grids), by the coherence of "
+                                          "the principal directions along the tracts and, with --reference, by their "
+                                          "agreement with a reference tensor (atlas or normative mean tensor; the image "
+                                          "registered to it, or --transform). The correction found can be applied with "
+                                          "'flip-tensor' or DTI_Register tensorFlip.")
     p.add_argument("input", help="Tensor NRRD to check")
     p.add_argument("--reference", help="Reference tensor NRRD (atlas) in the same physical space as the input")
     p.add_argument("--transform", help="Affine ITK text transform from the reference to the input (e.g. initialAffine.txt "
@@ -213,17 +230,19 @@ def run(args):
     setup_logging(args.verbose)
     rows, best, by_coh = detect_flip(args.input, args.reference, args.fa_min, args.transform)
     has_ref = args.reference is not None
-    log.info("%-8s %-10s %10s %s", "flip", "same as", "coherence", "atlas angle (deg)" if has_ref else "")
+    log.info("%-14s %-10s %10s %s", "correction", "same as", "coherence", "atlas angle (deg)" if has_ref else "")
     for r in rows:
-        log.info("%-8s %-10s %10.4f %s", r["flip"], r["same_as"], r["coherence"],
+        log.info("%-14s %-10s %10.4f %s", r["correction"], r["same_as"], r["coherence"],
                  "{:8.1f}".format(r["angle"]) if has_ref else "")
     if has_ref:
-        log.info("Best flip by atlas agreement: %s ; by coherence: %s%s", best, by_coh,
+        log.info("Best correction by atlas agreement: %s ; by coherence: %s%s", best, by_coh,
                  "" if best == by_coh else "  (the criteria disagree, check the registration to the reference)")
     else:
-        log.info("Best flip by coherence: %s", best)
+        log.info("Best correction by coherence: %s", best)
     if best != "none":
-        log.info("Apply it with: dmrifiberprofile flip-tensor %s <output> --axes %s", args.input, best)
+        axes = [a for a in best.split(",") if a != "voxel"]
+        log.info("Apply it with: dmrifiberprofile flip-tensor %s <output>%s%s", args.input,
+                 " --voxel-frame" if best.startswith("voxel") else "", " --axes " + ",".join(axes) if axes else "")
     if args.output:
         import csv
         with open(args.output, "w", newline="") as fh:

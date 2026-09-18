@@ -370,6 +370,10 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.10)
+- dmrifiberprofile - flip-tensor --voxel-frame and detect-tensor-flip handle tensors whose components are in the frame of the voxel axes (estimated in voxel coordinates, header with another measurement frame): on oblique grids a rotation that no flip corrects
+- dmriprep - DTI_Register: tensorFlip / tensor_flip accepts voxel (and voxel,<axes>); auto chooses among the flips in the header frame and in the voxel frame
+
 ##### 2026-09-18 (v0.7.9)
 - dmrifiberprofile - detect-tensor-flip: finds the flip of the tensor frame (all combinations of x, y, z) that orients a DTI correctly, by the coherence of the principal directions along the tracts and their agreement with a reference tensor (registered, or with an affine transform)
 - dmriprep - DTI_Register: tensorFlip / global variable tensor_flip (none, auto or axes) detects and applies a flip of the tensor frame before the registration

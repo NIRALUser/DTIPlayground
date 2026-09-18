@@ -103,21 +103,12 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
             raise ValueError
 
 
-        ## convert 3x3 symmetric matrices to xx,xy,xz,yy,yz,zz vectors
+        ## convert 3x3 symmetric matrices (X,Y,Z,3,3) to xx,xy,xz,yy,yz,zz vectors (X,Y,Z,6), in the frame of the
+        ## gradients used for the fit (the measurement frame of the image, written in the header)
         logger("Reducing 3x3 symmetric matrix to vector")
-        def uppertriangle(matrix):
-            outvec=[]
-            for i in range(3):
-                for j in range(i,3):
-                    outvec.append(matrix[i,j])
-            return np.array(outvec)
         quad_form = fitted.quadratic_form
-        new_quadform = np.empty(quad_form.shape[:-1] + (6,), dtype=float)
-        for d1 in range(quad_form.shape[0]):
-            for d2 in range(quad_form.shape[1]):
-                for d3 in range(quad_form.shape[2]):
-                    mat = quad_form[d1,d2,d3]
-                    new_quadform[d1,d2,d3]=uppertriangle(mat)
+        new_quadform = np.stack([quad_form[...,i,j] for i,j in [(0,0),(0,1),(0,2),(1,1),(1,2),(2,2)]], axis=-1)
+        new_quadform[np.isnan(new_quadform)] = 0
 
         # TODO : make nrrd file for new_quadform image volume (kind will be "3D-symmetric-matrix") , ref: http://teem.sourceforge.net/nrrd/format.html
         temp_dti_image = DWI()
@@ -180,6 +171,11 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
                     '--correction', correctionMethod]
 
         dtiestim.estimate(input_image_path, output_tensor_path,options)
+        ## dtiestim writes the components in the frame of the voxel axes with a header that implies the space of the
+        ## image: rotate them into that space (a no-op for axis-aligned images with positive LPS directions)
+        from dtiplayground.dmri.fiberprofile.analysis import flip_tensor
+        flip_tensor.reorient_tensor_file(output_tensor_path, output_tensor_path, 'voxel')
+        logger("Tensor components rotated from the voxel frame into the space of the image",prep.Color.INFO)
         self.addOutputFile(output_tensor_path, 'DTI')
         self.addGlobalVariable('dti_path',output_tensor_path)
         return None

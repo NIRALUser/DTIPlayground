@@ -82,6 +82,7 @@ def default_output_gradient():
         "original_index" : -1,
         "gradient" : [0.0,0.0,0.0],
         "unit_gradient" : [0.0,0.0,0.0],
+        "nifti_gradient" : [0.0,0.0,0.0],
         "b_value" : 0,
         "baseline" : True 
     }

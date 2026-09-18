@@ -26,6 +26,24 @@ def normalize(v):
        return v
     return v / norm
 
+## Frames of the gradients (and tensors):
+##   world   : the space of the image (NRRD 'space', LPS for images loaded from NIfTI); 'unit_gradient' is in the
+##             measurement frame, i.e. world = M unit_gradient with M the measurement frame (columns: its vectors)
+##   voxel   : the axes of the image array (unit space directions); 'nifti_gradient' is in this frame (as dipy expects)
+##   FSL     : .bvec files: the voxel frame with x negated when the determinant of the (RAS) affine is positive
+def voxel_axes_rows(space_directions):
+    """Unit space directions (one row per voxel axis, in world coordinates)."""
+    sd = np.array(space_directions, dtype=np.float64)[:3, :3]
+    return sd / np.linalg.norm(sd, axis=1, keepdims=True)
+
+def world_to_voxel_gradient(g_world, space_directions):
+    """Unit gradient in the voxel frame from a gradient in world coordinates (orthogonal voxel axes)."""
+    return normalize(np.matmul(voxel_axes_rows(space_directions), np.array(g_world, dtype=np.float64)))
+
+def fsl_flip(affine_ras):
+    """diag(-1,1,1) if the RAS affine has a positive determinant (FSL bvec convention), else the identity."""
+    return np.diag([-1.0, 1.0, 1.0]) if np.linalg.det(np.array(affine_ras)[:3, :3]) > 0 else np.identity(3)
+
 def _load_nrrd(filename):
     org_data,header = nrrd.read(filename)
     
@@ -108,13 +126,8 @@ def _load_nrrd(filename):
                 unit_vec=(vec/normalize_term)
             else:
                 unit_vec=vec 
-            # nifti_vec = np.matmul(np.matmul(np.array(space_directions), measurement_frame) , unit_vec) ## ROI
-            nifti_vec = np.matmul(np.matmul(np.array(space_directions), measurement_frame.transpose()) , unit_vec) ## ROI, inverting measurement frame by transposing (identical to inversion)
-            normalize_term=np.sqrt(np.sum(nifti_vec**2))
-            if normalize_term>0:
-                nifti_grad = nifti_vec / normalize_term
-            else:
-                nifti_grad = nifti_vec
+            ## voxel frame: world = measurement frame (columns: its vectors) x stored, then onto the unit voxel axes
+            nifti_grad = world_to_voxel_gradient(np.matmul(measurement_frame.transpose(), unit_vec), space_directions)
 
             # nifti_grad[1] = -nifti_grad[1] # flipping y axis
             gradients.append({'index':idx,
@@ -158,13 +171,13 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
     bvecs=[]
     gradients=[]
     max_bval=0.0
-    affine=loaded_image_object.affine 
-    ijk_to_lps = affine
-    lps_to_ras = np.diag([-1, -1, 1, 1]) # ras to lps 
-    ijk_to_ras = np.matmul(lps_to_ras, ijk_to_lps)
-    affine=ijk_to_ras
-
-    inv_space_mat = np.linalg.inv(affine[0:3,0:3].astype('float64'))#.transpose()
+    ijk_to_ras = np.array(loaded_image_object.affine, dtype=np.float64)
+    ras_to_lps = np.diag([-1, -1, 1, 1])
+    ijk_to_lps = np.matmul(ras_to_lps, ijk_to_ras)
+    affine = ijk_to_lps
+    ## FSL bvecs: voxel frame, x negated for a positive determinant -> world (LPS): voxel axes (columns) x voxel frame
+    fsl_to_voxel = fsl_flip(ijk_to_ras)
+    voxel_to_lps = ijk_to_lps[0:3,0:3] / np.linalg.norm(ijk_to_lps[0:3,0:3], axis=0)
     if image_dim == 4:
         tmp_bvals=list(open(bvals_file,'r').read().split())
         tmp_bvecs=_load_nifti_bvecs(bvecs_file)
@@ -180,14 +193,15 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
 
         max_bval=np.max(bvals)
         for idx,vec in enumerate(normalized_vecs):
-            unit_vec = normalize(np.matmul(inv_space_mat, np.array(vec))) # for nifti -> nrrd transform on the gradients
+            voxel_vec = normalize(np.matmul(fsl_to_voxel, np.array(vec, dtype=np.float64)))
+            unit_vec = normalize(np.matmul(voxel_to_lps, voxel_vec)) # world (LPS), measurement frame identity
             denormalized_vec=np.array(unit_vec)*np.sqrt((bvals[idx]/max_bval))
             gradients.append({'index':int(idx),
                               'gradient': denormalized_vec.tolist(),
                               'b_value': bvals[idx],
                               'unit_gradient': unit_vec.tolist(),
                               'original_index':idx,
-                              'nifti_gradient':vec})
+                              'nifti_gradient':voxel_vec.tolist()})
 
     ## move gradient index to the first (same to nrrd format)
     
@@ -198,8 +212,8 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
 
     space='left-posterior-superior'
 
-    space_directions=mat[:3,:3] ## transpose for taking row vectors, not column vectors
-    space_origin=mat[3,:3] ## column to row vector
+    space_directions=mat[:3,:3].transpose() ## one row per voxel axis (the columns of the affine)
+    space_origin=mat[:3,3] ## translation of the affine
     endian="little"
     if header.endianness != '<' :
         endian='big'
@@ -218,7 +232,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         'type': str(header.get_data_dtype()),
         'endian' : endian,
         'original_centerings' : ['cell','cell','cell','???'][:image_dim],
-        'thicknesses' : np.array([np.NAN,np.NAN,np.abs(space_directions.tolist()[2][2]),np.NAN]).tolist()[:image_dim],
+        'thicknesses' : np.array([np.NAN,np.NAN,np.linalg.norm(space_directions[2]),np.NAN]).tolist()[:image_dim],
         'modality': None
     }
 
@@ -322,7 +336,13 @@ def export_to_nifti(image): # image DWI
     img=image.images 
     gradients=image.getGradients()
     bvals=["{:d}\n".format(int(round(x['b_value']))) for x in gradients]
-    bvecs=[" ".join(map(lambda s : "{:.8f}".format(s),x['nifti_gradient']))+"\n" for x in gradients]
+    ## FSL bvecs from the gradients in world coordinates (measurement frame applied), for the geometry written
+    mframe = np.array(measurement_frame, dtype=np.float64).transpose()
+    flip = fsl_flip(affine)
+    bvecs=[]
+    for x in gradients:
+        voxel_vec = world_to_voxel_gradient(np.matmul(mframe, np.array(x['unit_gradient'], dtype=np.float64)), image.information['space_directions'])
+        bvecs.append(" ".join(map(lambda s : "{:.8f}".format(s), np.matmul(flip, voxel_vec)))+"\n")
     return img,affine, bvals, bvecs
 
 def _write_nrrd(image,filename,dtype): 
@@ -560,7 +580,7 @@ class DWI:
         # affine=self.getAffineMatrix()
         space_origin=np.array(self.information['space_origin'])
         affine=np.zeros((4,4))
-        affine[0:3,0:3] = spdir[0:3,0:3]
+        affine[0:3,0:3] = spdir[0:3,0:3].transpose() ## columns: the voxel axes (space_directions has one row per axis)
         affine[3,0:4] = np.array([[0,0, 0, 1]])
         affine[0:3,3] = np.array([space_origin])
         # affine=np.append(affine,[space_origin],axis=0)
@@ -583,7 +603,13 @@ class DWI:
             return
         affine = self.getAffineMatrixBySpace(target_space=target_space)
         at=affine#.transpose()
-        self.information['space_directions']=at[:3,:3].tolist()
+        ## the world coordinates change sign along the axes that differ: the measurement frame follows them
+        src_space_elem = self.information['space'].split('-')
+        flips = np.diag([(-1.0 if v != src_space_elem[i] else 1.0) for i, v in enumerate(target_space.split('-'))])
+        if 'measurement_frame' in self.information and self.information['measurement_frame'] is not None:
+            mframe = np.array(self.information['measurement_frame'], dtype=np.float64) # rows: its vectors
+            self.information['measurement_frame'] = np.matmul(mframe, flips).tolist()
+        self.information['space_directions']=at[:3,:3].transpose().tolist()
         self.information['space_origin']=at[:3,3].tolist()
         self.information['space']=target_space
 

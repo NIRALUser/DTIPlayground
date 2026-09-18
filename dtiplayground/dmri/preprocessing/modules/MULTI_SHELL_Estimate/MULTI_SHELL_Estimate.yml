@@ -22,11 +22,11 @@ protocol:
             description: Use DIPY library
           - value: amico
             caption: AMICO
-            description: Use NOODI model as part of AMICO INPUT NIFTI
+            description: NODDI model of AMICO (NDI, ODI, FWF)
           - value: mrtrix3
             caption: mrtrix3
-            description: use mrtrix3 library, agnostic of modality INPUT NIFTI
-        description: Tools to estimate variations of DWI (dipy/noodi/mrtrix3)
+            description: mrtrix3 dwi2adc (S0, ADC)
+        description: Tools to estimate multi-shell models (dipy / AMICO NODDI / mrtrix3)
       model:
         type: list
         caption: Model
@@ -36,9 +36,13 @@ protocol:
             caption: DTI
             description: Diffusion Tensor
             if : { "tool" : "dipy" }
+          - value: dki
+            caption: DKI
+            description: Diffusion Kurtosis (tensor, FA/MD/AD/RD, MK/AK/RK/MKT/KFA, kurtosis tensor)
+            if : { "tool" : "dipy" }
           - value: msdki
             caption: MSDKI
-            description: Mean Diffusion Kurtosis
+            description: Mean Signal Diffusion Kurtosis (MSD, MSK)
             if : { "tool" : "dipy" }
           - value: fwdti
             caption: FWDTI
@@ -46,7 +50,7 @@ protocol:
             if : { "tool" : "dipy" }
           - value: ivim
             caption: IVIM
-            description: Free Water Elimination Diffusion
+            description: Intravoxel Incoherent Motion
             if : { "tool" : "dipy" }
         if : { "tool" : "dipy" }
       optimizationMethod_dti:
@@ -78,7 +82,7 @@ protocol:
         type: list
         caption: Optimization Method FreeWater DTI
         default_value: nls
-        description: Diffusion Kurtosis
+        description: Optimization Method
         candidates:
           - value : wls
             caption: Weighted Least Squares
@@ -87,6 +91,22 @@ protocol:
             caption: Non-linear Least Square
             description: Non-linear Least Square
         if : { "model" : "fwdti", "tool" : "dipy" }
+      optimizationMethod_dki:
+        type: list
+        caption: Optimization Method DKI
+        default_value: wls
+        description: Optimization Method
+        candidates:
+          - value : wls
+            caption: Weighted Least Squares
+            description: Weighted Least Squares
+          - value : ols
+            caption: Ordinary Least Squares
+            description: Ordinary Least Squares
+          - value : nls
+            caption: Non-linear Least Square
+            description: Non-linear Least Square
+        if : { "model" : "dki,msdki", "tool" : "dipy" }
       split_b_D: 
         type: float
         caption: split_b_D
@@ -97,11 +117,11 @@ protocol:
         type: float
         caption: split_b_S0
         default_value: 200
-        description: The b-value to split the data on for two-stage fit. This will be used while estimating the value of D
+        description: The b-value to split the data on for two-stage fit. This will be used while estimating the value of S0
         if : { "model" : "ivim", "tool" : "dipy" }
       maskPath: 
         type: filepath-remote
         caption: Brain Mask
         default_value: ''
-        description: Provide mask or OG image will be used
-        if : { "tool" : "amico" }
+        description: Brain mask (NRRD or NIfTI); if empty, the mask of BRAIN_Mask is used, else the whole image
+        if : { "tool" : "dipy,amico" }

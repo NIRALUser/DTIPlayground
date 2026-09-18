@@ -369,6 +369,10 @@ MIT
 
 ### Change Log
 
+##### 2026-09-18 (v0.7.8)
+- dmriprep - DTI_Register registers a diffusion tensor given as the input image (-i) directly, so a standalone run no longer needs -g dti_path
+- requires dmri-amico>=2.1.1: version 2.1.0 imports pkg_resources, which newer setuptools no longer provide (ModuleNotFoundError: No module named 'pkg_resources')
+
 ##### 2026-09-17 (v0.7.7)
 - dmriprep - global variables given on the command line (run -g key value ...) reach the modules again; they were discarded when the pipeline was created
 - dmriprep - DTI_Register: reference image, normative model and age can be given as global variables (reference_dti, reference_normative_model, age), so the module runs with default protocols from one command line

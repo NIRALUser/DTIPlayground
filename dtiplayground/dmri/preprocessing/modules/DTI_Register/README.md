@@ -25,6 +25,8 @@ Outputs: `registered_dti.nrrd` (DTI in reference space), `registered_<name>` for
 - tensorCorrection: correction of tensors with negative eigenvalues, abs (default), zero, nearest or none
 - initialAffine: BRAINSFit (default, affine registration of the scalar images, fixed = reference, moving = DTI), file (initialAffineFile) or none
 - initialAffineFile: ITK transform file used with initialAffine 'file'
+- tensorFlip: flip of the tensor frame applied to the DTI before the registration (D' = R D R^T, R = diag(+-1), as `dmrifiberprofile flip-tensor`), for tensors whose components don't match the frame of their header: none, auto, or the axes to flip (e.g. `x` or `x,z`); when empty (default), the global variable `tensor_flip`, else none. auto scores the flips as `dmrifiberprofile detect-tensor-flip`: by the median angle between the principal directions of the DTI and of the reference after the initial affine transform (computed from the scalar image, which a flip doesn't change), or by the coherence of the principal directions along the tracts when there is no initial affine. The flipped DTI is written as `input_flipped.nrrd`, and tensor images among the diffusion metrics get the same flip before they are registered
+- tensorFlipFAThreshold: FA threshold of the white matter voxels used by the automatic flip detection, default 0.3
 - BRAINSFitTransforms: BRAINSFit transform stages, default Rigid,Affine
 - BRAINSFitInitializeTransformMode: default useCenterOfHeadAlign
 - registerMetrics: apply the displacement field to the diffusion metrics in the folder of the input DTI that share its file name prefix (e.g. `<scan>_dwi_QCed_FA.nii.gz`, `_NODDI_NDI.nii.gz` or `_FWtensor.nrrd` for `<scan>_dwi_QCed_tensor.nrrd`), default true. Tensor images are resampled log-Euclidean with reorientation (ResampleDTIlogEuclidean, as DTI-Reg resamples the DTI), scalar images linearly; written as `registered_<name>`
@@ -42,7 +44,9 @@ dmriprep run -i <subject DTI> -o <output dir> -d DTI_Register \
 
 A diffusion tensor NRRD given with `-i` is registered directly; otherwise the DTI to register is `dti_path` (set by
 DTI_Estimate in a full pipeline, or given with `-g dti_path <subject DTI>`). `reference_normative_model` and `age` are
-optional (the age is otherwise read from the image path). Options of the protocol take precedence over these variables.
+optional (the age is otherwise read from the image path). Add `tensor_flip auto` (or e.g. `tensor_flip x`) to detect
+and correct a flip of the tensor frame before the registration. Options of the protocol take precedence over these
+variables.
 
 ##### Examples
 

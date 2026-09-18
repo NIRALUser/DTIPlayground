@@ -3,6 +3,7 @@
 #
 #   Fiber profile analysis tools (from the FiberProfileAnalysis scripts), available as dmrifiberprofile commands:
 #     flip-tensor      reflect the tensor frame of a DTI along axes
+#     detect-tensor-flip  find the flip of the tensor frame that orients a DTI correctly
 #     parametrize-fibers  resample fiber tracts on the arc length grid (as EXTRACT_Profile)
 #     compute-axis     1D axis (average curve) of fiber tracts, parametrized by arc length
 #     gather           collect subject profiles into one CSV per tract and metric
@@ -14,7 +15,7 @@
 import logging
 import sys
 
-COMMANDS = ['flip_tensor', 'parametrize', 'fiber_axis', 'gather', 'impute', 'registration_qc', 'profile_qc']
+COMMANDS = ['flip_tensor', 'detect_flip', 'parametrize', 'fiber_axis', 'gather', 'impute', 'registration_qc', 'profile_qc']
 
 
 def add_commands(subparsers):

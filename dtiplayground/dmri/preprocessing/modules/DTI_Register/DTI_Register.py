@@ -95,7 +95,9 @@ class DTI_Register(prep.modules.DTIPrepModule):
         os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(nbThreads)
         ANTsPath=Path(protocol['ANTsPath']).joinpath('ANTS').__str__()
         WarpImageMultiTransformPath=Path(protocol['ANTsPath']).joinpath('WarpImageMultiTransform').__str__()
+        sourceImagePath = inputImagePath  # the diffusion metrics are in its folder
         initialAffinePath = self.initialAffine(refImagePath, inputImagePath, scalarMeasurement, tensorCorrection, nbThreads)
+        inputImagePath = self.flipTensor(inputImagePath, refImagePath, initialAffinePath)
         logger("Executing DTI Reg for registration",prep.Color.PROCESS)
         args = ['--fixedVolume',refImagePath,
                 '--movingVolume',inputImagePath,
@@ -138,7 +140,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
         #    self.loadImage(registeredImagePath) 
         self.addOutputFile(registeredImagePath, 'DTI_Registered')
         if self.protocol.get('registerMetrics', True) and self.dtiImagePath is not None:
-            self.registerMetrics(inputImagePath, refImagePath, displacementFieldPath, tensorCorrection, nbThreads)
+            self.registerMetrics(sourceImagePath, refImagePath, displacementFieldPath, tensorCorrection, nbThreads)
         self.addOutputFile(displacementFieldPath, 'DTI_DisplacementField')
         self.addOutputFile(inv_displacementFieldPath, 'DTI_Inverse_DisplacementField')
 
@@ -191,6 +193,49 @@ class DTI_Register(prep.modules.DTIPrepModule):
         self.addOutputFile(affinePath, 'DTI_InitialAffine')
         return affinePath
 
+    def flipTensor(self, inputImagePath, refImagePath, initialAffinePath):
+        """Flip of the tensor frame applied before the registration (tensorFlip, or the global variable tensor_flip):
+        none, explicit axes (e.g. 'x' or 'x,z'), or auto: the flip with the best agreement of the principal directions
+        with the reference after the initial affine transform (computed from the scalar image, which a flip doesn't
+        change), or with the best coherence of the principal directions along the tracts without an initial affine.
+        Returns the path of the DTI to register (input_flipped.nrrd if a flip is applied)."""
+        from dtiplayground.dmri.fiberprofile.analysis import detect_flip, flip_tensor
+        mode = str(self.protocol.get('tensorFlip') or self.global_variables.get('tensor_flip') or 'none').strip().lower()
+        self.tensorFlipAxes = []
+        if mode == 'none':
+            return inputImagePath
+        if mode == 'auto':
+            fa_min = float(self.protocol.get('tensorFlipFAThreshold', 0.3))
+            transform = None
+            if initialAffinePath is not None:
+                try:
+                    transform = detect_flip.read_itk_affine(initialAffinePath)
+                except (ValueError, OSError) as e:
+                    logger("Initial affine not usable for the flip detection ({}), using the coherence only".format(e),prep.Color.WARNING)
+            logger("Detecting the flip of the tensor frame ({})".format(
+                "agreement with the reference after the initial affine" if transform is not None else "coherence along the tracts"),prep.Color.PROCESS)
+            rows, best, by_coherence = detect_flip.detect_flip(inputImagePath, refImagePath if transform is not None else None, fa_min, transform)
+            for r in rows:
+                if r['same_as'] == '':
+                    logger("  flip {:6s} coherence {:.4f}{}".format(r['flip'], r['coherence'],
+                           '  angle to the reference {:.1f} deg'.format(r['angle']) if transform is not None else ''),prep.Color.INFO)
+            if transform is not None and best != by_coherence:
+                logger("Flip by the reference ({}) and by the coherence ({}) disagree; using {}".format(best, by_coherence, best),prep.Color.WARNING)
+            axes = [] if best == 'none' else best.split(',')
+        else:
+            axes = flip_tensor.parse_axes(mode)
+        self.result['output']['tensor_flip'] = ','.join(axes) if axes else 'none'
+        self.addGlobalVariable('tensor_flip_applied', self.result['output']['tensor_flip'])
+        if not axes:
+            logger("Tensor frame not flipped",prep.Color.OK)
+            return inputImagePath
+        self.tensorFlipAxes = axes
+        flipped = Path(self.output_dir).joinpath('input_flipped.nrrd').__str__()
+        flip_tensor.flip_tensor_file(inputImagePath, flipped, axes)
+        logger("Flipped the tensor frame along {} before the registration: {}".format(','.join(axes), flipped),prep.Color.OK)
+        self.addOutputFile(flipped, 'DTI_Flipped')
+        return flipped
+
     def registerMetrics(self, inputImagePath, refImagePath, displacementFieldPath, tensorCorrection, nbThreads):
         """Apply the displacement field to the diffusion metrics in the folder of the input DTI that share its file name
         prefix (e.g. <scan>_dwi_QCed_ of <scan>_dwi_QCed_tensor.nrrd): tensor images are resampled log-Euclidean with
@@ -228,9 +273,14 @@ class DTI_Register(prep.modules.DTIPrepModule):
                 dimension = reader.GetDimension()
             if is_tensor:
                 logger("Registering tensor image {}".format(f.name),prep.Color.PROCESS)
+                tensor_path = str(f)
+                if getattr(self, 'tensorFlipAxes', []):  # same frame as the DTI
+                    from dtiplayground.dmri.fiberprofile.analysis import flip_tensor
+                    tensor_path = output_dir.joinpath('flipped_' + name).__str__()
+                    flip_tensor.flip_tensor_file(str(f), tensor_path, self.tensorFlipAxes)
                 resample = tools.ResampleDTIlogEuclidean(self.softwares['ResampleDTIlogEuclidean']['path'])
                 resample.dev_mode = True
-                resample.execute([str(f), output, '-R', refImagePath, '--correctionType', tensorCorrection,
+                resample.execute([tensor_path, output, '-R', refImagePath, '--correctionType', tensorCorrection,
                                   '-D', displacementFieldPath, '--deformationFieldType', 'displacement',
                                   '-n', str(nbThreads)])
             elif dimension == 3 and components == 1:

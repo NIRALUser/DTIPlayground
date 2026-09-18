@@ -8,6 +8,7 @@ commandline_variables:
   reference_dti: null
   reference_normative_model: null
   age: null
+  tensor_flip: null
 
 global_variables: 
   dti_path: null
@@ -17,6 +18,7 @@ global_variables:
   initial_affine_path: null
   registered_metric_paths: null
   reference_dti_path: null
+  tensor_flip_applied: null
 module_type: prep
 process_attributes:
     - utility
@@ -171,6 +173,16 @@ protocol:
         caption: Initial Affine File
         default_value: null
         description: ITK transform file (fixed = reference, moving = DTI), used if initialAffine is 'file'
+      tensorFlip:
+        type: string
+        caption: Tensor Flip
+        default_value: null
+        description: "Flip of the tensor frame applied to the DTI before the registration: none (also if empty and the global variable tensor_flip isn't set), auto (detected: agreement of the principal directions with the reference after the initial affine, or their coherence along the tracts without an initial affine), or the axes to flip, e.g. x or x,z"
+      tensorFlipFAThreshold:
+        type: number
+        caption: Tensor Flip FA Threshold
+        default_value: 0.3
+        description: FA threshold of the white matter voxels used by the automatic flip detection
       BRAINSFitTransforms:
         type: string
         caption: BRAINSFit Transforms

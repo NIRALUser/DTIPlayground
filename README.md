@@ -483,6 +483,14 @@ MIT
 
 ### Change Log
 
+##### 2026-09-19 (v0.7.23)
+- dmriprep - DWI_Denoise: denoising with DIPY, MP-PCA (default, automatic patch size as QSIPrep) or Patch2Self; noise level map (MP-PCA) or residual map (Patch2Self), DENOISE_QC.tsv and a before/after figure
+- dmriprep - GIBBS_Correct: Gibbs ringing removal with DIPY (full Fourier acquisitions), GIBBS_QC.tsv and a before/after figure. Neither module is in the default pipeline: put them first
+- dmriprep - EDDYMOTION_Correct: per volume motion (EDDY_motion.tsv: framewise displacement, translations, rotations, outlier slices) and summary (EDDY_QC.tsv: mean/max FD, maximum motion, outlier slices, b=0 SNR and CNR per shell from eddy --cnr_maps, now also reported by eddy_quad); the RMS movement counts are relative to the previous volume (the report said the first)
+- dmriprep - DTI_Estimate: tensor fit QC (DTI_fit.tsv, DTI_fit_QC.tsv): R2 and correlation of each volume with the tensor prediction, poorly fitted slices, carpet plot in the QC report
+- dmriprep - QC_Report CSV and batch QC table include these summaries; the batch report marks unusual motion, outlier or poorly fitted slices and low fit R2
+- dmriprep - QC_Report CSV: original_number_of_gradients was wrong when the result of the first module was reused
+
 ##### 2026-09-19 (v0.7.22)
 - dmrifiberprofile: `run --atlas <folder>`; without tracts (e.g. without a protocol file) all the tracts of the atlas are profiled
 - dmrifiberprofile - EXTRACT_Profile: supportBandwidth defaults to 3 mm (was 1 mm); cleanup defaults to noCleanup, and the profiles of a previous run are reused only if their settings and input files are unchanged (before, a changed bandwidth or reprocessed image could reuse stale profiles)

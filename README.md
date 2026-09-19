@@ -372,6 +372,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-19 (v0.7.18)
+- dmriprep - BRAIN_Mask: method synthstrip, SynthStrip deep learning brain extraction (Hoopes et al. 2022) of the axial diffusivity (synthstripInput ad, default) or the average b0 (b0), with FreeSurfer's mri_synthstrip if found, otherwise a built-in torch version (identical masks; model weights downloaded on first use); options synthstripBorder, synthstripNoCSF, synthstripImplementation, synthstripPath
+
 ##### 2026-09-18 (v0.7.17)
 - dmriprep - BRAIN_Mask: betFractionalThreshold sets the fractional intensity threshold of FSL bet (-f, default 0.5)
 

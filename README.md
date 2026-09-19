@@ -345,6 +345,22 @@ the fraction of the free-water DTI model (`_FWf`). `dmrifiberprofile make-datash
 sheet.csv` only writes the datasheet (and `sheet_protocol.yml`, the protocol with its columns) to check it first;
 `--id-regex` changes how the case id is taken from the file names.
 
+Without a protocol, `run` uses the defaults of EXTRACT_Profile (FA, MD, AD, RD from the tensors, native space);
+`--atlas <folder>` sets the atlas, and a protocol without `tracts` profiles all the tracts (`.vtk`) of the atlas
+folder, e.g. `dmrifiberprofile run -i <data folder> --atlas Atlas/FibersParam -o Profiles`. The default
+`supportBandwidth` is 3 mm (before 0.7.22: 1 mm), as in the example protocol; compare only profiles made with the same
+value.
+
+**Rerunning.** With `cleanup: noCleanup` (the default since 0.7.22) the profile of each scan, tract and property is
+kept (`<output>/<datasheet>/00_EXTRACT_Profile/<property>/<tract>/<id>_<tract>.fvp`) with the settings and input files
+it was computed from (`.json` next to it). A later run into the same output folder reuses the profiles whose protocol
+settings (inputIsDTI, useDisplacementField, tensorInterpolation, supportBandwidth, stepSize, arcLength, planeOfOrigin,
+noNaN, maskThreshold), tract, mask and input files (path, size, modification time of the image and displacement field)
+are unchanged, and computes the others, e.g. only the scans added to a folder or datasheet; the tables of all scans
+are written again. The module option `overwrite: true` of EXTRACT_Profile in the protocol recomputes everything. With
+`duringProcessing` / `endOfProcessing` the profiles of each scan are deleted and a later run recomputes all of them.
+The output folder is named after the datasheet (`datasheet_detected` for a folder input), so rerun with the same one.
+
 An example protocol, datasheet and datasheet script for the DTI_IBISEP_Feb26 reference dataset are in `examples/normative_profiles`. The case ids of the datasheet must contain the age as `ses-<months>m` (e.g. `sub-011228_ses-012m`). The images are best sampled in native space with the deformation field of each scan (`useDisplacementField: true`), so tensors don't need to be deformed to the atlas. With `inputIsDTI: true`, FA, MD, AD, RD are computed from the tensors of `Original DTI Image`, and `<prefix>FA`, ... from the tensors of `<prefix> DTI Image` in `parameterToColumnHeaderMap` (e.g. FWFA from free-water corrected tensors, `FW DTI Image`); other properties (e.g. NDI, ODI) are sampled from their own image column. An empty datasheet cell leaves that property out for the scan (e.g. no free water / NODDI for single-shell scans). `qc-profiles` writes `<tract>/<tract>_<metric>_agebinstats.csv` next to the gathered tables; the folder is then used as `--prior-stats-dir` for the QC of new datasets. In Docker, a GPU is used by `impute` when the container is started with `--gpus all` (NVIDIA container toolkit).
 
 ## DMRIAtlas (dmriatlas)

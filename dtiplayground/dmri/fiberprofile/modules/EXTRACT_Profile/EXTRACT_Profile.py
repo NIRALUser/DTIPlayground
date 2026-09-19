@@ -1,3 +1,4 @@
+import json
 import os.path
 import shutil
 from pathlib import Path
@@ -32,6 +33,38 @@ def property_sources(properties, input_is_dti, parameter_to_col_map):
         sources[prop] = ('scalar', parameter_to_col_map[prop], None)
     return sources
 
+# protocol parameters a profile depends on (with the images, tract and mask): a profile of a previous run (.fvp) is
+# reused only if they and the input files are unchanged (the signature stored next to it, <profile>.json)
+PROFILE_SETTINGS = ['inputIsDTI', 'useDisplacementField', 'tensorInterpolation', 'supportBandwidth', 'stepSize',
+                    'arcLength', 'planeOfOrigin', 'noNaN', 'maskThreshold']
+
+
+def file_stamp(path):
+    """Identity of an input file for the reuse of results: absolute path, size and modification time."""
+    if path is None:
+        return None
+    p = Path(str(path))
+    try:
+        st = p.stat()
+        return {'path': str(p.resolve()), 'size': st.st_size, 'mtime_ns': st.st_mtime_ns}
+    except OSError:
+        return {'path': str(p), 'missing': True}
+
+
+def signature_matches(signature_path, signature):
+    """Whether the signature stored at *signature_path* (JSON) equals *signature*."""
+    try:
+        with open(signature_path, 'r') as f:
+            return json.load(f) == json.loads(json.dumps(signature, sort_keys=True, default=str))
+    except (OSError, ValueError):
+        return False
+
+
+def write_signature(signature_path, signature):
+    with open(signature_path, 'w') as f:
+        json.dump(signature, f, sort_keys=True, default=str, indent=1)
+
+
 class CleanupMethod():
     DURING = 'duringProcessing'
     END = 'endOfProcessing'
@@ -60,13 +93,19 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
             path_to_csv: str = inputParams["file_path"]
             output_base_dir: str = self.output_dir  # output directory string
 
-            tracts_string: str = self.protocol["tracts"]
-            if not isinstance(tracts_string, str):
-                raise ValueError("Tracts must be a string of comma delimited tracts to profile")
-            tracts: List[str] = [tract.strip() for tract in tracts_string.split(',') if tract.strip() != '']
-            if len(tracts) == 0:
-                raise ValueError("Tracts must be a non-empty list of tracts to profile")
+            tracts_string = self.protocol["tracts"]
             atlas_path: str = self.protocol["atlas"]
+            if tracts_string is not None and not isinstance(tracts_string, str):
+                raise ValueError("Tracts must be a string of comma delimited tracts to profile")
+            tracts: List[str] = [tract.strip() for tract in (tracts_string or '').split(',') if tract.strip() != '']
+            if len(tracts) == 0:  # no tracts given: all the tracts of the atlas
+                if not isinstance(atlas_path, str) or not os.path.isdir(atlas_path):
+                    raise ValueError("No tracts to profile: give the tracts, or an atlas folder to profile all its tracts "
+                                     f"(atlas: {atlas_path})")
+                tracts = sorted(f for f in os.listdir(atlas_path) if f.endswith('.vtk'))
+                if len(tracts) == 0:
+                    raise ValueError(f"No tracts to profile: no .vtk file in the atlas folder {atlas_path}")
+                logger(f"No tracts given: the {len(tracts)} tracts of the atlas {atlas_path} are profiled")
             if not isinstance(atlas_path, str):
                 for tract in tracts:
                     if not os.path.isabs(tract):
@@ -163,12 +202,17 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                 grid = fibers.profile_grid(arcs, step_size)
 
             parameterized_fiber_output_path: Path = parameterized_fibers_path.joinpath(tract_name_stem + "_parameterized.vtk")
-            if parameterized_fiber_output_path.exists() and not overwrite:
+            tract_signature = {'tract': file_stamp(tract_absolute_filename), 'mask': file_stamp(mask) if use_mask else None,
+                               'settings': {k: self.protocol.get(k) for k in ('stepSize', 'arcLength', 'planeOfOrigin', 'maskThreshold')}}
+            tract_signature_path = parameterized_fiber_output_path.with_suffix('.json')
+            if parameterized_fiber_output_path.exists() and not overwrite and signature_matches(tract_signature_path, tract_signature):
                 logger(f"Skipping parameterized fiber generation of tract {tract}")
             else:
                 logger(f"Generating parameterized fibers for tract {tract}")
                 fibers.write_parameterized_fibers(bundle, arcs, grid, parameterized_fiber_output_path)
-            tract_infos.append({'tract': tract, 'name': tract_name_stem, 'bundle': bundle, 'arcs': arcs, 'grid': grid})
+                write_signature(tract_signature_path, tract_signature)
+            tract_infos.append({'tract': tract, 'name': tract_name_stem, 'bundle': bundle, 'arcs': arcs, 'grid': grid,
+                                'signature': tract_signature})
 
         profiles = {(info['name'], prop): {} for info in tract_infos for prop in properties_to_profile}  # subject id -> profile values
         intermediate_dirs = []
@@ -194,13 +238,21 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     profile_name = f'{subject_id}_' + Path(tract).name.replace('_extracted_done', f'_{prop}_profile')  ## file name only, tract may be an absolute path
                     fiber_output_path = tract_output_path.joinpath(profile_name)
                     fvp_output_path = tract_output_path.joinpath(Path(profile_name).stem + '.fvp')
+                    signature_path = fvp_output_path.with_suffix('.json')
+                    kind, column, scalar_name = sources[prop]
+                    signature = {'property': prop, 'source': [kind, column, scalar_name], 'image': file_stamp(row[column]),
+                                 'displacement_field': file_stamp(row[parameter_to_col_map['Deformation Field']]) if use_displacement_field else None,
+                                 'tract': info['signature'],
+                                 'settings': {k: self.protocol.get(k) for k in PROFILE_SETTINGS}}
                     if fvp_output_path.exists() and not overwrite:
-                        fvp_data = pd.read_csv(fvp_output_path, skiprows=[0, 1, 2, 3])
-                        if len(fvp_data) == len(info['grid']) and np.allclose(fvp_data["Arc_Length"].to_numpy(), info['grid'], atol=1e-4):
-                            logger(f"Skipping profile of {prop} for subject {subject_id} and tract {tract}, using {fvp_output_path}")
-                            profiles[(info['name'], prop)][subject_id] = fvp_data["Parameter_Value"].to_numpy()
-                            continue
-                    todo.append((prop, fiber_output_path, fvp_output_path))
+                        if signature_matches(signature_path, signature):
+                            fvp_data = pd.read_csv(fvp_output_path, skiprows=[0, 1, 2, 3])
+                            if len(fvp_data) == len(info['grid']) and np.allclose(fvp_data["Arc_Length"].to_numpy(), info['grid'], atol=1e-4):
+                                logger(f"Skipping profile of {prop} for subject {subject_id} and tract {tract}, using {fvp_output_path}")
+                                profiles[(info['name'], prop)][subject_id] = fvp_data["Parameter_Value"].to_numpy()
+                                continue
+                        logger(f"Recomputing the profile of {prop} for subject {subject_id} and tract {tract}: its settings or input files changed since {fvp_output_path} was computed")
+                    todo.append((prop, fiber_output_path, fvp_output_path, signature))
                 if len(todo) == 0:
                     continue
 
@@ -209,10 +261,10 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     if not isinstance(displacement_field_path, str) or displacement_field_path.strip() == '':
                         raise Exception(f"No deformation field for subject {subject_id} (column '{parameter_to_col_map['Deformation Field']}')")
                     displacement_field = fibers.Image(displacement_field_path)
-                logger(f"Sampling {', '.join(p for p, _, _ in todo)} of subject {subject_id} along tract {tract}")
+                logger(f"Sampling {', '.join(p for p, _, _, _ in todo)} of subject {subject_id} along tract {tract}")
                 sampled = {}
                 tensor_scalars = {}  # column -> scalars of the tensors sampled along this tract
-                for prop, _, _ in todo:
+                for prop, _, _, _ in todo:
                     kind, column, scalar_name = sources[prop]
                     if (kind, column) not in images:
                         images[(kind, column)] = fibers.TensorImage(row[column]) if kind == 'tensor' else fibers.Image(row[column])
@@ -224,7 +276,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     else:
                         sampled[prop] = fibers.sample_scalar(info['bundle'], images[(kind, column)], displacement_field)
 
-                for prop, fiber_output_path, fvp_output_path in todo:
+                for prop, fiber_output_path, fvp_output_path, signature in todo:
                     subject_bundle = fibers.FiberBundle(info['bundle'].points, info['bundle'].offsets, {prop: sampled[prop], 'ArcLength': info['arcs']})
                     if noNaN:
                         keep = fibers.fibers_without_nan(info['bundle'], sampled[prop])
@@ -235,11 +287,13 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         fibers.write_fibers(subject_bundle, fiber_output_path)
                     profile = fibers.gaussian_profile(subject_bundle.point_data['ArcLength'], subject_bundle.point_data[prop], info['grid'], support_bandwidth)
                     fibers.write_fvp(fvp_output_path, profile, prop, step_size, support_bandwidth)
+                    write_signature(fvp_output_path.with_suffix('.json'), signature)
                     profiles[(info['name'], prop)][subject_id] = profile['mean']
                     if cleanupMethod == CleanupMethod.DURING:
                         if write_fiber_files:
                             fiber_output_path.unlink()
                         fvp_output_path.unlink()
+                        fvp_output_path.with_suffix('.json').unlink()
 
         # save the profiles of all subjects (same arc length samples) to a csv per tract and property
         for info in tract_infos:

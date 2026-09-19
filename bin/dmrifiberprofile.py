@@ -713,10 +713,12 @@ def command_run(args):
         proto.makeDefaultProtocols(options['default_protocols'],template=template,options=options)
     if options['num_threads'] is not None:
         proto.setNumThreads(options['num_threads'])
-    if parameter_map is not None: ## columns of the detected datasheet
-        for name, entry in proto.pipeline:
-            if name=='EXTRACT_Profile':
+    for name, entry in proto.pipeline:
+        if name=='EXTRACT_Profile':
+            if parameter_map is not None: ## columns of the detected datasheet
                 entry['protocol']['parameterToColumnHeaderMap']=parameter_map
+            if args.atlas: ## atlas of the command line (tracts: those of the protocol, all the atlas' tracts if none)
+                entry['protocol']['atlas']=os.path.abspath(args.atlas)
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
     dtiplayground.dmri.common.logger.setLogfile(logfilename)
@@ -804,6 +806,7 @@ def get_args():
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
     parser_run.add_argument('-i','--input-file-list',help='Input datasheet(s), or a folder: the files of the scans below it are detected\n(dmrifiberprofile make-datasheet -h) and written to <output_dir>/datasheet_detected.csv',type=str,nargs='+',required=True)
     parser_run.add_argument('--id-regex',help="Case id from the file names of a folder input: group 1 (default: the part before '_dwi')",default=None)
+    parser_run.add_argument('--atlas',help="Folder with the (parametrized) fiber tracts of the atlas for EXTRACT_Profile, instead of the one of\nthe protocol; without tracts in the protocol (e.g. no -p), all its tracts are profiled",default=None)
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)

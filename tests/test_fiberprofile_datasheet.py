@@ -94,6 +94,15 @@ class TestDetection(unittest.TestCase):
         self.assertEqual([r['id'] for r in rows], ['sub-3_ses-001m'])
         self.assertIn('2 files for DTI', dict(skipped)[SCAN])
 
+    def test_linked_folders(self):
+        linked = self.root / 'linked'
+        linked.mkdir()
+        (linked / 'sub-1').symlink_to(self.root / 'sub-1', target_is_directory=True)
+        (linked / 'loop').symlink_to(linked, target_is_directory=True)  # followed once only
+        _, rows, _, skipped, _ = ds.detect(linked, PROTOCOL)
+        self.assertEqual([r['id'] for r in rows], [SCAN])
+        self.assertEqual(skipped, [])
+
     def test_error_when_nothing_matches(self):
         empty = self.root / 'empty'
         touch(empty, 'sub-9/sub-9_ses-001m_dwi.nii.gz')

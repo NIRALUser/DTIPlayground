@@ -17,7 +17,7 @@ protocol: #define protocol parameters here
         type: filepath-remote-mult
         caption: Comma delimited list of file names of tracts in atlas directory
         default_value: null
-        description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location.
+        description: Selected set of tracts to use. Must uniquely map to a VTK fiber file in the atlas location. Empty - all the tracts (.vtk) of the atlas folder.
     inputIsDTI:
         type: boolean
         caption: Input is DTI
@@ -90,18 +90,18 @@ protocol: #define protocol parameters here
     cleanup:
         type: list
         caption: Cleanup method
-        default_value: duringProcessing
+        default_value: noCleanup
         candidates:
-            - value: duringProcessing
-              caption: During processing
-              description: Remove temporary files the moment they're no longer needed
-            - value: endOfProcessing
-              caption: End of processing
-              description: Remove temporary files after processing is complete
             - value: noCleanup
               caption: No cleanup
-              description: Do not remove temporary files
-        description: Remove temporary files after processing
+              description: Keep the profile of each scan (.fvp) and fiber files; a later run reuses the profiles whose settings and input files are unchanged
+            - value: duringProcessing
+              caption: During processing
+              description: Remove the profiles of each scan (.fvp) and fiber files the moment they're no longer needed (everything is recomputed by a later run)
+            - value: endOfProcessing
+              caption: End of processing
+              description: Remove the profiles of each scan (.fvp) and fiber files after processing is complete (everything is recomputed by a later run)
+        description: Remove the profiles of each scan (.fvp, per property and tract folders) and fiber files after processing; kept, they are reused by a later run when their settings and input files are unchanged
     stepSize:
         type: float
         caption: Step size
@@ -110,7 +110,7 @@ protocol: #define protocol parameters here
     supportBandwidth:
         type: float
         caption: Support/bandwidth
-        default_value: 1
+        default_value: 3
         description: Standard deviation (mm) of the Gaussian kernel; points within this distance of a sample are averaged
     noNaN:
         type: boolean

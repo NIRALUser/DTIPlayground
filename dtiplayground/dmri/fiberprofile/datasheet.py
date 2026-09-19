@@ -74,10 +74,17 @@ def role_description(role, space):
 
 
 def find_images(base_dir, id_regex=DEFAULT_ID_REGEX):
-    """{case id: [(file name rest after the id, path)]} of the images below *base_dir* (hidden folders skipped)."""
+    """{case id: [(file name rest after the id, path)]} of the images below *base_dir* (hidden folders skipped;
+    symbolically linked folders followed, each real folder once)."""
     id_re = re.compile(id_regex)
     found = defaultdict(list)
-    for folder, dirs, files in os.walk(base_dir):
+    visited = set()
+    for folder, dirs, files in os.walk(base_dir, followlinks=True):
+        real = os.path.realpath(folder)
+        if real in visited:  # a link loop, or a folder linked twice
+            dirs[:] = []
+            continue
+        visited.add(real)
         dirs[:] = sorted(d for d in dirs if not d.startswith('.'))
         for name in sorted(files):
             if _stem(name)[0] is None:

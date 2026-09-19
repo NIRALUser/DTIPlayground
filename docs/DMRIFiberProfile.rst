@@ -82,14 +82,14 @@ By default, the only module that will run is `EXTRACT_Profile` which extracts th
 
 Modifying the default protocol
 --------------------------------
-If using the `EXTRACT_Profile` module, there are two fields in the default protocol file that **must be modified before running.** These fields are null by default.
+If using the `EXTRACT_Profile` module, the default protocol file has two fields that define the tracts, null by default.
 
-1. `atlas` - The directory containing the tracts to be profiled. Must be provided as an absolute path.
-2. `tracts` - The list of tracts to be profiled. Must be provided as a comma-separated list of file names (spaces don't matter), including the .vtk extension. These file names will be concatenated with the path specified by `atlas` to form the full path to the tracts.
+1. `atlas` - The directory containing the tracts to be profiled. Must be provided as an absolute path (or with `run --atlas`).
+2. `tracts` - The list of tracts to be profiled. Must be provided as a comma-separated list of file names (spaces don't matter), including the .vtk extension. These file names will be concatenated with the path specified by `atlas` to form the full path to the tracts. If empty, all the tracts (`.vtk`) of the `atlas` directory are profiled.
 
 Optionally, you can also leave the `atlas` field blank and provide a list of absolute file paths in the `tracts` field.
 
-If you try to use this protocol without providing tracts and an atlas, you will receive an error message.
+If you try to use this protocol without providing an atlas or tracts, you will receive an error message.
 
 Anatomy of EXTRACT_Profile protocol
 -----------------------------------
@@ -149,9 +149,9 @@ Below are the options contained in the `EXTRACT_Profile` protocol.
             description: Specifies how far along the tract to step for each new fiber profile location.
 
         supportBandwidth:
-            type: integer
-            default_value: 1
-            description: Specifies the kernel support for DTITractStat.
+            type: float
+            default_value: 3
+            description: Standard deviation (mm) of the Gaussian kernel; points within this distance of a sample are averaged.
 
         noNaN:
             type: boolean
@@ -179,7 +179,7 @@ Here's an example of what the `EXTRACT_Profile` protocol might look like with th
       propertiesToProfile: FA, MD
       resultCaseColumnwise: true
       stepSize: 1
-      supportBandwidth: 1
+      supportBandwidth: 3
       tracts: Arc_L_FrontoParietal-2_extracted_done.vtk, Corpus_Callosum-2_extracted_done.vtk
       useDisplacementField: true
 
@@ -205,6 +205,15 @@ are optional. The run stops with an error listing the known file names if no sca
 datasheet first::
 
     $ dmrifiberprofile make-datasheet DATA_FOLDER -p PROTOCOL_FILE -o datasheet.csv
+
+Without a protocol file, the defaults of EXTRACT_Profile are used; `--atlas` sets the atlas folder, and without
+`tracts` all the tracts (`.vtk`) of the atlas folder are profiled::
+
+    $ dmrifiberprofile run -i DATA_FOLDER --atlas ATLAS_FIBERS_FOLDER -o OUTPUT_DIR
+
+With `cleanup: noCleanup` (the default), the profile of each scan, tract and property (`.fvp`) is kept with the
+settings and input files it was computed from; a later run into the same output folder reuses the unchanged ones and
+only computes the others (e.g. added scans). With `duringProcessing` or `endOfProcessing` everything is recomputed.
 
 Development of a new module
 ===========================

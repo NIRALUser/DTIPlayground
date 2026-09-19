@@ -1,0 +1,42 @@
+name: DWI_Denoise
+caption: DWI Denoise
+description: Denoising of the DWI with DIPY (MP-PCA or Patch2Self). Use it first in the pipeline, on the raw images, before any interpolation and before GIBBS_Correct
+version: "0.1"
+dependency: []
+result: null
+module_type: prep
+process_attributes:
+    - deform_image
+protocol:
+      method:
+        type: list
+        caption: Method
+        default_value: mppca
+        candidates:
+          - value: mppca
+            caption: MP-PCA
+            description: Marchenko-Pastur PCA of local patches (Veraart et al. 2016), the method of MRtrix dwidenoise. Also writes the noise level map (DWI_noise_sigma)
+          - value: patch2self
+            caption: Patch2Self
+            description: Self-supervised denoising, each volume predicted from the other volumes (Fadnavis et al. 2020); b-values up to 50 are the b=0 volumes (as in QSIPrep). Also writes the RMS of the removed signal (DWI_noise_residual)
+        description: Denoising method
+      patchRadius:
+        type: integer
+        caption: Patch radius (MP-PCA)
+        default_value: 0
+        description: Radius of the patches of MP-PCA in voxels (2 is a 5x5x5 patch). 0 chooses the smallest patch with at least as many voxels as there are volumes
+      patch2selfModel:
+        type: list
+        caption: Regression model (Patch2Self)
+        default_value: ols
+        candidates:
+          - value: ols
+            caption: Ordinary least squares
+            description: Ordinary least squares
+          - value: ridge
+            caption: Ridge
+            description: Ridge regression
+          - value: lasso
+            caption: Lasso
+            description: Lasso regression
+        description: Regression model of Patch2Self

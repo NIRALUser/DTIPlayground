@@ -191,6 +191,12 @@ class QC_Report(prep.modules.DTIPrepModule):
             if module["module_name"] == "EDDYMOTION_Correct":
                 columns += ['rms_larger_than_1', 'rms_larger_than_2', 'rms_larger_than_3']
                 values += [module['report']['csv_data']['rms_gt_1'], module['report']['csv_data']['rms_gt_2'], module['report']['csv_data']['rms_gt_3']]
+            ## noise (DWI_Denoise), Gibbs correction, motion and SNR/CNR (EDDYMOTION_Correct), tensor fit (DTI_Estimate)
+            for key in ('denoise_qc', 'gibbs_qc', 'eddy_qc', 'fit_qc'):
+                for name, value in (module.get('report', {}).get('csv_data', {}).get(key) or {}).items():
+                    if name not in columns:
+                        columns.append(name)
+                        values.append(value)
 
         qc_report = pandas.DataFrame([values], columns = columns)
         path_output_directory = Path(self.output_dir).parent.parent

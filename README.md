@@ -179,6 +179,24 @@ To run with existing protocol file:
 
 **Rerunning into an existing output directory:** a module with a result from a previous run is not recomputed, unless its protocol or the global variables given with `-g` changed since that run (compared with the `settings.yml` stored in the module's folder; the module and the following ones are then recomputed). `--overwrite` recomputes all modules. Results of versions before 0.7.11 have no `settings.yml`: they are reused (with a warning) until the run uses `--overwrite`. Global variables given with `-g` take precedence over those stored by a previous run (`global_variables.yml`).
 
+**Denoising and Gibbs ringing removal:** DWI_Denoise (DIPY MP-PCA, the method of MRtrix `dwidenoise`, or Patch2Self)
+and GIBBS_Correct (DIPY, the method of MRtrix `mrdegibbs`, for full Fourier acquisitions) are not in the default
+pipeline. Both assume raw, uninterpolated data: put DWI_Denoise first and GIBBS_Correct right after it, e.g.
+`-d DWI_Denoise GIBBS_Correct SLICE_Check INTERLACE_Check EDDYMOTION_Correct QC_Report`. MP-PCA also writes the noise
+level map (`<base>_DWI_noise_sigma.nii.gz`), Patch2Self the RMS of the removed signal (`<base>_DWI_noise_residual.nii.gz`).
+
+**QC outputs** (next to the QCed image, `<base>_<name>`), also columns of the QC_Report CSV and of the batch QC table:
+- `DENOISE_QC.tsv` (DWI_Denoise): noise level (MP-PCA sigma) and b=0 SNR in the brain, or the median of the Patch2Self
+  residual map, standard deviation of the removed signal. `GIBBS_QC.tsv` (GIBBS_Correct): mean absolute change in the brain.
+- `EDDY_motion.tsv` (EDDYMOTION_Correct): per volume translations (mm), rotations (degrees), framewise displacement
+  (Power et al. 2012, 50 mm head radius), RMS movement and eddy outlier slices (`interpolateBadData`/`--repol`).
+  `EDDY_QC.tsv`: mean/max framewise displacement, maximum translation and rotation (relative to the first volume and
+  between consecutive volumes), outlier slices, b=0 SNR and CNR of each shell (mean of eddy `--cnr_maps` in the mask).
+- `DTI_fit.tsv` (DTI_Estimate): per volume R² and correlation of the signal predicted by a WLS tensor fit (in the mask,
+  without the voxels that have a non-positive value in some volume, e.g. thresholded at 0 after eddy), and the number
+  of poorly fitted slices (slice R² more than 4 scaled MADs below that of the same slice in the other volumes of the
+  shell). `DTI_fit_QC.tsv`: their summary; `DTI_fit_carpet.png`: slice x volume R² (in the QC report).
+
 **[NOTE]** when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
 
 5. **run-dir** Run output directory having protocol file
@@ -228,7 +246,9 @@ interface (`bids_dir output_dir participant|group`):
   with, so write it on the cluster. Run the command again after the job to see which datasets failed and resubmit
   them.
 - **group**: `<output_dir>/batch/qc_table.tsv` and `qc_report.html` (state, run time, volumes in/out, excluded
-  volumes, mask volume, mean FA per dataset; unusual numbers of excluded volumes are marked), and
+  volumes, mask volume, mean FA per dataset, and the noise, motion, SNR/CNR and tensor fit summaries of the modules
+  that ran, see **QC outputs**; values far from the cohort median are marked: excluded volumes, and in the bad
+  direction mean framewise displacement, outlier slices, poorly fitted slices and mean tensor fit R²), and
   `fiberprofile_datasheet.csv`, the datasheet for `dmrifiberprofile` (columns `id`, `DTI`, and `FW DTI`, `Deformation
   field`, `FWF`, `NDI`, `ODI` when the pipeline writes them). `dmriprep batch-report <output_dir>` does the same for
   any batch.

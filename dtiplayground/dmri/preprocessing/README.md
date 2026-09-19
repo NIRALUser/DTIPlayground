@@ -10,12 +10,16 @@ The Preprocessing module contains a lot of modules that are used to preprocess t
 [ReadMe about the module BRAIN_Mask](modules/BRAIN_Mask/README.md)
 - BRAIN_Tractography : will help to the treatment of the tracts observed in the white matter of the brain. It is based on the FSL software.
 [ReadMe about the module BRAIN_Tractography](modules/BRAIN_Tractography/README.md)
+- DWI_Denoise : denoises the DWI with DIPY (MP-PCA or Patch2Self); use it first, on the raw images.
+[ReadMe about the module DWI_Denoise](modules/DWI_Denoise/README.md)
 - DTI_Estimate : will run DTI by several methods like : runDTI, runDTI_DIPY, runDTI_dtiestim.
 [ReadMe about the module DTI_Estimate](modules/DTI_Estimate/README.md)
 - DTI_Register :  will allow to register the DTI images. It is based on the ANTs software.
 [ReadMe about the module DTI_Register](modules/DTI_Register/README.md)
 - EDDYMOTION_Correc : will correct the eddy current distortion in the DTI images.
 [ReadMe about the module EDDYMOTION_Correct](modules/EDDYMOTION_Correct/README.md)
+- GIBBS_Correct : removes Gibbs ringing with DIPY (full Fourier acquisitions); use it after DWI_Denoise, before any interpolation.
+[ReadMe about the module GIBBS_Correct](modules/GIBBS_Correct/README.md)
 - IDENTITY_Process : will assure a identity process of the input image.
 [ReadMe about the module IDENTITY_Process](modules/IDENTITY_Process/README.md)
 - INTERLACE_Check : will help to the treatment between slices by rule out weird volumes with statistical conditions.

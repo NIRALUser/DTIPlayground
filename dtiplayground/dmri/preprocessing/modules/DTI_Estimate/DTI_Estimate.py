@@ -12,6 +12,8 @@ from dipy.core.gradients import gradient_table
 import dipy.denoise.noise_estimate as ne
 from dipy.io.image import save_nifti
 
+FIT_QC_FILES = ('fit_qc.tsv', 'fit.tsv', 'fit_carpet.png') # summary, per volume, slice x volume correlation
+
 
 class DTI_Estimate(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
@@ -33,11 +35,66 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         self.software_info=protocol_options['software_info']['softwares']
         self.baseline_threshold=protocol_options['baseline_threshold']
         self.global_vars=self.getGlobalVariables()
+        for name in FIT_QC_FILES: ## computed again (makeReport) for this run
+            Path(self.output_dir).joinpath(name).unlink(missing_ok=True)
         res=self.runDTI(method=self.protocol['method'],
                         optimizationMethod=self.protocol['optimizationMethod'],
                         correctionMethod=self.protocol['correctionMethod'])
         self.result['output']['success']=True
         return self.result
+
+    def makeReport(self):
+        super().makeReport()
+        qc = self.fitQC()
+        if not qc:
+            return
+        with open(str(Path(self.output_dir).joinpath('report.md')), 'a') as f:
+            f.write('* Tensor fit (WLS) of each volume: R2 mean {} (min {}), correlation mean {} (min {})\n'
+                    .format(qc['fit_r2_mean'], qc['fit_r2_min'], qc['fit_corr_mean'], qc['fit_corr_min']))
+            f.write('* {}% of the mask voxels left out (a non-positive value in some volume, or a degenerate fit)\n'.format(qc.get('fit_excluded_voxels_percent')))
+            f.write('* {} poorly fitted slices (slice R2 far below that of the same slice in the other volumes of the shell)\n\n'.format(qc['poor_fit_slices']))
+            f.write("<img src='{}' width='640'>\n\n".format(Path(self.output_dir).joinpath('fit_carpet.png')))
+        self.result['report']['csv_data']['fit_qc'] = qc
+        with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
+            yaml.dump(self.result,f)
+
+    def fitQC(self):
+        """Agreement of each volume and slice with the prediction of a WLS tensor fit (fit_qc.tsv summary,
+        fit.tsv per volume, fit_carpet.png), computed once per run of the module. {} if it fails."""
+        from dtiplayground.dmri.preprocessing import qc_metrics
+        out = Path(self.output_dir)
+        paths = [out.joinpath(n) for n in FIT_QC_FILES]
+        try:
+            if not all(p.exists() for p in paths):
+                logger("Tensor fit QC ...", prep.Color.PROCESS)
+                gradients = self.image.getGradients()
+                bvals = np.array([g['b_value'] for g in gradients], dtype=float)
+                bvecs = np.array([g['unit_gradient'] for g in gradients], dtype=float)
+                data = self.image.images
+                mask = None
+                mask_path = self.result['output'].get('global_variables', {}).get('mask_path')
+                if mask_path and Path(mask_path).exists():
+                    mask = np.squeeze(DWI(mask_path).images) > 0
+                if mask is None or mask.shape != data.shape[:3]:
+                    from dipy.segment.mask import median_otsu
+                    b0 = data[..., bvals <= max(min(bvals), 50)].mean(axis=-1)
+                    _, mask = median_otsu(b0, median_radius=2, numpass=1)
+                b0_threshold = min(max(min(bvals), 50), 199)
+                rows, qc, slice_r2, poor = qc_metrics.tensor_fit(data, bvals, bvecs, mask, b0_threshold=b0_threshold)
+                original = [g.get('original_index', i) for i, g in enumerate(gradients)]
+                for r in rows:
+                    r['original_index'] = original[r['volume']]
+                qc_metrics.write_tsv(str(paths[1]), rows, ['volume', 'original_index', 'bval', 'fit_r2', 'fit_corr', 'poor_fit_slices'])
+                qc_metrics.carpet_plot(str(paths[2]), slice_r2, poor, bvals, [r['fit_r2'] for r in rows],
+                                       title='Tensor fit: R2 per volume and per slice (circles: poorly fitted slices)')
+                qc_metrics.write_tsv(str(paths[0]), [qc])
+            qc = {k: (int(v) if k == 'poor_fit_slices' else float(v)) for k, v in qc_metrics.read_tsv(str(paths[0]))[0].items() if v != ''}
+        except Exception as e:
+            logger("Tensor fit QC could not be computed: {}".format(e), prep.Color.WARNING)
+            return {}
+        for p, postfix in zip(paths, ('DTI_fit_QC', 'DTI_fit', 'DTI_fit_carpet')):
+            self.addOutputFile(str(p), postfix)
+        return qc
 
 
 ### User defined methods

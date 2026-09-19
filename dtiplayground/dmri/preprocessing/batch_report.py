@@ -1,7 +1,8 @@
 #   Cohort report of a dmriprep batch (dmriprep bids ... group / dmriprep batch-report)
 #
-#   <out>/batch/qc_table.tsv                  one row per dataset: state, run time, volumes in/out, mask volume, mean FA
-#   <out>/batch/qc_report.html                the same table, with unusual numbers of excluded volumes marked
+#   <out>/batch/qc_table.tsv                  one row per dataset: state, run time, volumes in/out, mask volume, mean FA,
+#                                             motion, eddy outlier slices, SNR/CNR and tensor fit (when these modules ran)
+#   <out>/batch/qc_report.html                the same table, with values far from the cohort median marked
 #   <out>/batch/fiberprofile_datasheet.csv    datasheet for dmrifiberprofile (column names of
 #                                             examples/normative_profiles), for the datasets with a DTI
 
@@ -16,7 +17,14 @@ from dtiplayground.dmri.preprocessing import batch
 # datasheet column -> output name of the dmriprep module (file <base>_<name>.<ext> in the dataset folder)
 FIBERPROFILE_COLUMNS = [('DTI', 'DTI'), ('FW DTI', 'FWDTI'), ('Deformation field', 'DTI_DisplacementField'),
                         ('FWF', 'NODDI_FWF'), ('NDI', 'NODDI_NDI'), ('ODI', 'NODDI_ODI')]
-OUTLIER_COLUMNS = ['excluded_volumes']  # mask volume and FA change with age: not flagged
+# column -> direction of the unusual values that are marked (0: both sides, 1: high values, -1: low values)
+# mask volume, FA, SNR and CNR change with age and acquisition: not marked
+OUTLIER_COLUMNS = {'excluded_volumes': 0, 'mean_fd': 1, 'outlier_slices_percent': 1, 'fit_r2_mean': -1,
+                   'poor_fit_slices': 1}
+# columns of the summaries written by the modules (<base>_<name>.tsv), in this order; SNR/CNR columns are added
+QC_SUMMARIES = [('DENOISE_QC', ['noise_sigma', 'snr_b0_mppca', 'noise_residual_rms']),
+                ('EDDY_QC', ['mean_fd', 'max_fd', 'max_translation', 'max_rotation', 'outlier_slices_percent']),
+                ('DTI_fit_QC', ['fit_r2_mean', 'fit_r2_min', 'poor_fit_slices'])]
 
 
 def _output(folder, base, name):
@@ -81,6 +89,17 @@ def dataset_row(out, dataset, state, status):
             row['mean_fa'] = round(float(np.nanmean(fa[inside])), 4)
     except Exception:
         pass
+    for name, columns in QC_SUMMARIES:
+        path = folder.joinpath('{}_{}.tsv'.format(base, name))
+        summary = {}
+        if path.is_file():
+            try:
+                with open(path, newline='') as f:
+                    summary = next(csv.DictReader(f, dialect='excel-tab'), {}) or {}
+            except Exception:
+                summary = {}
+        for c in columns + [k for k in summary if k.startswith(('snr_', 'cnr_'))]:
+            row[c] = summary.get(c, '')
     sheet = {'id': dataset['id']}
     for column, name in FIBERPROFILE_COLUMNS:
         p = _output(folder, base, name)
@@ -89,19 +108,21 @@ def dataset_row(out, dataset, state, status):
 
 
 def mark_outliers(rows, columns=OUTLIER_COLUMNS, limit=3.0):
-    """{(row index, column)} of the values more than *limit* scaled MADs from the median of the column."""
+    """{(row index, column)} of the values more than *limit* scaled MADs from the median of the column, on the side
+    given by the column direction (0: both, 1: above, -1: below)."""
     marked = set()
-    for c in columns:
-        values = [(i, float(r[c])) for i, r in enumerate(rows) if r[c] not in ('', None)]
+    for c, side in (columns.items() if isinstance(columns, dict) else [(c, 0) for c in columns]):
+        values = [(i, float(r[c])) for i, r in enumerate(rows) if r.get(c) not in ('', None)]
         if len(values) < 5:
             continue
         v = np.array([x for _, x in values])
         median = np.median(v)
         mad = 1.4826 * np.median(np.abs(v - median))
+        deviation = {i: (x - median) * (side if side else 1) for i, x in values}
         if mad == 0:
-            marked |= {(i, c) for i, x in values if x != median}
+            marked |= {(i, c) for i, x in values if (deviation[i] > 0 if side else x != median)}
             continue
-        marked |= {(i, c) for i, x in values if abs(x - median) > limit * mad}
+        marked |= {(i, c) for i, x in values if (deviation[i] if side else abs(deviation[i])) > limit * mad}
     return marked
 
 
@@ -116,7 +137,13 @@ def write_report(out, echo=print):
         if state == 'done' and sheet['DTI']:
             sheets.append(sheet)
     bdir = batch.batch_dir(out)
-    columns = list(rows[0].keys()) if rows else ['id']
+    columns = []
+    for r in rows: # the SNR/CNR columns depend on the shells of each dataset
+        columns += [c for c in r if c not in columns]
+    columns = columns or ['id']
+    for r in rows:
+        for c in columns:
+            r.setdefault(c, '')
     with open(bdir.joinpath('qc_table.tsv'), 'w', newline='') as f:
         w = csv.DictWriter(f, fieldnames=columns, dialect='excel-tab')
         w.writeheader()
@@ -136,7 +163,8 @@ def write_report(out, echo=print):
     echo('QC report: {}'.format(bdir.joinpath('qc_report.html')))
     echo('dmrifiberprofile datasheet ({} dataset(s) with a DTI): {}'.format(len(sheets), bdir.joinpath('fiberprofile_datasheet.csv')))
     if marked:
-        echo('{} dataset(s) with a number of excluded volumes far from the cohort median are marked in the report'.format(len(marked)))
+        echo('{} value(s) far from the cohort median are marked in the report ({})'.format(
+            len(marked), ', '.join(sorted({c for _, c in marked}))))
 
 
 def _write_html(path, out, rows, columns, marked, counts):
@@ -166,8 +194,10 @@ td.flag {{ background: #ffd8a8; font-weight: bold; }}
 td.failed, td.interrupted {{ background: #ffc9c9; }} td.outdated, td.pending {{ background: #fff3bf; }}
 </style></head><body>
 <h2>dmriprep batch: {folder}</h2>
-<p>{n} dataset(s): {summary}. Orange: number of excluded volumes more than 3 scaled MADs from the cohort median. Details: batch/status.tsv and
-the batch_log.txt / log.txt of each dataset.</p>
+<p>{n} dataset(s): {summary}. Orange: more than 3 scaled MADs from the cohort median: number of excluded volumes (either side),
+mean framewise displacement, eddy outlier slices and poorly fitted slices of the tensor fit (high side), mean tensor fit R2 (low side).
+Motion in mm and degrees; outlier slices in % of the slices. Details: batch/status.tsv and the batch_log.txt / log.txt of each dataset,
+and the per volume tables &lt;base&gt;_EDDY_motion.tsv and &lt;base&gt;_DTI_fit.tsv.</p>
 <table><tr>{head}</tr>
 {body}
 </table></body></html>

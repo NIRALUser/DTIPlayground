@@ -174,7 +174,8 @@ class FSL(ExternalToolWrapper):
                     data_is_shelled=True,
                     repol=True,
                     verbose=True,
-                    b_range=None # b-values within this range are treated as one shell (None: use eddy's default)
+                    b_range=None, # b-values within this range are treated as one shell (None: use eddy's default)
+                    cnr_maps=True # b=0 SNR and CNR per shell (<out>.eddy_cnr_maps), used by eddy_quad and the QC metrics
                     ):
         binary_name='eddy_openmp'
         if not Path(self.binary_path).joinpath('bin').joinpath(binary_name).exists():
@@ -213,6 +214,8 @@ class FSL(ExternalToolWrapper):
         supported=self._supported_options(binary_name)
         if 'nthr' in supported:
             arguments.append('--nthr={}'.format(self.num_threads))
+        if cnr_maps and 'cnr_maps' in supported:
+            arguments.append('--cnr_maps')
         if b_range is not None and b_range > 0:
             ## eddy's default range can merge shells that are close together in some protocols
             if 'b_range' in supported:

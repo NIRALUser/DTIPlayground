@@ -107,6 +107,12 @@ options:
       type: queue
       caption: Pipeline Queue
       candidates: ## add elements from below list, each one is a key for a protocol
+        - value: DWI_Denoise
+          caption: Denoising
+          description: Denoising with DIPY (MP-PCA or Patch2Self), first in the pipeline on the raw images
+        - value: GIBBS_Correct
+          caption: Gibbs Ringing Removal
+          description: Gibbs ringing removal with DIPY (full Fourier acquisitions), after DWI_Denoise and before any interpolation
         - value: SLICE_Check
           caption: Slicewise Check
           description: Check and remove outlier gradient volume based on slicewise correlation.

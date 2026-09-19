@@ -1,0 +1,20 @@
+name: GIBBS_Correct
+caption: GIBBS Correct
+description: Gibbs ringing removal with DIPY (local subvoxel shifts, the method of MRtrix mrdegibbs) for full Fourier acquisitions. Use it after DWI_Denoise and before any interpolation
+version: "0.1"
+dependency: []
+result: null
+module_type: prep
+process_attributes:
+    - deform_image
+protocol:
+      sliceAxis:
+        type: integer
+        caption: Slice axis
+        default_value: 2
+        description: Voxel axis (0, 1 or 2) along which the slices were acquired; the ringing is removed in the plane of each slice. 2 (the third voxel axis) for the usual axial acquisitions
+      nPoints:
+        type: integer
+        caption: Number of neighbour points
+        default_value: 3
+        description: Number of neighbour points used to find the subvoxel shift with the least ringing (DIPY n_points)

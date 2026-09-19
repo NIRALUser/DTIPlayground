@@ -349,6 +349,8 @@ class DTIPlaygroundModule: #base class
             self.image=self.loadImage(self.result['output']['image_path'])
             self.result['output']['image_object']=id(self.image)
         self.result['input']=self.getPreviousResult()['output']
+        if getattr(self, 'input_number_of_gradients', None) is None and hasattr(self.image, 'getGradients'):
+            self.input_number_of_gradients = len(self.image.getGradients()) # reused result: before its exclusions
         self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
         logger("Excluded gradient indexes (original index) : {}"
             .format(self.result['output']['excluded_gradients_original_indexes']),common.Color.WARNING)

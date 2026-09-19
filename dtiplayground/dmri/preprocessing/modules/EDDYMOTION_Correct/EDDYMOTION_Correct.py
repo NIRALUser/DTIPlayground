@@ -118,16 +118,52 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
             rmsLargerThan1 = data_rms[data_rms > 1.0].count()[0]
             rmsLargerThan2 = data_rms[data_rms > 2.0].count()[0]
             rmsLargerThan3 = data_rms[data_rms > 3.0].count()[0]
-            f.write('* ' + str(rmsLargerThan1) + " gradients with RMS movement relative to first volume > 1 mm\n")
-            f.write('* ' + str(rmsLargerThan2) + " gradients with RMS movement relative to first volume > 2 mm\n")
-            f.write('* ' + str(rmsLargerThan3) + " gradients with RMS movement relative to first volume > 3 mm\n")
+            ## second column of eddy_movement_rms: RMS movement relative to the previous volume
+            f.write('* ' + str(rmsLargerThan1) + " gradients with RMS movement relative to the previous volume > 1 mm\n")
+            f.write('* ' + str(rmsLargerThan2) + " gradients with RMS movement relative to the previous volume > 2 mm\n")
+            f.write('* ' + str(rmsLargerThan3) + " gradients with RMS movement relative to the previous volume > 3 mm\n")
+            qc = self.motionQC()
+            if qc:
+                f.write('* Framewise displacement: mean {} mm, max {} mm\n'.format(qc.get('mean_fd'), qc.get('max_fd')))
+                f.write('* Maximum translation {} mm, rotation {} deg (relative to the first volume)\n'.format(qc.get('max_translation'), qc.get('max_rotation')))
+                if 'outlier_slices' in qc:
+                    f.write('* {} outlier slices replaced by eddy ({}% of the slices)\n'.format(qc['outlier_slices'], qc['outlier_slices_percent']))
+                cnr = ['{} {}'.format(k.replace('_', ' '), v) for k, v in qc.items() if k.startswith(('snr_', 'cnr_'))]
+                if cnr:
+                    f.write('* Mean in the mask: ' + ', '.join(cnr) + '\n')
             f.seek(0)
-        
+
         self.result['report']['csv_data']['rms_gt_1'] = int(rmsLargerThan1)
         self.result['report']['csv_data']['rms_gt_2'] = int(rmsLargerThan2)
         self.result['report']['csv_data']['rms_gt_3'] = int(rmsLargerThan3)
+        self.result['report']['csv_data']['eddy_qc'] = qc
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
             yaml.dump(self.result,f)
+
+    def motionQC(self):
+        """Motion (per volume: EDDY_motion.tsv) and SNR/CNR summary (EDDY_QC.tsv) of the eddy outputs, {} without them."""
+        from dtiplayground.dmri.preprocessing import qc_metrics
+        output_dir = Path(self.output_dir)
+        eddy_base = output_dir.joinpath('output_eddied')
+        args = qc_metrics.eddy_arguments(eddy_base)
+        bval_path = Path(args.get('bvals', str(output_dir.joinpath('output_eddied.bval'))))
+        try:
+            bvals = [float(b) for b in bval_path.read_text().split()]
+            gradients = self.image.getGradients() if self.image is not None else []
+            original = [g.get('original_index', i) for i, g in enumerate(gradients)]
+            rows, qc = qc_metrics.eddy_motion(eddy_base, bvals, original if len(original) == len(bvals) else None)
+            if rows is None:
+                return {}
+            b_range = self.protocol.get('bRange') or 50
+            qc.update(qc_metrics.eddy_cnr(eddy_base, bvals, args.get('mask'), b0_threshold=100, b_range=b_range))
+        except Exception as e:
+            logger("Motion QC metrics could not be computed: {}".format(e), prep.Color.WARNING)
+            return {}
+        motion_path = qc_metrics.write_tsv(str(output_dir.joinpath('motion.tsv')), rows)
+        qc_path = qc_metrics.write_tsv(str(output_dir.joinpath('eddy_qc.tsv')), [qc])
+        self.addOutputFile(motion_path, 'EDDY_motion')
+        self.addOutputFile(qc_path, 'EDDY_QC')
+        return qc
         
 
 ### User defined methods

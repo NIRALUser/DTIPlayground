@@ -318,6 +318,19 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             fw.write(outstr)
         return indices 
 
+    def topup_inputs_signature(self, merged_b0_filename, acqp_filename, configuration_filename):
+        """Text identifying the inputs of topup: hash of the merged b0 image, acqp parameters and configuration"""
+        import hashlib
+        h=hashlib.sha256()
+        with open(merged_b0_filename,'rb') as f:
+            for chunk in iter(lambda: f.read(1<<20), b''):
+                h.update(chunk)
+        config=Path(configuration_filename)
+        config_text=config.read_text() if config.is_file() else str(configuration_filename)
+        return "b0 {}\nacqp {}\nconfig {}\n".format(h.hexdigest(),
+                                                   hashlib.sha256(Path(acqp_filename).read_bytes()).hexdigest(),
+                                                   hashlib.sha256(config_text.encode()).hexdigest())
+
     def get_phase_axis(self,phaseEncodingAxis):
         return phaseEncodingAxis
 
@@ -383,14 +396,22 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         _fout_path=Path(self.output_dir).joinpath(base+"_field.nii.gz").__str__()
         _iout_path=Path(self.output_dir).joinpath(base+"_corr.nii.gz").__str__()
         _out_path_prep=Path(self.output_dir).joinpath(base+"_topup").__str__()
-        if not Path(_out_path).exists() or not Path(_fout_path).exists() or not Path(_iout_path).exists():
-            
+        ## topup outputs of a previous run are reused only if they were computed from the same b0s, acqp and configuration
+        _inputs_path=Path(self.output_dir).joinpath(base+"_topup_inputs.txt")
+        _inputs=self.topup_inputs_signature(merged_b0_filename, acqp_filename, configurationFilePath)
+        _reusable=Path(_out_path).exists() and Path(_fout_path).exists() and Path(_iout_path).exists() \
+                  and _inputs_path.exists() and _inputs_path.read_text()==_inputs
+        if _reusable:
+            logger("Reusing the topup outputs of a previous run (same b0s, acqp and configuration)",prep.Color.INFO)
+        else:
+            _inputs_path.unlink(missing_ok=True)
             output=fsl.topup(imain=merged_b0_filename,  # input image filename (merged b0)
                       datain=acqp_filename, # acqp params filename
                       out=_out_path_prep,    # output basename (not a filename)
                       fout=_fout_path,   # field output filename (Hz)
                       iout=_iout_path,   # movement corrected image output filename
                       config=configurationFilePath) # config filename
+            _inputs_path.write_text(_inputs)
         
         _average_path=Path(self.output_dir).joinpath(base+"_average.nii.gz").__str__()
         

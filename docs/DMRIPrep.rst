@@ -92,7 +92,8 @@ The firstthing to do QC is to generate default protocol file that has pipeline i
 if `-o` option is omitted, the output protocol will be printed on terminal.`-d` option specifies the list of modules for the QC, 
 with which command will generate the default pipeline and protocols of the sequence. Same module can be used redundantly. If `-d` 
 option is not specified, the default pipeline will be generated from the file `protocol_template.yml` . You can change the default 
-pipeline in `protocol_template.yml` file
+pipeline in `protocol_template.yml` file. With two input images (opposite phase encodings), the default pipeline also has 
+SUSCEPTIBILITY_Correct, before EDDYMOTION_Correct.
 
 4. run - Run pipeline
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -124,6 +125,33 @@ If an output directory is configured with protocol file, you can run it with fol
     $ dmriprep run-dir <output-directory>
 
 Output directory can be generated from DTIPlaygroundLab (UI)
+
+6. bids / run-batch - Process a cohort
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`bids` processes the DWIs of a BIDS dataset with the BIDS-App interface, locally or as a SLURM job array::
+
+    $ dmriprep bids /data/study /data/study/derivatives/dmriprep participant -p protocol.yml -j 4 -t 2
+    $ dmriprep bids /data/study /data/study/derivatives/dmriprep participant -p protocol.yml -t 4 --slurm
+    $ dmriprep bids /data/study /data/study/derivatives/dmriprep group
+
+Each DWI run is a dataset; when the protocol needs two images (SUSCEPTIBILITY_Correct), the runs with opposite phase
+encoding of a session are processed as pairs, with the phase encoding axis and readout time of the sidecars. `-p`
+takes one protocol, or protocols per acquisition (`-p '*acq-dir79*=dir79.yml' other.yml`, first match); `-d [MODULE ...]`
+uses the default protocol (as `run -d`), generated for each acquisition; the default pipeline processes the runs with
+an opposite phase encoded run as pairs, with SUSCEPTIBILITY_Correct. The output
+of each dataset is in `<output_dir>/sub-<label>/[ses-<label>/]dwi/<dataset id>/` (the usual `dmriprep run` output);
+`<output_dir>/batch/` holds the manifest, the protocols of the datasets and their state. `--dry-run` lists the
+datasets grouped by acquisition. Running the command again processes only the datasets that are not done;
+`dmriprep batch-status <output_dir>` shows their state. The `group` level writes a QC table of the cohort and the
+datasheet for `dmrifiberprofile`.
+
+`run-batch` does the same for datasets listed in a datasheet (columns `id`, `image_1`, optionally `image_2`,
+`protocol`, `output_dir`, `overrides`)::
+
+    $ dmriprep run-batch -m cohort.tsv -o /data/cohort_QC -p protocol.yml -j 4
+
+See the README for all options.
 
 
 Development of a new module

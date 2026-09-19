@@ -105,6 +105,21 @@ def _generate_output_directories_mapping(output_dir,exec_sequence): ## map exec 
         module_output_dirs[uid]=str(module_output_dir)
     return module_output_dirs
 
+def default_pipeline(template, n_images=1):
+    """Default module list of a protocol template; with two images (opposite phase encodings), SUSCEPTIBILITY_Correct is
+    added (if the template offers it) before EDDYMOTION_Correct, which uses its topup result."""
+    execution=template['options']['execution']['pipeline']
+    modules=list(execution['default_value'])
+    candidates=[c['value'] for c in execution.get('candidates',[])]
+    if n_images>=2 and 'SUSCEPTIBILITY_Correct' in candidates and 'SUSCEPTIBILITY_Correct' not in modules:
+        position=len(modules)
+        for before in ('EDDYMOTION_Correct','QC_Report'):
+            if before in modules:
+                position=modules.index(before)
+                break
+        modules.insert(position,'SUSCEPTIBILITY_Correct')
+    return modules
+
 def default_pipeline_options():
     return {
                  "options":{
@@ -292,7 +307,7 @@ class Pipeline:
         if pipeline is not None:
             self.pipeline=self.furnishPipeline(pipeline)
         else:
-            self.pipeline=self.furnishPipeline(template['options']['execution']['pipeline']['default_value'])
+            self.pipeline=self.furnishPipeline(default_pipeline(template, len(self.images)))
         logger("Default protocols are generated.",common.Color.OK)
 
     def furnishPipeline(self,pipeline):

@@ -160,7 +160,7 @@ The first thing to do QC is to generate default protocol file that has pipeline 
 ```
     $ dmriprep [base options] make-protocols -i IMAGE_FILENAME [-o OUTPUT_FILENAME_] [-d MODULE1 MODULE2 ... ]
 ```
-if `-o` option is omitted, the output protocol will be printed on terminal.`-d` option specifies the list of modules for the QC, with which command will generate the default pipeline and protocols of the sequence. Same module can be used redundantly. If `-d` option is not specified, the default pipeline will be generated from the file `protocol_template.yml` . You can change the default pipeline in `protocol_template.yml` file
+if `-o` option is omitted, the output protocol will be printed on terminal.`-d` option specifies the list of modules for the QC, with which command will generate the default pipeline and protocols of the sequence. Same module can be used redundantly. If `-d` option is not specified, the default pipeline will be generated from the file `protocol_template.yml` . You can change the default pipeline in `protocol_template.yml` file. With two input images (opposite phase encodings), the default pipeline also has SUSCEPTIBILITY_Correct, before EDDYMOTION_Correct.
 
 4. **run** - Run pipeline 
 To run with default protocol generated from `protocol_template.yml`:
@@ -186,6 +186,62 @@ To run with existing protocol file:
 ```
     $ dmriprep run-dir output/directory [--overwrite]
 ```
+
+6. **bids** / **run-batch** - Process a cohort (locally or on a SLURM cluster)
+
+`bids` processes the DWIs of a BIDS dataset (`sub-*/[ses-*/]dwi/*_dwi.nii[.gz]` with `.bval`/`.bvec`), with the BIDS-App
+interface (`bids_dir output_dir participant|group`):
+```
+    $ dmriprep bids /data/study /data/study/derivatives/dmriprep participant -p protocol.yml -j 4 -t 2
+    $ dmriprep bids /data/study /data/study/derivatives/dmriprep group
+```
+- **Datasets**: each DWI run is a dataset, unless the protocol needs two images (SUSCEPTIBILITY_Correct): the runs of a
+  session that differ only by `dir`/`run` and have opposite phase encoding (`PhaseEncodingDirection` of the sidecar, or
+  the `dir` label with the image orientation) are then processed as pairs, the run encoded towards posterior (AP, RL,
+  SI) first. The phase encoding axis and value (`TotalReadoutTime`) of SUSCEPTIBILITY_Correct are set from the
+  sidecars for each pair. Runs that can't be paired are listed as skipped.
+- **Protocols**: `-p protocol.yml`, or one protocol per acquisition with shell patterns on the run names, the first
+  match being used: `-p '*acq-dir79*=dir79.yml' '*acq-shells06*=shells06.yml'`. Or `-d [MODULE ...]`: the default
+  protocol with these modules (as `run -d`; without modules the default pipeline of `protocol_template.yml`:
+  SLICE_Check, INTERLACE_Check, EDDYMOTION_Correct, QC_Report, with SUSCEPTIBILITY_Correct before EDDYMOTION_Correct
+  for the runs that have an opposite phase encoded run, which are then processed as pairs), generated for each
+  acquisition since some default parameters depend on the image (`<output_dir>/batch/default_protocols/`); `-b` sets
+  its b0 threshold.
+  `--participant-label` and `--session-label` restrict the subjects and sessions.
+- **Outputs**: `<output_dir>/sub-<label>/[ses-<label>/]dwi/<dataset id>/` holds the usual output of `dmriprep run` (same
+  file names, e.g. `<scan>_dwi_QCed.nii.gz`; for a pair `sub-.._ses-.._acq-.._dwi_QCed.nii.gz`), with
+  `dataset_description.json` at the top. `<output_dir>/batch/` holds the manifest (`manifest.tsv`), the protocol of
+  each dataset (`protocols/`), the skipped runs (`skipped.tsv`) and the state of each dataset (`status.tsv`).
+- `--dry-run` writes the batch folder and lists the datasets per protocol, grouped by acquisition (dimensions, voxel
+  size, volumes, shells), so that a mixed cohort is noticed before processing.
+- **Resuming**: running the same command again processes only the datasets that are not done: new, failed or
+  interrupted datasets, and datasets done with another protocol (only the modules whose settings changed are then
+  recomputed). `--rerun` processes all datasets again, `--only ID ...` some of them, `--overwrite` recomputes all their
+  modules. `dmriprep batch-status <output_dir>` lists the datasets that are not done (`--all`: all of them).
+- **Local execution**: `-j` datasets are processed at the same time, each in its own process with `-t` threads; its
+  log is `batch_log.txt` (and the usual `log.txt`) in its folder.
+- **SLURM** (e.g. Longleaf): `--slurm` writes `<output_dir>/batch/slurm_array.sh`, a job array with one task per
+  dataset to process, to submit with `sbatch`; `--slurm-submit` submits it. Options: `--slurm-time` (default
+  24:00:00), `--slurm-mem` (16G), `--slurm-partition`, `--slurm-max-parallel`, `--slurm-setup` (a shell line run
+  before dmriprep, e.g. `'module load fsl'`), `--slurm-option=--gres=gpu:1` (any `#SBATCH` option); `-t` sets the
+  CPUs per task. The tasks run the dmriprep (Python environment and configuration directory) the script was written
+  with, so write it on the cluster. Run the command again after the job to see which datasets failed and resubmit
+  them.
+- **group**: `<output_dir>/batch/qc_table.tsv` and `qc_report.html` (state, run time, volumes in/out, excluded
+  volumes, mask volume, mean FA per dataset; unusual numbers of excluded volumes are marked), and
+  `fiberprofile_datasheet.csv`, the datasheet for `dmrifiberprofile` (columns `id`, `DTI`, and `FW DTI`, `Deformation
+  field`, `FWF`, `NDI`, `ODI` when the pipeline writes them). `dmriprep batch-report <output_dir>` does the same for
+  any batch.
+
+`run-batch` processes datasets listed in a datasheet (TSV or CSV), e.g. NRRD files outside of BIDS, with the same
+options:
+```
+    $ dmriprep run-batch -m cohort.tsv -o /data/cohort_QC -p protocol.yml -j 4
+```
+Datasheet columns: `id` and `image_1` (required), `image_2` (second image, e.g. the opposite phase encoding, in the
+order of **run**), `protocol` (else `-p`, whose patterns match the id, or `-d`), `output_dir` (relative to `-o`, default: the
+id), `output_file_base`, `subject`, `session`, and `overrides`: module parameters of the dataset as JSON, e.g.
+`{"SUSCEPTIBILITY_Correct": {"phaseEncodingValue": 0.0945}}`. Relative paths are relative to the datasheet.
 
 ### Development of a new module 
 

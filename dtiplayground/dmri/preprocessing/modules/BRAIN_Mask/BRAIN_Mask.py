@@ -138,23 +138,23 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         res=None
         return res
 
-    def synthstrip_input(self, source):
-        """3D image SynthStrip is applied to: the axial diffusivity (AD) of a DTI fit of the current image ('ad'), or
-        the average of its baseline (b=0) images ('b0'). Returns (image, description)."""
+    def mask_input(self, source, name):
+        """3D image a brain extraction network (*name*) is applied to: the axial diffusivity (AD) of a DTI fit of the
+        current image ('ad'), or the average of its baseline (b=0) images ('b0'). Returns (image, description)."""
         gradients = self.image.getGradients(self.baseline_threshold)
         baseline = np.array([g['baseline'] for g in gradients])
         if source == 'b0':
             if not baseline.any():
-                raise ValueError("SynthStrip input b0: the image has no baseline (b=0) volume")
+                raise ValueError("{} input b0: the image has no baseline (b=0) volume".format(name))
             return self.image.images[..., baseline].mean(axis=3), "average of {} baseline image(s)".format(int(baseline.sum()))
         if source != 'ad':
-            raise ValueError("Unknown synthstripInput: {} (ad or b0)".format(source))
+            raise ValueError("Unknown {} input: {} (ad or b0)".format(name, source))
         import dipy.reconst.dti as dti
         from dipy.core.gradients import gradient_table
         bvals = np.array([g['b_value'] for g in gradients], dtype=np.float64)
         bvecs = np.array([g['unit_gradient'] for g in gradients], dtype=np.float64)
         if not baseline.any() or baseline.all():
-            raise ValueError("SynthStrip input ad: the DTI fit needs baseline (b=0) and diffusion weighted volumes")
+            raise ValueError("{} input ad: the DTI fit needs baseline (b=0) and diffusion weighted volumes".format(name))
         ## DTI regime: the diffusion weighted volumes up to b=1500 when there are any, all of them otherwise
         use = baseline | (bvals <= 1500)
         if use.sum() == baseline.sum():
@@ -164,20 +164,31 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         ad = np.clip(np.nan_to_num(fitted.ad), 0, None)
         return ad, "axial diffusivity of a DTI fit (WLS, {} volumes, b <= {:g})".format(int(use.sum()), bvals[use].max())
 
+    def write_mask_input(self, source, name, filename):
+        image, description = self.mask_input(source, name)
+        logger("{} input : {}".format(name, description),prep.Color.INFO)
+        input_path = Path(self.output_dir).joinpath(filename).__str__()
+        nibabel.save(nibabel.Nifti1Image(image.astype(np.float32), self.image.getAffineMatrixForNifti()), input_path)
+        return input_path
+
+    def register_mask(self, output_mask_path):
+        """Writes the NRRD version of the mask (NIfTI) and makes it the module's output mask."""
+        output_mask_path_nrrd = Path(self.output_dir).joinpath("mask.nrrd").__str__()
+        mask=DWI(output_mask_path)
+        mask.setSpaceDirection(self.getSourceImageInformation()['space'])
+        mask.writeImage(output_mask_path_nrrd,dest_type='nrrd')
+        self.addOutputFile(output_mask_path, 'Mask')
+        self.addOutputFile(output_mask_path_nrrd, 'Mask')
+        self.addGlobalVariable('mask_path',output_mask_path_nrrd)
+
     def mask_synthstrip(self, params):
         from dtiplayground.dmri.common import synthstrip
         border = float(self.protocol.get('synthstripBorder', 1.0))
         no_csf = bool(self.protocol.get('synthstripNoCSF', False))
         implementation = str(self.protocol.get('synthstripImplementation', 'auto') or 'auto').lower()
         source = str(self.protocol.get('synthstripInput', 'ad') or 'ad').lower()
-        output_dir = Path(self.output_dir)
-        input_path = output_dir.joinpath("synthstrip_input.nii.gz").__str__()
-        output_mask_path = output_dir.joinpath("mask.nii.gz").__str__()
-        output_mask_path_nrrd = output_dir.joinpath("mask.nrrd").__str__()
-
-        image, description = self.synthstrip_input(source)
-        logger("SynthStrip input : {}".format(description),prep.Color.INFO)
-        nibabel.save(nibabel.Nifti1Image(image.astype(np.float32), self.image.getAffineMatrixForNifti()), input_path)
+        output_mask_path = Path(self.output_dir).joinpath("mask.nii.gz").__str__()
+        input_path = self.write_mask_input(source, 'SynthStrip', "synthstrip_input.nii.gz")
 
         executable = None
         if implementation in ('auto', 'freesurfer'):
@@ -199,12 +210,46 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             synthstrip.run_builtin(input_path, output_mask_path, border, no_csf, self.num_threads)
         logger("If you use SynthStrip, please cite: A Hoopes, JS Mora, AV Dalca, B Fischl, M Hoffmann, SynthStrip: "
                "Skull-Stripping for Any Brain Image, NeuroImage 206 (2022), 119474",prep.Color.INFO)
-        mask=DWI(output_mask_path)
-        mask.setSpaceDirection(self.getSourceImageInformation()['space'])
-        mask.writeImage(output_mask_path_nrrd,dest_type='nrrd')
-        self.addOutputFile(output_mask_path, 'Mask')
-        self.addOutputFile(output_mask_path_nrrd, 'Mask')
-        self.addGlobalVariable('mask_path',output_mask_path_nrrd)
+        self.register_mask(output_mask_path)
+        return None
+
+    def mask_hdbet(self, params):
+        from dtiplayground.dmri.common import hdbet
+        device = str(self.protocol.get('hdbetDevice', 'auto') or 'auto').lower()
+        tta = bool(self.protocol.get('hdbetTTA', True))
+        if device not in ('auto', 'cuda', 'cpu'):
+            raise ValueError("Unknown hdbetDevice: {} (auto, cuda or cpu)".format(device))
+        executable = hdbet.find_hdbet(self.protocol.get('hdbetPath'))
+        if executable is None:
+            raise Exception("hd-bet not found (hdbetPath, the Python environment of dtiplayground or the PATH); "
+                            "install it with pip install hd-bet, e.g. in a separate environment, and set hdbetPath")
+        output_mask_path = Path(self.output_dir).joinpath("mask.nii.gz").__str__()
+        input_path = self.write_mask_input('b0', 'HD-BET', "hdbet_input.nii.gz")
+        logger("HD-BET ({}test time augmentation) : {}".format('' if tta else 'no ', executable),prep.Color.PROCESS)
+        command, device = hdbet.run_hdbet(executable, input_path, output_mask_path, device=device, tta=tta)
+        logger(' '.join(command),prep.Color.INFO)
+        logger("If you use HD-BET, please cite: F Isensee, M Schell, I Pflueger, et al., Automated brain extraction of "
+               "multisequence MRI using artificial neural networks, Human Brain Mapping 40 (2019), 4952-4964",prep.Color.INFO)
+        self.register_mask(output_mask_path)
+        return None
+
+    def mask_median_otsu(self, params):
+        from dipy.segment.mask import median_otsu
+        radius = int(self.protocol.get('medianOtsuRadius', 4))
+        numpass = int(self.protocol.get('medianOtsuNumpass', 4))
+        dilate = int(self.protocol.get('medianOtsuDilate', 0))
+        gradients = self.image.getGradients(self.baseline_threshold)
+        baseline = np.nonzero([g['baseline'] for g in gradients])[0]
+        if len(baseline) == 0:
+            logger("No baseline (b=0) image, median_otsu uses the average of all volumes",prep.Color.WARNING)
+            baseline = np.arange(len(gradients))
+        logger("dipy median_otsu (median radius {}, {} pass(es), dilation {}) on the average of {} volume(s)".format(
+               radius, numpass, dilate, len(baseline)),prep.Color.PROCESS)
+        _, mask = median_otsu(self.image.images, vol_idx=baseline, median_radius=radius, numpass=numpass,
+                              dilate=dilate if dilate > 0 else None)
+        output_mask_path = Path(self.output_dir).joinpath("mask.nii.gz").__str__()
+        nibabel.save(nibabel.Nifti1Image(mask.astype(np.uint8), self.image.getAffineMatrixForNifti()), output_mask_path)
+        self.register_mask(output_mask_path)
         return None
 
     def custom_mask(self, params):
@@ -250,6 +295,10 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             res=self.mask_antspynet(params)
         elif method=='synthstrip':
             res=self.mask_synthstrip({'image': self.image})
+        elif method=='hdbet':
+            res=self.mask_hdbet({'image': self.image})
+        elif method=='medianOtsu':
+            res=self.mask_median_otsu({'image': self.image})
         elif method=='customMask':
             params={
                 'image': self.image,

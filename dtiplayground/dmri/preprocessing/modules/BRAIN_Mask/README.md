@@ -23,6 +23,23 @@ BRAIN_Mask.py create a mask by two defined methods, by antspynet, or by fslbet a
     the model weights (MIT / CC BY 4.0) to `~/.niral-dti/models/synthstrip` on first use
   - synthstripPath: FreeSurfer home directory or path of `mri_synthstrip`
 
+- method hdbet: HD-BET deep learning brain extraction (Isensee et al., Human Brain Mapping 2019,
+  https://github.com/MIC-DKFZ/HD-BET), run through its `hd-bet` command. hd-bet (2.x) needs numpy 2 and nnunetv2, so
+  install it in a separate Python environment (`python -m venv hdbet-env; hdbet-env/bin/pip install hd-bet`) and set
+  hdbetPath; the model weights are downloaded to `~/hd-bet_params` on first use. HD-BET is applied to the average of
+  the baseline (b=0) images (it is trained on structural images; on the AD map it includes background noise)
+  - hdbetDevice: `auto` (default) uses the GPU if the torch of the hd-bet environment sees one, otherwise the CPU;
+    `cuda` or `cpu` force one
+  - hdbetTTA (default true): test time augmentation; disabling it (`--disable_tta`) is faster, mainly on CPU
+  - hdbetPath: path of `hd-bet`, or of the Python environment (or its bin directory) it is installed in; if empty, the
+    environment of dtiplayground and the PATH are searched
+
+- method medianOtsu: dipy's `median_otsu`, a median filter followed by an Otsu threshold of the average of the
+  baseline (b=0) images (all volumes if there is none); no additional software needed
+  - medianOtsuRadius (default 4): radius in voxels of the median filter
+  - medianOtsuNumpass (default 4): number of median filter passes
+  - medianOtsuDilate (default 0): binary dilation iterations applied to the mask
+
 - modality is a list with a default value of t2, it will choose the Modality of the input image between two methods : t2 or fa
 
 ##### Examples

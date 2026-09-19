@@ -47,7 +47,8 @@ A=/tools/atlas/DTI/DTI_IBISEP_Feb26
 ## 1. parametrized fibers (once per atlas)
 dmrifiberprofile parametrize-fibers $A/FibersRaw -o $A/FibersParam_dtiplayground
 
-## 2. datasheet of all reference scans
+## 2. datasheet of all reference scans (or skip it: dmrifiberprofile run -i $A/ReferenceDataset ... detects the files,
+##    see "Datasheet from a folder" in the main README; dmrifiberprofile make-datasheet shows what it finds)
 python make_datasheet.py $A/ReferenceDataset -o reference.csv \
     --column "DTI=mask/*_dwi_QCed_tensor.nrrd" \
     --column "Deformation field=AtlasReg/{id}_dwi_QCed_tensor_DeformedDTI_GlobalDisplacementField.nrrd" \

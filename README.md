@@ -326,6 +326,25 @@ $ dmrifiberprofile gather --profiles-dir ReferenceProfiles --fibers-dir Atlas/Fi
 $ dmrifiberprofile qc-profiles --profiles-dir normProfiles --plots-dir normProfiles_plots
 ```
 
+**Datasheet from a folder.** Instead of a datasheet, `dmrifiberprofile run -i <folder> -p protocol.yml -o <output>` takes a
+folder: the files of every scan below it are detected, grouped by case id (the part of the file names before `_dwi`),
+written to `<output>/datasheet_detected.csv`, and the `parameterToColumnHeaderMap` of the protocol is set to its
+columns. The files needed follow from the protocol (`propertiesToProfile`, `inputIsDTI`, `useDisplacementField`):
+
+| | native space (`useDisplacementField: true`) | atlas space (`false`) |
+|---|---|---|
+| tensor (FA, MD, AD, RD) | `<id>_dwi[_QCed]_tensor.nrrd`, `<id>_dwi[_QCed]_DTI.nrrd` | `<id>_dwi*_DeformedDTI.nrrd`, `<id>_dwi*_DTI_Registered.nrrd` |
+| displacement field | `<id>_dwi*_GlobalDisplacementField.nrrd`, `<id>_dwi*_DTI_DisplacementField.nrrd` (not the inverse) | - |
+| free-water tensor (FWFA, ...) | `<id>_dwi*_FWtensor.nrrd`, `<id>_dwi*_FWDTI.nrrd`; without, the maps below | - (maps) |
+| map of property P | `<id>_dwi*_P`, `<id>_dwi*_DTI_P`, `<id>_dwi*_NODDI_P` `.nii[.gz]` | `<id>_dwi*_DeformedP`, `<id>_dwi*_Registered_[DTI_\|NODDI_]P` `.nii[.gz]` |
+
+The tensor and the displacement field are required; a scan without them, or with several files for one column (e.g.
+copies of a scan in the folder), is left out and reported, and the run stops with an error listing the known file names
+when no scan matches. Property names are case sensitive: `FWF` is the NODDI free-water fraction (`_NODDI_FWF`), `FWf`
+the fraction of the free-water DTI model (`_FWf`). `dmrifiberprofile make-datasheet <folder> -p protocol.yml -o
+sheet.csv` only writes the datasheet (and `sheet_protocol.yml`, the protocol with its columns) to check it first;
+`--id-regex` changes how the case id is taken from the file names.
+
 An example protocol, datasheet and datasheet script for the DTI_IBISEP_Feb26 reference dataset are in `examples/normative_profiles`. The case ids of the datasheet must contain the age as `ses-<months>m` (e.g. `sub-011228_ses-012m`). The images are best sampled in native space with the deformation field of each scan (`useDisplacementField: true`), so tensors don't need to be deformed to the atlas. With `inputIsDTI: true`, FA, MD, AD, RD are computed from the tensors of `Original DTI Image`, and `<prefix>FA`, ... from the tensors of `<prefix> DTI Image` in `parameterToColumnHeaderMap` (e.g. FWFA from free-water corrected tensors, `FW DTI Image`); other properties (e.g. NDI, ODI) are sampled from their own image column. An empty datasheet cell leaves that property out for the scan (e.g. no free water / NODDI for single-shell scans). `qc-profiles` writes `<tract>/<tract>_<metric>_agebinstats.csv` next to the gathered tables; the folder is then used as `--prior-stats-dir` for the QC of new datasets. In Docker, a GPU is used by `impute` when the container is started with `--gpus all` (NVIDIA container toolkit).
 
 ## DMRIAtlas (dmriatlas)

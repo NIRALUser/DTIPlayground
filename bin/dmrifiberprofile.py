@@ -628,6 +628,47 @@ def command_make_protocols(args):
         logger("Protocol file has been written to : {}".format(options['output_path']),color.OK)
 
 
+def _extract_profile_parameters(args):
+    """Parameters of EXTRACT_Profile for the file detection: from the protocol file (-p), else the module defaults."""
+    import dtiplayground.dmri.fiberprofile.datasheet as ds
+    if getattr(args,'protocols',None):
+        return ds.extract_profile_protocol(yaml.safe_load(open(args.protocols,'r')))
+    template=Path(dtiplayground.__file__).resolve().parent.joinpath('dmri/fiberprofile/modules/EXTRACT_Profile/EXTRACT_Profile.yml')
+    return {k:v.get('default_value') for k,v in yaml.safe_load(open(template,'r'))['protocol'].items()}
+
+def _detect_datasheet(base_dir, parameters, output_csv, id_regex=None):
+    """Datasheet of the scans below base_dir (dmrifiberprofile.datasheet); returns the column map for the protocol."""
+    import dtiplayground.dmri.fiberprofile.datasheet as ds
+    logger("Detecting the files of the scans below {} (useDisplacementField: {})".format(base_dir, parameters.get('useDisplacementField')),color.PROCESS)
+    try:
+        columns, rows, parameter_map, skipped, notes = ds.detect(base_dir, parameters, id_regex or ds.DEFAULT_ID_REGEX)
+    except ds.DatasheetError as e:
+        logger(str(e),color.ERROR)
+        exit(1)
+    ds.write_datasheet(output_csv, columns, rows)
+    for case_id, reason in skipped:
+        logger("Left out {} : {}".format(case_id, reason),color.WARNING)
+    for n in notes:
+        logger(n,color.INFO)
+    logger("Datasheet with {} scan(s) ({} left out): {}".format(len(rows), len(skipped), output_csv),color.OK)
+    return parameter_map
+
+def command_make_datasheet(args):
+    import copy
+    parameters=_extract_profile_parameters(args)
+    parameter_map=_detect_datasheet(args.base_dir, parameters, args.output, args.id_regex)
+    if args.protocols:
+        protocol=yaml.safe_load(open(args.protocols,'r'))
+        import dtiplayground.dmri.fiberprofile.datasheet as ds
+        ds.extract_profile_protocol(protocol)['parameterToColumnHeaderMap']=parameter_map
+        protocol['io']['input_datasheet']=os.path.abspath(args.output)
+        protocol_fn=str(Path(args.output).with_suffix(''))+'_protocol.yml'
+        yaml.safe_dump(protocol,open(protocol_fn,'w'),sort_keys=False)
+        logger("Protocol with the columns of the datasheet: {}".format(protocol_fn),color.OK)
+    else:
+        logger("parameterToColumnHeaderMap for the protocol: {}".format(parameter_map),color.INFO)
+    return True
+
 @after_initialized
 def command_run(args):
     ## reparametrization
@@ -650,6 +691,13 @@ def command_run(args):
     template_path=Path(options['config_dir']).joinpath(config['protocol_template_path'])
     template=yaml.safe_load(open(template_path,'r'))
     proto=dtiplayground.dmri.fiberprofile.protocols.Protocols(options['config_dir'], global_vars=options['global_variables'])
+    parameter_map=None
+    if len(options['input_file_paths'])==1 and Path(options['input_file_paths'][0]).is_dir(): ## detect the datasheet
+        if options['output_dir'] is None:
+            raise Exception("Output directory is missing")
+        detected=Path(options['output_dir']).joinpath('datasheet_detected.csv').absolute().__str__()
+        parameter_map=_detect_datasheet(options['input_file_paths'][0], _extract_profile_parameters(args), detected, args.id_regex)
+        options['input_file_paths']=[detected]
     proto.loadDataSheets(options['input_file_paths'])
     if options['output_dir'] is None:
         raise Exception("Output directory is missing")
@@ -665,6 +713,10 @@ def command_run(args):
         proto.makeDefaultProtocols(options['default_protocols'],template=template,options=options)
     if options['num_threads'] is not None:
         proto.setNumThreads(options['num_threads'])
+    if parameter_map is not None: ## columns of the detected datasheet
+        for name, entry in proto.pipeline:
+            if name=='EXTRACT_Profile':
+                entry['protocol']['parameterToColumnHeaderMap']=parameter_map
     Path(options['output_dir']).mkdir(parents=True,exist_ok=True)
     logfilename=str(Path(options['output_dir']).joinpath('log.txt').absolute())
     dtiplayground.dmri.common.logger.setLogfile(logfilename)
@@ -750,7 +802,8 @@ def get_args():
 
     ## run command
     parser_run=subparsers.add_parser('run',help='Run pipeline',epilog=module_help_str)
-    parser_run.add_argument('-i','--input-file-list',help='Input file paths',type=str,nargs='+',required=True)
+    parser_run.add_argument('-i','--input-file-list',help='Input datasheet(s), or a folder: the files of the scans below it are detected\n(dmrifiberprofile make-datasheet -h) and written to <output_dir>/datasheet_detected.csv',type=str,nargs='+',required=True)
+    parser_run.add_argument('--id-regex',help="Case id from the file names of a folder input: group 1 (default: the part before '_dwi')",default=None)
     parser_run.add_argument('-g','--global-variables',help='Global Variables',type=str,nargs='*',required=False)
     parser_run.add_argument('-o','--output-dir',help="Output directory",type=str,required=True)
     parser_run.add_argument('--output-file-base', help="Output filename base", type=str, required=False)
@@ -760,6 +813,20 @@ def get_args():
     run_exclusive_group.add_argument('-p', '--protocols',metavar="PROTOCOLS_FILE" ,help='Protocol file path', type=str)
     run_exclusive_group.add_argument('-d','--default-protocols',metavar="MODULE",help='Use default protocols (optional : sequence of modules, Example : -d DIFFUSION_Check SLICE_Check)',default=None,nargs='*')
     parser_run.set_defaults(func=command_run)
+
+    ## datasheet detected from a folder
+    parser_make_datasheet=subparsers.add_parser('make-datasheet',help='Datasheet of EXTRACT_Profile detected from a folder',formatter_class=RawTextHelpFormatter,
+        description="Finds the files of the scans below a folder, grouped by case id (the part of the file names before '_dwi'),\n"
+                    "for the properties of the protocol: native space (useDisplacementField: true) the tensor (_dwi[_QCed]_tensor.nrrd,\n"
+                    "_dwi[_QCed]_DTI.nrrd), the displacement field (_GlobalDisplacementField.nrrd, _DTI_DisplacementField.nrrd), the\n"
+                    "free-water tensor (_FWtensor.nrrd, _FWDTI.nrrd) and scalar maps (_<P>, _DTI_<P>, _NODDI_<P> .nii[.gz]); atlas\n"
+                    "space (false) the tensor (_DeformedDTI.nrrd, _DTI_Registered.nrrd) and maps (_Deformed<P>, _Registered_<P>).\n"
+                    "Error if no scan has the needed files. With -p, also writes <output>_protocol.yml with the matching columns.")
+    parser_make_datasheet.add_argument('base_dir',help="Folder with the scans (any layout below it)")
+    parser_make_datasheet.add_argument('-o','--output',help="Output datasheet (CSV)",required=True)
+    parser_make_datasheet.add_argument('-p','--protocols',metavar='PROTOCOLS_FILE',help="Protocol (EXTRACT_Profile): properties to profile, useDisplacementField (default: the module defaults)",default=None)
+    parser_make_datasheet.add_argument('--id-regex',help="Case id from the file names: group 1 (default: the part before '_dwi')",default=None)
+    parser_make_datasheet.set_defaults(func=command_make_datasheet)
 
     ## fiber profile analysis tools (flip-tensor, compute-axis, gather, impute, qc-registration, qc-profiles)
     importlib.import_module('dtiplayground.dmri.fiberprofile.analysis').add_commands(subparsers)

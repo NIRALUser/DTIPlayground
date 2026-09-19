@@ -463,6 +463,11 @@ MIT
 
 ### Change Log
 
+##### 2026-09-19 (v0.7.22)
+- dmrifiberprofile: `run --atlas <folder>`; without tracts (e.g. without a protocol file) all the tracts of the atlas are profiled
+- dmrifiberprofile - EXTRACT_Profile: supportBandwidth defaults to 3 mm (was 1 mm); cleanup defaults to noCleanup, and the profiles of a previous run are reused only if their settings and input files are unchanged (before, a changed bandwidth or reprocessed image could reuse stale profiles)
+- dmrifiberprofile: the datasheet detection follows symbolically linked folders
+
 ##### 2026-09-19 (v0.7.21)
 - dmrifiberprofile: `run -i <folder>` detects the datasheet from the files below the folder (case id: the part of the file names before `_dwi`; tensor and displacement field in native space, or registered tensor in atlas space, and the maps of the other properties), with an error listing the known file names when no scan matches; `make-datasheet` writes the detected datasheet only
 

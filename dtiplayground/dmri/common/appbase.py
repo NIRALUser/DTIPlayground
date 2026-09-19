@@ -61,6 +61,13 @@ class AppBase:
         return self.app
 
     def initialize(self, options):
+        cwd = os.getcwd()  # initialization changes directory; relative input paths of the command must still work
+        try:
+            return self._initialize(options)
+        finally:
+            os.chdir(cwd)
+
+    def _initialize(self, options):
         ## reparametrization
         _args = {
             'log' : self.app['log'],
@@ -415,7 +422,11 @@ class AppBase:
                 self._update_software_paths(globalvars)
             logger("Installation completed")
             return True
-        return _install_tools(_options)
+        cwd = os.getcwd()
+        try:
+            return _install_tools(_options)
+        finally:
+            os.chdir(cwd)
 
     def initializeImpl(self, options):
         pass

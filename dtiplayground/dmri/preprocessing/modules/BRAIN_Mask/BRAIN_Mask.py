@@ -138,6 +138,75 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         res=None
         return res
 
+    def synthstrip_input(self, source):
+        """3D image SynthStrip is applied to: the axial diffusivity (AD) of a DTI fit of the current image ('ad'), or
+        the average of its baseline (b=0) images ('b0'). Returns (image, description)."""
+        gradients = self.image.getGradients(self.baseline_threshold)
+        baseline = np.array([g['baseline'] for g in gradients])
+        if source == 'b0':
+            if not baseline.any():
+                raise ValueError("SynthStrip input b0: the image has no baseline (b=0) volume")
+            return self.image.images[..., baseline].mean(axis=3), "average of {} baseline image(s)".format(int(baseline.sum()))
+        if source != 'ad':
+            raise ValueError("Unknown synthstripInput: {} (ad or b0)".format(source))
+        import dipy.reconst.dti as dti
+        from dipy.core.gradients import gradient_table
+        bvals = np.array([g['b_value'] for g in gradients], dtype=np.float64)
+        bvecs = np.array([g['unit_gradient'] for g in gradients], dtype=np.float64)
+        if not baseline.any() or baseline.all():
+            raise ValueError("SynthStrip input ad: the DTI fit needs baseline (b=0) and diffusion weighted volumes")
+        ## DTI regime: the diffusion weighted volumes up to b=1500 when there are any, all of them otherwise
+        use = baseline | (bvals <= 1500)
+        if use.sum() == baseline.sum():
+            use = np.ones(len(bvals), dtype=bool)
+        gtab = gradient_table(bvals[use], bvecs[use], b0_threshold=max(float(self.baseline_threshold), float(bvals[baseline].max())))
+        fitted = dti.TensorModel(gtab, fit_method='WLS').fit(self.image.images[..., use])
+        ad = np.clip(np.nan_to_num(fitted.ad), 0, None)
+        return ad, "axial diffusivity of a DTI fit (WLS, {} volumes, b <= {:g})".format(int(use.sum()), bvals[use].max())
+
+    def mask_synthstrip(self, params):
+        from dtiplayground.dmri.common import synthstrip
+        border = float(self.protocol.get('synthstripBorder', 1.0))
+        no_csf = bool(self.protocol.get('synthstripNoCSF', False))
+        implementation = str(self.protocol.get('synthstripImplementation', 'auto') or 'auto').lower()
+        source = str(self.protocol.get('synthstripInput', 'ad') or 'ad').lower()
+        output_dir = Path(self.output_dir)
+        input_path = output_dir.joinpath("synthstrip_input.nii.gz").__str__()
+        output_mask_path = output_dir.joinpath("mask.nii.gz").__str__()
+        output_mask_path_nrrd = output_dir.joinpath("mask.nrrd").__str__()
+
+        image, description = self.synthstrip_input(source)
+        logger("SynthStrip input : {}".format(description),prep.Color.INFO)
+        nibabel.save(nibabel.Nifti1Image(image.astype(np.float32), self.image.getAffineMatrixForNifti()), input_path)
+
+        executable = None
+        if implementation in ('auto', 'freesurfer'):
+            executable = synthstrip.find_mri_synthstrip(self.protocol.get('synthstripPath'))
+            if executable is None and implementation == 'freesurfer':
+                raise Exception("FreeSurfer's mri_synthstrip not found (synthstripPath, $FREESURFER_HOME or the PATH)")
+        elif implementation != 'builtin':
+            raise ValueError("Unknown synthstripImplementation: {} (auto, freesurfer or builtin)".format(implementation))
+        logger("SynthStrip (border {} mm{}) : {}".format(border, ', CSF excluded' if no_csf else '',
+               executable if executable else 'built-in (torch)'),prep.Color.PROCESS)
+        if executable:
+            command, _ = synthstrip.run_mri_synthstrip(executable, input_path, output_mask_path, border, no_csf, self.num_threads)
+            logger(' '.join(command),prep.Color.INFO)
+        else:
+            try:
+                import torch
+            except ImportError:
+                raise Exception("The built-in SynthStrip needs torch (pip install torch), or install FreeSurfer (7.3+) and set synthstripPath")
+            synthstrip.run_builtin(input_path, output_mask_path, border, no_csf, self.num_threads)
+        logger("If you use SynthStrip, please cite: A Hoopes, JS Mora, AV Dalca, B Fischl, M Hoffmann, SynthStrip: "
+               "Skull-Stripping for Any Brain Image, NeuroImage 206 (2022), 119474",prep.Color.INFO)
+        mask=DWI(output_mask_path)
+        mask.setSpaceDirection(self.getSourceImageInformation()['space'])
+        mask.writeImage(output_mask_path_nrrd,dest_type='nrrd')
+        self.addOutputFile(output_mask_path, 'Mask')
+        self.addOutputFile(output_mask_path_nrrd, 'Mask')
+        self.addGlobalVariable('mask_path',output_mask_path_nrrd)
+        return None
+
     def custom_mask(self, params):
         logger("Custom Mask is running ...",prep.Color.INFO)
         input_image_base=Path(self.output_dir).joinpath("input").__str__()
@@ -179,6 +248,8 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
                 'averagingMethod': averagingMethod
             }
             res=self.mask_antspynet(params)
+        elif method=='synthstrip':
+            res=self.mask_synthstrip({'image': self.image})
         elif method=='customMask':
             params={
                 'image': self.image,

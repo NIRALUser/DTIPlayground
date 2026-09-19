@@ -26,7 +26,7 @@ setup(
     packages=find_packages('.'),
     package_dir={'':'.'},
     package_data = {
-    '': ['*.yml','*.yaml','*.json','*.xml','*.cnf','*.md','*.zip']
+    '': ['*.yml','*.yaml','*.json','*.xml','*.cnf','*.md','*.zip','LICENSE.freesurfer.txt']
     },
     scripts=glob(pjoin('bin', '*')),
     url='https://github.com/niraluser/dtiplayground',

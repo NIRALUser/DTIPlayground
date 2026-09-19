@@ -15,6 +15,9 @@ protocol:
           - value: fsl
             caption: FSL
             description: Use FSL for Brainmasking
+          - value: synthstrip
+            caption: SynthStrip
+            description: SynthStrip deep learning brain extraction (FreeSurfer's mri_synthstrip if found, otherwise built in)
           # - value: antspynet
           #   caption: AntsPyNet
           #   description: AntsPyNet's brain_extraction() method
@@ -41,6 +44,53 @@ protocol:
         default_value: 0.5
         description: FSL bet fractional intensity threshold (-f, between 0 and 1); smaller values give a larger brain outline, larger values a smaller one
         if : { "method" : "fsl" }
+      synthstripInput:
+        type: list
+        caption: SynthStrip Input
+        default_value: ad
+        description: Image SynthStrip is applied to
+        candidates:
+          - value: ad
+            caption: AD
+            description: Axial diffusivity of a DTI fit of the image (diffusion weighted volumes up to b=1500)
+          - value: b0
+            caption: Average b0
+            description: Average of the baseline (b=0) images
+        if : { "method" : "synthstrip" }
+      synthstripBorder:
+        type: float
+        caption: SynthStrip Border
+        default_value: 1.0
+        description: Mask border threshold in mm (mri_synthstrip -b); larger values give a larger mask
+        if : { "method" : "synthstrip" }
+      synthstripNoCSF:
+        type: boolean
+        caption: SynthStrip exclude CSF
+        default_value: false
+        description: Exclude the CSF from the brain border (mri_synthstrip --no-csf)
+        if : { "method" : "synthstrip" }
+      synthstripImplementation:
+        type: list
+        caption: SynthStrip Implementation
+        default_value: auto
+        description: FreeSurfer's mri_synthstrip or the built-in version (torch; the model weights are downloaded on first use)
+        candidates:
+          - value: auto
+            caption: Auto
+            description: FreeSurfer's mri_synthstrip if found, otherwise the built-in version
+          - value: freesurfer
+            caption: FreeSurfer
+            description: FreeSurfer's mri_synthstrip (7.3+)
+          - value: builtin
+            caption: Built-in
+            description: SynthStrip network run in dtiplayground (torch)
+        if : { "method" : "synthstrip" }
+      synthstripPath:
+        type: filepath-remote
+        caption: FreeSurfer home or mri_synthstrip
+        default_value: ''
+        description: FreeSurfer home directory or path of mri_synthstrip; if empty, $FREESURFER_HOME and the PATH are searched
+        if : { "method" : "synthstrip" }
       modality: ## in case of antspynet
         type: list
         candidates:

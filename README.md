@@ -428,6 +428,11 @@ MIT
 
 ### Change Log
 
+##### 2026-09-19 (v0.7.20)
+- dmriprep - batch processing: `dmriprep bids <bids_dir> <output_dir> participant|group` (BIDS-App interface; single runs, or pairs of runs with opposite phase encoding with the phase encoding axis and readout time of the sidecars for SUSCEPTIBILITY_Correct) and `dmriprep run-batch -m <datasheet>`; protocols per acquisition (`-p PATTERN=protocol.yml`) or default protocols (`-d`); local (`-j`) or SLURM job array (`--slurm`) execution; resuming, `batch-status`, cohort QC report and dmrifiberprofile datasheet (`group` / `batch-report`)
+- dmriprep: the default pipeline of two images includes SUSCEPTIBILITY_Correct before EDDYMOTION_Correct
+- dmriprep - SUSCEPTIBILITY_Correct: topup is recomputed when its inputs (b0s, acqp, configuration) changed; the outputs of a previous run were reused even with other parameters or image order
+
 ##### 2026-09-19 (v0.7.19)
 - dmriprep - BRAIN_Mask: method hdbet, HD-BET deep learning brain extraction (Isensee et al. 2019) of the average b0 through the hd-bet command (install it in a separate Python environment and set hdbetPath; GPU if available); options hdbetDevice, hdbetTTA, hdbetPath
 - dmriprep - BRAIN_Mask: method medianOtsu, dipy's median_otsu of the average b0 (no additional software); options medianOtsuRadius, medianOtsuNumpass, medianOtsuDilate

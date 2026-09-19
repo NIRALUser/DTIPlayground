@@ -372,6 +372,11 @@ MIT
 
 ### Change Log
 
+##### 2026-09-19 (v0.7.19)
+- dmriprep - BRAIN_Mask: method hdbet, HD-BET deep learning brain extraction (Isensee et al. 2019) of the average b0 through the hd-bet command (install it in a separate Python environment and set hdbetPath; GPU if available); options hdbetDevice, hdbetTTA, hdbetPath
+- dmriprep - BRAIN_Mask: method medianOtsu, dipy's median_otsu of the average b0 (no additional software); options medianOtsuRadius, medianOtsuNumpass, medianOtsuDilate
+- relative input paths work on the first run after a version change (the initialization of the local configuration no longer changes the working directory)
+
 ##### 2026-09-19 (v0.7.18)
 - dmriprep - BRAIN_Mask: method synthstrip, SynthStrip deep learning brain extraction (Hoopes et al. 2022) of the axial diffusivity (synthstripInput ad, default) or the average b0 (b0), with FreeSurfer's mri_synthstrip if found, otherwise a built-in torch version (identical masks; model weights downloaded on first use); options synthstripBorder, synthstripNoCSF, synthstripImplementation, synthstripPath
 

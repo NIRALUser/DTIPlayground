@@ -495,6 +495,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-23 (v0.7.27)
+- dmrifiberprofile - qc-profiles: --min-valid-frac defaults to 0.75 (was 0.5), so a profile that lost a quarter of its positions to locations outside the brain or to missing values is flagged
+
 ##### 2026-09-23 (v0.7.26)
 - dmrifiberprofile - qc-profiles: with --clean-dir, the cells at the locations sampled outside the brain are written empty in the cleaned tables (on every metric of that tract and case) instead of keeping the zeros the QC ignored
 

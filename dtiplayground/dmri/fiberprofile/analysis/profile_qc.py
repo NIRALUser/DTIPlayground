@@ -5,9 +5,22 @@
 #!/usr/bin/env python3
 """
 Compute age-binned statistics (mean, std, percentiles) for along-tract metric
-tables (the output of ``dmrifiberprofile gather``) and render per-tract QC plots.
+tables and render per-tract QC plots.
 
-For every ``<tract>/<tract>_<metric>.csv`` under the profiles root, the columns
+The profiles root may hold either layout, and both are read as they are:
+
+  * gathered (``dmrifiberprofile gather``)  ``<tract>/<tract>_<metric>.csv``
+  * the output of a run (EXTRACT_Profile)   ``00_EXTRACT_Profile/<metric>/<tract>_<metric>.csv``
+
+so ``gather`` is not needed to QC the profiles of a run. In the second the
+folder is the metric and the file name carries the tract, the other way round
+from the first; the metrics are named as ``gather`` writes them (fa, md, ad, rd
+in lower case), so the same ``--prior-stats-dir`` fits both. A root holding both
+(gathered tables written inside the run folder) uses the gathered ones. Tables
+of EXTRACT_Profile with ``resultCaseColumnwise`` false (one row per case) are
+transposed on reading.
+
+For every table, the columns
 (``<subject>_<session>_<prefix>`` identifiers, where the session encodes age as
 ``ses-<months>m``) are grouped into age bins.  For each bin, the per-arc-length
 mean, standard deviation, subject count and percentiles across subjects are
@@ -67,6 +80,7 @@ Usage
 -----
     dmrifiberprofile qc-profiles --profiles-dir Profiles --plots-dir StatPlots
     dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir ProfileQCStats
+    dmrifiberprofile qc-profiles --profiles-dir <run output>/00_EXTRACT_Profile --plots-dir StatPlots
 """
 
 from __future__ import annotations
@@ -83,17 +97,69 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from dtiplayground.dmri.fiberprofile.analysis.gather import normalize_metric
+
 log = logging.getLogger("profile_qc")
 
 AGE_RE = re.compile(r"ses-(\d+)m")
 OUTPUT_SUFFIX = "_agebinstats.csv"
 PERCENTILES = [1, 5, 25, 50, 75, 95, 99]
+CASE_COLUMN = "case_id" # EXTRACT_Profile with resultCaseColumnwise false: one row per case, arc lengths as columns
 # Preferred metric ordering for the plot subplot grid; others appended.
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF"]
 # The four DTI metrics shown in the excluded-profiles review figures.
 DIFFUSION_METRICS = ["fa", "md", "rd", "ad"]
 # Colour-blind-friendly colours, one per age bin (extended if more bins).
 BIN_COLORS = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#937860"]
+
+
+def tract_and_metric(path):
+    """(tract, metric) of a profile table, in either layout:
+
+      gathered (``dmrifiberprofile gather``)   ``<tract>/<tract>_<metric>.csv``
+      run output (EXTRACT_Profile)             ``00_EXTRACT_Profile/<metric>/<tract>_<metric>.csv``
+
+    The folder is the tract in the first and the metric in the second, so the file name decides which one it is.
+    Tract names contain underscores (AC_olfactory, Arc_FT_L), which is why the folder is taken off the name as a
+    prefix or a suffix instead of splitting it. The metric is normalized the way ``gather`` writes it (fa, md, ad, rd
+    in lower case), so the prior stats of a gathered normative set are found for either layout.
+    """
+    folder = os.path.basename(os.path.dirname(path))
+    name = os.path.basename(path)[: -len(".csv")]
+    if folder and name.startswith(folder + "_"):
+        return folder, normalize_metric(name[len(folder) + 1:])
+    if folder and name.endswith("_" + folder):
+        return name[: -len(folder) - 1], normalize_metric(folder)
+    return folder, normalize_metric(name.rsplit("_", 1)[-1])
+
+
+def is_run_output_table(path):
+    """The table is a per property one of EXTRACT_Profile (``<metric>/<tract>_<metric>.csv``), not a gathered one."""
+    folder = os.path.basename(os.path.dirname(path))
+    name = os.path.basename(path)[: -len(".csv")]
+    return bool(folder) and not name.startswith(folder + "_") and name.endswith("_" + folder)
+
+
+def select_inputs(profiles_dir):
+    """The profile tables under *profiles_dir*, in either layout (see tract_and_metric). A folder holding both the
+    EXTRACT_Profile output of a run and gathered tables (e.g. the gathered ones written into the run folder) offers
+    the same profiles twice: the gathered table is used and the other one left out."""
+    files = sorted(f for f in glob.glob(os.path.join(profiles_dir, "**", "*.csv"), recursive=True)
+                   if not f.endswith(OUTPUT_SUFFIX))
+    gathered = {tract_and_metric(f): f for f in files if not is_run_output_table(f)}
+    inputs = list(gathered.values())
+    duplicates = 0
+    for f in files:
+        if not is_run_output_table(f):
+            continue
+        if tract_and_metric(f) in gathered:
+            duplicates += 1
+        else:
+            inputs.append(f)
+    if duplicates:
+        log.info("%d table(s) of the EXTRACT_Profile output are also there as gathered tables; the gathered ones "
+                 "are used", duplicates)
+    return sorted(inputs)
 
 
 def parse_bins(spec: str):
@@ -287,8 +353,15 @@ def load_profile_table(path, exclude_ids=None, exclude_full=None):
     *exclude_ids* drops by ``<subject>_<session>`` (any prefix; registration QC);
     *exclude_full* drops by exact ``<subject>_<session>_<prefix>`` identifier
     (a specific scan; preprocessing QC).
+
+    Arc lengths are the rows and the cases the columns. A table of EXTRACT_Profile with ``resultCaseColumnwise``
+    false holds them the other way round (first column ``case_id``, arc lengths as column names) and is transposed.
     """
     df = pd.read_csv(path, index_col=0)
+    if str(df.index.name).strip() == CASE_COLUMN:
+        df = df.transpose()
+        df.index = pd.to_numeric(df.index, errors="coerce")
+        df.index.name = "Arc_Length"
     if exclude_ids or exclude_full:
         drop = [c for c in df.columns
                 if (exclude_ids and subject_session_of(c) in exclude_ids)
@@ -309,8 +382,7 @@ def write_metric_summaries(inputs, exclude_ids, out_dir, exclude_full=None):
 
     means, medians, metrics_seen = defaultdict(dict), defaultdict(dict), set()
     for f in inputs:
-        tract = os.path.basename(os.path.dirname(f))
-        metric = os.path.basename(f)[: -len(".csv")].rsplit("_", 1)[1]
+        tract, metric = tract_and_metric(f)
         df = load_profile_table(f, exclude_ids, exclude_full)
         metrics_seen.add(metric)
         col_mean = df.mean(axis=0, skipna=True)
@@ -376,7 +448,7 @@ def write_agebin_stats(inputs, bins, ddof, plots_dir=None, dpi=130, exclude_ids=
     """
     by_tract: dict = {}
     for f in inputs:
-        by_tract.setdefault(os.path.basename(os.path.dirname(f)), []).append(f)
+        by_tract.setdefault(tract_and_metric(f)[0], []).append(f)
     if plots_dir:
         os.makedirs(plots_dir, exist_ok=True)
 
@@ -384,7 +456,7 @@ def write_agebin_stats(inputs, bins, ddof, plots_dir=None, dpi=130, exclude_ids=
     for tract, files in sorted(by_tract.items()):
         stats = {}
         for csv_path in sorted(files):
-            metric = os.path.basename(csv_path)[: -len(".csv")].rsplit("_", 1)[1]
+            metric = tract_and_metric(csv_path)[1]
             out = process_table(load_profile_table(csv_path, exclude_ids, exclude_full), bins, ddof)
             out.to_csv(csv_path[: -len(".csv")] + OUTPUT_SUFFIX)
             stats[metric] = out
@@ -484,8 +556,7 @@ def estimate_batch_shifts(inputs, prior_dir, bins, mult_metrics, exclude_ids=Non
 
     per = defaultdict(list)
     for csv_path in inputs:
-        tract = os.path.basename(os.path.dirname(csv_path))
-        metric = os.path.basename(csv_path)[: -len(".csv")].rsplit("_", 1)[1]
+        tract, metric = tract_and_metric(csv_path)
         prior_path = find_prior_stats(prior_dir, tract, metric)
         if prior_path is None:
             continue
@@ -543,8 +614,7 @@ def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, ex
     rows = []
     n_missing_prior = 0
     for csv_path in inputs:
-        tract = os.path.basename(os.path.dirname(csv_path))
-        metric = os.path.basename(csv_path)[: -len(".csv")].rsplit("_", 1)[1]
+        tract, metric = tract_and_metric(csv_path)
         prior_path = find_prior_stats(prior_dir, tract, metric)
         if prior_path is None:
             n_missing_prior += 1
@@ -638,13 +708,26 @@ def detect_group_outliers(qc, value_min_inside, shape_method, corr_min, corr_iqr
 
 def write_without_columns(in_path, out_path, drop_names, drop_subject_sessions=()):
     """Copy a profile CSV dropping the given identifier columns (by exact name or
-    by subject_session); retained cells are preserved byte-for-byte."""
+    by subject_session); retained cells are preserved byte-for-byte.
+
+    A table holding one row per case (first column ``case_id``, EXTRACT_Profile with ``resultCaseColumnwise`` false)
+    has those rows dropped instead."""
     dss = set(drop_subject_sessions)
     lines = open(in_path).read().splitlines()
     header = lines[0].split(",")
-    keep = [i for i, name in enumerate(header)
-            if i == 0 or (name not in drop_names and subject_session_of(name) not in dss)]
+
+    def dropped(name):
+        return name in drop_names or subject_session_of(name) in dss
+
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    if header and header[0].strip() == CASE_COLUMN:
+        with open(out_path, "w") as fh:
+            fh.write(lines[0] + "\n")
+            for line in lines[1:]:
+                if not dropped(line.split(",")[0]):
+                    fh.write(line + "\n")
+        return
+    keep = [i for i, name in enumerate(header) if i == 0 or not dropped(name)]
     with open(out_path, "w") as fh:
         for line in lines:
             parts = line.split(",")
@@ -661,8 +744,7 @@ def plot_excluded_profiles(inputs, prior_dir, bins, envelope_cfg, prof_outliers_
 
     by_tract = {}
     for f in inputs:
-        tract = os.path.basename(os.path.dirname(f))
-        metric = os.path.basename(f)[: -len(".csv")].rsplit("_", 1)[1]
+        tract, metric = tract_and_metric(f)
         by_tract.setdefault(tract, {})[metric] = f
 
     os.makedirs(out_dir, exist_ok=True)
@@ -671,7 +753,7 @@ def plot_excluded_profiles(inputs, prior_dir, bins, envelope_cfg, prof_outliers_
         avail = [m for m in DIFFUSION_METRICS if m in mpaths]
         if not avail:
             continue
-        cols0 = pd.read_csv(mpaths[avail[0]], index_col=0, nrows=0).columns
+        cols0 = load_profile_table(mpaths[avail[0]]).columns
         prof_set = prof_outliers_by_tract.get(tract, set())
         excl = [c for c in cols0
                 if c in prof_set or subject_session_of(c) in reg_ss or c in full_excl]
@@ -686,7 +768,7 @@ def plot_excluded_profiles(inputs, prior_dir, bins, envelope_cfg, prof_outliers_
                 for c in range(n_bins):
                     axes[r][c].set_visible(False)
                 continue
-            df = pd.read_csv(mpaths[metric], index_col=0)
+            df = load_profile_table(mpaths[metric])
             x = df.index.to_numpy(dtype=float)
             prior_path = find_prior_stats(prior_dir, tract, metric)
             prior = pd.read_csv(prior_path, index_col=0).reindex(df.index) if prior_path else None
@@ -799,7 +881,9 @@ def plot_correlations_by_metric_bin(corr_df, out_dir, reference, dpi, bins):
 
 
 def configure_parser(p):
-    p.add_argument("--profiles-dir", default="Profiles", help="Root with <tract>/<tract>_<metric>.csv tables")
+    p.add_argument("--profiles-dir", default="Profiles",
+                   help="Root with the profile tables: gathered (<tract>/<tract>_<metric>.csv) or the "
+                        "EXTRACT_Profile output of a run (<metric>/<tract>_<metric>.csv)")
     p.add_argument("--plots-dir", default="StatPlots", help="Output folder for QC plots")
     p.add_argument("--bins", default="0-3,4-9,10-60", help="Age bins in months, inclusive; oldest is open-ended")
     p.add_argument("--ddof", type=int, default=1, help="Delta d.o.f. for std (1=sample, 0=population; default: 1)")
@@ -883,11 +967,11 @@ def run_args(args, p) -> int:
     log.info("Age bins (inclusive months, oldest open-ended): %s",
              [lbl for _, _, lbl in bins])
 
-    inputs = sorted(
-        f for f in glob.glob(os.path.join(args.profiles_dir, "**", "*.csv"), recursive=True)
-        if not f.endswith(OUTPUT_SUFFIX)
-    )
+    inputs = select_inputs(args.profiles_dir)
     log.info("Found %d metric tables under %s", len(inputs), args.profiles_dir)
+    if inputs and all(is_run_output_table(f) for f in inputs):
+        log.info("These are the per property tables of an EXTRACT_Profile run (the tract is the file name, the "
+                 "folder the metric)")
 
     # Scans that failed upstream QC are removed up front.
     reg_failed = set()
@@ -1004,7 +1088,7 @@ def run_args(args, p) -> int:
             n_dropped_cols = 0
             clean_tables = []
             for f in inputs:
-                tract = os.path.basename(os.path.dirname(f))
+                tract = tract_and_metric(f)[0]
                 drop = drop_by_tract.get(tract, set()) | full_excl
                 rel = os.path.relpath(f, args.profiles_dir)
                 clean_path = os.path.join(args.clean_dir, rel)

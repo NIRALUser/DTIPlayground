@@ -185,7 +185,9 @@ pipeline. Both assume raw, uninterpolated data: put DWI_Denoise first and GIBBS_
 `-d DWI_Denoise GIBBS_Correct SLICE_Check INTERLACE_Check EDDYMOTION_Correct QC_Report`. MP-PCA also writes the noise
 level map (`<base>_DWI_noise_sigma.nii.gz`), Patch2Self the RMS of the removed signal (`<base>_DWI_noise_residual.nii.gz`).
 
-**QC outputs** (next to the QCed image, `<base>_<name>`), also columns of the QC_Report CSV and of the batch QC table:
+**QC outputs** (next to the QCed image, `<base>_<name>`), also columns of the QC_Report CSV and of the batch QC table.
+The per volume tables carry an `original_index`, the index of the volume in the input of the pipeline (`volume` is its
+position in the image the module worked on; the two differ once a volume has been excluded):
 - `DENOISE_QC.tsv` (DWI_Denoise): noise level (MP-PCA sigma) and b=0 SNR in the brain, or the median of the Patch2Self
   residual map, standard deviation of the removed signal. `GIBBS_QC.tsv` (GIBBS_Correct): mean absolute change in the brain.
 - `EDDY_motion.tsv` (EDDYMOTION_Correct): per volume translations (mm), rotations (degrees), framewise displacement
@@ -196,6 +198,16 @@ level map (`<base>_DWI_noise_sigma.nii.gz`), Patch2Self the RMS of the removed s
   without the voxels that have a non-positive value in some volume, e.g. thresholded at 0 after eddy), and the number
   of poorly fitted slices (slice R² more than 4 scaled MADs below that of the same slice in the other volumes of the
   shell). `DTI_fit_QC.tsv`: their summary; `DTI_fit_carpet.png`: slice x volume R² (in the QC report).
+- `IMAGE_QC.tsv` (QC_Report, protocol `imageQC`): the same numbers on the raw input (`raw_`) and on the preprocessed
+  image (`qced_`), so preprocessing can be checked against its input. Neighboring DWI correlation (`ndc`, as DSI
+  Studio: each volume with the volume of the same shell in the closest direction, over the mask; also per shell), bad
+  slices (`bad_slices`: correlation with the slice below, or mean intensity relative to the median slice of the volume,
+  more than 3.5 scaled MADs below the same slice position in the other volumes of the shell — the first catches a
+  corrupted slice, the second a signal dropout), and with `bTableCheck` the fiber coherence index of the b-table
+  (`coherence`, Schilling et al. 2019: stepping along the principal direction of a tensor fit reaches a similar
+  direction; `coherence_best_flip` names the b-vector axis whose sign would raise it, `none` if the b-table as given is
+  the most coherent). `IMAGE_ndc.tsv`: per volume; `IMAGE_QC_plot.png`: both stages by original volume index (in the
+  QC report).
 
 **[NOTE]** when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
 
@@ -322,7 +334,7 @@ Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifibe
 | `gather` | Collect subject profiles into `<tract>/<tract>_<metric>.csv` (rows: arc length, columns: datasets), from `.fvp` trees and/or EXTRACT_Profile outputs |
 | `impute` | Fill missing profile values with a per-dataset SIREN on the (x, y, z, arc length) of the tract axes |
 | `qc-registration` | QC of the registration to the atlas (`sub-*/ses-*/AtlasReg/*_Deformed<METRIC>.nii.gz` + `*_DeformedDTI.nrrd`, or the dmriprep DTI_Register outputs `<scan>_Registered_<METRIC>.nii.gz` + `<scan>_DTI_Registered.nrrd` in any folder below `--data-dir`; missing FA/MD/AD/RD maps are computed from the registered tensor): similarity (MAE, SSIM, NCC), angular error, contiguity of disagreement, CSF check, age-conditional normative model, combined outlier flag. `--build-normative` builds the age-binned normative model from a reference dataset: mean/std/count of every deformed metric map (FA, MD, RD, AD, ...), the angular model and the log-Euclidean mean tensor (`DTI_mean.nrrd`) per age bin. `--tensor-flip` (default auto) corrects the tensor frame of the subjects as `detect-tensor-flip` (flips, voxel frame); every subject is also checked on its own (`TENSOR_frame_best`, `TENSOR_frame_gain_deg`, and a warning when another correction fits the atlas better) |
-| `qc-profiles` | Age-binned profile statistics (`_agebinstats.csv`) and plots; profile QC against prior (normative) statistics with value and shape outliers; cleaned profile tables |
+| `qc-profiles` | Age-binned profile statistics (`_agebinstats.csv`) and plots; profile QC against prior (normative) statistics with value and shape outliers; cleaned profile tables. `--profiles-dir` takes the gathered tables (`<tract>/<tract>_<metric>.csv`) or the profiles of a run as EXTRACT_Profile writes them (`00_EXTRACT_Profile/<metric>/<tract>_<metric>.csv`, either orientation), so `gather` is not needed to QC one run |
 
 Typical workflow:
 
@@ -381,7 +393,7 @@ are written again. The module option `overwrite: true` of EXTRACT_Profile in the
 `duringProcessing` / `endOfProcessing` the profiles of each scan are deleted and a later run recomputes all of them.
 The output folder is named after the datasheet (`datasheet_detected` for a folder input), so rerun with the same one.
 
-An example protocol, datasheet and datasheet script for the DTI_IBISEP_Feb26 reference dataset are in `examples/normative_profiles`. The case ids of the datasheet must contain the age as `ses-<months>m` (e.g. `sub-011228_ses-012m`). The images are best sampled in native space with the deformation field of each scan (`useDisplacementField: true`), so tensors don't need to be deformed to the atlas. With `inputIsDTI: true`, FA, MD, AD, RD are computed from the tensors of `Original DTI Image`, and `<prefix>FA`, ... from the tensors of `<prefix> DTI Image` in `parameterToColumnHeaderMap` (e.g. FWFA from free-water corrected tensors, `FW DTI Image`); other properties (e.g. NDI, ODI) are sampled from their own image column. An empty datasheet cell leaves that property out for the scan (e.g. no free water / NODDI for single-shell scans). `qc-profiles` writes `<tract>/<tract>_<metric>_agebinstats.csv` next to the gathered tables; the folder is then used as `--prior-stats-dir` for the QC of new datasets. In Docker, a GPU is used by `impute` when the container is started with `--gpus all` (NVIDIA container toolkit).
+An example protocol, datasheet and datasheet script for the DTI_IBISEP_Feb26 reference dataset are in `examples/normative_profiles`. The case ids of the datasheet must contain the age as `ses-<months>m` (e.g. `sub-011228_ses-012m`). The images are best sampled in native space with the deformation field of each scan (`useDisplacementField: true`), so tensors don't need to be deformed to the atlas. With `inputIsDTI: true`, FA, MD, AD, RD are computed from the tensors of `Original DTI Image`, and `<prefix>FA`, ... from the tensors of `<prefix> DTI Image` in `parameterToColumnHeaderMap` (e.g. FWFA from free-water corrected tensors, `FW DTI Image`); other properties (e.g. NDI, ODI) are sampled from their own image column. An empty datasheet cell leaves that property out for the scan (e.g. no free water / NODDI for single-shell scans). `qc-profiles` writes `<tract>/<tract>_<metric>_agebinstats.csv` next to the tables it read; the folder is then used as `--prior-stats-dir` for the QC of new datasets. It reads the gathered tables or, without gathering them first, the profiles of a single run (`--profiles-dir <output>/<datasheet>/00_EXTRACT_Profile`); the metrics are named as `gather` writes them (`fa`, `md`, `ad`, `rd` in lower case), so the same `--prior-stats-dir` fits both. `gather` is still what collects several runs into one set of tables. In Docker, a GPU is used by `impute` when the container is started with `--gpus all` (NVIDIA container toolkit).
 
 ## DMRIAtlas (dmriatlas)
 

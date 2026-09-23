@@ -13,4 +13,4 @@ protocol:
         type: object-array
         caption: Gradient List to Exclude
         default_value: [] 
-        description: List of gradient indices to exclude from an image.
+        description: List of gradient indices to exclude from an image (original indices, i.e. the volumes of the input of the pipeline, not the positions in the image this module receives).

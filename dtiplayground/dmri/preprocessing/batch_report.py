@@ -20,11 +20,13 @@ FIBERPROFILE_COLUMNS = [('DTI', 'DTI'), ('FW DTI', 'FWDTI'), ('Deformation field
 # column -> direction of the unusual values that are marked (0: both sides, 1: high values, -1: low values)
 # mask volume, FA, SNR and CNR change with age and acquisition: not marked
 OUTLIER_COLUMNS = {'excluded_volumes': 0, 'mean_fd': 1, 'outlier_slices_percent': 1, 'fit_r2_mean': -1,
-                   'poor_fit_slices': 1}
+                   'poor_fit_slices': 1, 'qced_ndc': -1, 'qced_bad_slices': 1}
 # columns of the summaries written by the modules (<base>_<name>.tsv), in this order; SNR/CNR columns are added
 QC_SUMMARIES = [('DENOISE_QC', ['noise_sigma', 'snr_b0_mppca', 'noise_residual_rms']),
                 ('EDDY_QC', ['mean_fd', 'max_fd', 'max_translation', 'max_rotation', 'outlier_slices_percent']),
-                ('DTI_fit_QC', ['fit_r2_mean', 'fit_r2_min', 'poor_fit_slices'])]
+                ('DTI_fit_QC', ['fit_r2_mean', 'fit_r2_min', 'poor_fit_slices']),
+                ('IMAGE_QC', ['raw_ndc', 'qced_ndc', 'raw_bad_slices', 'qced_bad_slices', 'qced_bad_slices_percent',
+                              'raw_coherence', 'qced_coherence', 'qced_coherence_best_flip'])]
 
 
 def _output(folder, base, name):
@@ -195,9 +197,12 @@ td.failed, td.interrupted {{ background: #ffc9c9; }} td.outdated, td.pending {{ 
 </style></head><body>
 <h2>dmriprep batch: {folder}</h2>
 <p>{n} dataset(s): {summary}. Orange: more than 3 scaled MADs from the cohort median: number of excluded volumes (either side),
-mean framewise displacement, eddy outlier slices and poorly fitted slices of the tensor fit (high side), mean tensor fit R2 (low side).
-Motion in mm and degrees; outlier slices in % of the slices. Details: batch/status.tsv and the batch_log.txt / log.txt of each dataset,
-and the per volume tables &lt;base&gt;_EDDY_motion.tsv and &lt;base&gt;_DTI_fit.tsv.</p>
+mean framewise displacement, eddy outlier slices, poorly fitted slices of the tensor fit and bad slices (high side), mean tensor fit R2
+and the neighboring DWI correlation of the preprocessed image (low side).
+Motion in mm and degrees; outlier slices in % of the slices. raw_ / qced_ are the image QC before and after preprocessing;
+qced_coherence_best_flip names the flipped b-vector axis that would raise the coherence index (empty or 'none': the b-table as given is
+the most coherent). Details: batch/status.tsv and the batch_log.txt / log.txt of each dataset, and the per volume tables
+&lt;base&gt;_EDDY_motion.tsv, &lt;base&gt;_DTI_fit.tsv and &lt;base&gt;_IMAGE_ndc.tsv.</p>
 <table><tr>{head}</tr>
 {body}
 </table></body></html>

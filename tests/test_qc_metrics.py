@@ -143,14 +143,221 @@ class TestBatchReportColumns(unittest.TestCase):
             qc_metrics.write_tsv(str(folder.joinpath('scan_DTI_fit_QC.tsv')),
                                  [{'fit_r2_mean': 0.97, 'fit_r2_min': 0.9, 'fit_corr_mean': 0.98, 'fit_corr_min': 0.95,
                                    'poor_fit_slices': 2}])
+            qc_metrics.write_tsv(str(folder.joinpath('scan_IMAGE_QC.tsv')),
+                                 [{'raw_volumes': 49, 'raw_ndc': 0.81, 'raw_bad_slices': 12, 'raw_coherence': 0.68,
+                                   'qced_volumes': 47, 'qced_ndc': 0.86, 'qced_bad_slices': 3,
+                                   'qced_bad_slices_percent': 0.09, 'qced_coherence': 0.71,
+                                   'qced_coherence_best_flip': 'none'}])
             dataset = {'id': 'sub-1', 'output_dir': 'sub-1', 'output_file_base': 'scan', 'images': []}
             row, _ = batch_report.dataset_row(d, dataset, 'done', {})
         self.assertEqual(row['mean_fd'], '0.2')
         self.assertEqual(row['cnr_b1000'], '2.1')
         self.assertEqual(row['snr_b0'], '21.5')
         self.assertEqual(row['poor_fit_slices'], '2')
+        self.assertEqual(row['raw_ndc'], '0.81')
+        self.assertEqual(row['qced_ndc'], '0.86')
+        self.assertEqual(row['qced_bad_slices'], '3')
+        self.assertEqual(row['qced_coherence_best_flip'], 'none')
         self.assertEqual(row['noise_sigma'], '') # no DWI_Denoise
         self.assertNotIn('max_rel_translation', row)
+        self.assertNotIn('raw_volumes', row) # not among the columns of the cohort table
+
+    def test_a_low_correlation_and_many_bad_slices_are_marked(self):
+        rows = [{'qced_ndc': 0.86 + 0.002 * i, 'qced_bad_slices': 3} for i in range(9)]
+        rows.append({'qced_ndc': 0.42, 'qced_bad_slices': 61}) # the outlier of the cohort
+        rows.append({'qced_ndc': 0.99, 'qced_bad_slices': 0}) # good on both sides: not marked
+        marked = batch_report.mark_outliers(rows)
+        self.assertIn((9, 'qced_ndc'), marked)
+        self.assertIn((9, 'qced_bad_slices'), marked)
+        self.assertNotIn((10, 'qced_ndc'), marked)
+        self.assertNotIn((10, 'qced_bad_slices'), marked)
+
+
+def _ring_dwi(bvals, bvecs, shape=(32, 32, 12), noise=1.0, seed=1):
+    """A ring bundle in the xy plane (the fiber direction is tangent to the circle, so it curves in space) and its
+    mask: a flipped b-vector axis points the directions across the ring, which lowers the coherence index."""
+    import dipy.sims.voxel as sims
+    from dipy.core.gradients import gradient_table
+    rng = np.random.default_rng(seed)
+    gtab = gradient_table(bvals, bvecs)
+    data = np.zeros(shape + (len(bvals),))
+    mask = np.zeros(shape, dtype=bool)
+    center = np.array([(shape[0] - 1) / 2.0, (shape[1] - 1) / 2.0])
+    for x in range(shape[0]):
+        for y in range(shape[1]):
+            if not 8 <= np.hypot(x - center[0], y - center[1]) <= 12:
+                continue
+            tangent = np.array([-(y - center[1]), x - center[0], 0.0])
+            tangent /= np.linalg.norm(tangent)
+            radial = np.array([x - center[0], y - center[1], 0.0])
+            radial /= np.linalg.norm(radial)
+            evecs = np.column_stack([tangent, radial, np.cross(tangent, radial)])
+            signal = sims.single_tensor(gtab, S0=100.0, evals=np.array([1.7e-3, 0.3e-3, 0.3e-3]), evecs=evecs)
+            data[x, y, 2:shape[2] - 2] = signal
+            mask[x, y, 2:shape[2] - 2] = True
+    return data + rng.normal(scale=noise, size=data.shape), mask
+
+
+class TestNeighboringCorrelation(unittest.TestCase):
+    def test_the_neighbor_is_the_closest_direction_of_the_shell(self):
+        bvals = np.array([0.0, 0.0, 1000.0, 1000.0, 1000.0])
+        bvecs = np.array([[0, 0, 0], [0, 0, 0], [1, 0, 0], [0, 1, 0], [-1, 0.02, 0]], dtype=float)
+        bvecs[4] /= np.linalg.norm(bvecs[4])
+        data = np.zeros((6, 6, 4, 5))
+        rng = np.random.default_rng(3)
+        for v in range(5):
+            data[..., v] = rng.normal(100, 10, (6, 6, 4))
+        mask = np.ones((6, 6, 4), dtype=bool)
+        rows, summary = qc_metrics.neighboring_correlation(data, bvals, bvecs, mask)
+        self.assertEqual(rows[0]['neighbor'], 1) # b=0: the closest one in acquisition order
+        self.assertEqual(rows[2]['neighbor'], 4) # opposite directions measure the same signal
+        self.assertEqual(rows[4]['neighbor'], 2)
+        self.assertIn('ndc_b0', summary)
+        self.assertIn('ndc_b1000', summary)
+
+    def test_a_copied_volume_correlates_perfectly(self):
+        bvals = np.array([0.0, 1000.0, 1000.0])
+        bvecs = np.array([[0, 0, 0], [1, 0, 0], [0.999, 0.045, 0]], dtype=float)
+        bvecs[2] /= np.linalg.norm(bvecs[2])
+        rng = np.random.default_rng(4)
+        volume = rng.normal(100, 10, (6, 6, 4))
+        data = np.stack([rng.normal(200, 10, (6, 6, 4)), volume, volume], axis=-1)
+        rows, _ = qc_metrics.neighboring_correlation(data, bvals, bvecs, np.ones((6, 6, 4), dtype=bool))
+        self.assertAlmostEqual(rows[1]['ndc'], 1.0, places=4)
+
+    def test_a_volume_alone_in_its_shell_has_no_neighbor(self):
+        bvals = np.array([0.0, 1000.0, 3000.0])
+        bvecs = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=float)
+        rng = np.random.default_rng(5)
+        data = rng.normal(100, 10, (6, 6, 4, 3))
+        rows, summary = qc_metrics.neighboring_correlation(data, bvals, bvecs, np.ones((6, 6, 4), dtype=bool))
+        self.assertEqual(rows[1]['neighbor'], '')
+        self.assertIsNone(rows[1]['ndc'])
+        self.assertIsNone(summary['ndc_b1000'])
+
+
+class TestBadSlices(unittest.TestCase):
+    def setUp(self):
+        self.bvals, self.bvecs = _gradients(n_dirs=30, n_b0=3)
+        self.data, self.mask = _ring_dwi(self.bvals, self.bvecs)
+
+    def test_clean_data_has_almost_no_bad_slices(self):
+        _, _, summary = qc_metrics.bad_slices(self.data, self.bvals, mask=self.mask)
+        self.assertLess(summary['bad_slices_percent'], 1.0)
+
+    def test_a_signal_dropout_is_found(self):
+        """A dropout scales a slice down, which the normalized correlation doesn't see: the intensity criterion does."""
+        data = self.data.copy()
+        data[:, :, 4:7, 7] *= 0.3
+        _, bad, summary = qc_metrics.bad_slices(data, self.bvals, mask=self.mask)
+        self.assertEqual(sorted(np.nonzero(bad[:, 7])[0]), [4, 5, 6])
+        self.assertGreaterEqual(summary['bad_slice_volumes'], 1)
+
+    def test_a_corrupted_slice_is_found(self):
+        rng = np.random.default_rng(7)
+        data = self.data.copy()
+        data[:, :, 5:7, 11] = rng.normal(50, 20, data[:, :, 5:7, 11].shape)
+        _, bad, _ = qc_metrics.bad_slices(data, self.bvals, mask=self.mask)
+        self.assertTrue(bad[5, 11] and bad[6, 11])
+
+    def test_the_first_and_last_slices_are_skipped(self):
+        slice_corr, _, _ = qc_metrics.bad_slices(self.data, self.bvals, mask=self.mask)
+        self.assertTrue(np.isnan(slice_corr[0]).all())
+        self.assertTrue(np.isnan(slice_corr[-1]).all())
+
+
+class TestFiberCoherence(unittest.TestCase):
+    def test_a_flipped_b_vector_axis_lowers_the_coherence_index(self):
+        bvals, bvecs = _gradients(n_dirs=30, n_b0=3)
+        data, mask = _ring_dwi(bvals, bvecs)
+        spacing = np.array([2.0, 2.0, 2.0])
+        given = qc_metrics.fiber_coherence(data, bvals, bvecs, mask, spacing=spacing)
+        flipped = qc_metrics.fiber_coherence(data, bvals, bvecs * [1, -1, 1], mask, spacing=spacing)
+        self.assertEqual(given['coherence_best_flip'], 'none')
+        self.assertEqual(given['coherence'], given['coherence_best'])
+        self.assertLess(flipped['coherence'], given['coherence'])
+        self.assertAlmostEqual(flipped['coherence_best'], given['coherence'], places=4)
+        self.assertNotEqual(flipped['coherence_best_flip'], 'none')
+
+    def test_white_matter_is_needed(self):
+        bvals, bvecs = _gradients(n_dirs=6, n_b0=1)
+        data = np.full((6, 6, 4, 7), 100.0) # isotropic: no FA above the threshold
+        qc = qc_metrics.fiber_coherence(data, bvals, bvecs, np.ones((6, 6, 4), dtype=bool))
+        self.assertIsNone(qc['coherence'])
+
+
+class TestVoxelSpacing(unittest.TestCase):
+    def test_the_gradient_axis_is_left_out(self):
+        """In the pipeline the information of a DWI has one space direction per axis of the stored image, and the row
+        of the gradient axis is NaN (NRRD headers write None there)."""
+        self.assertIsNone(np.testing.assert_allclose(
+            qc_metrics.voxel_spacing({'space_directions': [[2., 0, 0], [0, -2., 0], [0, 0, 2.], [np.nan] * 3]}),
+            [2., 2., 2.]))
+        self.assertIsNone(np.testing.assert_allclose(
+            qc_metrics.voxel_spacing({'space_directions': [[2., 0, 0], [0, -2., 0], [0, 0, 2.], None]}),
+            [2., 2., 2.]))
+
+    def test_anisotropic_and_missing(self):
+        self.assertIsNone(np.testing.assert_allclose(
+            qc_metrics.voxel_spacing({'space_directions': [[1.5, 0, 0], [0, 1.5, 0], [0, 0, 3.]]}), [1.5, 1.5, 3.]))
+        self.assertIsNone(qc_metrics.voxel_spacing({}))
+        self.assertIsNone(qc_metrics.voxel_spacing({'space_directions': [[1., 0, 0], [0, 1., 0]]}))
+
+    def test_an_unusable_spacing_falls_back_to_isotropic(self):
+        """fiber_coherence must not fail on a spacing that isn't three positive numbers."""
+        bvals, bvecs = _gradients(n_dirs=30, n_b0=3)
+        data, mask = _ring_dwi(bvals, bvecs)
+        good = qc_metrics.fiber_coherence(data, bvals, bvecs, mask, spacing=np.array([1.0, 1.0, 1.0]))
+        for spacing in (None, np.array([2.0, 2.0, 2.0, np.nan]), np.array([0.0, 1.0, 1.0])):
+            self.assertEqual(qc_metrics.fiber_coherence(data, bvals, bvecs, mask, spacing=spacing), good)
+
+
+class TestImageQC(unittest.TestCase):
+    def test_summary_and_rows(self):
+        bvals, bvecs = _gradients(n_dirs=30, n_b0=3)
+        data, mask = _ring_dwi(bvals, bvecs)
+        rows, summary = qc_metrics.image_qc(data, bvals, bvecs, mask, spacing=np.array([2.0, 2.0, 2.0]))
+        self.assertEqual(len(rows), len(bvals))
+        self.assertEqual(summary['volumes'], len(bvals))
+        for key in ('ndc', 'ndc_b0', 'ndc_b1000', 'bad_slices', 'bad_slices_percent', 'coherence',
+                    'coherence_best', 'coherence_best_flip'):
+            self.assertIn(key, summary)
+        self.assertIn('bad_slices', rows[0])
+
+    def test_the_coherence_index_can_be_left_out(self):
+        bvals, bvecs = _gradients(n_dirs=6, n_b0=1)
+        rng = np.random.default_rng(8)
+        data = rng.normal(100, 10, (8, 8, 6, 7))
+        _, summary = qc_metrics.image_qc(data, bvals, bvecs, np.ones((8, 8, 6), dtype=bool), coherence=False)
+        self.assertNotIn('coherence', summary)
+
+
+class TestManualExcludeIndexes(unittest.TestCase):
+    """The indexes of MANUAL_Exclude are the original ones, so they stop matching the positions in the image as soon
+    as an earlier module excluded a volume; the mapping and the missing ones are logged."""
+
+    def _log(self, gradients_present, to_exclude):
+        from dtiplayground.dmri.preprocessing.modules.MANUAL_Exclude import MANUAL_Exclude as module
+        messages = []
+        module.logger = lambda message, *a, **k: messages.append(message)
+        obj = module.MANUAL_Exclude.__new__(module.MANUAL_Exclude)
+        obj.image = type('Image', (), {'getGradients': lambda s: [{'original_index': i} for i in gradients_present]})()
+        obj.logGradientsToExclude(to_exclude)
+        return messages
+
+    def test_the_position_in_the_image_is_logged_with_a_warning(self):
+        messages = self._log([0, 1, 3, 4, 5], [4]) # original 2 was excluded before: 4 is the 3rd volume now
+        self.assertTrue(any('original gradient 4' in m and 'volume 3 of 5' in m for m in messages), messages)
+        self.assertTrue(any('not the positions in this image' in m for m in messages), messages)
+
+    def test_no_warning_when_nothing_was_excluded_before(self):
+        messages = self._log([0, 1, 2, 3], [2])
+        self.assertTrue(any('volume 2 of 4' in m for m in messages), messages)
+        self.assertFalse(any('not the positions in this image' in m for m in messages), messages)
+
+    def test_an_index_that_is_gone_is_reported(self):
+        messages = self._log([0, 1, 3], [2, 9])
+        self.assertTrue(any('2, 9' in m and 'nothing is excluded' in m for m in messages), messages)
 
 
 class TestDenoisePatch(unittest.TestCase):

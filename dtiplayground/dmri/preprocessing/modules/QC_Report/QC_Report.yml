@@ -19,3 +19,13 @@ protocol:
         caption: CSV report
         default_value: True
         description: Generate CSV file report
+    imageQC:
+        type: boolean
+        caption: Image QC
+        default_value: True
+        description: Compare the raw input and the preprocessed image (neighboring DWI correlation, bad slices)
+    bTableCheck:
+        type: boolean
+        caption: b-table check
+        default_value: True
+        description: Add the fiber coherence index of the b-table to the image QC (a tensor fit of each image)

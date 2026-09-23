@@ -12,6 +12,9 @@ from dtiplayground.dmri.common.dwi import DWI
 
 import dtiplayground.dmri.preprocessing as prep
 
+IMAGE_QC_FILES = ('image_qc.tsv', 'image_ndc.tsv', 'image_qc.png') # summary, per volume, figure
+
+
 class QC_Report(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
@@ -27,10 +30,14 @@ class QC_Report(prep.modules.DTIPrepModule):
         super().process()
         inputParams=self.getPreviousResult()['output']
         # << TODOS>>
+        for name in IMAGE_QC_FILES: ## computed again for this run
+            Path(self.output_dir).joinpath(name).unlink(missing_ok=True)
+        image_qc = self.imageQC() if self.protocol.get('imageQC', True) else {}
         global_report = ""
         if self.protocol["generatePDF"] == True:
             global_report = self.MergeReports(global_report)
-            global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)          
+            global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)
+            global_report = self.AddImageQCToReport(global_report, image_qc)
             info_display_QCed_gradients = self.CreateImages()
             if number_of_excluded_gradients != 0:
                 global_report = self.AddExcludedGradientsImagesToReport(global_report, excluded_gradients)
@@ -49,7 +56,7 @@ class QC_Report(prep.modules.DTIPrepModule):
         if self.protocol["generateCSV"] == True:
             if self.protocol['generatePDF'] == False:
                 global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients = self.AddGeneralInfo(global_report)
-            self.CreateCSV(number_input_gradients, number_of_excluded_gradients)
+            self.CreateCSV(number_input_gradients, number_of_excluded_gradients, image_qc)
 
         self.result['output']['success']=True
         return self.result
@@ -123,6 +130,96 @@ class QC_Report(prep.modules.DTIPrepModule):
         return(global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients)
 
 
+    ## Image QC: the same numbers on the raw input and on the preprocessed image
+
+    def imageQCStages(self):
+        """[(label, prefix, image)] of the images that are compared: the input of the pipeline (its first image when
+        the pipeline has two) and the image of this report."""
+        stages = []
+        image_name = self.result_history[1]['report']['csv_data']['image_name']
+        raw = image_name[0] if isinstance(image_name, list) else image_name
+        if raw and Path(raw).exists():
+            stages.append(('raw', 'raw', DWI(str(raw))))
+        stages.append(('preprocessed', 'qced', self.image))
+        return stages
+
+    def imageQC(self):
+        """Neighboring DWI correlation, bad slices and the b-table fiber coherence index of the raw input and of the
+        preprocessed image (image_qc.tsv summary, image_ndc.tsv per volume, image_qc.png), computed once per run of
+        the module. {} if it fails."""
+        from dtiplayground.dmri.preprocessing import qc_metrics
+        out = Path(self.output_dir)
+        paths = [out.joinpath(n) for n in IMAGE_QC_FILES]
+        try:
+            if not all(p.exists() for p in paths):
+                summary, per_volume, stages = {}, [], {}
+                for label, prefix, image in self.imageQCStages():
+                    logger("Image QC of the {} image ...".format(label), prep.Color.PROCESS)
+                    gradients = image.getGradients()
+                    bvals = numpy.array([g['b_value'] for g in gradients], dtype=float)
+                    ## the components along the voxel axes: the coherence index compares them with the neighboring voxels
+                    bvecs = numpy.array([g['nifti_gradient'] for g in gradients], dtype=float)
+                    data = image.images
+                    spacing = qc_metrics.voxel_spacing(image.information)
+                    b0_threshold = min(max(min(bvals), 50), 199)
+                    mask = self.imageQCMask(data, bvals, b0_threshold)
+                    rows, values = qc_metrics.image_qc(data, bvals, bvecs, mask, spacing=spacing,
+                                                       coherence=self.protocol.get('bTableCheck', True),
+                                                       b0_threshold=b0_threshold)
+                    for i, r in enumerate(rows):
+                        r['original_index'] = gradients[i].get('original_index', i)
+                        r['stage'] = label
+                    summary.update({'{}_{}'.format(prefix, k): v for k, v in values.items()})
+                    per_volume += rows
+                    stages[label] = rows
+                qc_metrics.write_tsv(str(paths[1]), per_volume,
+                                     ['stage', 'volume', 'original_index', 'bval', 'neighbor', 'ndc', 'bad_slices'])
+                qc_metrics.image_qc_plot(str(paths[2]), stages,
+                                         title='Neighboring DWI correlation and bad slices, before and after preprocessing')
+                qc_metrics.write_tsv(str(paths[0]), [summary])
+            summary = {k: v for k, v in qc_metrics.read_tsv(str(paths[0]))[0].items() if v != ''}
+        except Exception as e:
+            logger("Image QC could not be computed: {}".format(e), prep.Color.WARNING)
+            return {}
+        for p, postfix in zip(paths, ('IMAGE_QC', 'IMAGE_ndc', 'IMAGE_QC_plot')):
+            self.addOutputFile(str(p), postfix)
+        return summary
+
+    def imageQCMask(self, data, bvals, b0_threshold):
+        """The brain mask of the pipeline when it fits the image, otherwise a rough one (median_otsu)."""
+        from dtiplayground.dmri.preprocessing import qc_metrics
+        mask_path = self.getGlobalVariables().get('mask_path')
+        if mask_path and Path(mask_path).exists():
+            mask = numpy.squeeze(DWI(str(mask_path)).images) > 0
+            if mask.shape == data.shape[:3]:
+                return mask
+        return qc_metrics.brain_mask(data, bvals, b0_threshold)
+
+    def AddImageQCToReport(self, global_report, image_qc):
+        if not image_qc:
+            return global_report
+        def value(name, digits=None):
+            v = image_qc.get(name, '')
+            return round(float(v), digits) if digits is not None and v != '' else v
+        global_report += "## Image QC (raw input / preprocessed): \n"
+        global_report += "* Neighboring DWI correlation: {} / {} (each volume with the volume of the same shell in the closest direction)\n".format(
+            value('raw_ndc', 4), value('qced_ndc', 4))
+        global_report += "* Bad slices: {} ({}%) / {} ({}%)\n".format(
+            value('raw_bad_slices'), value('raw_bad_slices_percent'), value('qced_bad_slices'), value('qced_bad_slices_percent'))
+        if image_qc.get('qced_coherence', '') != '':
+            global_report += "* b-table fiber coherence index: {} / {}\n".format(value('raw_coherence', 4), value('qced_coherence', 4))
+            flip = image_qc.get('qced_coherence_best_flip', 'none')
+            if flip and flip != 'none':
+                global_report += "* **The coherence index is higher with the {} axis of the b-vectors flipped ({} instead of {}): check the gradient directions**\n".format(
+                    flip, value('qced_coherence_best', 4), value('qced_coherence', 4))
+            else:
+                global_report += "* The b-table as given has the highest coherence index (no flipped axis)\n"
+        image = Path(self.output_dir).joinpath(IMAGE_QC_FILES[2])
+        if image.exists():
+            global_report += "\n<img src='{}' width='640'>\n".format(image)
+        global_report += "\n* * * * \n"
+        return global_report
+
     def AddExcludedGradientsImagesToReport(self, global_report, excluded_gradients):
         global_report += "\n## Excluded DWIs:\n"
         image_path = self.result_history[1]['report']['csv_data']['image_name']
@@ -172,7 +269,7 @@ class QC_Report(prep.modules.DTIPrepModule):
         #global_report += "![DWI" + str(gradient_index) + "](" + image_path + " 'DWI " + str(gradient_index) + "')"
         return(global_report)
 
-    def CreateCSV(self, number_input_gradients, number_of_excluded_gradients):
+    def CreateCSV(self, number_input_gradients, number_of_excluded_gradients, image_qc=None):
         single_input = True
         for module in self.result_history[1:]:
             if module["module_name"] == "SUSCEPTIBILITY_Correct":
@@ -197,6 +294,11 @@ class QC_Report(prep.modules.DTIPrepModule):
                     if name not in columns:
                         columns.append(name)
                         values.append(value)
+        ## image QC of the raw input and of the preprocessed image (this module)
+        for name, value in (image_qc or {}).items():
+            if name not in columns:
+                columns.append(name)
+                values.append(value)
 
         qc_report = pandas.DataFrame([values], columns = columns)
         path_output_directory = Path(self.output_dir).parent.parent

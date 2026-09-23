@@ -204,9 +204,24 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
 
     ### scripts
 
+    def loadEddiedImage(self, path, original_indexes):
+        """The output of eddy, with the original gradient indexes of the input put back: eddy keeps the volumes and
+        their order (it only rotates the b-vectors), but loading its NIfTI numbers the gradients from 0 again, which
+        would renumber the volumes that an earlier module excluded."""
+        image=self.loadImage(path)
+        gradients=image.getGradients()
+        if len(gradients)==len(original_indexes):
+            for g,original in zip(gradients,original_indexes):
+                g['original_index']=original
+        elif original_indexes:
+            logger("{} volumes in {} but {} in the input: keeping the gradient indexes of the file".format(
+                len(gradients),Path(path).name,len(original_indexes)),prep.Color.WARNING)
+        return image
+
     @measure_time
     def eddy(self,image,outfilename,params, protocols): ## eddy with topup (susceptibility correction process is required before execution)
 
+        original_indexes=[g.get('original_index',i) for i,g in enumerate(image.getGradients())]
         output_dir=Path(self.output_dir)
         input_nifti=output_dir.joinpath('input.nii.gz').__str__()
         input_bvals=output_dir.joinpath('input.bval').__str__()
@@ -283,7 +298,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                                 b_range=protocols.get('bRange'))
         else:
             logger("Eddymotion corrected output exists: {}".format(processed_nifti),prep.Color.OK)
-            self.image=self.loadImage(processed_nifti)
+            self.image=self.loadEddiedImage(processed_nifti,original_indexes)
         shutil.copy(processed_nifti_base+".eddy_rotated_bvecs",processed_bvecs)
         shutil.copy(input_bvals,processed_bvals)
 
@@ -314,7 +329,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                         mask=binary_mask,
                         bvals=processed_bvals)
 
-        self.image=self.loadImage(processed_nifti_nonneg)
+        self.image=self.loadEddiedImage(processed_nifti_nonneg,original_indexes)
         self.image.image_type='nrrd'
         self.writeImageWithOriginalSpace(output_nrrd,'nrrd')
         return None

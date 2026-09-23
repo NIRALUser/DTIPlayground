@@ -495,6 +495,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-23 (v0.7.26)
+- dmrifiberprofile - qc-profiles: with --clean-dir, the cells at the locations sampled outside the brain are written empty in the cleaned tables (on every metric of that tract and case) instead of keeping the zeros the QC ignored
+
 ##### 2026-09-23 (v0.7.25)
 - dmrifiberprofile - qc-profiles: a profile location that a metric which cannot be 0 in tissue (FA, MD, RD, AD, NDI, ODI, ...) reports as 0 was sampled outside the brain mask, and is read as missing on every metric of that tract and case (--zero-valid-metrics, default FWF, where 0 is a valid measurement; --keep-outside-brain keeps them). Before, such a 0 counted as a measurement, and in a normative set it lowered the mean and widened the envelope
 - dmrifiberprofile - qc-profiles: a profile with less than --min-valid-frac (default 0.5) of its positions left is an outlier; before, a profile that was missing everywhere passed as clean because every comparison with it is undefined

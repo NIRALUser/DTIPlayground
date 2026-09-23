@@ -495,6 +495,10 @@ MIT
 
 ### Change Log
 
+##### 2026-09-23 (v0.7.25)
+- dmrifiberprofile - qc-profiles: a profile location that a metric which cannot be 0 in tissue (FA, MD, RD, AD, NDI, ODI, ...) reports as 0 was sampled outside the brain mask, and is read as missing on every metric of that tract and case (--zero-valid-metrics, default FWF, where 0 is a valid measurement; --keep-outside-brain keeps them). Before, such a 0 counted as a measurement, and in a normative set it lowered the mean and widened the envelope
+- dmrifiberprofile - qc-profiles: a profile with less than --min-valid-frac (default 0.5) of its positions left is an outlier; before, a profile that was missing everywhere passed as clean because every comparison with it is undefined
+
 ##### 2026-09-23 (v0.7.24)
 - dmriprep - QC_Report: image QC of the raw input and of the preprocessed image (IMAGE_QC.tsv, IMAGE_ndc.tsv, figure): neighboring DWI correlation (NDC, per shell), bad slices (corrupted slices and signal dropouts) and the fiber coherence index of the b-table, which names the b-vector axis whose sign would raise it; protocol options imageQC and bTableCheck
 - dmriprep - QC_Report CSV and batch QC table include these numbers (raw_ / qced_); the batch report marks a low neighboring DWI correlation and many bad slices

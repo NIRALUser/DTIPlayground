@@ -92,6 +92,79 @@ class TestLoadProfileTable(unittest.TestCase):
                 self.assertEqual(list(df.columns), [COLUMNS[1]])
 
 
+class TestCleanedTablesBlankOutsideBrain(unittest.TestCase):
+    """The cleaned tables hold what the QC used: the locations sampled outside the brain are written empty instead of
+    keeping the zeros that were ignored."""
+
+    ARC_LAYOUT = 'Arc_Length,subA_ses-012m,subB_ses-012m\n-1,0.40,0.40\n0,0.40,0.00\n1,0.40,0.40\n'
+    CASE_LAYOUT = 'case_id,-1,0,1\nsubA_ses-012m,0.40,0.40,0.40\nsubB_ses-012m,0.40,0.00,0.40\n'
+    FWF_ARC = 'Arc_Length,subA_ses-012m,subB_ses-012m\n-1,0.10,0.10\n0,0.10,0.11\n1,0.10,0.10\n'
+
+    def setUp(self):
+        profile_qc.set_outside_brain({})
+        self.addCleanup(profile_qc.set_outside_brain, {})
+
+    def _clean(self, d, tables, drop=()):
+        paths = [_write(os.path.join(d, tract, name), text) for tract, name, text in tables]
+        profile_qc.set_outside_brain(profile_qc.find_outside_brain(sorted(paths)))
+        out = {}
+        for f in paths:
+            target = os.path.join(d, 'clean', os.path.relpath(f, d))
+            n = profile_qc.write_without_columns(f, target, set(drop))
+            out[os.path.basename(f)] = (target, n)
+        return out
+
+    def test_the_zero_is_blanked_with_arc_lengths_as_rows(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = self._clean(d, [('CG_L', 'CG_L_fa.csv', self.ARC_LAYOUT)])
+            target, n = out['CG_L_fa.csv']
+            self.assertEqual(n, 1)
+            self.assertEqual(open(target).read(), 'Arc_Length,subA_ses-012m,subB_ses-012m\n'
+                                                  '-1,0.40,0.40\n0,0.40,\n1,0.40,0.40\n')
+            self.assertTrue(np.isnan(profile_qc.read_profile_table(target).loc[0, 'subB_ses-012m']))
+
+    def test_the_zero_is_blanked_with_cases_as_rows(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = self._clean(d, [('CG_R', 'CG_R_fa.csv', self.CASE_LAYOUT)])
+            target, n = out['CG_R_fa.csv']
+            self.assertEqual(n, 1)
+            self.assertEqual(open(target).read(), 'case_id,-1,0,1\nsubA_ses-012m,0.40,0.40,0.40\n'
+                                                  'subB_ses-012m,0.40,,0.40\n')
+
+    def test_the_location_is_blanked_on_the_other_metrics_too(self):
+        """FWF held a valid 0.11 there, but the location itself was outside the brain."""
+        with tempfile.TemporaryDirectory() as d:
+            out = self._clean(d, [('CG_L', 'CG_L_fa.csv', self.ARC_LAYOUT),
+                                  ('CG_L', 'CG_L_FWF.csv', self.FWF_ARC)])
+            target, n = out['CG_L_FWF.csv']
+            self.assertEqual(n, 1)
+            self.assertEqual(open(target).read().splitlines()[2], '0,0.10,')
+
+    def test_the_kept_cells_are_unchanged(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = self._clean(d, [('CG_L', 'CG_L_fa.csv', self.ARC_LAYOUT)])
+            lines = open(out['CG_L_fa.csv'][0]).read().splitlines()
+        self.assertEqual(lines[1], '-1,0.40,0.40') # the decimals as they were written
+        self.assertEqual(lines[3], '1,0.40,0.40')
+
+    def test_dropping_a_scan_and_blanking_work_together(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = self._clean(d, [('CG_L', 'CG_L_fa.csv', self.ARC_LAYOUT)], drop=['subA_ses-012m'])
+            target, n = out['CG_L_fa.csv']
+            df = profile_qc.read_profile_table(target)
+        self.assertEqual(list(df.columns), ['subB_ses-012m'])
+        self.assertEqual(n, 1)
+        self.assertTrue(np.isnan(df.loc[0, 'subB_ses-012m']))
+
+    def test_nothing_is_blanked_when_the_check_is_off(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = _write(os.path.join(d, 'CG_L', 'CG_L_fa.csv'), self.ARC_LAYOUT)
+            profile_qc.set_outside_brain({}) # --keep-outside-brain
+            target = os.path.join(d, 'clean', 'CG_L_fa.csv')
+            self.assertEqual(profile_qc.write_without_columns(src, target, set()), 0)
+            self.assertEqual(open(target).read(), self.ARC_LAYOUT)
+
+
 class TestWriteWithoutColumns(unittest.TestCase):
     def test_cases_as_rows_are_dropped_by_row(self):
         with tempfile.TemporaryDirectory() as d:

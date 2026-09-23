@@ -45,7 +45,9 @@ MD, RD, AD, NDI, ODI, ...) is 0 where the fibers of that case left the brain
 mask and the maps were read as background. That is a property of the location,
 so it is read as missing on EVERY metric of that tract and case, including the
 ones in which 0 is a valid measurement (``--zero-valid-metrics``, by default
-FWF, the free water fraction). ``--keep-outside-brain`` keeps the zeros.
+FWF, the free water fraction). ``--keep-outside-brain`` keeps the zeros. With
+``--clean-dir`` those cells are written empty, so the cleaned tables hold what
+the QC used rather than the zeros it ignored.
 
 A profile with less than ``--min-valid-frac`` of its positions left (missing, or
 outside the brain) is flagged as an outlier: too little of it is there to judge.
@@ -794,32 +796,79 @@ def detect_group_outliers(qc, value_min_inside, shape_method, corr_min, corr_iqr
     return groups
 
 
+def _arc_value(text):
+    """The arc length a field holds, or None. The tables are written with one decimal representation per grid, so the
+    value parsed here is the one pandas parsed when the locations outside the brain were found."""
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _outside_lookup(mask):
+    """{case: {arc lengths}} of the locations to blank, from a mask of find_outside_brain."""
+    lookup = {}
+    if mask is None:
+        return lookup
+    for column in mask.columns:
+        marked = mask.index[mask[column].to_numpy(dtype=bool)]
+        if len(marked):
+            lookup[str(column)] = set(marked.tolist())
+    return lookup
+
+
 def write_without_columns(in_path, out_path, drop_names, drop_subject_sessions=()):
     """Copy a profile CSV dropping the given identifier columns (by exact name or
     by subject_session); retained cells are preserved byte-for-byte.
 
     A table holding one row per case (first column ``case_id``, EXTRACT_Profile with ``resultCaseColumnwise`` false)
-    has those rows dropped instead."""
+    has those rows dropped instead.
+
+    The cells at the locations sampled outside the brain (``set_outside_brain``) are written empty, so the cleaned
+    tables hold what the QC used rather than the zeros it ignored. Returns the number of cells blanked.
+    """
     dss = set(drop_subject_sessions)
     lines = open(in_path).read().splitlines()
     header = lines[0].split(",")
+    outside = _outside_lookup(_OUTSIDE_BRAIN.get(tract_and_metric(in_path)[0]))
+    blanked = 0
 
     def dropped(name):
         return name in drop_names or subject_session_of(name) in dss
 
+    def is_outside(case, arc):
+        return arc is not None and arc in outside.get(case, ())
+
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     if header and header[0].strip() == CASE_COLUMN:
+        arcs = [_arc_value(h) for h in header[1:]] # one arc length per column
         with open(out_path, "w") as fh:
             fh.write(lines[0] + "\n")
             for line in lines[1:]:
-                if not dropped(line.split(",")[0]):
-                    fh.write(line + "\n")
-        return
+                parts = line.split(",")
+                if dropped(parts[0]):
+                    continue
+                for i, arc in enumerate(arcs, start=1):
+                    if i < len(parts) and is_outside(parts[0], arc):
+                        parts[i] = ""
+                        blanked += 1
+                fh.write(",".join(parts) + "\n")
+        return blanked
     keep = [i for i, name in enumerate(header) if i == 0 or not dropped(name)]
     with open(out_path, "w") as fh:
-        for line in lines:
+        fh.write(",".join(header[i] for i in keep) + "\n")
+        for line in lines[1:]:
             parts = line.split(",")
-            fh.write(",".join(parts[i] for i in keep) + "\n")
+            arc = _arc_value(parts[0]) # the row is one arc length
+            row = []
+            for i in keep:
+                value = parts[i] if i < len(parts) else ""
+                if i and is_outside(header[i], arc):
+                    value = ""
+                    blanked += 1
+                row.append(value)
+            fh.write(",".join(row) + "\n")
+    return blanked
 
 
 def plot_excluded_profiles(inputs, prior_dir, bins, envelope_cfg, prof_outliers_by_tract,
@@ -1200,18 +1249,20 @@ def run_args(args, p) -> int:
             drop_by_tract = (groups[groups["is_outlier"]]
                              .groupby("tract")["subject_session"].apply(set).to_dict())
             n_dropped_cols = 0
+            n_blanked = 0
             clean_tables = []
             for f in inputs:
                 tract = tract_and_metric(f)[0]
                 drop = drop_by_tract.get(tract, set()) | full_excl
                 rel = os.path.relpath(f, args.profiles_dir)
                 clean_path = os.path.join(args.clean_dir, rel)
-                write_without_columns(f, clean_path, drop, drop_subject_sessions=reg_ss)
+                n_blanked += write_without_columns(f, clean_path, drop, drop_subject_sessions=reg_ss)
                 clean_tables.append(clean_path)
                 n_dropped_cols += len(drop)
             log.info("Wrote cleaned profiles to %s/ (removed profile-QC outliers + %d registration-failed "
-                     "subject-sessions + %d preprocessing-failed scans across %d tables)",
-                     args.clean_dir, len(reg_failed), len(prep_failed), len(inputs))
+                     "subject-sessions + %d preprocessing-failed scans across %d tables%s)",
+                     args.clean_dir, len(reg_failed), len(prep_failed), len(inputs),
+                     "; %d cell(s) sampled outside the brain written empty" % n_blanked if n_blanked else "")
 
             # recompute age-bin stats (+ plots) on the cleaned data
             clean_root = args.clean_plots_dir

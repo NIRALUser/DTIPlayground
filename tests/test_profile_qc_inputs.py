@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from dtiplayground.dmri.fiberprofile.analysis import profile_qc
@@ -107,6 +108,126 @@ class TestWriteWithoutColumns(unittest.TestCase):
             profile_qc.write_without_columns(src, out, {COLUMNS[0]})
             df = profile_qc.load_profile_table(out)
         self.assertEqual(list(df.columns), [COLUMNS[1]])
+
+
+ARC = [-2, -1, 0, 1, 2]
+
+
+def _table(path, values):
+    """A profile table: {identifier: [value per arc position]}."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(values, index=ARC).rename_axis("Arc_Length").to_csv(path)
+    return str(path)
+
+
+class TestOutsideBrain(unittest.TestCase):
+    """A metric that cannot be 0 in tissue is 0 where the fibers left the brain mask: that location is dropped from
+    every metric of the same tract and case, because it is the location that is wrong, not the metric."""
+
+    def setUp(self):
+        profile_qc.set_outside_brain({})
+        self.addCleanup(profile_qc.set_outside_brain, {})
+
+    def _tree(self, d, tables):
+        paths = {}
+        for (tract, metric), values in tables.items():
+            paths[(tract, metric)] = _table(os.path.join(d, tract, '{}_{}.csv'.format(tract, metric)), values)
+        return paths
+
+    def test_a_zero_in_one_metric_drops_the_location_from_all_of_them(self):
+        good, holed = [0.4] * 5, [0.4, 0.4, 0.0, 0.4, 0.4]
+        with tempfile.TemporaryDirectory() as d:
+            paths = self._tree(d, {
+                ('CG_L', 'fa'): {'a_ses-012m': good, 'b_ses-012m': holed},
+                ('CG_L', 'md'): {'a_ses-012m': good, 'b_ses-012m': good},   # md is fine at that position
+                ('CG_L', 'FWF'): {'a_ses-012m': good, 'b_ses-012m': good},  # FWF too
+            })
+            profile_qc.set_outside_brain(profile_qc.find_outside_brain(sorted(paths.values())))
+            for metric in ('fa', 'md', 'FWF'):
+                df = profile_qc.load_profile_table(paths[('CG_L', metric)])
+                self.assertTrue(np.isnan(df.loc[0, 'b_ses-012m']), metric)   # dropped everywhere
+                self.assertFalse(df['a_ses-012m'].isna().any(), metric)      # the other case is untouched
+                self.assertEqual(int(df['b_ses-012m'].notna().sum()), 4, metric)
+
+    def test_a_zero_in_a_metric_where_zero_is_valid_drops_nothing(self):
+        """FWF = 0 means no free water, not a location outside the brain."""
+        with tempfile.TemporaryDirectory() as d:
+            paths = self._tree(d, {
+                ('CG_L', 'fa'): {'a_ses-012m': [0.4] * 5},
+                ('CG_L', 'FWF'): {'a_ses-012m': [0.1, 0.0, 0.0, 0.1, 0.1]},
+            })
+            outside = profile_qc.find_outside_brain(sorted(paths.values()))
+            self.assertEqual(outside, {})
+            profile_qc.set_outside_brain(outside)
+            self.assertFalse(profile_qc.load_profile_table(paths[('CG_L', 'FWF')]).isna().any().any())
+
+    def test_other_tracts_are_not_affected(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = self._tree(d, {
+                ('CG_L', 'fa'): {'a_ses-012m': [0.4, 0.0, 0.4, 0.4, 0.4]},
+                ('CG_R', 'fa'): {'a_ses-012m': [0.4] * 5},
+            })
+            profile_qc.set_outside_brain(profile_qc.find_outside_brain(sorted(paths.values())))
+            self.assertEqual(int(profile_qc.load_profile_table(paths[('CG_L', 'fa')]).isna().sum().sum()), 1)
+            self.assertEqual(int(profile_qc.load_profile_table(paths[('CG_R', 'fa')]).isna().sum().sum()), 0)
+
+    def test_a_negative_value_counts_as_well(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = self._tree(d, {('CG_L', 'md'): {'a_ses-012m': [1e-3, -1e-4, 1e-3, 1e-3, 1e-3]}})
+            profile_qc.set_outside_brain(profile_qc.find_outside_brain(sorted(paths.values())))
+            self.assertTrue(np.isnan(profile_qc.load_profile_table(paths[('CG_L', 'md')]).loc[-1, 'a_ses-012m']))
+
+    def test_nothing_is_dropped_when_it_is_switched_off(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = self._tree(d, {('CG_L', 'fa'): {'a_ses-012m': [0.4, 0.0, 0.4, 0.4, 0.4]}})
+            profile_qc.set_outside_brain({}) # --keep-outside-brain
+            df = profile_qc.load_profile_table(paths[('CG_L', 'fa')])
+            self.assertEqual(df.loc[-1, 'a_ses-012m'], 0.0)
+
+
+class TestTooLittleLeftToJudge(unittest.TestCase):
+    """A profile that is missing (or outside the brain) nearly everywhere cannot be compared with the prior: it is an
+    outlier, not a clean profile."""
+
+    def _qc(self, n_valid, n_positions=10, r=0.9, frac_inside=1.0, n_present=None):
+        return pd.DataFrame([{
+            'tract': 'CG_L', 'metric': 'fa', 'subject_session': 'a_ses-012m', 'age': 12, 'bin': '10-60m',
+            'r': r, 'frac_inside': frac_inside, 'n_valid': n_valid,
+            'n_inside': 0 if np.isnan(frac_inside) else int(frac_inside * n_valid),
+            'n_present': n_valid if n_present is None else n_present, 'n_positions': n_positions}])
+
+    def _flags(self, qc, min_valid_frac=0.5):
+        g = profile_qc.detect_group_outliers(qc, value_min_inside=0.9, shape_method='fixed', corr_min=0.5,
+                                             corr_iqr_k=1.5, shape_metric='fa', min_valid_frac=min_valid_frac)
+        return g.iloc[0]
+
+    def test_a_profile_without_any_valid_position_is_flagged(self):
+        row = self._flags(self._qc(n_valid=0, r=np.nan, frac_inside=np.nan))
+        self.assertEqual(row['frac_valid'], 0.0)
+        self.assertTrue(row['is_value_outlier'])
+        self.assertTrue(row['is_outlier'])
+
+    def test_a_mostly_empty_profile_is_flagged_although_what_is_left_fits(self):
+        row = self._flags(self._qc(n_valid=2)) # 2 of 10 positions, all inside the envelope
+        self.assertEqual(row['joint_frac_inside'], 1.0)
+        self.assertTrue(row['is_value_outlier'])
+
+    def test_a_profile_with_enough_left_is_not_flagged(self):
+        row = self._flags(self._qc(n_valid=8))
+        self.assertFalse(row['is_value_outlier'])
+        self.assertFalse(row['is_outlier'])
+
+    def test_the_check_can_be_switched_off(self):
+        row = self._flags(self._qc(n_valid=0, r=np.nan, frac_inside=np.nan), min_valid_frac=0)
+        self.assertFalse(row['is_value_outlier'])
+
+    def test_a_complete_profile_without_an_envelope_is_not_flagged(self):
+        """An age bin holding a single subject has no std, so the prior defines no envelope and nothing can be
+        compared (n_valid = 0). That says nothing about the profile, which is there in full."""
+        row = self._flags(self._qc(n_valid=0, n_present=10, r=np.nan, frac_inside=np.nan))
+        self.assertEqual(row['frac_valid'], 1.0)
+        self.assertFalse(row['is_value_outlier'])
+        self.assertFalse(row['is_outlier'])
 
 
 if __name__ == '__main__':

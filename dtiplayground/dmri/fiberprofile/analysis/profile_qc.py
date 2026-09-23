@@ -40,6 +40,21 @@ Default age bins (inclusive, months): 0-3, 4-9, 10-60.  The **oldest** bin is
 open-ended, so subjects older than its upper bound (e.g. > 60 months) are folded
 into it.
 
+Locations sampled outside the brain: a metric that cannot be 0 in tissue (FA,
+MD, RD, AD, NDI, ODI, ...) is 0 where the fibers of that case left the brain
+mask and the maps were read as background. That is a property of the location,
+so it is read as missing on EVERY metric of that tract and case, including the
+ones in which 0 is a valid measurement (``--zero-valid-metrics``, by default
+FWF, the free water fraction). ``--keep-outside-brain`` keeps the zeros.
+
+A profile with less than ``--min-valid-frac`` of its positions left (missing, or
+outside the brain) is flagged as an outlier: too little of it is there to judge.
+Without it a profile that is missing everywhere would pass, since every
+comparison with it is undefined. The check counts the values that are there, not
+the comparisons that succeeded: where the prior has no envelope (an age bin with
+a single subject has no std) nothing is comparable, which says nothing about the
+profile.
+
 With ``--registration-qc`` (a registration-QC folder or ``registration_qc.csv``),
 every subject-session flagged there as a registration failure is removed from
 ALL tracts/metrics up front -- before any stats, profile QC, or cleaning.
@@ -105,6 +120,10 @@ AGE_RE = re.compile(r"ses-(\d+)m")
 OUTPUT_SUFFIX = "_agebinstats.csv"
 PERCENTILES = [1, 5, 25, 50, 75, 95, 99]
 CASE_COLUMN = "case_id" # EXTRACT_Profile with resultCaseColumnwise false: one row per case, arc lengths as columns
+# Metrics in which 0 is a valid measurement, so a 0 there does not mean the position was sampled outside the brain.
+ZERO_VALID_METRICS = {"FWF"}
+# Locations sampled outside the brain, per tract (see find_outside_brain / set_outside_brain).
+_OUTSIDE_BRAIN = {}
 # Preferred metric ordering for the plot subplot grid; others appended.
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF"]
 # The four DTI metrics shown in the excluded-profiles review figures.
@@ -347,6 +366,58 @@ def load_prep_failures(path, excluded_frac, rms2_frac):
     return failed
 
 
+def read_profile_table(path):
+    """A profile CSV as arc lengths x cases. A table of EXTRACT_Profile with ``resultCaseColumnwise`` false holds them
+    the other way round (first column ``case_id``, arc lengths as column names) and is transposed."""
+    df = pd.read_csv(path, index_col=0)
+    if str(df.index.name).strip() == CASE_COLUMN:
+        df = df.transpose()
+        df.index = pd.to_numeric(df.index, errors="coerce")
+        df.index.name = "Arc_Length"
+    return df
+
+
+def find_outside_brain(inputs, zero_valid_metrics=ZERO_VALID_METRICS):
+    """{tract: (arc lengths x cases) boolean table} of the profile locations that were sampled outside the brain.
+
+    A metric that cannot be zero in tissue (FA, MD, RD, AD, NDI, ODI, ...) is zero at a position when the fibers
+    there fell outside the brain mask and the maps were read as background. That is a property of the location, not
+    of the metric, so the position is dropped from every metric of that tract and case, including the ones where
+    zero is a valid measurement (*zero_valid_metrics*, by default the free water fraction). Values that are not
+    positive count, so a negative diffusivity is dropped as well.
+    """
+    outside = {}
+    for path in inputs:
+        tract, metric = tract_and_metric(path)
+        if metric in zero_valid_metrics:
+            continue
+        try:
+            df = read_profile_table(path)
+        except Exception as e:
+            log.warning("could not read %s: %s", path, e)
+            continue
+        with np.errstate(invalid="ignore"):
+            bad = df.le(0)
+        if not bad.to_numpy().any():
+            continue
+        if tract in outside:
+            outside[tract] = outside[tract].reindex(
+                index=outside[tract].index.union(bad.index),
+                columns=outside[tract].columns.union(bad.columns), fill_value=False)
+            aligned = bad.reindex(index=outside[tract].index, columns=outside[tract].columns, fill_value=False)
+            outside[tract] = outside[tract] | aligned
+        else:
+            outside[tract] = bad
+    return outside
+
+
+def set_outside_brain(outside):
+    """Register the locations sampled outside the brain; every table read afterwards has them as missing."""
+    global _OUTSIDE_BRAIN
+    _OUTSIDE_BRAIN = dict(outside or {})
+    return sum(int(m.to_numpy().sum()) for m in _OUTSIDE_BRAIN.values())
+
+
 def load_profile_table(path, exclude_ids=None, exclude_full=None):
     """Read a profile CSV, dropping excluded columns.
 
@@ -354,14 +425,15 @@ def load_profile_table(path, exclude_ids=None, exclude_full=None):
     *exclude_full* drops by exact ``<subject>_<session>_<prefix>`` identifier
     (a specific scan; preprocessing QC).
 
-    Arc lengths are the rows and the cases the columns. A table of EXTRACT_Profile with ``resultCaseColumnwise``
-    false holds them the other way round (first column ``case_id``, arc lengths as column names) and is transposed.
+    The locations registered by ``set_outside_brain`` (sampled outside the brain, found on the other metrics of the
+    same tract) are read as missing, so they take part in nothing that follows.
     """
-    df = pd.read_csv(path, index_col=0)
-    if str(df.index.name).strip() == CASE_COLUMN:
-        df = df.transpose()
-        df.index = pd.to_numeric(df.index, errors="coerce")
-        df.index.name = "Arc_Length"
+    df = read_profile_table(path)
+    tract = tract_and_metric(path)[0]
+    mask = _OUTSIDE_BRAIN.get(tract)
+    if mask is not None:
+        aligned = mask.reindex(index=df.index, columns=df.columns, fill_value=False).fillna(False)
+        df = df.mask(aligned.to_numpy(dtype=bool))
     if exclude_ids or exclude_full:
         drop = [c for c in df.columns
                 if (exclude_ids and subject_session_of(c) in exclude_ids)
@@ -635,6 +707,9 @@ def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, ex
             if not cols:
                 continue
             M = df[cols].to_numpy(dtype=float)
+            ## how much of the profile is there at all: independent of the envelope, which is undefined where the
+            ## prior has no std (a bin with one subject) and would otherwise look like missing data
+            present = np.isfinite(M).sum(axis=0)
             r = pearson_columns(M, ref_vec)  # shape: shift/scale invariant, uses raw M
             if env is not None:
                 M_env = _apply_batch_shift(M, metric, label, batch_shifts)
@@ -643,18 +718,21 @@ def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, ex
                 frac = np.full(len(cols), np.nan)
                 nval = np.zeros(len(cols), dtype=int)
                 nin = np.zeros(len(cols), dtype=int)
+            n_positions = int(len(df.index)) # the arc length grid: how many positions the profile could have
             for i, c in enumerate(cols):
-                rows.append((tract, metric, c, col_ages[c], label, r[i], frac[i], int(nval[i]), int(nin[i])))
+                rows.append((tract, metric, c, col_ages[c], label, r[i], frac[i], int(nval[i]), int(nin[i]),
+                             int(present[i]), n_positions))
     if n_missing_prior:
         log.warning("%d (tract,metric) tables had no matching prior stats", n_missing_prior)
     return pd.DataFrame(
         rows,
-        columns=["tract", "metric", "subject_session", "age", "bin", "r", "frac_inside", "n_valid", "n_inside"],
+        columns=["tract", "metric", "subject_session", "age", "bin", "r", "frac_inside", "n_valid", "n_inside",
+                 "n_present", "n_positions"],
     )
 
 
 def detect_group_outliers(qc, value_min_inside, shape_method, corr_min, corr_iqr_k,
-                          shape_metric, exclude_metrics=()):
+                          shape_metric, exclude_metrics=(), min_valid_frac=0.5):
     """Decide outliers per (tract, subject_session) -- jointly over metrics.
 
     Because all of a tract's metrics are extracted from the same tract data, the
@@ -681,12 +759,22 @@ def detect_group_outliers(qc, value_min_inside, shape_method, corr_min, corr_iqr
     # (1) joint value fraction pooled over contributing metrics only
     val_src = qc[~qc["metric"].isin(exclude)]
     vagg = val_src.groupby(["tract", "subject_session"], as_index=False).agg(
-        n_inside=("n_inside", "sum"), n_valid=("n_valid", "sum"))
+        n_inside=("n_inside", "sum"), n_valid=("n_valid", "sum"), n_present=("n_present", "sum"),
+        n_positions=("n_positions", "sum"))
     groups = groups.merge(vagg, on=["tract", "subject_session"], how="left")
-    groups[["n_inside", "n_valid"]] = groups[["n_inside", "n_valid"]].fillna(0)
+    cols = ["n_inside", "n_valid", "n_present", "n_positions"]
+    groups[cols] = groups[cols].fillna(0)
     groups["joint_frac_inside"] = np.where(
         groups["n_valid"] > 0, groups["n_inside"] / groups["n_valid"], np.nan)
-    groups["is_value_outlier"] = (groups["joint_frac_inside"] < value_min_inside).fillna(False)
+    ## how much of the profile is there at all: missing values, and the locations dropped because the fibers were
+    ## sampled outside the brain. Too little of it and the profile is an outlier rather than a clean one -- without
+    ## this a profile that is missing everywhere passes, since every comparison with it is undefined. It counts the
+    ## values, not the comparisons: where the prior has no envelope (a bin with one subject) nothing is comparable,
+    ## which says nothing about the profile.
+    groups["frac_valid"] = np.where(
+        groups["n_positions"] > 0, groups["n_present"] / groups["n_positions"], np.nan)
+    too_empty = (groups["frac_valid"] < min_valid_frac).fillna(True) if min_valid_frac > 0 else False
+    groups["is_value_outlier"] = (groups["joint_frac_inside"] < value_min_inside).fillna(False) | too_empty
 
     # (2) shape from the chosen metric (FA) only
     fa = qc[qc["metric"] == shape_metric][["tract", "subject_session", "bin", "r"]].copy()
@@ -885,6 +973,15 @@ def configure_parser(p):
                    help="Root with the profile tables: gathered (<tract>/<tract>_<metric>.csv) or the "
                         "EXTRACT_Profile output of a run (<metric>/<tract>_<metric>.csv)")
     p.add_argument("--plots-dir", default="StatPlots", help="Output folder for QC plots")
+    p.add_argument("--keep-outside-brain", action="store_true",
+                   help="Keep the profile locations that a metric reports as 0 (fibers sampled outside the brain "
+                        "mask); by default they are read as missing on every metric of that tract and case")
+    p.add_argument("--min-valid-frac", type=float, default=0.5,
+                   help="A profile with a smaller fraction of usable positions (missing, or sampled outside the "
+                        "brain) is an outlier: too little of it is left to judge (0 disables; default: %(default)s)")
+    p.add_argument("--zero-valid-metrics", default=",".join(sorted(ZERO_VALID_METRICS)),
+                   help="Metrics in which 0 is a valid measurement, so it does not mark the location as outside "
+                        "the brain (default: %(default)s)")
     p.add_argument("--bins", default="0-3,4-9,10-60", help="Age bins in months, inclusive; oldest is open-ended")
     p.add_argument("--ddof", type=int, default=1, help="Delta d.o.f. for std (1=sample, 0=population; default: 1)")
     p.add_argument("--dpi", type=int, default=130, help="Plot resolution (default: 130)")
@@ -973,6 +1070,22 @@ def run_args(args, p) -> int:
         log.info("These are the per property tables of an EXTRACT_Profile run (the tract is the file name, the "
                  "folder the metric)")
 
+    # locations where the fibers left the brain mask: 0 in a metric that cannot be 0 in tissue
+    if args.keep_outside_brain:
+        set_outside_brain({})
+    else:
+        zero_valid = {m.strip() for m in args.zero_valid_metrics.split(",") if m.strip()}
+        outside = find_outside_brain(inputs, zero_valid)
+        n_cells = set_outside_brain(outside)
+        if n_cells:
+            profiles = sum(int((m.to_numpy().sum(axis=0) > 0).sum()) for m in outside.values())
+            emptied = sum(int((m.to_numpy().all(axis=0)).sum()) for m in outside.values())
+            log.info("Sampled outside the brain (0 in %s): %d location(s) of %d profile(s) in %d tract(s) are read "
+                     "as missing on every metric%s", "/".join(sorted({m for m in (tract_and_metric(f)[1] for f in inputs)
+                                                                      if m not in zero_valid})) or "-",
+                     n_cells, profiles, len(outside),
+                     "; %d profile(s) keep no location at all" % emptied if emptied else "")
+
     # Scans that failed upstream QC are removed up front.
     reg_failed = set()
     if args.registration_qc:
@@ -1039,7 +1152,8 @@ def run_args(args, p) -> int:
         qc = compute_profile_qc(inputs, args.prior_stats_dir, bins, args.corr_reference, env_cfg,
                                 exclude_ids=reg_ss, exclude_full=full_excl, batch_shifts=batch_shifts)
         groups = detect_group_outliers(qc, args.value_min_inside, args.shape_outlier_method,
-                                       args.corr_min, args.corr_iqr_k, args.shape_metric, exclude_metrics)
+                                       args.corr_min, args.corr_iqr_k, args.shape_metric, exclude_metrics,
+                                       args.min_valid_frac)
 
         os.makedirs(plots_root, exist_ok=True)
         # per-metric detail (correlations, envelope fractions) + the group flags

@@ -269,7 +269,7 @@ class TestTooLittleLeftToJudge(unittest.TestCase):
             'n_inside': 0 if np.isnan(frac_inside) else int(frac_inside * n_valid),
             'n_present': n_valid if n_present is None else n_present, 'n_positions': n_positions}])
 
-    def _flags(self, qc, min_valid_frac=0.5):
+    def _flags(self, qc, min_valid_frac=0.75):
         g = profile_qc.detect_group_outliers(qc, value_min_inside=0.9, shape_method='fixed', corr_min=0.5,
                                              corr_iqr_k=1.5, shape_metric='fa', min_valid_frac=min_valid_frac)
         return g.iloc[0]
@@ -289,6 +289,11 @@ class TestTooLittleLeftToJudge(unittest.TestCase):
         row = self._flags(self._qc(n_valid=8))
         self.assertFalse(row['is_value_outlier'])
         self.assertFalse(row['is_outlier'])
+
+    def test_the_default_flags_a_profile_that_lost_a_quarter_of_its_positions(self):
+        """Losing that much of a tract to locations outside the brain is itself a sign of a failure."""
+        self.assertTrue(self._flags(self._qc(n_valid=6))['is_value_outlier'])   # 0.6 of the positions
+        self.assertFalse(self._flags(self._qc(n_valid=6), min_valid_frac=0.5)['is_value_outlier'])
 
     def test_the_check_can_be_switched_off(self):
         row = self._flags(self._qc(n_valid=0, r=np.nan, frac_inside=np.nan), min_valid_frac=0)

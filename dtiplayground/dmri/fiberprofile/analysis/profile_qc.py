@@ -734,7 +734,7 @@ def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, ex
 
 
 def detect_group_outliers(qc, value_min_inside, shape_method, corr_min, corr_iqr_k,
-                          shape_metric, exclude_metrics=(), min_valid_frac=0.5):
+                          shape_metric, exclude_metrics=(), min_valid_frac=0.75):
     """Decide outliers per (tract, subject_session) -- jointly over metrics.
 
     Because all of a tract's metrics are extracted from the same tract data, the
@@ -1025,7 +1025,7 @@ def configure_parser(p):
     p.add_argument("--keep-outside-brain", action="store_true",
                    help="Keep the profile locations that a metric reports as 0 (fibers sampled outside the brain "
                         "mask); by default they are read as missing on every metric of that tract and case")
-    p.add_argument("--min-valid-frac", type=float, default=0.5,
+    p.add_argument("--min-valid-frac", type=float, default=0.75,
                    help="A profile with a smaller fraction of usable positions (missing, or sampled outside the "
                         "brain) is an outlier: too little of it is left to judge (0 disables; default: %(default)s)")
     p.add_argument("--zero-valid-metrics", default=",".join(sorted(ZERO_VALID_METRICS)),

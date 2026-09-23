@@ -495,6 +495,13 @@ MIT
 
 ### Change Log
 
+##### 2026-09-23 (v0.7.24)
+- dmriprep - QC_Report: image QC of the raw input and of the preprocessed image (IMAGE_QC.tsv, IMAGE_ndc.tsv, figure): neighboring DWI correlation (NDC, per shell), bad slices (corrupted slices and signal dropouts) and the fiber coherence index of the b-table, which names the b-vector axis whose sign would raise it; protocol options imageQC and bTableCheck
+- dmriprep - QC_Report CSV and batch QC table include these numbers (raw_ / qced_); the batch report marks a low neighboring DWI correlation and many bad slices
+- dmriprep - EDDYMOTION_Correct: the original gradient indexes were renumbered after eddy, so the original_index of EDDY_motion.tsv and DTI_fit.tsv, the labels of the QC report and the gradients excluded by a later module did not refer to the input of the pipeline once a volume had been excluded before eddy
+- dmriprep - MANUAL_Exclude: the listed (original) indexes are logged with the volume they are at in the image, with a warning when an earlier module already excluded volumes or a listed one is gone
+- dmrifiberprofile - qc-profiles: --profiles-dir also takes the profiles of a run as EXTRACT_Profile writes them (00_EXTRACT_Profile/<metric>/<tract>_<metric>.csv, either orientation), so gather is not needed to QC a single run; before, its tables were read as one tract named after the metric
+
 ##### 2026-09-19 (v0.7.23)
 - dmriprep - DWI_Denoise: denoising with DIPY, MP-PCA (default, automatic patch size as QSIPrep) or Patch2Self; noise level map (MP-PCA) or residual map (Patch2Self), DENOISE_QC.tsv and a before/after figure
 - dmriprep - GIBBS_Correct: Gibbs ringing removal with DIPY (full Fourier acquisitions), GIBBS_QC.tsv and a before/after figure. Neither module is in the default pipeline: put them first

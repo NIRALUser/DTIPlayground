@@ -497,6 +497,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-24 (v0.7.30)
+- dmrifiberprofile - qc-profiles: the age of a profile can come from a table of the cohort (--age-csv, with --age-column and --age-units), the same table as `qc-registration --age-csv` and the ageCSV of DTI_Register, for cohorts whose session names don't carry the age; --age-regex replaces the pattern read from the column names, and the run reports where the ages came from and which profiles have none
+
 ##### 2026-09-24 (v0.7.29)
 - dmriprep - DTI_Register: the age that picks the bin of the normative model can come from a table of the cohort (protocol ageCSV, with ageColumn and ageUnits), the same table as `dmrifiberprofile qc-registration --age-csv`, for cohorts whose session names don't carry the age; the order is the protocol age, then the table, then ageRegex on the path
 

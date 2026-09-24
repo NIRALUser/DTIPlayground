@@ -18,6 +18,7 @@ DTIPlayground - Integrated DWI processing toolkit
    installation
    DMRIPrep
    DMRIFiberProfile
+   modules/index
    DMRIAtlasBuilder
    DMRIViewer
    license

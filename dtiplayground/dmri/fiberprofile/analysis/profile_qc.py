@@ -66,7 +66,8 @@ original, or whose ``rms_larger_than_2`` exceeds ``--prep-rms2-frac`` of the
 remaining gradients.
 
 Optionally, with ``--prior-stats-dir`` pointing at a folder of previously
-computed stats (e.g. ``ProfileQCStats``), profiles are QC'd against the
+computed stats (e.g. ``ProfileQCStats``, in either layout: they sit next to the
+tables they were computed from), profiles are QC'd against the
 age-appropriate prior reference to flag likely failed processing.  Because all
 of a tract's metrics come from the same tract data, the decision is made once
 per **(subject-session, tract)** and applied to every metric of that tract:
@@ -126,6 +127,8 @@ CASE_COLUMN = "case_id" # EXTRACT_Profile with resultCaseColumnwise false: one r
 ZERO_VALID_METRICS = {"FWF"}
 # Locations sampled outside the brain, per tract (see find_outside_brain / set_outside_brain).
 _OUTSIDE_BRAIN = {}
+# {prior stats folder: {(tract, metric): path}}, see prior_stats_index
+_PRIOR_INDEX = {}
 # Preferred metric ordering for the plot subplot grid; others appended.
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF"]
 # The four DTI metrics shown in the excluded-profiles review figures.
@@ -552,8 +555,26 @@ def bin_label_for_age(age, bins):
     return None
 
 
+def prior_stats_index(prior_dir):
+    """{(tract, metric): path} of the age bin stats under *prior_dir*, whichever layout they are in: they are written
+    next to the tables they were computed from, so a normative set gathered first has them per tract and one computed
+    straight from a run has them per metric. The names are read with tract_and_metric, which also puts the metric in
+    the spelling used here (the run output writes FA, gather fa)."""
+    index = _PRIOR_INDEX.get(prior_dir)
+    if index is None:
+        index = {}
+        for path in sorted(glob.glob(os.path.join(prior_dir, "**", "*" + OUTPUT_SUFFIX), recursive=True)):
+            index.setdefault(tract_and_metric(path[: -len(OUTPUT_SUFFIX)] + ".csv"), path)
+        _PRIOR_INDEX[prior_dir] = index
+        log.debug("%d prior stats table(s) under %s", len(index), prior_dir)
+    return index
+
+
 def find_prior_stats(prior_dir, tract, metric):
     """Locate the prior stats CSV for a (tract, metric); support nested/flat."""
+    found = prior_stats_index(prior_dir).get((tract, metric))
+    if found is not None:
+        return found
     candidates = [
         os.path.join(prior_dir, tract, f"{tract}_{metric}{OUTPUT_SUFFIX}"),
         os.path.join(prior_dir, f"{tract}_{metric}{OUTPUT_SUFFIX}"),

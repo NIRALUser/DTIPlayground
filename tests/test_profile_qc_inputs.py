@@ -92,6 +92,37 @@ class TestLoadProfileTable(unittest.TestCase):
                 self.assertEqual(list(df.columns), [COLUMNS[1]])
 
 
+class TestFindPriorStats(unittest.TestCase):
+    """The age bin stats are written next to the tables they came from, so they are in the layout of those tables: a
+    normative set gathered first has them per tract, one computed straight from a run has them per metric."""
+
+    def setUp(self):
+        profile_qc._PRIOR_INDEX.clear()
+        self.addCleanup(profile_qc._PRIOR_INDEX.clear)
+
+    def test_the_gathered_layout(self):
+        with tempfile.TemporaryDirectory() as d:
+            want = _write(os.path.join(d, 'CG_L', 'CG_L_fa' + profile_qc.OUTPUT_SUFFIX), 'Arc_Length\n0\n')
+            self.assertEqual(profile_qc.find_prior_stats(d, 'CG_L', 'fa'), want)
+
+    def test_the_run_output_layout_and_its_spelling_of_the_metric(self):
+        """The run output writes FA, and the QC asks for it as gather names it (fa)."""
+        with tempfile.TemporaryDirectory() as d:
+            want = _write(os.path.join(d, 'FA', 'CG_L_FA' + profile_qc.OUTPUT_SUFFIX), 'Arc_Length\n0\n')
+            self.assertEqual(profile_qc.find_prior_stats(d, 'CG_L', 'fa'), want)
+
+    def test_a_tract_name_with_underscores_in_the_run_layout(self):
+        with tempfile.TemporaryDirectory() as d:
+            want = _write(os.path.join(d, 'AD', 'Arc_FT_L_AD' + profile_qc.OUTPUT_SUFFIX), 'Arc_Length\n0\n')
+            self.assertEqual(profile_qc.find_prior_stats(d, 'Arc_FT_L', 'ad'), want)
+
+    def test_nothing_for_a_tract_that_is_not_there(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write(os.path.join(d, 'FA', 'CG_L_FA' + profile_qc.OUTPUT_SUFFIX), 'Arc_Length\n0\n')
+            self.assertIsNone(profile_qc.find_prior_stats(d, 'CG_R', 'fa'))
+            self.assertIsNone(profile_qc.find_prior_stats(d, 'CG_L', 'md'))
+
+
 class TestCleanedTablesBlankOutsideBrain(unittest.TestCase):
     """The cleaned tables hold what the QC used: the locations sampled outside the brain are written empty instead of
     keeping the zeros that were ignored."""

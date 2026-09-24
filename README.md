@@ -497,6 +497,13 @@ MIT
 
 ### Change Log
 
+##### 2026-09-24 (v0.8.0)
+- The same code as 0.7.30; the minor version marks the QC work of the 0.7.24 - 0.7.30 releases:
+- dmriprep - QC_Report: image QC of the raw input and of the preprocessed image (neighboring DWI correlation, bad slices, b-table fiber coherence index), in the report, the QC_Report CSV and the batch QC table
+- dmriprep - EDDYMOTION_Correct: the original gradient indexes survive eddy, so the per volume QC tables, the report labels and the gradients excluded afterwards refer to the input of the pipeline
+- dmrifiberprofile - qc-profiles: reads the profiles of a run (00_EXTRACT_Profile) as well as gathered tables, and finds the prior stats of either; the locations sampled outside the brain are read as missing on every metric and written empty in the cleaned tables; a profile with less than --min-valid-frac (0.75) of its positions left is an outlier
+- Ages come from one table of the cohort in qc-registration (--age-csv), qc-profiles (--age-csv) and the DTI_Register module of dmriprep (ageCSV), with the same columns, units and lookup order
+
 ##### 2026-09-24 (v0.7.30)
 - dmrifiberprofile - qc-profiles: the age of a profile can come from a table of the cohort (--age-csv, with --age-column and --age-units), the same table as `qc-registration --age-csv` and the ageCSV of DTI_Register, for cohorts whose session names don't carry the age; --age-regex replaces the pattern read from the column names, and the run reports where the ages came from and which profiles have none
 

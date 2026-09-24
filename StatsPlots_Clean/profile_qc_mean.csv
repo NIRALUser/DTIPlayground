@@ -1,9 +1,0 @@
-tract,metric,subject_session,age,bin,r,frac_inside,n_valid,n_inside,n_present,n_positions
-CG_L,FWF,subA_ses-012m,12,10-60m,1.0,1.0,5,5,5,5
-CG_L,FWF,subB_ses-012m,12,10-60m,1.0,1.0,5,5,5,5
-CG_L,FWF,subC_ses-012m,12,10-60m,,1.0,4,4,4,5
-CG_L,FWF,subD_ses-012m,12,10-60m,1.0,1.0,5,5,5,5
-CG_L,fa,subA_ses-012m,12,10-60m,,1.0,5,5,5,5
-CG_L,fa,subB_ses-012m,12,10-60m,,1.0,5,5,5,5
-CG_L,fa,subC_ses-012m,12,10-60m,,1.0,4,4,4,5
-CG_L,fa,subD_ses-012m,12,10-60m,,1.0,4,4,4,5

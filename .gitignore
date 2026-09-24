@@ -16,3 +16,9 @@ tests
 **/_build
 **/_templates
 **/spa.zip
+
+## default output folders of the dmrifiberprofile analysis commands, written into the working directory
+StatPlots
+StatsPlots_Clean
+RegistrationQC
+Profiles

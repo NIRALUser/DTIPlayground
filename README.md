@@ -12,8 +12,9 @@ diffusion weighted images, fiber profile extraction and analysis, and atlas buil
 | `dmriplayground` | Shared configuration and tool installation (`install-tools`, `init`) |
 | `dmriplaygroundlab` | The web UI for all of the above |
 
-Detailed documentation: <https://dtiplayground.readthedocs.io/en/latest/>. The change log is in
-[CHANGELOG.md](CHANGELOG.md).
+Detailed documentation: <https://niraluser.github.io/DTIPlayground/>, built from `docs/` on every change, with a
+reference page for every module and option of dmriprep and dmrifiberprofile. It is also published at
+<https://dtiplayground.readthedocs.io/en/latest/>. The change log is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 

@@ -3,6 +3,14 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-09-24 (v0.8.1)
+- Documentation only; the code is the same as 0.8.0
+- README: restructured (one intro naming the tools that ship, installation, a section per tool, project information); the change log moved to CHANGELOG.md, the dependency list that was several major versions behind now points at setup.py and requirements.txt, and the unmaintained dtiplayground-native / dmriprep-ui are no longer documented
+- Documentation: a reference page for every module and option of dmriprep and dmrifiberprofile (19 modules, 133 options), generated from the module definitions at build time, so a new module or option is documented by the next build
+- Documentation: the readthedocs pages describe what was added in 0.7.23 - 0.8.0 (rerunning, denoising and Gibbs ringing removal, the age appropriate registration target, the QC outputs, and the analysis commands of dmrifiberprofile, which were not documented at all); the build configuration asked for a python and an OS image readthedocs has dropped
+- Documentation: built and published from the repository to https://niraluser.github.io/DTIPlayground/ on every change, with warnings failing the build
+- The sdists of 0.7.26 - 0.8.0 carried three CSV files of a test run (StatsPlots_Clean) at their root; they are gone, and the folders those commands write by default are ignored
+
 ##### 2026-09-24 (v0.8.0)
 - The same code as 0.7.30; the minor version marks the QC work of the 0.7.24 - 0.7.30 releases:
 - dmriprep - QC_Report: image QC of the raw input and of the preprocessed image (neighboring DWI correlation, bad slices, b-table fiber coherence index), in the report, the QC_Report CSV and the batch QC table

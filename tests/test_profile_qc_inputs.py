@@ -92,6 +92,59 @@ class TestLoadProfileTable(unittest.TestCase):
                 self.assertEqual(list(df.columns), [COLUMNS[1]])
 
 
+class TestAgeOfAProfile(unittest.TestCase):
+    """The age of a profile column decides its age bin: the table of --age-csv first, then the pattern on the column
+    name, the same order as the DTI_Register module and qc-registration."""
+
+    def setUp(self):
+        profile_qc.set_age_source()
+        self.addCleanup(profile_qc.set_age_source)
+
+    def test_the_column_name_when_there_is_no_table(self):
+        self.assertEqual(profile_qc.age_of('sub-1_ses-017m_acq-x'), 17)
+        self.assertIsNone(profile_qc.age_of('sub-1_ses-V02_acq-x'))
+
+    def test_the_table_is_used_when_the_session_carries_no_age(self):
+        profile_qc.set_age_source({('1', 'v02'): 14})
+        self.assertEqual(profile_qc.age_of('sub-1_ses-V02_acq-x'), 14)
+
+    def test_the_table_wins_over_the_column_name(self):
+        profile_qc.set_age_source({('1', '017m'): 9})
+        self.assertEqual(profile_qc.age_of('sub-1_ses-017m_acq-x'), 9)
+
+    def test_a_scan_that_is_not_in_the_table_falls_back_to_the_column_name(self):
+        profile_qc.set_age_source({('9', 'v02'): 14})
+        self.assertEqual(profile_qc.age_of('sub-1_ses-017m_acq-x'), 17)
+        self.assertIsNone(profile_qc.age_of('sub-1_ses-V02_acq-x'))
+
+    def test_a_subject_level_row_applies_to_every_session(self):
+        profile_qc.set_age_source({('1', None): 20})
+        self.assertEqual(profile_qc.age_of('sub-1_ses-V01_acq-x'), 20)
+        self.assertEqual(profile_qc.age_of('sub-1_ses-V02_acq-x'), 20)
+
+    def test_another_pattern_for_the_column_names(self):
+        profile_qc.set_age_source(None, r'age-(\d+)mo')
+        self.assertEqual(profile_qc.age_of('sub-1_age-014mo_acq-x'), 14)
+        self.assertIsNone(profile_qc.age_of('sub-1_ses-017m_acq-x')) # the default pattern no longer applies
+
+    def test_the_bins_follow_the_table(self):
+        bins = profile_qc.parse_bins('0-3,4-9,10-60')
+        columns = ['sub-1_ses-V01_acq-x', 'sub-1_ses-V02_acq-x', 'sub-2_ses-V01_acq-x']
+        profile_qc.set_age_source({('1', 'v01'): 2, ('1', 'v02'): 14, ('2', 'v01'): 6})
+        grouped = profile_qc.bin_columns(columns, bins)
+        self.assertEqual(grouped['0-3m'], ['sub-1_ses-V01_acq-x'])
+        self.assertEqual(grouped['4-9m'], ['sub-2_ses-V01_acq-x'])
+        self.assertEqual(grouped['10-60m'], ['sub-1_ses-V02_acq-x'])
+
+    def test_where_each_age_came_from_is_recorded(self):
+        profile_qc.set_age_source({('1', 'v02'): 14})
+        profile_qc.age_of('sub-1_ses-V02_acq-x') # the table
+        profile_qc.age_of('sub-2_ses-017m_acq-x') # the pattern
+        profile_qc.age_of('sub-3_ses-V03_acq-x') # neither
+        self.assertEqual({k: len(v) for k, v in profile_qc._AGE_SOURCE.items()},
+                         {'table': 1, 'pattern': 1, 'none': 1})
+
+
 class TestFindPriorStats(unittest.TestCase):
     """The age bin stats are written next to the tables they came from, so they are in the layout of those tables: a
     normative set gathered first has them per tract, one computed straight from a run has them per metric."""

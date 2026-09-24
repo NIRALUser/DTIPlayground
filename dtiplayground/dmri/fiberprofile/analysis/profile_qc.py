@@ -20,9 +20,14 @@ in lower case), so the same ``--prior-stats-dir`` fits both. A root holding both
 of EXTRACT_Profile with ``resultCaseColumnwise`` false (one row per case) are
 transposed on reading.
 
-For every table, the columns
-(``<subject>_<session>_<prefix>`` identifiers, where the session encodes age as
-``ses-<months>m``) are grouped into age bins.  For each bin, the per-arc-length
+For every table, the columns (``<subject>_<session>_<prefix>`` identifiers) are
+grouped into age bins. The age of a profile is the row of its scan in
+``--age-csv`` (a participants/sessions table, as ``qc-registration --age-csv``;
+``--age-column`` and ``--age-units`` describe its age column), else
+``--age-regex`` on the column name (``ses-<months>m`` by default) -- the same
+order as ``qc-registration`` and the DTI_Register module of dmriprep. A profile
+with neither takes part in no age bin, and they are counted at the end of the
+run.  For each bin, the per-arc-length
 mean, standard deviation, subject count and percentiles across subjects are
 computed (ignoring missing values) and written to a companion CSV:
 
@@ -115,6 +120,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from dtiplayground.dmri.common.age_table import AGE_UNIT_TO_MONTHS, age_from_table, load_age_table
 from dtiplayground.dmri.fiberprofile.analysis.gather import normalize_metric
 
 log = logging.getLogger("profile_qc")
@@ -129,6 +135,11 @@ ZERO_VALID_METRICS = {"FWF"}
 _OUTSIDE_BRAIN = {}
 # {prior stats folder: {(tract, metric): path}}, see prior_stats_index
 _PRIOR_INDEX = {}
+# Ages of the cohort: the table of --age-csv and the pattern read from the column names, see set_age_source
+_AGE_TABLE = {}
+_AGE_RE = AGE_RE
+# Where the age of each column came from, for the summary at the end of the run
+_AGE_SOURCE = {"table": set(), "pattern": set(), "none": set()}
 # Preferred metric ordering for the plot subplot grid; others appended.
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF"]
 # The four DTI metrics shown in the excluded-profiles review figures.
@@ -205,8 +216,29 @@ def parse_bins(spec: str):
     return [tuple(b) for b in bins]
 
 
+def set_age_source(table=None, regex=None):
+    """The ages of the profiles: a table of the cohort ({(subject, session): months}, see
+    dtiplayground.dmri.common.age_table) and the pattern read from the column names when the table has no row for a
+    scan. Returns the number of entries of the table."""
+    global _AGE_TABLE, _AGE_RE
+    _AGE_TABLE = dict(table or {})
+    _AGE_RE = re.compile(regex) if regex else AGE_RE
+    for seen in _AGE_SOURCE.values():
+        seen.clear()
+    return len(_AGE_TABLE)
+
+
 def age_of(column: str):
-    m = AGE_RE.search(column)
+    """Age in months of a profile column (``<subject>_<session>_<prefix>``): its row in the age table, else the
+    pattern on the column name. None when neither gives one, and that column takes part in no age bin."""
+    if _AGE_TABLE:
+        tokens = column.split("_")
+        age = age_from_table(tokens[0], tokens[1] if len(tokens) > 1 else None, _AGE_TABLE)
+        if age is not None:
+            _AGE_SOURCE["table"].add(column)
+            return age
+    m = _AGE_RE.search(column)
+    _AGE_SOURCE["pattern" if m else "none"].add(column)
     return int(m.group(1)) if m else None
 
 
@@ -1053,6 +1085,17 @@ def configure_parser(p):
                    help="Metrics in which 0 is a valid measurement, so it does not mark the location as outside "
                         "the brain (default: %(default)s)")
     p.add_argument("--bins", default="0-3,4-9,10-60", help="Age bins in months, inclusive; oldest is open-ended")
+    p.add_argument("--age-csv", default=None,
+                   help="CSV/TSV with per-subject (and optionally per-session) ages, for cohorts whose session "
+                        "names don't carry the age (as 'qc-registration --age-csv'); the column names give the "
+                        "subject and session of each profile")
+    p.add_argument("--age-column", default=None, metavar="NAME",
+                   help="Name of the --age-csv column holding the age (default: auto-detect)")
+    p.add_argument("--age-units", default="months", choices=sorted(AGE_UNIT_TO_MONTHS),
+                   help="Units of the --age-csv age column (default: months)")
+    p.add_argument("--age-regex", default=AGE_RE.pattern,
+                   help="Pattern for the age in a column name (group 1, months), used when the table has no row "
+                        "for that scan (default: %(default)s)")
     p.add_argument("--ddof", type=int, default=1, help="Delta d.o.f. for std (1=sample, 0=population; default: 1)")
     p.add_argument("--dpi", type=int, default=130, help="Plot resolution (default: 130)")
     p.add_argument("--no-plots", action="store_true", help="Only write CSVs, skip plots")
@@ -1134,6 +1177,16 @@ def run_args(args, p) -> int:
     log.info("Age bins (inclusive months, oldest open-ended): %s",
              [lbl for _, _, lbl in bins])
 
+    if args.age_column and not args.age_csv:
+        p.error("--age-column only applies to --age-csv")
+    age_table = None
+    if args.age_csv:
+        try:
+            age_table = load_age_table(args.age_csv, args.age_units, args.age_column)
+        except (OSError, ValueError) as exc:
+            p.error(f"--age-csv: {exc}")
+    set_age_source(age_table, args.age_regex)
+
     inputs = select_inputs(args.profiles_dir)
     log.info("Found %d metric tables under %s", len(inputs), args.profiles_dir)
     if inputs and all(is_run_output_table(f) for f in inputs):
@@ -1178,6 +1231,16 @@ def run_args(args, p) -> int:
                                         exclude_ids=reg_ss, exclude_full=full_excl)
     log.info("Wrote %d age-bin stats CSVs and %d plots%s.",
              n_csv, n_plots, "" if args.no_plots else f" under {plots_sub}/")
+    n_table, n_pattern, n_none = (len(_AGE_SOURCE[k]) for k in ("table", "pattern", "none"))
+    log.info("Ages of %d profile(s): %d from %s, %d from the column names (%s)%s",
+             n_table + n_pattern + n_none, n_table, args.age_csv or "a table", n_pattern, args.age_regex,
+             f", {n_none} without an age (left out of every age bin)" if n_none else "")
+    if age_table and not n_table:
+        log.warning("No profile matched a row of %s: check that its subject and session columns hold the ids of the "
+                    "profile columns (<subject>_<session>_...)", args.age_csv)
+    if n_none:
+        log.warning("%d profile(s) have no age: %s%s", n_none, ", ".join(sorted(_AGE_SOURCE["none"])[:5]),
+                    " ..." if n_none > 5 else "")
 
     # per-(tract, dataset) whole-tract metric summaries (mean, median)
     n_sum = write_metric_summaries(inputs, reg_ss, plots_root, exclude_full=full_excl)

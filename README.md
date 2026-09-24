@@ -497,6 +497,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-24 (v0.7.29)
+- dmriprep - DTI_Register: the age that picks the bin of the normative model can come from a table of the cohort (protocol ageCSV, with ageColumn and ageUnits), the same table as `dmrifiberprofile qc-registration --age-csv`, for cohorts whose session names don't carry the age; the order is the protocol age, then the table, then ageRegex on the path
+
 ##### 2026-09-24 (v0.7.28)
 - dmrifiberprofile - qc-profiles: --prior-stats-dir also finds the age bin stats of a run (`<metric>/<tract>_<metric>_agebinstats.csv`, the metric spelled as the run writes it); before, only the gathered layout was found and the profile QC silently skipped every table of such a folder
 

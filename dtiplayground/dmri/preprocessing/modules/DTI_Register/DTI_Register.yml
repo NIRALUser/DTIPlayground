@@ -47,12 +47,40 @@ protocol:
         type: float
         caption: Age
         default_value: null
-        description: Age of the subject in the unit of the age bins of the normative model (months); read from the image path with ageRegex if not set
+        description: Age of the subject in the unit of the age bins of the normative model (months); taken from ageCSV, or read from the image path with ageRegex, if not set
+      ageCSV:
+        type: filepath-remote
+        caption: Age Table
+        default_value: null
+        description: CSV/TSV with the age of each scan (as 'dmrifiberprofile qc-registration --age-csv'), for cohorts whose session names don't carry the age. Subject and session columns are detected (participant_id/session_id and variants); one row per subject applies to all of its sessions. The subject and session of the scan are read from its path (sub-<id>, ses-<id>)
+      ageColumn:
+        type: string
+        caption: Age Column
+        default_value: null
+        description: Name of the ageCSV column holding the age (default - auto-detect - age, age_months, candidate_age, ...)
+      ageUnits:
+        type: list
+        caption: Age Units
+        default_value: months
+        candidates:
+          - value: months
+            caption: Months
+            description: Ages of ageCSV are in months
+          - value: years
+            caption: Years
+            description: Ages of ageCSV are in years
+          - value: weeks
+            caption: Weeks
+            description: Ages of ageCSV are in weeks
+          - value: days
+            caption: Days
+            description: Ages of ageCSV are in days
+        description: Units of the age column of ageCSV (converted to the months of the age bins)
       ageRegex:
         type: string
         caption: Age Pattern
         default_value: ses-(\d+)m
-        description: Regular expression for the age in the path of the input image (group 1), used when age is not set
+        description: Regular expression for the age in the path of the input image (group 1), used when neither age nor ageCSV gives one
       ANTsPath:
         type: dirpath-remote
         caption: ANTS directory

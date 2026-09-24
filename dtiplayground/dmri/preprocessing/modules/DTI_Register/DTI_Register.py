@@ -363,17 +363,62 @@ class DTI_Register(prep.modules.DTIPrepModule):
         return str(mean)
 
     def subjectAge(self):
-        """Age of this image: the protocol 'age', otherwise 'ageRegex' (group 1, in the same unit as the bins) matched on
-        the path of the input DTI or of the source image."""
+        """Age of this image, in the unit of the age bins (months): the protocol 'age' (or the global variable),
+        otherwise the row of this scan in 'ageCSV', otherwise 'ageRegex' (group 1) matched on the path of the input
+        DTI or of the source image."""
         age = self.protocol.get('age') or self.global_variables.get('age')
         if age is not None and str(age).strip() != '':
             return float(age)
+        age = self.ageFromTable()
+        if age is not None:
+            return age
         pattern = self.protocol.get('ageRegex')
         if pattern is None or str(pattern).strip() == '':
             return None
-        paths = [self.dtiImagePath, getattr(self.image, 'filename', None), str(self.output_dir)]
-        for path in [p for p in paths if p]:
+        for path in [p for p in self.agePaths() if p]:
             match = re.search(str(pattern), str(path))
             if match:
                 return float(match.group(1))
         return None
+
+    def agePaths(self):
+        """Where the subject, the session and the age are looked for."""
+        return [self.dtiImagePath, getattr(self.image, 'filename', None), str(self.output_dir)]
+
+    def subjectSession(self):
+        """(subject, session) of this image from its path, e.g. sub-1234/ses-012m or sub-1234_ses-012m_dwi.nrrd.
+        Either is None when the path doesn't have it."""
+        subject = session = None
+        for path in [p for p in self.agePaths() if p]:
+            subject = subject or (re.search(r'sub-([A-Za-z0-9]+)', str(path)) or [None, None])[1]
+            session = session or (re.search(r'ses-([A-Za-z0-9]+)', str(path)) or [None, None])[1]
+        return subject, session
+
+    def ageFromTable(self):
+        """Age of this scan from the protocol 'ageCSV' (the table of 'qc-registration --age-csv'), None when there is
+        no table, no subject in the path or no row for it."""
+        path = self.protocol.get('ageCSV') or self.global_variables.get('age_csv')
+        if path is None or str(path).strip() == '':
+            return None
+        if not Path(str(path)).exists():
+            logger("Age table {} doesn't exist, falling back to ageRegex".format(path), prep.Color.WARNING)
+            return None
+        from dtiplayground.dmri.common.age_table import age_from_table, load_age_table
+        subject, session = self.subjectSession()
+        if subject is None:
+            logger("No sub-<id> in the path of this image: the age table {} can't be used".format(path),
+                   prep.Color.WARNING)
+            return None
+        try:
+            table = load_age_table(str(path), self.protocol.get('ageUnits') or 'months',
+                                   self.protocol.get('ageColumn') or None)
+        except Exception as e:
+            logger("Age table {} could not be read ({}), falling back to ageRegex".format(path, e), prep.Color.WARNING)
+            return None
+        age = age_from_table(subject, session, table)
+        if age is None:
+            logger("No age in {} for subject {}, session {}, falling back to ageRegex".format(path, subject, session),
+                   prep.Color.WARNING)
+            return None
+        logger("Age of sub-{} ses-{} from {}: {} month(s)".format(subject, session, path, age), prep.Color.INFO)
+        return float(age)

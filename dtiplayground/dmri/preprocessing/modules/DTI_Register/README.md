@@ -10,8 +10,13 @@ Outputs: `registered_dti.nrrd` (DTI in reference space), `registered_<name>` for
 - method: ANTs (default)
 - referenceImage: reference (fixed) DTI
 - referenceNormativeModel: normative model of the reference atlas (folder with `manifest.json` and `<age bin>/DTI_mean.nrrd`, written by `dmrifiberprofile qc-registration --build-normative`). The DTI is then registered to the mean tensor of the age bin of the subject, so the target is age appropriate; the mean tensors are on the grid of the atlas, so the result is still in atlas space. Without a model, an age or a usable bin, referenceImage is used (with a warning)
-- age: age of the subject in the unit of the age bins (months); read from the image path with ageRegex if not set
-- ageRegex: regular expression for the age in the path of the input image (group 1), default `ses-(\d+)m`
+- age: age of the subject in the unit of the age bins (months); taken from ageCSV, or read from the image path with ageRegex, if not set
+- ageCSV: CSV/TSV with the age of each scan, for cohorts whose session names don't carry the age (`ses-V02`, ...). The same table as `dmrifiberprofile qc-registration --age-csv`: the subject and session columns are detected (`participant_id`/`session_id` and the usual variants), as is the age column (`age`, `age_months`, `candidate_age`, ... ), and a table without a session column gives one age per subject that applies to all of its sessions. The subject and session of the scan are read from its path (`sub-<id>`, `ses-<id>`). A scan that is not in the table, an unreadable table and a path without `sub-<id>` fall back to ageRegex, each with a warning
+- ageColumn: name of the ageCSV column holding the age, when it should not be auto-detected
+- ageUnits: units of that column, months (default), years, weeks or days; converted to the months of the age bins
+- ageRegex: regular expression for the age in the path of the input image (group 1), default `ses-(\d+)m`, used when neither age nor ageCSV gives one
+
+The age is taken from the first of these that has one: the protocol `age` (or the global variable `age`), the row of the scan in `ageCSV`, then `ageRegex` on the path. In a batch, a single table for the whole cohort is the simplest way: put `ageCSV` in the protocol. A per scan age can also be given in the datasheet of `dmriprep run-batch` with the `overrides` column, e.g. `{"DTI_Register": {"age": 12}}`.
 - ANTsPath: ANTs installation directory (default is dtiplayground-tools/ANTs)
 - ANTsMethod: useScalar-ANTS (default)
 - registrationType: GreedyDiffeo (default)

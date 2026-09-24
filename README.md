@@ -177,6 +177,8 @@ To run with existing protocol file:
 
 `-p` option cannot be used with `-d` option.
 
+**Age appropriate registration target:** with `referenceNormativeModel` (a folder written by `dmrifiberprofile qc-registration --build-normative`), DTI_Register registers to the mean tensor of the age bin of the subject instead of `referenceImage`. The age is the protocol `age` (or the global variable `age`), else the row of the scan in `ageCSV` (the table of `qc-registration --age-csv`: subject/session/age columns are detected, `ageColumn` and `ageUnits` override that; the subject and session are read from the path as `sub-<id>`/`ses-<id>`), else `ageRegex` on the path (default `ses-(\d+)m`). Without any of them the reference image is used, with a warning.
+
 **Rerunning into an existing output directory:** a module with a result from a previous run is not recomputed, unless its protocol or the global variables given with `-g` changed since that run (compared with the `settings.yml` stored in the module's folder; the module and the following ones are then recomputed). `--overwrite` recomputes all modules. Results of versions before 0.7.11 have no `settings.yml`: they are reused (with a warning) until the run uses `--overwrite`. Global variables given with `-g` take precedence over those stored by a previous run (`global_variables.yml`).
 
 **Denoising and Gibbs ringing removal:** DWI_Denoise (DIPY MP-PCA, the method of MRtrix `dwidenoise`, or Patch2Self)

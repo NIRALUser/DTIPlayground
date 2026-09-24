@@ -495,6 +495,9 @@ MIT
 
 ### Change Log
 
+##### 2026-09-24 (v0.7.28)
+- dmrifiberprofile - qc-profiles: --prior-stats-dir also finds the age bin stats of a run (`<metric>/<tract>_<metric>_agebinstats.csv`, the metric spelled as the run writes it); before, only the gathered layout was found and the profile QC silently skipped every table of such a folder
+
 ##### 2026-09-23 (v0.7.27)
 - dmrifiberprofile - qc-profiles: --min-valid-frac defaults to 0.75 (was 0.5), so a profile that lost a quarter of its positions to locations outside the brain or to missing values is flagged
 

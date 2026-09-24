@@ -14,7 +14,7 @@ The general framework of dmriprep is:
 -	The final output of a workflow/protocol is a dMRI dataset
 -	Individual modules might generate their own additional outputs
 
-Thus, for example, a tensor estimation module will write out a tensor image, a tractography module will write out a tractography result, etc, and in addition, the final output that is written at the end of any pipeline (which will be called *QCed.nrrd/QCed.nii.gz depending on format) will be a dMRI/DWI dataset. This final dMRI data is either the output of the last dMRI modifying module in the pipeline or the same as the input dMRI data if the protocol does not contain a module that modifies the dMRI data.
+Thus, for example, a tensor estimation module will write out a tensor image, a tractography module will write out a tractography result, etc, and in addition, the final output that is written at the end of any pipeline (which will be called ``*QCed.nrrd`` / ``*QCed.nii.gz`` depending on format) will be a dMRI/DWI dataset. This final dMRI data is either the output of the last dMRI modifying module in the pipeline or the same as the input dMRI data if the protocol does not contain a module that modifies the dMRI data.
 
 
 About the Preprocessing part : `README about Preprocessing <https://github.com/NIRALUser/DTIPlayground/blob/master/dtiplayground/dmri/preprocessing/README.md>`_
@@ -37,23 +37,10 @@ Then go to DMRI Prep menu. Once protocol file is made with IO options (image fil
 
 
 
-Legacy UI (Linux only)
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-When a user run dmriprep-ui first time, it automatically initialize.::
-
-    $ dmriprep-ui
-
-If you haven't installed legacy UI::
-
-    $ pip install dtiplayground-native
-
-
-
 CLI Mode (Linux/Windows-WSL)
 ================================
 
-For Windows users, install WSL2 and linux packages with python>=3.8.6.
+For Windows users, install WSL2 and linux packages with python 3.9 - 3.12 (3.11 recommended).
 
 1. init - Initialize configuration (Default: `$HOME/.niral-dti/dmriprep-<version>`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,6 +103,55 @@ To run with existing protocol file::
 `-p` option cannot be used with `-d` option.
 
 [NOTE] when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
+
+Rerunning into an existing output directory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A module with a result from a previous run is not recomputed, unless its protocol or the global variables given with
+`-g` changed since that run (they are compared with the `settings.yml` stored in the module's folder; that module and
+the following ones are then recomputed). `--overwrite` recomputes everything. Results written before 0.7.11 have no
+`settings.yml` and are reused with a warning until the run uses `--overwrite`.
+
+Denoising and Gibbs ringing removal
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DWI_Denoise (DIPY MP-PCA, the method of MRtrix `dwidenoise`, or Patch2Self) and GIBBS_Correct (DIPY, the method of
+MRtrix `mrdegibbs`, for full Fourier acquisitions) are not in the default pipeline. Both assume raw, uninterpolated
+data, so put DWI_Denoise first and GIBBS_Correct right after it::
+
+    $ dmriprep run -i image.nii.gz -o out -d DWI_Denoise GIBBS_Correct SLICE_Check INTERLACE_Check EDDYMOTION_Correct QC_Report
+
+MP-PCA also writes the noise level map (`<base>_DWI_noise_sigma.nii.gz`), Patch2Self the RMS of the removed signal
+(`<base>_DWI_noise_residual.nii.gz`).
+
+Age appropriate registration target
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With a normative model of the reference atlas (DTI_Register option `referenceNormativeModel`, a folder written by
+`dmrifiberprofile qc-registration --build-normative`), the DTI is registered to the mean tensor of the age bin of the
+subject instead of `referenceImage`. The age is the protocol `age` (or the global variable `age`), else the row of the
+scan in `ageCSV`, a participants / sessions table as used by `qc-registration --age-csv` (`ageColumn` and `ageUnits`
+describe its age column; the subject and session are read from the path as `sub-<id>` / `ses-<id>`), else `ageRegex`
+on the path, ``ses-(\d+)m`` by default. Without any of them the reference image is used, with a warning.
+
+QC outputs
+~~~~~~~~~~
+
+Besides the QC report (`QC_report.pdf` and `QC_report.csv` of QC_Report), the modules write tables next to the QCed
+image, which are also columns of the QC_Report CSV and of the cohort table of a batch. The per volume tables carry an
+`original_index`, the index of the volume in the input of the pipeline.
+
+- `DENOISE_QC.tsv`, `GIBBS_QC.tsv`: noise level and b=0 SNR in the brain (MP-PCA) or the residual of Patch2Self, and
+  the mean absolute change of the Gibbs correction.
+- `EDDY_motion.tsv`, `EDDY_QC.tsv` (EDDYMOTION_Correct): per volume translations, rotations, framewise displacement
+  (Power et al. 2012) and eddy outlier slices, and their summary with the b=0 SNR and the CNR of each shell.
+- `DTI_fit.tsv`, `DTI_fit_QC.tsv`, `DTI_fit_carpet.png` (DTI_Estimate): how well each volume and each slice agrees
+  with the signal predicted by a WLS tensor fit, and the poorly fitted slices.
+- `IMAGE_QC.tsv`, `IMAGE_ndc.tsv`, `IMAGE_QC_plot.png` (QC_Report, option `imageQC`): the same numbers on the raw
+  input (`raw_`) and on the preprocessed image (`qced_`) - neighboring DWI correlation, bad slices, and with
+  `bTableCheck` the fiber coherence index of the b-table, which names the b-vector axis whose sign would raise it.
+
+See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the details of each column.
 
 5. run-dir - Run output directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

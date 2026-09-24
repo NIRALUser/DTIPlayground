@@ -1,19 +1,32 @@
 DTI Playground
 ==============
 
-DTI Playground is an integrated DWI processing software. 
+DTI Playground is python based NIRAL pipeline software for diffusion MRI: preprocessing and quality
+control of diffusion weighted images, fiber profile extraction and analysis, and atlas building. It
+ships a web UI (DTIPlaygroundLab) and these command line tools:
 
+DMRIPrep (``dmriprep``)
+~~~~~~~~~~~~~~~~~~~~~~~
 
-DMRIPrep
-~~~~~~~~~~
+Preprocessing and quality control of DWIs, as a pipeline of modules: artifact checks, susceptibility
+and eddy current correction, denoising and Gibbs ringing removal, brain masking, tensor and
+multi-shell estimation, registration to an atlas, and reports. Single scans, or a whole cohort with
+the BIDS-App interface or a datasheet.
 
-DMRIPrep is a pipelined quality control processing tool to make clean and reliable tensor images. 
+DMRIFiberProfile (``dmrifiberprofile``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Along-tract profiles of diffusion properties (FA, MD, AD, RD, free water, NODDI, ...), and the tools
+that gather, impute and QC them against normative statistics.
 
-DMRIAtlasBuilder
-~~~~~~~~~~~~~~~~~
+DMRIAtlasBuilder (``dmriatlas``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-DMRIAtlasBuilder makes DTI atlas from multiple level of image hierarchy. 
+Builds a DTI atlas from multiple diffusion tensor images, with affine and diffeomorphic
+registrations.
 
+``dmriplayground`` holds the shared configuration and installs the external tools
+(``install-tools``); ``dmriplaygroundlab`` starts the web UI for all of them.
 
-
+The change log is in
+`CHANGELOG.md <https://github.com/NIRALUser/DTIPlayground/blob/master/CHANGELOG.md>`_.

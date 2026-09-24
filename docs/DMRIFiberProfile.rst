@@ -37,7 +37,7 @@ $ dmrifiberprofile run -i INPUT_DATASHEET -p OUTPUT_DIR/protocols.yml
 CLI Mode (Linux/Windows-WSL)
 ================================
 
-For Windows users, install WSL2 and linux packages with python>=3.8.6.
+For Windows users, install WSL2 and linux packages with python 3.9 - 3.12 (3.11 recommended).
 
 1. init - Initialize configuration (Default: `$HOME/.niral-dti/dmrifiberprofile-<version>`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -214,6 +214,86 @@ Without a protocol file, the defaults of EXTRACT_Profile are used; `--atlas` set
 With `cleanup: noCleanup` (the default), the profile of each scan, tract and property (`.fvp`) is kept with the
 settings and input files it was computed from; a later run into the same output folder reuses the unchanged ones and
 only computes the others (e.g. added scans). With `duringProcessing` or `endOfProcessing` everything is recomputed.
+
+Analysis and QC of the profiles
+===============================
+
+Besides running the EXTRACT_Profile pipeline (``dmrifiberprofile run``), ``dmrifiberprofile`` provides the tools that
+analyse and QC the profiles, ported from the FiberProfileAnalysis scripts. ``dmrifiberprofile <command> --help``
+lists all the options of each.
+
+``flip-tensor``
+    Reflect the tensor frame of a DTI NRRD along axes, for tensors whose components don't match the frame of their
+    header; ``--voxel-frame`` rotates components stored in the frame of the voxel axes.
+
+``detect-tensor-flip``
+    Find the correction of the tensor frame that orients a DTI correctly, by the coherence of the principal
+    directions along the tracts and, with ``--reference``, their agreement with an atlas tensor.
+
+``parametrize-fibers``
+    Resample fiber tracts on the arc length grid and store the arc lengths in the fibers, so that the atlas defines
+    them once; replaces ``dtitractstat -f``.
+
+``compute-axis``
+    1D axis of the tracts (the average curve per arc length bin), used by ``impute``.
+
+``gather``
+    Collect the profiles of several runs into one table per tract and metric,
+    ``<tract>/<tract>_<metric>.csv`` (rows: arc length, columns: the scans).
+
+``impute``
+    Fill the missing profile values with a per-dataset SIREN on the (x, y, z, arc length) of the tract axes; uses a
+    GPU when there is one.
+
+``qc-registration``
+    QC of the registration of the subjects to the atlas: similarity of the deformed metric maps, angular error, CSF
+    check and an age conditional normative model, with a combined outlier flag. ``--build-normative`` builds that
+    model from a reference cohort, including the mean tensor of each age bin that DTI_Register can register to.
+
+``qc-profiles``
+    Age binned statistics of the profiles (``<tract>/<tract>_<metric>_agebinstats.csv``) and their plots, and the QC
+    of the profiles against prior (normative) statistics, which flags the profiles whose values leave the normative
+    envelope or whose shape doesn't follow it.
+
+A typical sequence, from the parametrized atlas fibers to the cleaned profiles::
+
+    $ dmrifiberprofile parametrize-fibers Atlas/FibersRaw -o Atlas/FibersParam
+    $ dmrifiberprofile gather --profiles-dir Output_Profiles --fibers-dir Atlas/FibersParam --out-dir Profiles
+    $ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
+    $ dmrifiberprofile impute --profiles-dir Profiles --axis-dir FiberAxis --out-dir Profiles_Imputed
+    $ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative-dir Atlas/normativeModel --out-dir RegistrationQC
+    $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean
+
+What qc-profiles reads
+~~~~~~~~~~~~~~~~~~~~~~
+
+``--profiles-dir`` takes the tables of ``gather`` (``<tract>/<tract>_<metric>.csv``) or, without gathering them
+first, the profiles of a single run as EXTRACT_Profile writes them
+(``<output>/<datasheet>/00_EXTRACT_Profile/<metric>/<tract>_<metric>.csv``, in either orientation), so one run can be
+QCed on its own. ``--prior-stats-dir`` takes either layout as well, since the age bin statistics are written next to
+the tables they were computed from.
+
+The age of a profile
+~~~~~~~~~~~~~~~~~~~~
+
+The age decides the age bin of a profile. It is the row of the scan in ``--age-csv``, a participants / sessions table
+(``--age-column`` and ``--age-units`` describe its age column), else ``--age-regex`` on the column name of the
+profile, ``ses-(\d+)m`` by default. The same table is used by ``qc-registration --age-csv`` and by the ``ageCSV``
+option of the DTI_Register module of dmriprep. Profiles with neither are named at the end of the run, as they take
+part in no age bin.
+
+Locations sampled outside the brain
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A metric that cannot be 0 in tissue (FA, MD, RD, AD, NDI, ODI, ...) is 0 at a position where the fibers of that scan
+left the brain mask. That is a property of the location, so it is read as missing on every metric of that tract and
+case, including those where 0 is a valid measurement (``--zero-valid-metrics``, the free water fraction by default);
+``--keep-outside-brain`` keeps them, and with ``--clean-dir`` those cells are written empty in the cleaned tables. A
+profile with less than ``--min-valid-frac`` (0.75) of its positions left is flagged as an outlier, since too little
+of it is there to judge.
+
+See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the remaining options.
+
 
 Development of a new module
 ===========================

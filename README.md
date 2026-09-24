@@ -457,9 +457,11 @@ MIT
 ## Roadmap
 
 - Multi node computing with Kubernetes
-- `dmriautotract` (automatic tractography): the command and the module scaffolding
-  (`dtiplayground/dmri/tractography`) are in place, but no processing module is implemented yet, so the tool does
-  nothing so far
+- `dmriautotract` (automatic tractography), planned. The command and the module scaffolding are in place
+  (`dtiplayground/dmri/tractography`, with the same `init` / `add-module` / `make-protocols` / `run` commands as
+  dmriprep and a module template); the processing modules are still to be written, so the tool does nothing yet.
+  Add a module to `dtiplayground/dmri/tractography/modules` as described in
+  [Writing a module](#writing-a-module)
 
 ## Change log
 

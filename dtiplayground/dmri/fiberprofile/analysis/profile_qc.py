@@ -1318,26 +1318,26 @@ def run_args(args, p) -> int:
             log.info("Wrote %d correlation QC plots (one per metric x age-bin) under %s/",
                      n_fig, plots_sub)
 
+        # subject_sessions flagged as profile outliers, per tract
+        outliers_by_tract = {tract: set(ss) for tract, ss in
+                             groups[groups["is_outlier"]].groupby("tract")["subject_session"]}
+
         # --- per-tract review figures: excluded profiles vs mean+envelope --
         if plots_sub:
-            prof_outliers_by_tract = (groups[groups["is_outlier"]]
-                                      .groupby("tract")["subject_session"].apply(set).to_dict())
             excl_dir = os.path.join(plots_sub, "excluded")
             n_excl = plot_excluded_profiles(inputs, args.prior_stats_dir, bins, env_cfg,
-                                            prof_outliers_by_tract, reg_ss, full_excl, batch_shifts,
+                                            outliers_by_tract, reg_ss, full_excl, batch_shifts,
                                             excl_dir, args.dpi)
             log.info("Wrote %d excluded-profile review plots under %s/", n_excl, excl_dir)
 
         # --- apply outliers -> cleaned profiles + recomputed stats ---------
         if args.clean_dir:
-            drop_by_tract = (groups[groups["is_outlier"]]
-                             .groupby("tract")["subject_session"].apply(set).to_dict())
             n_dropped_cols = 0
             n_blanked = 0
             clean_tables = []
             for f in inputs:
                 tract = tract_and_metric(f)[0]
-                drop = drop_by_tract.get(tract, set()) | full_excl
+                drop = outliers_by_tract.get(tract, set()) | full_excl
                 rel = os.path.relpath(f, args.profiles_dir)
                 clean_path = os.path.join(args.clean_dir, rel)
                 n_blanked += write_without_columns(f, clean_path, drop, drop_subject_sessions=reg_ss)

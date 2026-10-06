@@ -104,7 +104,7 @@ def get_args():
     parser=argparse.ArgumentParser(prog="dmriatlas",
                                    formatter_class=RawTextHelpFormatter,
                                    description="dmriatlas is a tool to make DTI Atlas.",
-                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu)  ,Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
+                                   epilog="Main developer: Martin Styner (styner@unc.edu). Written by SK Park (sangkyoon_park@med.unc.edu)  ,Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
     subparsers=parser.add_subparsers(help="Commands")
 
     ## init command

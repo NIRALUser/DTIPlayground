@@ -277,7 +277,7 @@ def get_args():
     parser=argparse.ArgumentParser(prog="dmriprep",
                                    formatter_class=RawTextHelpFormatter,
                                    description="dmriprep is a tool that performs quality control over diffusion weighted images. Quality control is very essential preprocess in DTI research, in which the bad gradients with artifacts are to be excluded or corrected by using various computational methods. The software and library provides a module based package with which users can make his own QC pipeline as well as new pipeline modules.",
-                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Johanna Dubos (johannadubos32@gmail.com) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
+                                   epilog="Main developer: Martin Styner (styner@unc.edu). Written by SK Park (sangkyoon_park@med.unc.edu) , Johanna Dubos (johannadubos32@gmail.com) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2021")
     subparsers=parser.add_subparsers(help="Commands")
     
     ## init command

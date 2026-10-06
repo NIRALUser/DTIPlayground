@@ -701,7 +701,7 @@ def get_args():
     parser=argparse.ArgumentParser(prog="dmriautotract",
                                    formatter_class=RawTextHelpFormatter,
                                    description="dmriautotract is a tool that performs automatic tractography from diffusion weighted images.",
-                                   epilog="Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2022")
+                                   epilog="Main developer: Martin Styner (styner@unc.edu). Written by SK Park (sangkyoon_park@med.unc.edu) , Neuro Image Research and Analysis Laboratories, University of North Carolina @ Chapel Hill , United States, 2022")
     subparsers=parser.add_subparsers(help="Commands")
     
     ## init command

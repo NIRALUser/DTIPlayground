@@ -431,10 +431,10 @@ libraries). Consult those two files rather than this list. numpy stays below 2.x
 
 ### Developers
 
+- Styner, Martin (main developer) - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
 - Park, Sang Kyoon -  Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
 - Johanna Dubos - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
 - Teyssier, Timothée - Neuro Image Research and Analysis Laboratory, University of North Carolina @ Chapel Hill, U.S. / CPE Lyon, France
-- Styner, Martin - Neuro Image Research and Analysis Laboratory , University of North Carolina @ Chapel Hill, U.S.
 
 ### Discussion / test
 

@@ -21,8 +21,8 @@ setup(
     version=info['dtiplayground']['version'],
     python_requires=">=3.9",
     license='MIT',
-    author="SK Park, NIRAL, University of North Carolina @ Chapel Hill",
-    author_email='scalphunter@gmail.com',
+    author="Martin Styner, SK Park, NIRAL, University of North Carolina @ Chapel Hill",
+    author_email='styner@unc.edu',
     packages=find_packages('.'),
     package_dir={'':'.'},
     package_data = {

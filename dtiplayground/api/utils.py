@@ -4,6 +4,7 @@
 ###
 ###
 ###
+### Main developer : Martin Styner (styner@unc.edu)
 ### Written by : scalphunter@gmail.com ,  2021/08/31
 ### Copyrighted reserved by Sentinel Holdings LC
 ##################################################################################

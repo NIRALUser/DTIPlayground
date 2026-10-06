@@ -2,6 +2,7 @@
 #
 #   common/tools/base.py 
 #   2021-05-10
+#   Main developer: Martin Styner (styner@unc.edu)
 #   Written by SK Park, NIRAL, UNC
 #
 #   External tool wrapper base class

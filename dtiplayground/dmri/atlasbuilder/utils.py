@@ -2,6 +2,7 @@
 #
 #   utils.py 
 #   2022-10-09
+#   Main developer: Martin Styner (styner@unc.edu)
 #   Written by SK Park, NIRAL, UNC
 #
 #   Atlasbuilding utilities

@@ -8,6 +8,7 @@
 ##               queue - listbox
 ##               matrix - edittable table
 ##               object-array - ? (maybe sub dialog)
+##  Main developer: Martin Styner (styner@unc.edu)
 ##  Written by SK Park, NIRAL, UNC SOM, 2021
 
 version: 0.1

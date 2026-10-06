@@ -4,6 +4,7 @@
 ###
 ###
 ###
+### Main developer : Martin Styner (styner@unc.edu)
 ### Written by : alecj.nipp@gmail.com
 ### Copyrights reserved by NIRAL
 ##################################################################################

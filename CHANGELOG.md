@@ -3,6 +3,10 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-06 (v0.8.2)
+- dmrifiberprofile - profile QC: no more pandas FutureWarning ("Not prepending group keys to the result index of transform-like apply"); the results are unchanged
+- Martin Styner is credited as main developer in the --help text of all command line tools, the README, the source file headers and the package metadata (author and author email on PyPI)
+
 ##### 2026-09-24 (v0.8.1)
 - Documentation only; the code is the same as 0.8.0
 - README: restructured (one intro naming the tools that ship, installation, a section per tool, project information); the change log moved to CHANGELOG.md, the dependency list that was several major versions behind now points at setup.py and requirements.txt, and the unmaintained dtiplayground-native / dmriprep-ui are no longer documented

@@ -464,12 +464,32 @@ def summarize(out):
     return rows, counts
 
 
+def _check_only(out, only, ids):
+    """BatchError naming the ids of *only* that are not dataset ids of the batch, with the ids they are a prefix of
+    (e.g. a subject label instead of a dataset id)."""
+    unknown = sorted(set(only) - set(ids))
+    if not unknown:
+        return
+    lines = ['--only: {} {} not a dataset id of the batch {}'.format(', '.join(unknown), 'is' if len(unknown) == 1 else 'are', out),
+             '--only takes dataset ids, the id column of {}'.format(batch_dir(out).joinpath('manifest.tsv'))]
+    for u in unknown:
+        matches = [i for i in ids if i.startswith(u + '_')]
+        if matches:
+            lines.append('    {} is the start of {} dataset id(s): {}{}'.format(u, len(matches), ', '.join(matches[:3]), ', ...' if len(matches) > 3 else ''))
+    lines.append('To process some subjects or sessions of a BIDS dataset, use --participant-label / --session-label')
+    raise BatchError('\n'.join(lines))
+
+
 def select_datasets(out, only=None, rerun=False):
     """Datasets to process: those not done (or all with *rerun*), restricted to the ids of *only*; datasets running in
-    another process are left out, unless *only* names them. Returns (selected, running)."""
+    another process are left out, unless *only* names them; an id of *only* that is not in the batch is a
+    BatchError. Returns (selected, running)."""
     selected, running = [], []
     only = set(only) if only else None
-    for d in load_manifest(out):
+    manifest = load_manifest(out)
+    if only is not None:
+        _check_only(out, only, [d['id'] for d in manifest])
+    for d in manifest:
         if only is not None and d['id'] not in only:
             continue
         state, _ = current_state(out, d)

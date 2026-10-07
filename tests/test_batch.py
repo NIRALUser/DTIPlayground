@@ -196,6 +196,10 @@ class TestPlanning(unittest.TestCase):
         batch.write_status(out, d, state='running', host='another-host', pid=1)
         self.assertEqual(batch.select_datasets(out), ([], [d]))
         self.assertEqual(batch.select_datasets(out, only=[d['id']])[0], [d])
+        with self.assertRaisesRegex(batch.BatchError, r"(?s)sub-01 is not a dataset id.*sub-01 is the start of 1 dataset id\(s\): sub-01_ses-1_acq-a.*--participant-label"):
+            batch.select_datasets(out, only=['sub-01'])
+        with self.assertRaisesRegex(batch.BatchError, 'sub-99'):
+            batch.select_datasets(out, only=[d['id'], 'sub-99'])
 
     def test_default_protocol_planning(self):
         default = batch.DefaultProtocol()

@@ -1,4 +1,4 @@
-import sys,os
+import sys,os,re
 from setuptools import setup, find_packages
 from os.path import join as pjoin, dirname, exists
 from glob import glob
@@ -15,12 +15,19 @@ if using_setuptools:
         python_requires=">= 3.9",
         )
 
-    
+
+## project description on PyPI: the README, with its links to files of the repository made absolute
+with open(pjoin(dirname(os.path.abspath(__file__)), 'README.md'), encoding='utf-8') as f:
+    long_description = re.sub(r'\]\((?!https?:|#)([^)]+)\)', r'](https://github.com/NIRALUser/DTIPlayground/blob/master/\1)', f.read())
+
 setup(
     name='dtiplayground',
     version=info['dtiplayground']['version'],
     python_requires=">=3.9",
     license='MIT',
+    description='NIRAL pipeline software for diffusion MRI: preprocessing and quality control, fiber profile analysis, atlas building',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author="Martin Styner, SK Park, NIRAL, University of North Carolina @ Chapel Hill",
     author_email='styner@unc.edu',
     packages=find_packages('.'),

@@ -158,6 +158,11 @@ def _print_plan(batch, out, datasets, skipped, notes):
     for n in notes:
         logger(n,color.WARNING)
 
+def _dry_run_end(args):
+    if args.slurm or args.slurm_submit:
+        logger("--dry-run: no SLURM script written{}; run the command without --dry-run".format(', nothing submitted' if args.slurm_submit else ''),color.WARNING)
+    return True
+
 def _execute_batch(args, batch, out):
     selected, running = batch.select_datasets(out, only=args.only, rerun=args.rerun)
     if running:
@@ -201,7 +206,7 @@ def command_bids(args):
     batch.write_dataset_description(out, args.bids_dir)
     _print_plan(batch, out, datasets, skipped, notes)
     if args.dry_run:
-        return True
+        return _dry_run_end(args)
     return _execute_batch(args, batch, out)
 
 def command_run_batch(args):
@@ -213,7 +218,7 @@ def command_run_batch(args):
     batch.write_batch(out, datasets, skipped, dict(_batch_settings(args), source='datasheet', datasheet=os.path.abspath(args.datasheet)))
     _print_plan(batch, out, datasets, skipped, notes)
     if args.dry_run:
-        return True
+        return _dry_run_end(args)
     return _execute_batch(args, batch, out)
 
 def command_batch_task(args):
@@ -429,6 +434,9 @@ if __name__=='__main__':
         exit(0)
     except Exception as e:
         common.logger.setVerbosity(True)
+        if type(e).__name__=='BatchError':  # user error (batch commands): the message, without traceback
+            logger(str(e),color.ERROR)
+            exit(1)
         msg=traceback.format_exc()
         logger(msg,color.ERROR)
         exit(-1)

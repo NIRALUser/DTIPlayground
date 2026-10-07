@@ -3,6 +3,11 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-07 (v0.8.3)
+- dmriprep - batch processing (`bids`, `run-batch`): an `--only` value that is not a dataset id of the batch (e.g. a subject label) is an error naming it and the dataset ids it is the start of, and pointing to `--participant-label` / `--session-label`; it was reported as "Nothing to process (all datasets are done)". Batch errors are shown as a message, without a traceback
+- dmriprep - batch processing: `--dry-run` with `--slurm` or `--slurm-submit` warns that no SLURM script was written and nothing was submitted
+- PyPI: the project page shows the README as the description
+
 ##### 2026-10-06 (v0.8.2)
 - dmrifiberprofile - profile QC: no more pandas FutureWarning ("Not prepending group keys to the result index of transform-like apply"); the results are unchanged
 - Martin Styner is credited as main developer in the --help text of all command line tools, the README, the source file headers and the package metadata (author and author email on PyPI)

@@ -93,16 +93,23 @@ per **(subject-session, tract)** and applied to every metric of that tract:
       correlation with the prior bin **mean** (or ``--corr-reference median``)
       below ``--corr-min`` (or a robust per-(tract,bin) ``Q1-k·IQR`` fence).
 
-Outputs: ``profile_qc_<reference>.csv`` (per-metric detail + group flags),
-``outliers_<reference>.csv`` (per (subject-session, tract) decision), and one
+Outputs: the tables of the QC go to ``--stats-dir`` (default ``Profiles_Stats``):
+``summary_mean_all.csv`` / ``summary_median_all.csv`` (whole-tract mean and median
+of every metric per (tract, dataset), before the profile outliers are removed),
+``profile_qc_<reference>.csv`` (per-metric detail + group flags),
+``outliers_<reference>.csv`` (per (subject-session, tract) decision) and
+``excluded_cases.csv`` (registration, preprocessing and profile exclusions, one
+row each).  The plots of all the data go to ``--plots-dir``/Plots, with one
 box+violin figure per (metric, age-bin).  With ``--clean-dir``, the flagged
 profiles are removed from ALL metric tables of their tract and cleaned profiles
-are written there.
+are written there; ``--stats-dir`` then also gets ``summary_mean.csv`` /
+``summary_median.csv`` and ``profile_qc_<reference>_clean.csv`` of the cleaned
+data, and ``--clean-plots-dir``/Plots its plots.
 
 Usage
 -----
     dmrifiberprofile qc-profiles --profiles-dir Profiles --plots-dir StatPlots
-    dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir ProfileQCStats
+    dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir ProfileQCStats --clean-dir Profiles_Clean --stats-dir Profiles_Stats
     dmrifiberprofile qc-profiles --profiles-dir <run output>/00_EXTRACT_Profile --plots-dir StatPlots
 """
 
@@ -480,10 +487,10 @@ def load_profile_table(path, exclude_ids=None, exclude_full=None):
     return df
 
 
-def write_metric_summaries(inputs, exclude_ids, out_dir, exclude_full=None):
+def write_metric_summaries(inputs, exclude_ids, out_dir, exclude_full=None, suffix=""):
     """Per-(tract, dataset) whole-tract summary of every metric.
 
-    Writes ``summary_mean.csv`` and ``summary_median.csv`` under *out_dir*: each
+    Writes ``summary_mean<suffix>.csv`` and ``summary_median<suffix>.csv`` under *out_dir*: each
     row is a (tract, dataset) pair, each metric column holds the mean (resp.
     median) of that profile along the tract's arc-length.
     """
@@ -517,8 +524,8 @@ def write_metric_summaries(inputs, exclude_ids, out_dir, exclude_full=None):
         return pd.DataFrame(rows).reindex(columns=["tract", "dataset", "sub", "ses", "prefix"] + metric_cols)
 
     os.makedirs(out_dir, exist_ok=True)
-    to_frame(means).to_csv(os.path.join(out_dir, "summary_mean.csv"), index=False)
-    to_frame(medians).to_csv(os.path.join(out_dir, "summary_median.csv"), index=False)
+    to_frame(means).to_csv(os.path.join(out_dir, f"summary_mean{suffix}.csv"), index=False)
+    to_frame(medians).to_csv(os.path.join(out_dir, f"summary_median{suffix}.csv"), index=False)
     return len(means)
 
 
@@ -1074,7 +1081,11 @@ def configure_parser(p):
     p.add_argument("--profiles-dir", default="Profiles",
                    help="Root with the profile tables: gathered (<tract>/<tract>_<metric>.csv) or the "
                         "EXTRACT_Profile output of a run (<metric>/<tract>_<metric>.csv)")
-    p.add_argument("--plots-dir", default="StatPlots", help="Output folder for QC plots")
+    p.add_argument("--plots-dir", default="StatPlots", help="Output folder for the QC plots of all the data")
+    p.add_argument("--stats-dir", default="Profiles_Stats",
+                   help="Output folder for the tables of the QC: whole-tract summaries (summary_mean/median.csv: "
+                        "cleaned data, *_all.csv: before the profile outliers are removed), profile QC, outliers, "
+                        "excluded cases (default: Profiles_Stats)")
     p.add_argument("--keep-outside-brain", action="store_true",
                    help="Keep the profile locations that a metric reports as 0 (fibers sampled outside the brain "
                         "mask); by default they are read as missing on every metric of that tract and case")
@@ -1150,7 +1161,7 @@ def configure_parser(p):
                    help="If given, drop outlier (subject-session, tract) profiles from ALL of that tract's "
                         "metric tables and write cleaned profiles to this folder")
     p.add_argument("--clean-plots-dir", default="StatsPlots_Clean",
-                   help="Folder for the recomputed cleaned-data plots (default: StatsPlots_Clean)")
+                   help="Folder for the plots of the cleaned data (default: StatsPlots_Clean)")
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
     return p
 
@@ -1227,6 +1238,7 @@ def run_args(args, p) -> int:
 
     plots_root = args.plots_dir
     plots_sub = None if args.no_plots else os.path.join(plots_root, "Plots")
+    stats_root = args.stats_dir
     n_csv, n_plots = write_agebin_stats(inputs, bins, args.ddof, plots_sub, args.dpi,
                                         exclude_ids=reg_ss, exclude_full=full_excl)
     log.info("Wrote %d age-bin stats CSVs and %d plots%s.",
@@ -1242,9 +1254,10 @@ def run_args(args, p) -> int:
         log.warning("%d profile(s) have no age: %s%s", n_none, ", ".join(sorted(_AGE_SOURCE["none"])[:5]),
                     " ..." if n_none > 5 else "")
 
-    # per-(tract, dataset) whole-tract metric summaries (mean, median)
-    n_sum = write_metric_summaries(inputs, reg_ss, plots_root, exclude_full=full_excl)
-    log.info("Wrote metric summaries (mean, median) for %d (tract,dataset) rows under %s/", n_sum, plots_root)
+    # per-(tract, dataset) whole-tract metric summaries (mean, median), before the profile outliers are removed
+    n_sum = write_metric_summaries(inputs, reg_ss, stats_root, exclude_full=full_excl, suffix="_all")
+    log.info("Wrote metric summaries (mean, median) of all the profiles for %d (tract,dataset) rows under %s/ "
+             "(summary_*_all.csv)", n_sum, stats_root)
 
     # --- optional: profile QC / outlier detection vs prior reference -------
     groups = None
@@ -1273,13 +1286,13 @@ def run_args(args, p) -> int:
             batch_shifts = estimate_batch_shifts(inputs, args.prior_stats_dir, bins, mult_metrics,
                                                  exclude_ids=reg_ss, exclude_full=full_excl)
             log.info("Envelope batch correction (testing vs normative), robust median shift per (metric, bin):")
-            os.makedirs(plots_root, exist_ok=True)
+            os.makedirs(stats_root, exist_ok=True)
             brows = []
             for (metric, label), (kind, val, n) in sorted(batch_shifts.items()):
                 desc = f"{val:+.4g}" if kind == "add" else f"×{val:.4g}"
                 log.info("  %-4s [%s]: %s %s (n=%d profiles)", metric, label, kind, desc, n)
                 brows.append({"metric": metric, "bin": label, "kind": kind, "shift": val, "n_profiles": n})
-            pd.DataFrame(brows).to_csv(os.path.join(plots_root, f"batch_shifts_{args.corr_reference}.csv"),
+            pd.DataFrame(brows).to_csv(os.path.join(stats_root, f"batch_shifts_{args.corr_reference}.csv"),
                                        index=False)
 
         qc = compute_profile_qc(inputs, args.prior_stats_dir, bins, args.corr_reference, env_cfg,
@@ -1288,16 +1301,16 @@ def run_args(args, p) -> int:
                                        args.corr_min, args.corr_iqr_k, args.shape_metric, exclude_metrics,
                                        args.min_valid_frac)
 
-        os.makedirs(plots_root, exist_ok=True)
+        os.makedirs(stats_root, exist_ok=True)
         # per-metric detail (correlations, envelope fractions) + the group flags
         qc_out = qc.merge(
             groups[["tract", "subject_session", "joint_frac_inside", "shape_r",
                     "is_value_outlier", "is_shape_outlier", "is_outlier"]],
             on=["tract", "subject_session"], how="left",
         )
-        qc_csv = os.path.join(plots_root, f"profile_qc_{args.corr_reference}.csv")
+        qc_csv = os.path.join(stats_root, f"profile_qc_{args.corr_reference}.csv")
         qc_out.to_csv(qc_csv, index=False)
-        grp_csv = os.path.join(plots_root, f"outliers_{args.corr_reference}.csv")
+        grp_csv = os.path.join(stats_root, f"outliers_{args.corr_reference}.csv")
         groups.to_csv(grp_csv, index=False)
 
         ng = len(groups)
@@ -1356,14 +1369,13 @@ def run_args(args, p) -> int:
                      "" if clean_sub is None else f"; wrote {c_plots} plots under {clean_sub}/")
 
             # cleaned-data metric summaries (mean, median)
-            write_metric_summaries(clean_tables, None, clean_root)
-            log.info("Wrote cleaned-data metric summaries (mean, median) under %s/", clean_root)
+            write_metric_summaries(clean_tables, None, stats_root)
+            log.info("Wrote cleaned-data metric summaries (mean, median) under %s/ (summary_*.csv)", stats_root)
 
             # cleaned-data correlation QC: profile_qc CSV always, plots when enabled
             qc_clean = compute_profile_qc(clean_tables, args.prior_stats_dir, bins, args.corr_reference, env_cfg,
                                           batch_shifts=batch_shifts)
-            os.makedirs(clean_root, exist_ok=True)
-            clean_qc_csv = os.path.join(clean_root, f"profile_qc_{args.corr_reference}.csv")
+            clean_qc_csv = os.path.join(stats_root, f"profile_qc_{args.corr_reference}_clean.csv")
             qc_clean.to_csv(clean_qc_csv, index=False)
             log.info("Wrote cleaned-data %s", clean_qc_csv)
             if clean_sub and int(qc_clean["r"].notna().sum()):
@@ -1373,7 +1385,7 @@ def run_args(args, p) -> int:
     # --- log of excluded cases (registration + preprocessing + profile) ----
     n_prof_out = int(groups["is_outlier"].sum()) if groups is not None else 0
     if reg_failed or prep_failed or n_prof_out:
-        exc_path, n_exc = write_excluded_cases(reg_failed, prep_failed, groups, plots_root)
+        exc_path, n_exc = write_excluded_cases(reg_failed, prep_failed, groups, stats_root)
         log.info("Wrote %d excluded-case rows (%d registration, %d preprocessing, %d profile) to %s",
                  n_exc, len(reg_failed), len(prep_failed), n_prof_out, exc_path)
 

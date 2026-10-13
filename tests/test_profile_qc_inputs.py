@@ -392,5 +392,53 @@ class TestTooLittleLeftToJudge(unittest.TestCase):
         self.assertFalse(row['is_outlier'])
 
 
+
+class TestOutputFolders(unittest.TestCase):
+    """The tables of the QC go to --stats-dir, the plot folders hold only plots."""
+
+    @staticmethod
+    def _tables(root, n, outlier=None):
+        arc = np.linspace(-20, 20, 21)
+        rng = np.random.default_rng(0)
+        for tract in ('CGH_R', 'UNC_L'):
+            for metric, base in (('fa', 0.45), ('md', 0.0011)):
+                cols = {}
+                for i in range(n):
+                    name = 'sub-{:03d}_ses-012m_dwi'.format(i)
+                    prof = base * (1 + 0.3 * np.sin(arc / 10) + 0.01 * rng.standard_normal(arc.size))
+                    if name == outlier:
+                        prof = base * (1 - 0.3 * np.sin(arc / 10))  # mirrored shape
+                    cols[name] = prof
+                df = pd.DataFrame(cols, index=pd.Index(arc, name='Arc Length'))
+                Path(root, tract).mkdir(parents=True, exist_ok=True)
+                df.to_csv(Path(root, tract, '{}_{}.csv'.format(tract, metric)))
+
+    def test_the_tables_go_to_the_stats_dir(self):
+        with tempfile.TemporaryDirectory() as d:
+            norm, data = os.path.join(d, 'norm'), os.path.join(d, 'data')
+            self._tables(norm, 12)
+            self._tables(data, 8, outlier='sub-003_ses-012m_dwi')
+            self.assertEqual(profile_qc.main(['--profiles-dir', norm, '--plots-dir', os.path.join(d, 'normplots'),
+                                              '--stats-dir', os.path.join(d, 'normstats'), '--no-plots']), 0)
+            stats, plots, clean_plots = (os.path.join(d, n) for n in ('Stats', 'Plots_All', 'Plots_Clean'))
+            self.assertEqual(profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', norm,
+                                              '--clean-dir', os.path.join(d, 'Clean'), '--stats-dir', stats,
+                                              '--plots-dir', plots, '--clean-plots-dir', clean_plots,
+                                              '--no-plots']), 0)
+            self.assertEqual(sorted(os.listdir(stats)),
+                             ['excluded_cases.csv', 'outliers_mean.csv', 'profile_qc_mean.csv',
+                              'profile_qc_mean_clean.csv', 'summary_mean.csv', 'summary_mean_all.csv',
+                              'summary_median.csv', 'summary_median_all.csv'])
+            self.assertFalse(os.path.exists(plots) and os.listdir(plots))
+            self.assertFalse(os.path.exists(clean_plots) and os.listdir(clean_plots))
+            excluded = pd.read_csv(os.path.join(stats, 'excluded_cases.csv'), dtype=str)
+            self.assertEqual(set(excluded['sub']), {'003'})
+            self.assertEqual(set(excluded['reason']), {'profile'})
+            clean = pd.read_csv(os.path.join(stats, 'summary_mean.csv'))
+            everything = pd.read_csv(os.path.join(stats, 'summary_mean_all.csv'))
+            self.assertNotIn('sub-003_ses-012m_dwi', set(clean['dataset']))
+            self.assertIn('sub-003_ses-012m_dwi', set(everything['dataset']))
+            self.assertEqual(len(everything), 2 * 8)
+
 if __name__ == '__main__':
     unittest.main()

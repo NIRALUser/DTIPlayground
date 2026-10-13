@@ -262,7 +262,7 @@ A typical sequence, from the parametrized atlas fibers to the cleaned profiles::
     $ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
     $ dmrifiberprofile impute --profiles-dir Profiles --axis-dir FiberAxis --out-dir Profiles_Imputed
     $ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative-dir Atlas/normativeModel --out-dir RegistrationQC
-    $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean
+    $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean --stats-dir Profiles_Stats
 
 What qc-profiles reads
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -291,6 +291,22 @@ case, including those where 0 is a valid measurement (``--zero-valid-metrics``, 
 ``--keep-outside-brain`` keeps them, and with ``--clean-dir`` those cells are written empty in the cleaned tables. A
 profile with less than ``--min-valid-frac`` (0.75) of its positions left is flagged as an outlier, since too little
 of it is there to judge.
+
+What qc-profiles writes
+~~~~~~~~~~~~~~~~~~~~~~~
+
+- next to the tables it read: ``<tract>/<tract>_<metric>_agebinstats.csv``, the age-bin statistics (the
+  ``--prior-stats-dir`` of later QC runs)
+- ``--stats-dir`` (``Profiles_Stats``), the tables of the QC: ``summary_mean.csv`` and ``summary_median.csv``, the
+  whole-tract mean and median of every metric per tract and dataset of the cleaned data (with ``--clean-dir``), and
+  ``summary_mean_all.csv`` / ``summary_median_all.csv`` before the profile outliers are removed;
+  ``excluded_cases.csv`` (one row per registration, preprocessing or profile exclusion), ``outliers_mean.csv`` (the
+  decision per case and tract), ``profile_qc_mean.csv`` (the detail per metric) and ``profile_qc_mean_clean.csv`` (the
+  same on the cleaned data); ``batch_shifts_mean.csv`` with ``--envelope-batch-correct``. ``mean`` is
+  ``--corr-reference``.
+- ``--clean-dir``: the cleaned tables, in the layout of ``--profiles-dir``, with their age-bin statistics
+- ``--plots-dir`` (``StatPlots``) and ``--clean-plots-dir`` (``StatsPlots_Clean``): ``Plots/``, the plots of all the
+  data and of the cleaned data
 
 See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the remaining options.
 

@@ -93,8 +93,8 @@ per **(subject-session, tract)** and applied to every metric of that tract:
       correlation with the prior bin **mean** (or ``--corr-reference median``)
       below ``--corr-min`` (or a robust per-(tract,bin) ``Q1-k·IQR`` fence).
 
-Outputs: the tables of the QC go to ``--stats-dir`` (default ``Profiles_Stats``):
-``summary_mean_all.csv`` / ``summary_median_all.csv`` (whole-tract mean and median
+Outputs, in the ``-o`` folder (default: the working directory): the tables of
+the QC go to ``--stats-dir`` (default ``Profiles_Stats``): ``summary_mean_all.csv`` / ``summary_median_all.csv`` (whole-tract mean and median
 of every metric per (tract, dataset), before the profile outliers are removed),
 ``profile_qc_<reference>.csv`` (per-metric detail + group flags),
 ``outliers_<reference>.csv`` (per (subject-session, tract) decision) and
@@ -109,7 +109,7 @@ data, and ``--clean-plots-dir``/Plots its plots.
 Usage
 -----
     dmrifiberprofile qc-profiles --profiles-dir Profiles --plots-dir StatPlots
-    dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir ProfileQCStats --clean-dir Profiles_Clean --stats-dir Profiles_Stats
+    dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir ProfileQCStats --clean-dir Profiles_Clean -o ProfileQC
     dmrifiberprofile qc-profiles --profiles-dir <run output>/00_EXTRACT_Profile --plots-dir StatPlots
 """
 
@@ -1081,6 +1081,9 @@ def configure_parser(p):
     p.add_argument("--profiles-dir", default="Profiles",
                    help="Root with the profile tables: gathered (<tract>/<tract>_<metric>.csv) or the "
                         "EXTRACT_Profile output of a run (<metric>/<tract>_<metric>.csv)")
+    p.add_argument("-o", "--out-dir", default=None,
+                   help="Output folder: --plots-dir, --stats-dir, --clean-dir and --clean-plots-dir are folders in "
+                        "it unless they are absolute paths (default: the working directory)")
     p.add_argument("--plots-dir", default="StatPlots", help="Output folder for the QC plots of all the data")
     p.add_argument("--stats-dir", default="Profiles_Stats",
                    help="Output folder for the tables of the QC: whole-tract summaries (summary_mean/median.csv: "
@@ -1173,12 +1176,26 @@ def main(argv=None) -> int:
     return run_args(args, p)
 
 
+OUTPUT_DIR_OPTIONS = ("plots_dir", "stats_dir", "clean_dir", "clean_plots_dir")
+
+
+def resolve_output_dirs(args):
+    """With --out-dir, the output folders that are not absolute paths are folders in it."""
+    if not args.out_dir:
+        return
+    for name in OUTPUT_DIR_OPTIONS:
+        value = getattr(args, name)
+        if value and not os.path.isabs(value):
+            setattr(args, name, os.path.join(args.out_dir, value))
+
+
 def run_args(args, p) -> int:
     from dtiplayground.dmri.fiberprofile.analysis import setup_logging
     setup_logging(args.verbose)
 
     if not os.path.isdir(args.profiles_dir):
         p.error(f"profiles dir not found: {args.profiles_dir}")
+    resolve_output_dirs(args)
 
     if not args.no_plots:
         import matplotlib

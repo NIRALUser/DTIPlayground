@@ -262,7 +262,7 @@ A typical sequence, from the parametrized atlas fibers to the cleaned profiles::
     $ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
     $ dmrifiberprofile impute --profiles-dir Profiles --axis-dir FiberAxis --out-dir Profiles_Imputed
     $ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative-dir Atlas/normativeModel --out-dir RegistrationQC
-    $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean --stats-dir Profiles_Stats
+    $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean -o ProfileQC
 
 What qc-profiles reads
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -294,6 +294,9 @@ of it is there to judge.
 
 What qc-profiles writes
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+The output folders are in the ``-o`` folder (``--plots-dir``, ``--stats-dir``, ``--clean-dir`` and
+``--clean-plots-dir`` are folders in it unless they are absolute paths), or in the working directory without ``-o``:
 
 - next to the tables it read: ``<tract>/<tract>_<metric>_agebinstats.csv``, the age-bin statistics (the
   ``--prior-stats-dir`` of later QC runs)

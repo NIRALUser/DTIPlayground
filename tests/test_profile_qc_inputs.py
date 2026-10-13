@@ -440,5 +440,20 @@ class TestOutputFolders(unittest.TestCase):
             self.assertIn('sub-003_ses-012m_dwi', set(everything['dataset']))
             self.assertEqual(len(everything), 2 * 8)
 
+    def test_the_output_folders_are_in_the_out_dir(self):
+        with tempfile.TemporaryDirectory() as d:
+            norm, data, out = os.path.join(d, 'norm'), os.path.join(d, 'data'), os.path.join(d, 'QC')
+            self._tables(norm, 12)
+            self._tables(data, 8, outlier='sub-003_ses-012m_dwi')
+            self.assertEqual(profile_qc.main(['--profiles-dir', norm, '-o', os.path.join(d, 'normQC'), '--no-plots']), 0)
+            elsewhere = os.path.join(d, 'elsewhere', 'Plots_All')
+            self.assertEqual(profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', norm, '-o', out,
+                                              '--clean-dir', 'Profiles_Clean', '--plots-dir', elsewhere]), 0)
+            self.assertEqual(sorted(os.listdir(out)), ['Profiles_Clean', 'Profiles_Stats', 'StatsPlots_Clean'])
+            self.assertTrue(os.path.isfile(os.path.join(out, 'Profiles_Stats', 'summary_mean.csv')))
+            self.assertTrue(os.path.isfile(os.path.join(out, 'Profiles_Clean', 'CGH_R', 'CGH_R_fa.csv')))
+            self.assertTrue(os.listdir(os.path.join(elsewhere, 'Plots')))  # an absolute path is used as given
+            self.assertEqual(os.listdir(os.path.join(d, 'normQC')), ['Profiles_Stats'])  # --no-plots: no plot folder
+
 if __name__ == '__main__':
     unittest.main()

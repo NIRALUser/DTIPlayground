@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-13 (v0.8.5)
+- dmrifiberprofile - qc-profiles: `-o/--out-dir <folder>` writes the output folders in that folder: `--plots-dir`, `--stats-dir`, `--clean-dir` and `--clean-plots-dir` are folders in it unless they are absolute paths (e.g. `-o ProfileQC --clean-dir Profiles_Clean` writes `ProfileQC/Profiles_Stats`, `ProfileQC/Profiles_Clean` and the plot folders). Without `-o` they are written in the working directory, as before
+
 ##### 2026-10-13 (v0.8.4)
 - dmrifiberprofile - qc-profiles: the tables of the QC go to a new folder, `--stats-dir` (default `Profiles_Stats`), instead of the plot folders: the whole-tract summaries of the cleaned data (`summary_mean.csv`, `summary_median.csv`) and of all the profiles before the outliers are removed (now `summary_mean_all.csv`, `summary_median_all.csv`), `excluded_cases.csv`, `outliers_mean.csv`, `profile_qc_mean.csv` and, on the cleaned data, `profile_qc_mean_clean.csv` (`mean`: `--corr-reference`), and `batch_shifts_mean.csv`. `--plots-dir` and `--clean-plots-dir` hold only the plots. Scripts that read these tables from the plot folders need the new location
 

@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.10)
+- dmrifiberprofile - qc-profiles with `--prior-stats-dir`: profiles whose arc lengths differ from those of the prior (rounding, or another sampling of the tract) were compared with nothing: `r` and `frac_inside` were empty in `profile_qc_<ref>.csv`, `batch_shifts_<ref>.csv` was empty with `--envelope-batch-correct`, and no profile was flagged, without a warning. The prior is now taken at the arc lengths of the profiles: the same position up to rounding (within 1% of the prior's spacing), else interpolated linearly (a warning names those tables); positions beyond the range of the prior are not compared. A run where no profile can be compared with the prior stops with an error, and a warning counts the profiles that cannot be compared. QC results of earlier versions with empty `r` / `frac_inside` checked nothing against the prior and should be recomputed
+
 ##### 2026-10-14 (v0.8.9)
 - dmriprep - batch processing of a BIDS dataset: a `bids` call with `--participant-label` / `--session-label` replaced the batch manifest by the datasets of those subjects/sessions, so `batch-status` and the `group` report no longer listed the others, and the SLURM tasks of an earlier call still in the queue failed. The manifest now keeps the datasets of the other subjects/sessions of earlier calls on the same BIDS dataset; only the selected datasets are processed. `manifest.tsv`, `skipped.tsv` and `status.tsv` are written atomically, so calls at the same time on the same output folder do not mix their contents
 

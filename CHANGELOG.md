@@ -3,6 +3,10 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.13)
+- dmrifiberprofile - qc-profiles: the ages in the tables of `--stats-dir` (`Profiles_Stats`) are in one unit, `--age-units` (months by default, the unit of `--age-csv`), in a column named after it: `age_months` (or `age_years`, ...). `profile_qc_<ref>.csv`, `profile_qc_<ref>_clean.csv` and `outliers_<ref>.csv` had it as `age` in months; `summary_*.csv` and `excluded_cases.csv` now have it too. Scripts reading the `age` column need the new name
+- dmrifiberprofile (qc-profiles, qc-registration), dmriprep DTI_Register: ages are kept as fractional months; the age table rounded them to whole months and the ages of the session names were integers. An age bin `lo-hi` holds the ages from `lo` up to, not including, `hi + 1` months (3.5 months is in `0-3m`), so whole-month ages are in the same bins as before
+
 ##### 2026-10-14 (v0.8.12)
 - dmrifiberprofile - qc-profiles: `--exclude-no-age` with plots failed while drawing the excluded profiles ("TypeError: '<=' not supported between instances of 'int' and 'NoneType'"). The profiles without an age are in no age bin and are not drawn in those plots; they are listed in `excluded_cases.csv`
 

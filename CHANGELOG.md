@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.6)
+- dmriprep: a protocol with the b0 threshold as text (`baseline_threshold: '10'`) made batch processing (`bids`, `run-batch`) and `run-dir` fail while loading the image with "TypeError: '<=' not supported between instances of 'int' and 'str'"; the threshold is now read as a number
+
 ##### 2026-10-13 (v0.8.5)
 - dmrifiberprofile - qc-profiles: `-o/--out-dir <folder>` writes the output folders in that folder: `--plots-dir`, `--stats-dir`, `--clean-dir` and `--clean-plots-dir` are folders in it unless they are absolute paths (e.g. `-o ProfileQC --clean-dir Profiles_Clean` writes `ProfileQC/Profiles_Stats`, `ProfileQC/Profiles_Clean` and the plot folders). Without `-o` they are written in the working directory, as before
 

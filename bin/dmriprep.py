@@ -163,8 +163,8 @@ def _dry_run_end(args):
         logger("--dry-run: no SLURM script written{}; run the command without --dry-run".format(', nothing submitted' if args.slurm_submit else ''),color.WARNING)
     return True
 
-def _execute_batch(args, batch, out):
-    selected, running = batch.select_datasets(out, only=args.only, rerun=args.rerun)
+def _execute_batch(args, batch, out, subset=None):
+    selected, running = batch.select_datasets(out, only=args.only, rerun=args.rerun, subset=subset)
     if running:
         logger("{} dataset(s) are running in another process and are left out: {}".format(len(running), ', '.join(d['id'] for d in running)),color.WARNING)
     if not selected:
@@ -202,12 +202,16 @@ def command_bids(args):
     datasets, skipped, notes = batch.plan_bids(args.bids_dir, specs, os.path.abspath(args.config_dir),
                                                participants=args.participant_label, sessions=args.session_label)
     batch.generate_default_protocols(out, datasets, os.path.abspath(args.config_dir), echo=lambda m: logger(m,color.PROCESS))
-    batch.write_batch(out, datasets, skipped, dict(_batch_settings(args), source='bids', bids_dir=os.path.abspath(args.bids_dir)))
+    selection = batch.label_selection(args.participant_label, args.session_label)
+    kept = batch.write_batch(out, datasets, skipped, dict(_batch_settings(args), source='bids', bids_dir=os.path.abspath(args.bids_dir)),
+                             selection=selection)
     batch.write_dataset_description(out, args.bids_dir)
     _print_plan(batch, out, datasets, skipped, notes)
+    if kept:
+        logger("The batch also keeps {} dataset(s) of other subjects/sessions from earlier calls (batch-status and group report them)".format(kept),color.INFO)
     if args.dry_run:
         return _dry_run_end(args)
-    return _execute_batch(args, batch, out)
+    return _execute_batch(args, batch, out, subset=[d['id'] for d in datasets] if selection else None)
 
 def command_run_batch(args):
     batch = batch_module()
@@ -355,8 +359,8 @@ def get_args():
     bids_protocols.add_argument('-d','--default-protocols',metavar='MODULE',nargs='*',default=None,
         help="Default protocol with these modules (none: the default pipeline of the template), generated for each\nacquisition (batch/default_protocols/)")
     parser_bids.add_argument('-b','--b0-threshold',metavar='BASELINE_THRESHOLD',help='b0 threshold of the default protocols (-d), default=10',default=10,type=float)
-    parser_bids.add_argument('--participant-label',metavar='LABEL',nargs='+',default=None,help="Only these subjects (with or without sub-)")
-    parser_bids.add_argument('--session-label',metavar='LABEL',nargs='+',default=None,help="Only these sessions (with or without ses-)")
+    parser_bids.add_argument('--participant-label',metavar='LABEL',nargs='+',default=None,help="Only these subjects (with or without sub-); the batch keeps the datasets of the others")
+    parser_bids.add_argument('--session-label',metavar='LABEL',nargs='+',default=None,help="Only these sessions (with or without ses-); the batch keeps the datasets of the others")
     _add_batch_execution_arguments(parser_bids)
     parser_bids.set_defaults(func=command_bids)
 

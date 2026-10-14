@@ -226,6 +226,35 @@ class TestPlanning(unittest.TestCase):
         self.assertIn('SUSCEPTIBILITY_Correct', datasets[0]['overrides'])
         self.assertEqual(len(skipped), 1)
 
+    def test_a_call_on_some_subjects_keeps_the_other_datasets(self):
+        out = self.dir / 'out'
+        settings = {'config_dir': str(self.config), 'command': ['dmriprep'], 'source': 'bids', 'bids_dir': str(self.root)}
+        single = batch.parse_protocol_specs([self.single])
+        datasets, skipped, _ = batch.plan_bids(self.root, single, self.config)
+        self.assertEqual(batch.write_batch(out, datasets, skipped, settings), 0)
+        ## sub-02 again: the datasets of sub-01 stay in the batch, only sub-02 is processed
+        selection = batch.label_selection(['sub-02'], None)
+        datasets, skipped, _ = batch.plan_bids(self.root, single, self.config, participants=['sub-02'])
+        self.assertEqual(batch.write_batch(out, datasets, skipped, settings, selection), 2)
+        manifest = batch.load_manifest(out)
+        self.assertEqual([d['id'] for d in manifest], ['sub-01_ses-1_acq-a_dir-AP_run-1', 'sub-01_ses-1_acq-a_dir-PA_run-2',
+                                                      'sub-02_ses-1_acq-b'])
+        selected, _ = batch.select_datasets(out, subset=[d['id'] for d in datasets])
+        self.assertEqual([d['id'] for d in selected], ['sub-02_ses-1_acq-b'])
+        self.assertEqual(len(batch.summarize(out)[0]), 3)
+        self.assertEqual(sorted(p.name for p in batch.batch_dir(out).glob('*.tmp')), [])
+        ## sub-01 with the paired protocol: its single runs are replaced by the pair, sub-02 is kept
+        selection = batch.label_selection(['01'], ['1'])
+        datasets, skipped, _ = batch.plan_bids(self.root, batch.parse_protocol_specs([self.paired]), self.config,
+                                               participants=['01'], sessions=['1'])
+        self.assertEqual(batch.write_batch(out, datasets, skipped, settings, selection), 1)
+        self.assertEqual([d['id'] for d in batch.load_manifest(out)], ['sub-01_ses-1_acq-a', 'sub-02_ses-1_acq-b'])
+        ## a session that is not in the batch keeps everything, another BIDS dataset replaces the batch
+        selection = batch.label_selection(None, ['2'])
+        self.assertEqual(batch.write_batch(out, [], [], settings, selection), 2)
+        self.assertEqual(batch.write_batch(out, [], [], dict(settings, bids_dir='/other'), selection), 0)
+        self.assertEqual(batch.load_manifest(out), [])
+
     def test_override_of_missing_module(self):
         with self.assertRaises(batch.BatchError):
             batch.apply_overrides(batch._read_yaml(self.single), {'SUSCEPTIBILITY_Correct': {'phaseEncodingAxis': 1}})

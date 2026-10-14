@@ -2,7 +2,8 @@
 #
 #   A batch lives in its output directory:
 #       <out>/batch/batch.yml            settings (config directory, dmriprep command, version)
-#       <out>/batch/manifest.tsv         one row per dataset: id, images, output folder, protocol, overrides
+#       <out>/batch/manifest.tsv         one row per dataset: id, images, output folder, protocol, overrides (a call with
+#                                        --participant-label/--session-label replaces only the rows of those subjects/sessions)
 #       <out>/batch/protocols/<id>.yml   protocol of each dataset (with its overrides, e.g. the phase encoding)
 #       <out>/batch/skipped.tsv          runs that are not processed, and why
 #       <out>/<dataset folder>/          output of `dmriprep run` for the dataset, plus batch_status.yml / batch_log.txt
@@ -340,28 +341,72 @@ def batch_dir(out):
     return Path(out).joinpath('batch')
 
 
-def write_batch(out, datasets, skipped, settings):
-    """Writes the manifest, the protocols of the datasets, the skipped runs and the batch settings."""
+def label_selection(participants=None, sessions=None):
+    """Predicate (subject, session) -> True for the datasets selected by --participant-label / --session-label (labels
+    with or without sub-/ses-), as in bids.find_dwi; None when they select every dataset."""
+    if not participants and not sessions:
+        return None
+    participants = {str(p).replace('sub-', '') for p in participants} if participants else None
+    sessions = {str(s).replace('ses-', '') for s in sessions} if sessions else None
+    return lambda subject, session: ((participants is None or subject in participants) and
+                                     (sessions is None or (session or None) in sessions))
+
+
+def _kept_from_previous(out, datasets, skipped, settings, selection):
+    """Rows of the previous manifest and skipped.tsv of the same source that *selection* leaves out: a call on some
+    subjects/sessions keeps the other datasets of the batch."""
+    bdir = batch_dir(out)
+    if selection is None or not bdir.joinpath('manifest.tsv').is_file():
+        return [], []
+    try:
+        previous = load_settings(out) or {}
+    except Exception:
+        return [], []
+    if previous.get('source') != settings.get('source') or previous.get('bids_dir') != settings.get('bids_dir'):
+        return [], []
+    ids = {d['id'] for d in datasets}
+    kept = [d for d in load_manifest(out) if d['id'] not in ids and not selection(d['subject'], d['session'])]
+    kept_skipped = []
+    if bdir.joinpath('skipped.tsv').is_file():
+        names = {n for n, _ in skipped}
+        for row in read_datasheet(bdir.joinpath('skipped.tsv')):
+            parsed = bids.parse_name(row['name'])
+            if parsed and row['name'] not in names and not selection(parsed[0]['sub'], parsed[0].get('ses', '')):
+                kept_skipped.append((row['name'], row['reason']))
+    return kept, kept_skipped
+
+
+def _write_tsv(path, header, rows):
+    """Writes a TSV file atomically (other processes read it or write it at the same time)."""
+    path = Path(path)
+    tmp = path.with_name('{}.{}.{}.tmp'.format(path.name, socket.gethostname(), os.getpid()))
+    with open(tmp, 'w', newline='') as f:
+        w = csv.writer(f, dialect='excel-tab')
+        w.writerow(header)
+        w.writerows(rows)
+    tmp.replace(path)
+
+
+def write_batch(out, datasets, skipped, settings, selection=None):
+    """Writes the manifest, the protocols of the datasets, the skipped runs and the batch settings. With a
+    *selection* (label_selection), the datasets of the previous manifest that it leaves out stay in the manifest.
+    Returns the number of datasets kept from the previous manifest."""
     out = Path(os.path.abspath(out))
     bdir = batch_dir(out)
+    kept, kept_skipped = _kept_from_previous(out, datasets, skipped, settings, selection)
     bdir.joinpath('protocols').mkdir(parents=True, exist_ok=True)
     for d in datasets:
         protocol = apply_overrides(_read_yaml(d['protocol']), d['overrides'])
         protocol_fn = bdir.joinpath('protocols', d['id'] + '.yml')
         _write_yaml(protocol, protocol_fn)
-    with open(bdir.joinpath('manifest.tsv'), 'w', newline='') as f:
-        w = csv.writer(f, dialect='excel-tab')
-        w.writerow(MANIFEST_COLUMNS)
-        for d in datasets:
-            w.writerow([d['id'], d['subject'], d['session'], d['output_dir'], d['protocol'], d['output_file_base'],
-                        d['images'][0], d['images'][1] if len(d['images']) > 1 else '',
-                        json.dumps(d['overrides']) if d['overrides'] else ''])
-    with open(bdir.joinpath('skipped.tsv'), 'w', newline='') as f:
-        w = csv.writer(f, dialect='excel-tab')
-        w.writerow(['name', 'reason'])
-        w.writerows(skipped)
+    rows = [[d['id'], d['subject'], d['session'], d['output_dir'], d['protocol'], d['output_file_base'],
+             d['images'][0], d['images'][1] if len(d['images']) > 1 else '',
+             json.dumps(d['overrides']) if d['overrides'] else ''] for d in (sorted(kept + list(datasets), key=lambda d: d['id']) if kept else datasets)]
+    _write_tsv(bdir.joinpath('manifest.tsv'), MANIFEST_COLUMNS, rows)
+    _write_tsv(bdir.joinpath('skipped.tsv'), ['name', 'reason'], sorted(kept_skipped) + list(skipped))
     settings = dict(settings, dmriprep_version=info['dmriprep']['version'], created=_now())
     _write_yaml(settings, bdir.joinpath('batch.yml'))
+    return len(kept)
 
 
 def write_dataset_description(out, bids_dir):
@@ -522,10 +567,8 @@ def summarize(out):
                      'finished': status.get('finished', ''), 'seconds': status.get('seconds', ''),
                      'host': status.get('host', ''), 'slurm_job_id': status.get('slurm_job_id', ''),
                      'error': status.get('error', ''), 'output_dir': d['output_dir']})
-    with open(batch_dir(out).joinpath('status.tsv'), 'w', newline='') as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()) if rows else ['id'], dialect='excel-tab')
-        w.writeheader()
-        w.writerows(rows)
+    header = list(rows[0].keys()) if rows else ['id']
+    _write_tsv(batch_dir(out).joinpath('status.tsv'), header, [[r[k] for k in header] for r in rows])
     return rows, counts
 
 
@@ -545,17 +588,20 @@ def _check_only(out, only, ids):
     raise BatchError('\n'.join(lines))
 
 
-def select_datasets(out, only=None, rerun=False):
-    """Datasets to process: those not done (or all with *rerun*), restricted to the ids of *only*; datasets running in
-    another process are left out, unless *only* names them; an id of *only* that is not in the batch is a
-    BatchError. Returns (selected, running)."""
+def select_datasets(out, only=None, rerun=False, subset=None):
+    """Datasets to process: those not done (or all with *rerun*), restricted to the ids of *only* and of *subset* (the
+    datasets planned by this call); datasets running in another process are left out, unless *only* names them; an id
+    of *only* that is not in the batch is a BatchError. Returns (selected, running)."""
     selected, running = [], []
     only = set(only) if only else None
     manifest = load_manifest(out)
     if only is not None:
         _check_only(out, only, [d['id'] for d in manifest])
+    subset = set(subset) if subset is not None else None
     for d in manifest:
         if only is not None and d['id'] not in only:
+            continue
+        if subset is not None and d['id'] not in subset:
             continue
         state, _ = current_state(out, d)
         if state == 'running' and only is None:

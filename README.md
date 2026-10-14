@@ -218,7 +218,9 @@ interface (`bids_dir output_dir participant|group`):
   for the runs that have an opposite phase encoded run, which are then processed as pairs), generated for each
   acquisition since some default parameters depend on the image (`<output_dir>/batch/default_protocols/`); `-b` sets
   its b0 threshold.
-  `--participant-label` and `--session-label` restrict the subjects and sessions.
+  `--participant-label` and `--session-label` restrict the subjects and sessions: only their datasets are processed,
+  and the datasets of the other subjects and sessions of earlier calls on the same BIDS dataset stay in the batch
+  (`batch-status`, `group`, and SLURM tasks of earlier calls still in the queue).
 - **Outputs**: `<output_dir>/sub-<label>/[ses-<label>/]dwi/<dataset id>/` holds the usual output of `dmriprep run` (same
   file names, e.g. `<scan>_dwi_QCed.nii.gz`; for a pair `sub-.._ses-.._acq-.._dwi_QCed.nii.gz`), with
   `dataset_description.json` at the top. `<output_dir>/batch/` holds the manifest (`manifest.tsv`), the protocol of

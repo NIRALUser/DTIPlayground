@@ -351,8 +351,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
             return None
         ranges.sort()
         ranges[-1] = (ranges[-1][0], float('inf'), ranges[-1][2])  ## the oldest bin is open ended
-        label = next((b for lo, hi, b in ranges if lo <= age <= hi), None)
-        if label is None:  ## between two bins (e.g. 3.5 with bins 0-3 and 4-9) : the closest one
+        label = next((b for lo, hi, b in ranges if lo <= age < hi + 1), None)  ## lo-hi: from lo up to hi + 1 months
+        if label is None:  ## between two bins (e.g. 4.5 with bins 0-3 and 6-9) : the closest one
             lo, hi, label = min(ranges, key=lambda r: min(abs(age - r[0]), abs(age - r[1])))
             logger("Age {} is between the bins of {} ({}), using the closest bin {}".format(age, model_dir, ', '.join(b for _, _, b in ranges), label),prep.Color.WARNING)
         mean = model_dir.joinpath(label).joinpath('DTI_mean.nrrd')

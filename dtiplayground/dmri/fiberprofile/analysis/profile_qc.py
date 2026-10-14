@@ -28,7 +28,9 @@ grouped into age bins. The age of a profile is the row of its scan in
 order as ``qc-registration`` and the DTI_Register module of dmriprep. A profile
 with neither takes part in no age bin, and they are counted at the end of the
 run; ``--exclude-no-age`` removes them from the cleaned profiles and lists them
-in ``excluded_cases.csv`` (reason ``no age``), since they are not QC'd.  For each bin, the per-arc-length
+in ``excluded_cases.csv`` (reason ``no age``), since they are not QC'd. Ages are
+fractional months; a bin ``lo-hi`` holds the ages from lo up to hi+1 months, and
+the output tables give them in ``--age-units`` (column ``age_<units>``).  For each bin, the per-arc-length
 mean, standard deviation, subject count and percentiles across subjects are
 computed (ignoring missing values) and written to a companion CSV:
 
@@ -130,7 +132,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from dtiplayground.dmri.common.age_table import AGE_UNIT_TO_MONTHS, age_from_table, load_age_table
+from dtiplayground.dmri.common.age_table import AGE_UNIT_TO_MONTHS, age_from_table, in_age_bin, load_age_table, months_to
 from dtiplayground.dmri.fiberprofile.analysis.gather import normalize_metric
 
 log = logging.getLogger("profile_qc")
@@ -153,6 +155,8 @@ ARC_TOLERANCE = 0.01
 # Ages of the cohort: the table of --age-csv and the pattern read from the column names, see set_age_source
 _AGE_TABLE = {}
 _AGE_RE = AGE_RE
+# Unit of the ages in the output tables (--age-units); the ages are in months everywhere else
+_AGE_UNITS = "months"
 # Where the age of each column came from, for the summary at the end of the run
 _AGE_SOURCE = {"table": set(), "pattern": set(), "none": set()}
 # Preferred metric ordering for the plot subplot grid; others appended.
@@ -243,18 +247,38 @@ def set_age_source(table=None, regex=None):
     return len(_AGE_TABLE)
 
 
-def age_of(column: str):
-    """Age in months of a profile column (``<subject>_<session>_<prefix>``): its row in the age table, else the
-    pattern on the column name. None when neither gives one, and that column takes part in no age bin."""
+def age_of(column: str, record=True):
+    """Age in months (float) of a profile column (``<subject>_<session>_<prefix>``): its row in the age table, else
+    the pattern on the column name. None when neither gives one, and that column takes part in no age bin. *record*:
+    count where the age came from, for the summary of the run."""
     if _AGE_TABLE:
         tokens = column.split("_")
         age = age_from_table(tokens[0], tokens[1] if len(tokens) > 1 else None, _AGE_TABLE)
         if age is not None:
-            _AGE_SOURCE["table"].add(column)
-            return age
+            if record:
+                _AGE_SOURCE["table"].add(column)
+            return float(age)
     m = _AGE_RE.search(column)
-    _AGE_SOURCE["pattern" if m else "none"].add(column)
-    return int(m.group(1)) if m else None
+    if record:
+        _AGE_SOURCE["pattern" if m else "none"].add(column)
+    try:
+        return float(m.group(1)) if m else None
+    except ValueError:
+        return None
+
+
+def age_column():
+    """Name of the age column of the output tables: the age in --age-units."""
+    return f"age_{_AGE_UNITS}"
+
+
+def report_ages(df):
+    """*df* with its 'age' column (months) in the unit of the output tables, as age_<units>."""
+    if "age" not in df.columns:
+        return df
+    out = df.copy()
+    out["age"] = pd.to_numeric(out["age"], errors="coerce") / AGE_UNIT_TO_MONTHS[_AGE_UNITS]
+    return out.rename(columns={"age": age_column()})
 
 
 def bin_columns(columns, bins):
@@ -266,7 +290,7 @@ def bin_columns(columns, bins):
             log.debug("no age in column '%s'; skipping", col)
             continue
         for lo, hi, label in bins:
-            if lo <= age <= hi:
+            if in_age_bin(age, lo, hi):
                 grouped[label].append(col)
                 break
     return grouped
@@ -526,10 +550,10 @@ def write_metric_summaries(inputs, exclude_ids, out_dir, exclude_full=None, suff
             row = {"tract": tract, "dataset": dataset,
                    "sub": sub[len("sub-"):] if sub.startswith("sub-") else sub,
                    "ses": ses[len("ses-"):] if ses.startswith("ses-") else ses,
-                   "prefix": "_".join(toks[2:])}
+                   "prefix": "_".join(toks[2:]), age_column(): months_to(age_of(dataset, record=False), _AGE_UNITS)}
             row.update(vals)
             rows.append(row)
-        return pd.DataFrame(rows).reindex(columns=["tract", "dataset", "sub", "ses", "prefix"] + metric_cols)
+        return pd.DataFrame(rows).reindex(columns=["tract", "dataset", "sub", "ses", "prefix", age_column()] + metric_cols)
 
     os.makedirs(out_dir, exist_ok=True)
     to_frame(means).to_csv(os.path.join(out_dir, f"summary_mean{suffix}.csv"), index=False)
@@ -548,24 +572,24 @@ def write_excluded_cases(reg_failed, prep_failed, groups, out_dir, filename="exc
     for ident in sorted(reg_failed):
         t = ident.split("_")
         rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
-                     "prefix": "_".join(t[2:]), "tract": "", "reason": "registration"})
+                     "prefix": "_".join(t[2:]), age_column(): months_to(age_of(ident, record=False), _AGE_UNITS), "tract": "", "reason": "registration"})
     for ident in sorted(prep_failed):
         t = ident.split("_")
         rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
-                     "prefix": "_".join(t[2:]), "tract": "", "reason": "preprocessing"})
+                     "prefix": "_".join(t[2:]), age_column(): months_to(age_of(ident, record=False), _AGE_UNITS), "tract": "", "reason": "preprocessing"})
     for ident in sorted(no_age):
         t = ident.split("_")
         rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
-                     "prefix": "_".join(t[2:]), "tract": "", "reason": "no age"})
+                     "prefix": "_".join(t[2:]), age_column(): months_to(age_of(ident, record=False), _AGE_UNITS), "tract": "", "reason": "no age"})
     if groups is not None:
         for _, g in groups[groups["is_outlier"]].sort_values(["tract", "subject_session"]).iterrows():
             t = str(g["subject_session"]).split("_")
             rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
-                         "prefix": "_".join(t[2:]), "tract": g["tract"], "reason": "profile"})
+                         "prefix": "_".join(t[2:]), age_column(): months_to(g["age"], _AGE_UNITS), "tract": g["tract"], "reason": "profile"})
 
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, filename)
-    pd.DataFrame(rows, columns=["sub", "ses", "prefix", "tract", "reason"]).to_csv(path, index=False)
+    pd.DataFrame(rows, columns=["sub", "ses", "prefix", age_column(), "tract", "reason"]).to_csv(path, index=False)
     return path, len(rows)
 
 
@@ -603,7 +627,7 @@ def bin_label_for_age(age, bins):
     if age is None:
         return None
     for lo, hi, label in bins:
-        if lo <= age <= hi:
+        if in_age_bin(age, lo, hi):
             return label
     return None
 
@@ -783,7 +807,7 @@ def estimate_batch_shifts(inputs, prior_dir, bins, mult_metrics, exclude_ids=Non
             if ref_key not in prior.columns:
                 continue
             ref = prior[ref_key].to_numpy(dtype=float)[:, None]
-            cols = [c for c, a in col_ages.items() if a is not None and lo <= a <= hi]
+            cols = [c for c, a in col_ages.items() if in_age_bin(a, lo, hi)]
             if not cols:
                 continue
             M = df[cols].to_numpy(dtype=float)
@@ -845,7 +869,7 @@ def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, ex
                 continue
             ref_vec = prior[ref_key].to_numpy(dtype=float)
             env = envelope_bounds(prior, label, envelope_cfg)
-            cols = [c for c, a in col_ages.items() if a is not None and lo <= a <= hi]
+            cols = [c for c, a in col_ages.items() if in_age_bin(a, lo, hi)]
             if not cols:
                 continue
             M = df[cols].to_numpy(dtype=float)
@@ -1186,7 +1210,8 @@ def configure_parser(p):
     p.add_argument("--age-column", default=None, metavar="NAME",
                    help="Name of the --age-csv column holding the age (default: auto-detect)")
     p.add_argument("--age-units", default="months", choices=sorted(AGE_UNIT_TO_MONTHS),
-                   help="Units of the --age-csv age column (default: months)")
+                   help="Units of the --age-csv age column, and of the ages in the output tables (the age_<units> "
+                        "column of the summaries, excluded_cases, outliers and profile_qc tables; default: months)")
     p.add_argument("--age-regex", default=AGE_RE.pattern,
                    help="Pattern for the age in a column name (group 1, months), used when the table has no row "
                         "for that scan (default: %(default)s)")
@@ -1287,7 +1312,7 @@ def run_args(args, p) -> int:
         matplotlib.use("Agg")
 
     bins = parse_bins(args.bins)
-    log.info("Age bins (inclusive months, oldest open-ended): %s",
+    log.info("Age bins (months; lo-hi holds the ages from lo up to hi+1, oldest open-ended): %s",
              [lbl for _, _, lbl in bins])
 
     if args.age_column and not args.age_csv:
@@ -1299,6 +1324,8 @@ def run_args(args, p) -> int:
         except (OSError, ValueError) as exc:
             p.error(f"--age-csv: {exc}")
     set_age_source(age_table, args.age_regex)
+    global _AGE_UNITS
+    _AGE_UNITS = args.age_units
 
     inputs = select_inputs(args.profiles_dir)
     log.info("Found %d metric tables under %s", len(inputs), args.profiles_dir)
@@ -1433,9 +1460,9 @@ def run_args(args, p) -> int:
             on=["tract", "subject_session"], how="left",
         )
         qc_csv = os.path.join(stats_root, f"profile_qc_{args.corr_reference}.csv")
-        qc_out.to_csv(qc_csv, index=False)
+        report_ages(qc_out).to_csv(qc_csv, index=False)
         grp_csv = os.path.join(stats_root, f"outliers_{args.corr_reference}.csv")
-        groups.to_csv(grp_csv, index=False)
+        report_ages(groups).to_csv(grp_csv, index=False)
 
         ng = len(groups)
         nv = int(groups["is_value_outlier"].sum())
@@ -1501,7 +1528,7 @@ def run_args(args, p) -> int:
             qc_clean = compute_profile_qc(clean_tables, args.prior_stats_dir, bins, args.corr_reference, env_cfg,
                                           batch_shifts=batch_shifts)
             clean_qc_csv = os.path.join(stats_root, f"profile_qc_{args.corr_reference}_clean.csv")
-            qc_clean.to_csv(clean_qc_csv, index=False)
+            report_ages(qc_clean).to_csv(clean_qc_csv, index=False)
             log.info("Wrote cleaned-data %s", clean_qc_csv)
             if clean_sub and int(qc_clean["r"].notna().sum()):
                 n_cfig = plot_correlations_by_metric_bin(qc_clean, clean_sub, args.corr_reference, args.dpi, bins)

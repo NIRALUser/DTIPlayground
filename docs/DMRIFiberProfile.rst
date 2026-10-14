@@ -291,6 +291,12 @@ part in no age bin: they are not QC'd against the prior, and they stay in the su
 ``--exclude-no-age`` excludes them instead: they are left out of the summaries and the cleaned profiles and listed in
 ``excluded_cases.csv`` with the reason ``no age``.
 
+Ages are kept as fractional months (an age of 1.5 years in the table is 18 months). The age bins are written in whole
+months (``--bins 0-3,4-9,10-60``): a bin ``lo-hi`` holds the ages from ``lo`` up to, not including, ``hi + 1`` months,
+so 3.5 months is in ``0-3m``. The tables of ``--stats-dir`` give the age of every scan in the column
+``age_<units>``, in ``--age-units`` (``age_months`` by default; ``--age-units years`` for a table in years gives
+``age_years``).
+
 Locations sampled outside the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -159,7 +159,7 @@ def parse_bins(spec):
 ## the age table is shared with the DTI_Register module of dmriprep (protocol ageCSV)
 from dtiplayground.dmri.common.age_table import (  # noqa: E402  (kept importable from here)
     AGE_TABLE_AGE_COLS, AGE_TABLE_AGE_SUBSTRINGS, AGE_TABLE_SESSION_COLS, AGE_TABLE_SUBJECT_COLS,
-    AGE_UNIT_TO_MONTHS, age_from_table, bids_key as _bids_key, load_age_table)
+    AGE_UNIT_TO_MONTHS, age_from_table, bids_key as _bids_key, in_age_bin, load_age_table)
 
 
 def age_for_session(subject, session, age_table, age_re):
@@ -168,14 +168,17 @@ def age_for_session(subject, session, age_table, age_re):
     if age is not None:
         return age
     m = age_re.search(session)
-    return int(m.group(1)) if m else None
+    try:
+        return float(m.group(1)) if m else None
+    except ValueError:
+        return None
 
 
 def bin_label_for_age(age, bins):
     if age is None:
         return None
     for lo, hi, label in bins:
-        if lo <= age <= hi:
+        if in_age_bin(age, lo, hi):
             return label
     return None
 
@@ -661,7 +664,7 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
                 "tensor_mean": "logEuclidean" if do_tensor else None}
 
     for lo, hi, label in bins:
-        subs = [s for s in sessions if lo <= s["age"] <= hi]
+        subs = [s for s in sessions if in_age_bin(s["age"], lo, hi)]
         if not subs:
             log.info("bin %s: no reference subjects", label)
             continue
@@ -1386,7 +1389,7 @@ def run_args(args, p) -> int:
         rows.append(qc_subject(s, atlas, bins, normative_dir, cfg, args.out_dir if save_all else None))
         scored.append(s)
         log.info("  scored %s (age %s, bin %s)%s", s["id"],
-                 f"{s['age']}m" if s["age"] is not None else "unknown", rows[-1]["bin"],
+                 f"{s['age']:g}m" if s["age"] is not None else "unknown", rows[-1]["bin"],
                  " [maps saved]" if save_all else "")
 
     if not rows:

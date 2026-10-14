@@ -8,7 +8,8 @@
 #     dmriprep, DTI_Register module      protocol ageCSV / ageColumn / ageUnits (the age bin of the normative model)
 #
 #   The table gives one age per (subject, session), or one per subject when it has no session column. Ages are kept
-#   in months, the unit of the age bins.
+#   in months (as floats), the unit of the age bins; an age bin '<lo>-<hi>m' holds the ages from lo up to, not
+#   including, hi + 1 months (in_age_bin), so whole-month ages are binned as before and no age falls between bins.
 #
 
 import csv
@@ -25,6 +26,17 @@ AGE_TABLE_AGE_COLS = ("age_months", "age_month", "age_mo", "age_m", "candidate_a
 AGE_TABLE_AGE_SUBSTRINGS = ("candidate_age",)
 
 AGE_UNIT_TO_MONTHS = {"months": 1.0, "years": 12.0, "days": 12.0 / 365.25, "weeks": 12.0 / 52.1775}
+
+
+def in_age_bin(age, lo, hi):
+    """Whether an age in months is in the age bin lo-hi: bins are written in whole months, inclusive ('0-3m', '4-9m'),
+    so the bin holds the ages from lo up to, not including, hi + 1 (3.5 months is in 0-3m)."""
+    return age is not None and lo <= age < hi + 1
+
+
+def months_to(age, units="months"):
+    """An age in months in *units* (months, years, weeks, days); None stays None."""
+    return None if age is None else age / AGE_UNIT_TO_MONTHS[units]
 
 
 def bids_key(value):
@@ -94,7 +106,7 @@ def load_age_table(path, units="months", age_column=None):
             n_bad += 1
             continue
         key = (bids_key(r[sub_col]), bids_key(r[ses_col]) if ses_col else None)
-        table[key] = int(round(age))
+        table[key] = age
     log.info("Age table %s: %d entries from columns (%s, %s, %s in %s)%s",
              path, len(table), sub_col, ses_col or "-", age_col, units,
              f"; {n_bad} row(s) without a usable age" if n_bad else "")

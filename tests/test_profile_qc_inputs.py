@@ -491,6 +491,50 @@ class TestProfilesWithoutAge(unittest.TestCase):
             self.assertNotIn('sub-005_ses-V1_dwi', set(everything['dataset']))
 
 
+class TestReportedAges(unittest.TestCase):
+    """The ages in the tables of Profiles_Stats are floats in --age-units (months by default)."""
+
+    def _run(self, d, *options):
+        norm, data = os.path.join(d, 'norm'), os.path.join(d, 'data')
+        TestOutputFolders._tables(norm, 12)
+        TestOutputFolders._tables(data, 8, outlier='sub-003_ses-012m_dwi')
+        ages = os.path.join(d, 'ages.csv')
+        with open(ages, 'w') as f:  # sub-001 from the table (13.5 months), the others from the column names
+            f.write('participant_id,session_id,age\nsub-001,ses-012m,{}\n'.format(1.125 if 'years' in options else 13.5))
+        self.assertEqual(profile_qc.main(['--profiles-dir', norm, '-o', os.path.join(d, 'normQC'), '--no-plots']), 0)
+        out = os.path.join(d, 'QC')
+        self.assertEqual(profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', norm, '-o', out,
+                                          '--clean-dir', 'Profiles_Clean', '--no-plots', '--age-csv', ages]
+                                         + list(options)), 0)
+        return os.path.join(out, 'Profiles_Stats')
+
+    def _ages(self, stats, name, column):
+        t = pd.read_csv(os.path.join(stats, name))
+        key = 'dataset' if 'dataset' in t.columns else 'subject_session' if 'subject_session' in t.columns else 'sub'
+        return t, dict(zip(t[key].astype(str), t[column]))
+
+    def test_months_by_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            stats = self._run(d)
+            for name in ('summary_mean_all.csv', 'summary_median.csv', 'profile_qc_mean.csv', 'outliers_mean.csv',
+                         'profile_qc_mean_clean.csv'):
+                t, ages = self._ages(stats, name, 'age_months')
+                self.assertNotIn('age', t.columns)
+                self.assertEqual(ages['sub-001_ses-012m_dwi'], 13.5, name)
+                self.assertEqual(ages['sub-000_ses-012m_dwi'], 12.0, name)
+            excluded = pd.read_csv(os.path.join(stats, 'excluded_cases.csv'))
+            self.assertEqual(list(excluded['age_months']), [12.0, 12.0])  # sub-003, in both tracts
+
+    def test_the_age_units_of_the_table_are_those_of_the_output(self):
+        with tempfile.TemporaryDirectory() as d:
+            stats = self._run(d, '--age-units', 'years')
+            for name in ('summary_mean_all.csv', 'outliers_mean.csv'):
+                t, ages = self._ages(stats, name, 'age_years')
+                self.assertEqual(ages['sub-001_ses-012m_dwi'], 1.125, name)
+                self.assertEqual(ages['sub-000_ses-012m_dwi'], 1.0, name)
+            self.assertEqual(list(pd.read_csv(os.path.join(stats, 'excluded_cases.csv'))['age_years']), [1.0, 1.0])
+
+
 class TestPriorArcLengths(unittest.TestCase):
     """The prior is compared at the arc lengths of the profiles: the same up to rounding, or interpolated."""
 

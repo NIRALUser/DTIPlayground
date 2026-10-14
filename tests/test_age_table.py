@@ -36,7 +36,19 @@ class TestLoadAgeTable(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = _table(d, 'a.csv', 'participant_id,age\nsub-1,1.5\n')
             self.assertEqual(age_table.load_age_table(p, 'years')[('1', None)], 18)
-            self.assertEqual(age_table.load_age_table(p, 'months')[('1', None)], 2) # 1.5 rounds to 2
+            self.assertEqual(age_table.load_age_table(p, 'months')[('1', None)], 1.5) # kept as a float
+
+    def test_age_bins_hold_the_fractional_ages(self):
+        self.assertTrue(age_table.in_age_bin(3.5, 0, 3))  # 0-3m: from 0 up to 4 months
+        self.assertFalse(age_table.in_age_bin(4.0, 0, 3))
+        self.assertTrue(age_table.in_age_bin(4.0, 4, 9))
+        self.assertTrue(age_table.in_age_bin(80.2, 10, float('inf')))
+        self.assertFalse(age_table.in_age_bin(None, 0, 3))
+
+    def test_ages_in_other_units(self):
+        self.assertEqual(age_table.months_to(18.0, 'years'), 1.5)
+        self.assertEqual(age_table.months_to(18.0), 18.0)
+        self.assertIsNone(age_table.months_to(None, 'years'))
 
     def test_a_tab_separated_table_and_rows_without_an_age(self):
         with tempfile.TemporaryDirectory() as d:

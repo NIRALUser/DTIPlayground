@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.9)
+- dmriprep - batch processing of a BIDS dataset: a `bids` call with `--participant-label` / `--session-label` replaced the batch manifest by the datasets of those subjects/sessions, so `batch-status` and the `group` report no longer listed the others, and the SLURM tasks of an earlier call still in the queue failed. The manifest now keeps the datasets of the other subjects/sessions of earlier calls on the same BIDS dataset; only the selected datasets are processed. `manifest.tsv`, `skipped.tsv` and `status.tsv` are written atomically, so calls at the same time on the same output folder do not mix their contents
+
 ##### 2026-10-14 (v0.8.8)
 - dmriprep - batch processing on SLURM: a second `bids`/`run-batch` call with `--slurm` on the same output folder rewrote the dataset ids (`batch/slurm_ids.txt`) that the tasks of an array still in the queue read when they start, so they processed other datasets or none. Each SLURM script now has its own `batch/slurm_ids_<time>.txt`, and a task without a dataset id stops with a message
 

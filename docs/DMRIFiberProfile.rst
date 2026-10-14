@@ -287,7 +287,9 @@ The age decides the age bin of a profile. It is the row of the scan in ``--age-c
 (``--age-column`` and ``--age-units`` describe its age column), else ``--age-regex`` on the column name of the
 profile, ``ses-(\d+)m`` by default. The same table is used by ``qc-registration --age-csv`` and by the ``ageCSV``
 option of the DTI_Register module of dmriprep. Profiles with neither are named at the end of the run, as they take
-part in no age bin.
+part in no age bin: they are not QC'd against the prior, and they stay in the summaries and the cleaned profiles.
+``--exclude-no-age`` excludes them instead: they are left out of the summaries and the cleaned profiles and listed in
+``excluded_cases.csv`` with the reason ``no age``.
 
 Locations sampled outside the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -310,7 +312,7 @@ The output folders are in the ``-o`` folder (``--plots-dir``, ``--stats-dir``, `
 - ``--stats-dir`` (``Profiles_Stats``), the tables of the QC: ``summary_mean.csv`` and ``summary_median.csv``, the
   whole-tract mean and median of every metric per tract and dataset of the cleaned data (with ``--clean-dir``), and
   ``summary_mean_all.csv`` / ``summary_median_all.csv`` before the profile outliers are removed;
-  ``excluded_cases.csv`` (one row per registration, preprocessing or profile exclusion), ``outliers_mean.csv`` (the
+  ``excluded_cases.csv`` (one row per registration, preprocessing, no age (``--exclude-no-age``) or profile exclusion), ``outliers_mean.csv`` (the
   decision per case and tract), ``profile_qc_mean.csv`` (the detail per metric) and ``profile_qc_mean_clean.csv`` (the
   same on the cleaned data); ``batch_shifts_mean.csv`` with ``--envelope-batch-correct``. ``mean`` is
   ``--corr-reference``.

@@ -27,7 +27,8 @@ grouped into age bins. The age of a profile is the row of its scan in
 ``--age-regex`` on the column name (``ses-<months>m`` by default) -- the same
 order as ``qc-registration`` and the DTI_Register module of dmriprep. A profile
 with neither takes part in no age bin, and they are counted at the end of the
-run.  For each bin, the per-arc-length
+run; ``--exclude-no-age`` removes them from the cleaned profiles and lists them
+in ``excluded_cases.csv`` (reason ``no age``), since they are not QC'd.  For each bin, the per-arc-length
 mean, standard deviation, subject count and percentiles across subjects are
 computed (ignoring missing values) and written to a companion CSV:
 
@@ -100,7 +101,7 @@ the QC go to ``--stats-dir`` (default ``Profiles_Stats``): ``summary_mean_all.cs
 of every metric per (tract, dataset), before the profile outliers are removed),
 ``profile_qc_<reference>.csv`` (per-metric detail + group flags),
 ``outliers_<reference>.csv`` (per (subject-session, tract) decision) and
-``excluded_cases.csv`` (registration, preprocessing and profile exclusions, one
+``excluded_cases.csv`` (registration, preprocessing, no age and profile exclusions, one
 row each).  The plots of all the data go to ``--plots-dir``/Plots, with one
 box+violin figure per (metric, age-bin).  With ``--clean-dir``, the flagged
 profiles are removed from ALL metric tables of their tract and cleaned profiles
@@ -536,10 +537,10 @@ def write_metric_summaries(inputs, exclude_ids, out_dir, exclude_full=None, suff
     return len(means)
 
 
-def write_excluded_cases(reg_failed, prep_failed, groups, out_dir, filename="excluded_cases.csv"):
-    """List every excluded case, one row each (registration, preprocessing and
-    profile on separate rows), with sub/ses (prefixes stripped), prefix, tract,
-    reason."""
+def write_excluded_cases(reg_failed, prep_failed, groups, out_dir, filename="excluded_cases.csv", no_age=()):
+    """List every excluded case, one row each (registration, preprocessing,
+    no age and profile on separate rows), with sub/ses (prefixes stripped),
+    prefix, tract, reason."""
     def strip(tok, pre):
         return tok[len(pre):] if tok.startswith(pre) else tok
 
@@ -552,6 +553,10 @@ def write_excluded_cases(reg_failed, prep_failed, groups, out_dir, filename="exc
         t = ident.split("_")
         rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
                      "prefix": "_".join(t[2:]), "tract": "", "reason": "preprocessing"})
+    for ident in sorted(no_age):
+        t = ident.split("_")
+        rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
+                     "prefix": "_".join(t[2:]), "tract": "", "reason": "no age"})
     if groups is not None:
         for _, g in groups[groups["is_outlier"]].sort_values(["tract", "subject_session"]).iterrows():
             t = str(g["subject_session"]).split("_")
@@ -1183,6 +1188,11 @@ def configure_parser(p):
     p.add_argument("--age-regex", default=AGE_RE.pattern,
                    help="Pattern for the age in a column name (group 1, months), used when the table has no row "
                         "for that scan (default: %(default)s)")
+    p.add_argument("--exclude-no-age", action="store_true",
+                   help="Exclude the profiles without an age (no row in --age-csv and no age in the column name): "
+                        "they are in no age bin, so not QC'd against the prior; they are removed from the summaries "
+                        "and the cleaned profiles and listed in excluded_cases.csv (reason 'no age'). Without it "
+                        "they are kept, unchecked")
     p.add_argument("--ddof", type=int, default=1, help="Delta d.o.f. for std (1=sample, 0=population; default: 1)")
     p.add_argument("--dpi", type=int, default=130, help="Plot resolution (default: 130)")
     p.add_argument("--no-plots", action="store_true", help="Only write CSVs, skip plots")
@@ -1340,9 +1350,13 @@ def run_args(args, p) -> int:
     if age_table and not n_table:
         log.warning("No profile matched a row of %s: check that its subject and session columns hold the ids of the "
                     "profile columns (<subject>_<session>_...)", args.age_csv)
+    no_age = set(_AGE_SOURCE["none"]) if args.exclude_no_age else set()
     if n_none:
-        log.warning("%d profile(s) have no age: %s%s", n_none, ", ".join(sorted(_AGE_SOURCE["none"])[:5]),
-                    " ..." if n_none > 5 else "")
+        log.warning("%d profile(s) have no age: %s%s; %s", n_none, ", ".join(sorted(_AGE_SOURCE["none"])[:5]),
+                    " ..." if n_none > 5 else "",
+                    "they are excluded (--exclude-no-age)" if no_age else
+                    "they are not QC'd and are kept in the cleaned profiles (--exclude-no-age excludes them)")
+    full_excl = full_excl | no_age
 
     # per-(tract, dataset) whole-tract metric summaries (mean, median), before the profile outliers are removed
     n_sum = write_metric_summaries(inputs, reg_ss, stats_root, exclude_full=full_excl, suffix="_all")
@@ -1465,8 +1479,9 @@ def run_args(args, p) -> int:
                 clean_tables.append(clean_path)
                 n_dropped_cols += len(drop)
             log.info("Wrote cleaned profiles to %s/ (removed profile-QC outliers + %d registration-failed "
-                     "subject-sessions + %d preprocessing-failed scans across %d tables%s)",
-                     args.clean_dir, len(reg_failed), len(prep_failed), len(inputs),
+                     "subject-sessions + %d preprocessing-failed scans%s across %d tables%s)",
+                     args.clean_dir, len(reg_failed), len(prep_failed),
+                     " + %d scan(s) without an age" % len(no_age) if no_age else "", len(inputs),
                      "; %d cell(s) sampled outside the brain written empty" % n_blanked if n_blanked else "")
 
             # recompute age-bin stats (+ plots) on the cleaned data
@@ -1492,10 +1507,10 @@ def run_args(args, p) -> int:
 
     # --- log of excluded cases (registration + preprocessing + profile) ----
     n_prof_out = int(groups["is_outlier"].sum()) if groups is not None else 0
-    if reg_failed or prep_failed or n_prof_out:
-        exc_path, n_exc = write_excluded_cases(reg_failed, prep_failed, groups, stats_root)
-        log.info("Wrote %d excluded-case rows (%d registration, %d preprocessing, %d profile) to %s",
-                 n_exc, len(reg_failed), len(prep_failed), n_prof_out, exc_path)
+    if reg_failed or prep_failed or no_age or n_prof_out:
+        exc_path, n_exc = write_excluded_cases(reg_failed, prep_failed, groups, stats_root, no_age=no_age)
+        log.info("Wrote %d excluded-case rows (%d registration, %d preprocessing, %d no age, %d profile) to %s",
+                 n_exc, len(reg_failed), len(prep_failed), len(no_age), n_prof_out, exc_path)
 
     return 0
 

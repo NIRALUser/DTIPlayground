@@ -455,6 +455,41 @@ class TestOutputFolders(unittest.TestCase):
             self.assertTrue(os.listdir(os.path.join(elsewhere, 'Plots')))  # an absolute path is used as given
             self.assertEqual(os.listdir(os.path.join(d, 'normQC')), ['Profiles_Stats'])  # --no-plots: no plot folder
 
+class TestProfilesWithoutAge(unittest.TestCase):
+    """A profile without an age is in no age bin, so it is not QC'd: kept by default, excluded with --exclude-no-age."""
+
+    def _run(self, d, *options):
+        norm, data = os.path.join(d, 'norm'), os.path.join(d, 'data')
+        TestOutputFolders._tables(norm, 12)
+        TestOutputFolders._tables(data, 8)
+        for f in Path(data).glob('*/*.csv'):  # a scan whose session name carries no age
+            df = pd.read_csv(f, index_col=0)
+            df.rename(columns={'sub-005_ses-012m_dwi': 'sub-005_ses-V1_dwi'}).to_csv(f)
+        self.assertEqual(profile_qc.main(['--profiles-dir', norm, '-o', os.path.join(d, 'normQC'), '--no-plots']), 0)
+        out = os.path.join(d, 'QC')
+        self.assertEqual(profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', norm, '-o', out,
+                                          '--clean-dir', 'Profiles_Clean', '--no-plots'] + list(options)), 0)
+        clean = pd.read_csv(os.path.join(out, 'Profiles_Clean', 'CGH_R', 'CGH_R_fa.csv'), index_col=0)
+        stats = os.path.join(out, 'Profiles_Stats')
+        return clean, stats
+
+    def test_kept_without_the_option(self):
+        with tempfile.TemporaryDirectory() as d:
+            clean, stats = self._run(d)
+            self.assertIn('sub-005_ses-V1_dwi', clean.columns)
+            self.assertFalse(os.path.exists(os.path.join(stats, 'excluded_cases.csv')))
+
+    def test_excluded_with_the_option(self):
+        with tempfile.TemporaryDirectory() as d:
+            clean, stats = self._run(d, '--exclude-no-age')
+            self.assertNotIn('sub-005_ses-V1_dwi', clean.columns)
+            self.assertEqual(len(clean.columns), 7)
+            excluded = pd.read_csv(os.path.join(stats, 'excluded_cases.csv'), dtype=str)
+            self.assertEqual(excluded[['sub', 'ses', 'prefix', 'reason']].values.tolist(), [['005', 'V1', 'dwi', 'no age']])
+            everything = pd.read_csv(os.path.join(stats, 'summary_mean_all.csv'))
+            self.assertNotIn('sub-005_ses-V1_dwi', set(everything['dataset']))
+
+
 class TestPriorArcLengths(unittest.TestCase):
     """The prior is compared at the arc lengths of the profiles: the same up to rounding, or interpolated."""
 

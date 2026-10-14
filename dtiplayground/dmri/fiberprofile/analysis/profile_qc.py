@@ -599,7 +599,9 @@ def write_agebin_stats(inputs, bins, ddof, plots_dir=None, dpi=130, exclude_ids=
 
 
 def bin_label_for_age(age, bins):
-    """Return the bin label an age falls into, or None."""
+    """Return the bin label an age falls into, or None (also for a profile without an age)."""
+    if age is None:
+        return None
     for lo, hi, label in bins:
         if lo <= age <= hi:
             return label

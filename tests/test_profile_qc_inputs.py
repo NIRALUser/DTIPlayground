@@ -458,7 +458,7 @@ class TestOutputFolders(unittest.TestCase):
 class TestProfilesWithoutAge(unittest.TestCase):
     """A profile without an age is in no age bin, so it is not QC'd: kept by default, excluded with --exclude-no-age."""
 
-    def _run(self, d, *options):
+    def _run(self, d, *options, plots=False):
         norm, data = os.path.join(d, 'norm'), os.path.join(d, 'data')
         TestOutputFolders._tables(norm, 12)
         TestOutputFolders._tables(data, 8)
@@ -468,7 +468,8 @@ class TestProfilesWithoutAge(unittest.TestCase):
         self.assertEqual(profile_qc.main(['--profiles-dir', norm, '-o', os.path.join(d, 'normQC'), '--no-plots']), 0)
         out = os.path.join(d, 'QC')
         self.assertEqual(profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', norm, '-o', out,
-                                          '--clean-dir', 'Profiles_Clean', '--no-plots'] + list(options)), 0)
+                                          '--clean-dir', 'Profiles_Clean'] + ([] if plots else ['--no-plots'])
+                                         + list(options)), 0)
         clean = pd.read_csv(os.path.join(out, 'Profiles_Clean', 'CGH_R', 'CGH_R_fa.csv'), index_col=0)
         stats = os.path.join(out, 'Profiles_Stats')
         return clean, stats
@@ -481,7 +482,7 @@ class TestProfilesWithoutAge(unittest.TestCase):
 
     def test_excluded_with_the_option(self):
         with tempfile.TemporaryDirectory() as d:
-            clean, stats = self._run(d, '--exclude-no-age')
+            clean, stats = self._run(d, '--exclude-no-age', plots=True)  # the plot of the excluded profiles too
             self.assertNotIn('sub-005_ses-V1_dwi', clean.columns)
             self.assertEqual(len(clean.columns), 7)
             excluded = pd.read_csv(os.path.join(stats, 'excluded_cases.csv'), dtype=str)

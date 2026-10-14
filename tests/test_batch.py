@@ -288,6 +288,29 @@ class TestTaskLock(unittest.TestCase):
         self.assertEqual(batch.run_task(out, d['id'], str(self.dir / 'config')), batch.EXIT_RUNNING_ELSEWHERE)
         self.assertEqual(batch.current_state(out, d)[0], 'pending')  # its status is left alone
 
+
+class TestSlurmScript(unittest.TestCase):
+    """A later SLURM script does not change the datasets of an array that is still queued."""
+
+    def test_each_script_has_its_own_dataset_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            root = d / 'study'
+            for sub in ('01', '02', '03'):
+                write_dwi(root / 'sub-{}/ses-1/dwi'.format(sub), 'sub-{}_ses-1_dwi'.format(sub), LAS, {'PhaseEncodingDirection': 'j-'})
+            protocol = write_protocol(d / 'single.yml', ['BRAIN_Mask'])
+            out = d / 'out'
+            datasets, skipped, _ = batch.plan_bids(root, batch.parse_protocol_specs([protocol]), d / 'config')
+            batch.write_batch(out, datasets, skipped, {'config_dir': str(d / 'config'), 'command': ['dmriprep']})
+            manifest = batch.load_manifest(out)
+            first = batch.write_slurm(out, manifest, threads=1, echo=lambda m: None).read_text()
+            batch.write_slurm(out, manifest[2:], threads=1, echo=lambda m: None)  # a second call, fewer datasets
+            ids_files = sorted(batch.batch_dir(out).glob('slurm_ids_*.txt'))
+            self.assertEqual(len(ids_files), 2)
+            first_ids = next(f for f in ids_files if str(f) in first)  # the file the first script reads
+            self.assertEqual(first_ids.read_text().split(), [m['id'] for m in manifest])
+            self.assertIn('--array=1-3', first)
+
 class TestB0Threshold(unittest.TestCase):
     """A protocol can hold the b0 threshold as text (baseline_threshold: '10'); the baselines are still found."""
 

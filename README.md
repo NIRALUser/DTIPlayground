@@ -232,7 +232,8 @@ interface (`bids_dir output_dir participant|group`):
 - **Local execution**: `-j` datasets are processed at the same time, each in its own process with `-t` threads; its
   log is `batch_log.txt` (and the usual `log.txt`) in its folder.
 - **SLURM** (e.g. Longleaf): `--slurm` writes `<output_dir>/batch/slurm_array.sh`, a job array with one task per
-  dataset to process, to submit with `sbatch`; `--slurm-submit` submits it. Options: `--slurm-time` (default
+  dataset to process (its dataset ids are in its own `batch/slurm_ids_<time>.txt`, so a later call does not change the
+  datasets of an array that is still queued), to submit with `sbatch`; `--slurm-submit` submits it. Options: `--slurm-time` (default
   24:00:00), `--slurm-mem` (16G), `--slurm-partition`, `--slurm-max-parallel`, `--slurm-setup` (a shell line run
   before dmriprep, e.g. `'module load fsl'`), `--slurm-option=--gres=gpu:1` (any `#SBATCH` option); `-t` sets the
   CPUs per task. The tasks run the dmriprep (Python environment and configuration directory) the script was written

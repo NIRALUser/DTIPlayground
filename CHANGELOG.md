@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.8)
+- dmriprep - batch processing on SLURM: a second `bids`/`run-batch` call with `--slurm` on the same output folder rewrote the dataset ids (`batch/slurm_ids.txt`) that the tasks of an array still in the queue read when they start, so they processed other datasets or none. Each SLURM script now has its own `batch/slurm_ids_<time>.txt`, and a task without a dataset id stops with a message
+
 ##### 2026-10-14 (v0.8.7)
 - dmriprep - batch processing: a dataset is processed by one task at a time. A task that starts while another one is processing the same dataset (e.g. a SLURM array submitted twice) stops with exit code 75 without touching it; the lock is `batch_task.lock` in the dataset folder, and the lock of a task that is gone is taken over. A local run (`--only` of a dataset that is being processed) reports it as skipped and no longer empties the `batch_log.txt` of the running task
 

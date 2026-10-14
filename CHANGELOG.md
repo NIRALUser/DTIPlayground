@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.12)
+- dmrifiberprofile - qc-profiles: `--exclude-no-age` with plots failed while drawing the excluded profiles ("TypeError: '<=' not supported between instances of 'int' and 'NoneType'"). The profiles without an age are in no age bin and are not drawn in those plots; they are listed in `excluded_cases.csv`
+
 ##### 2026-10-14 (v0.8.11)
 - dmrifiberprofile - qc-profiles: `--exclude-no-age` excludes the profiles without an age (no row in `--age-csv` and no age in the column name). They are in no age bin, so they are not QC'd against the prior; with the option they are left out of the summaries and the cleaned profiles and listed in `excluded_cases.csv` with the reason `no age`. Without it they are kept, as before, and the warning naming them says that they are not QC'd
 

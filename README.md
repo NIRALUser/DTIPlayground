@@ -228,7 +228,7 @@ interface (`bids_dir output_dir participant|group`):
 - **Resuming**: running the same command again processes only the datasets that are not done: new, failed or
   interrupted datasets, and datasets done with another protocol (only the modules whose settings changed are then
   recomputed). `--rerun` processes all datasets again, `--only ID ...` some of them, `--overwrite` recomputes all their
-  modules. `dmriprep batch-status <output_dir>` lists the datasets that are not done (`--all`: all of them).
+  modules. `dmriprep batch-status <output_dir>` lists the datasets that are not done (`--all`: all of them). A dataset is processed by one task at a time: a task that starts while another one is processing the same dataset (e.g. a SLURM array submitted twice) stops without touching it (exit code 75, `skipped` in a local run); the lock is `batch_task.lock` in the dataset folder, and the lock of a task that is gone is taken over.
 - **Local execution**: `-j` datasets are processed at the same time, each in its own process with `-t` threads; its
   log is `batch_log.txt` (and the usual `log.txt`) in its folder.
 - **SLURM** (e.g. Longleaf): `--slurm` writes `<output_dir>/batch/slurm_array.sh`, a job array with one task per

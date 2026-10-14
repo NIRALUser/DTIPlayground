@@ -35,6 +35,8 @@ from dtiplayground.dmri.common import bids
 MANIFEST_COLUMNS = ['id', 'subject', 'session', 'output_dir', 'protocol', 'output_file_base', 'image_1', 'image_2',
                     'overrides']
 STATUS_FILE = 'batch_status.yml'
+LOCK_FILE = 'batch_task.lock'  # held by the task processing the dataset
+EXIT_RUNNING_ELSEWHERE = 75  # exit code of a task that did not start: another task is processing the dataset
 LOG_FILE = 'batch_log.txt'
 
 
@@ -434,6 +436,69 @@ def _running_elsewhere(status):
     return True
 
 
+def _task_owner():
+    owner = {'host': socket.gethostname(), 'pid': os.getpid(), 'started': _now()}
+    if os.environ.get('SLURM_JOB_ID'):
+        owner['slurm_job_id'] = os.environ['SLURM_JOB_ID']
+    return owner
+
+
+def _is_this_task(owner):
+    if owner.get('slurm_job_id') and os.environ.get('SLURM_JOB_ID'):  # a requeued SLURM job keeps its id
+        return str(owner['slurm_job_id']) == os.environ['SLURM_JOB_ID']
+    return owner.get('host') == socket.gethostname() and str(owner.get('pid')) == str(os.getpid())
+
+
+def acquire_task_lock(folder):
+    """Lock of the dataset in *folder* for this task: (True, owner), or (False, owner of the lock) when another task
+    that is still alive holds it. A lock left by a task that is gone is taken over."""
+    fn = Path(folder).joinpath(LOCK_FILE)
+    holder = {}
+    for _ in range(2):
+        try:
+            fd = os.open(str(fn), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)  # atomic: one task wins
+        except FileExistsError:
+            try:
+                holder = _read_yaml(fn) or {}
+            except Exception:
+                holder = {}
+            if holder and _is_this_task(holder):
+                return True, holder
+            if _running_elsewhere(holder):  # an empty lock is being written by a task that just started
+                return False, holder
+            try:
+                fn.unlink()  # the task that held it is gone
+            except FileNotFoundError:
+                pass
+            continue
+        owner = _task_owner()
+        with os.fdopen(fd, 'w') as f:
+            yaml.safe_dump(owner, f)
+        return True, owner
+    return False, holder
+
+
+def lock_holder(folder):
+    """Owner of the lock of the dataset in *folder* when a task that is still alive holds it, else None."""
+    fn = Path(folder).joinpath(LOCK_FILE)
+    if not fn.exists():
+        return None
+    try:
+        holder = _read_yaml(fn) or {}
+    except Exception:
+        holder = {}
+    return holder if _running_elsewhere(holder) else None
+
+
+def release_task_lock(folder):
+    fn = Path(folder).joinpath(LOCK_FILE)
+    try:
+        if _is_this_task(_read_yaml(fn) or {}):
+            fn.unlink()
+    except (OSError, ValueError, yaml.YAMLError):
+        pass
+
+
 def current_state(out, dataset):
     """State of a dataset: pending, running, done, failed, interrupted, or outdated (done with other settings: protocol,
     input images)."""
@@ -516,12 +581,29 @@ def task_command(out, ds_id, threads=None, overwrite=False):
 
 def run_task(out, ds_id, config_dir, threads=None, overwrite=False):
     """Processes one dataset of the batch in this process (dmriprep batch-task); returns the exit code."""
-    from dtiplayground.dmri.preprocessing.app import DMRIPrepApp
     out = Path(os.path.abspath(out))
     dataset = next((d for d in load_manifest(out) if d['id'] == ds_id), None)
     if dataset is None:
         raise BatchError('No dataset {} in the batch {}'.format(ds_id, out))
     protocol_fn = dataset_protocol(out, ds_id)
+    folder = out.joinpath(dataset['output_dir'])
+    folder.mkdir(parents=True, exist_ok=True)
+    locked, holder = acquire_task_lock(folder)
+    if not locked:
+        where = 'SLURM job {}'.format(holder['slurm_job_id']) if holder.get('slurm_job_id') else \
+            'process {} on {}'.format(holder.get('pid', '?'), holder.get('host', '?'))
+        print('{} is being processed by another task ({}, started {}): not started again. If no task is processing '
+              'it, delete {} and rerun it.'.format(ds_id, where, holder.get('started', '?'), folder.joinpath(LOCK_FILE)))
+        return EXIT_RUNNING_ELSEWHERE
+    try:
+        return _run_locked_task(out, dataset, protocol_fn, config_dir, threads, overwrite)
+    finally:
+        release_task_lock(folder)
+
+
+def _run_locked_task(out, dataset, protocol_fn, config_dir, threads, overwrite):
+    from dtiplayground.dmri.preprocessing.app import DMRIPrepApp
+    ds_id = dataset['id']
     ## the results of the modules are reused when their protocol is unchanged, but that does not check the input
     ## images: recompute everything when the inputs changed since the previous run of the dataset
     previous = read_status(out, dataset)
@@ -574,10 +656,18 @@ def run_local(out, datasets, jobs=1, threads=None, overwrite=False, echo=print):
         folder = out.joinpath(d['output_dir'])
         folder.mkdir(parents=True, exist_ok=True)
         t0 = time.time()
+        holder = lock_holder(folder)
+        if holder is not None:  # another task is processing it: leave its log alone
+            finished[0] += 1
+            counts['skipped'] = counts.get('skipped', 0) + 1
+            echo('[{}/{}] skipped {} - being processed by another task ({})'.format(
+                finished[0], total, d['id'], 'SLURM job {}'.format(holder['slurm_job_id']) if holder.get('slurm_job_id')
+                else 'process {} on {}'.format(holder.get('pid', '?'), holder.get('host', '?'))))
+            return 'skipped'
         with open(folder.joinpath(LOG_FILE), 'w') as log:
             code = subprocess.run(task_command(out, d['id'], threads, overwrite), stdout=log,
                                   stderr=subprocess.STDOUT).returncode
-        state = 'done' if code == 0 else 'failed'
+        state = 'done' if code == 0 else 'skipped' if code == EXIT_RUNNING_ELSEWHERE else 'failed'
         finished[0] += 1
         counts[state] = counts.get(state, 0) + 1
         echo('[{}/{}] {} {} ({:.0f} s){}'.format(finished[0], total, state, d['id'], time.time() - t0,

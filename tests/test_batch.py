@@ -2,6 +2,9 @@
 #       python -m unittest discover -s tests
 
 import json
+import os
+import socket
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -228,6 +231,62 @@ class TestPlanning(unittest.TestCase):
             batch.apply_overrides(batch._read_yaml(self.single), {'SUSCEPTIBILITY_Correct': {'phaseEncodingAxis': 1}})
 
 
+
+
+class TestTaskLock(unittest.TestCase):
+    """A second task of a dataset that is being processed does not start."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _lock(self, **owner):
+        self.dir.joinpath(batch.LOCK_FILE).write_text(yaml.safe_dump(owner) if owner else '')
+
+    def test_free_lock_is_taken_and_released(self):
+        ok, owner = batch.acquire_task_lock(self.dir)
+        self.assertTrue(ok)
+        self.assertEqual(owner['pid'], os.getpid())
+        self.assertTrue(self.dir.joinpath(batch.LOCK_FILE).exists())
+        batch.release_task_lock(self.dir)
+        self.assertFalse(self.dir.joinpath(batch.LOCK_FILE).exists())
+
+    def test_a_live_task_keeps_its_lock(self):
+        self._lock(host=socket.gethostname(), pid=os.getppid())  # a process that is alive
+        ok, holder = batch.acquire_task_lock(self.dir)
+        self.assertFalse(ok)
+        self.assertEqual(holder['pid'], os.getppid())
+        batch.release_task_lock(self.dir)  # not ours: kept
+        self.assertTrue(self.dir.joinpath(batch.LOCK_FILE).exists())
+
+    def test_a_lock_being_written_counts_as_held(self):
+        self._lock()
+        self.assertFalse(batch.acquire_task_lock(self.dir)[0])
+
+    def test_the_lock_of_a_task_that_is_gone_is_taken_over(self):
+        gone = subprocess.Popen(['true'])
+        gone.wait()
+        self._lock(host=socket.gethostname(), pid=gone.pid)
+        ok, owner = batch.acquire_task_lock(self.dir)
+        self.assertTrue(ok)
+        self.assertEqual(owner['pid'], os.getpid())
+
+    def test_run_task_does_not_start_a_dataset_that_is_locked(self):
+        root = self.dir / 'study'
+        write_dwi(root / 'sub-02/ses-1/dwi', 'sub-02_ses-1_acq-b_dwi', LAS, {'PhaseEncodingDirection': 'j-'})
+        protocol = write_protocol(self.dir / 'single.yml', ['BRAIN_Mask'])
+        out = self.dir / 'out'
+        datasets, skipped, _ = batch.plan_bids(root, batch.parse_protocol_specs([protocol]), self.dir / 'config')
+        batch.write_batch(out, datasets, skipped, {'config_dir': str(self.dir / 'config'), 'command': ['dmriprep']})
+        d = batch.load_manifest(out)[0]
+        folder = out / d['output_dir']
+        folder.mkdir(parents=True, exist_ok=True)
+        folder.joinpath(batch.LOCK_FILE).write_text(yaml.safe_dump({'host': socket.gethostname(), 'pid': os.getppid()}))
+        self.assertEqual(batch.run_task(out, d['id'], str(self.dir / 'config')), batch.EXIT_RUNNING_ELSEWHERE)
+        self.assertEqual(batch.current_state(out, d)[0], 'pending')  # its status is left alone
 
 class TestB0Threshold(unittest.TestCase):
     """A protocol can hold the b0 threshold as text (baseline_threshold: '10'); the baselines are still found."""

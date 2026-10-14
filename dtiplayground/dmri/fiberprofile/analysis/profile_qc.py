@@ -75,7 +75,9 @@ computed stats (e.g. ``ProfileQCStats``, in either layout: they sit next to the
 tables they were computed from), profiles are QC'd against the
 age-appropriate prior reference to flag likely failed processing.  Because all
 of a tract's metrics come from the same tract data, the decision is made once
-per **(subject-session, tract)** and applied to every metric of that tract:
+per **(subject-session, tract)** and applied to every metric of that tract
+(the prior is taken at the arc lengths of the profiles: the same up to rounding,
+or interpolated; a run where no profile can be compared with it stops):
 
   (1) **value / magnitude outlier** -- the in-envelope / valid position counts
       are pooled across the contributing metrics into one joint fraction
@@ -142,6 +144,11 @@ ZERO_VALID_METRICS = {"FWF"}
 _OUTSIDE_BRAIN = {}
 # {prior stats folder: {(tract, metric): path}}, see prior_stats_index
 _PRIOR_INDEX = {}
+# How the prior stats were put on the arc lengths of each profile table: {table path: (how, n positions outside the
+# prior)}, how in exact / rounding / interpolated / none, see prior_on_grid
+_PRIOR_GRID = {}
+# Arc lengths that differ by less than this fraction of the prior's spacing are the same position
+ARC_TOLERANCE = 0.01
 # Ages of the cohort: the table of --age-csv and the pattern read from the column names, see set_age_source
 _AGE_TABLE = {}
 _AGE_RE = AGE_RE
@@ -644,6 +651,72 @@ def pearson_columns(M: np.ndarray, ref: np.ndarray) -> np.ndarray:
     return r
 
 
+def prior_on_grid(prior, index):
+    """The prior stats at the arc lengths *index* of a profile table, and how they were matched: 'exact' (same arc
+    lengths), 'rounding' (each arc length within ARC_TOLERANCE of the prior's spacing of one of the prior), or
+    'interpolated' (linearly between the two neighbouring arc lengths of the prior: another sampling of the tract);
+    'none' when no arc length of the table is within the prior's range. Arc lengths outside the prior's range get no
+    prior. Returns (prior on the grid, how, number of arc lengths outside the prior)."""
+    x = pd.to_numeric(pd.Series(prior.index), errors="coerce").to_numpy(dtype=float)
+    xi = pd.to_numeric(pd.Series(index), errors="coerce").to_numpy(dtype=float)
+    if len(xi) and np.isin(xi, x).all() and not prior.index.duplicated().any():
+        return prior.reindex(index), "exact", 0
+    keep = np.isfinite(x)
+    order = np.argsort(x[keep])
+    x = x[keep][order]
+    values = prior.to_numpy(dtype=float)[keep][order]
+    out = np.full((len(xi), values.shape[1]), np.nan)
+    if len(x) == 0 or len(xi) == 0:
+        return pd.DataFrame(out, index=index, columns=prior.columns), "none", len(xi)
+    tol = ARC_TOLERANCE * (float(np.median(np.diff(x))) if len(x) > 1 else 1.0)
+    j = np.clip(np.searchsorted(x, xi), 1, max(len(x) - 1, 1))
+    lo, hi = j - 1, np.minimum(j, len(x) - 1)
+    nearest = np.where(np.abs(xi - x[lo]) <= np.abs(xi - x[hi]), lo, hi)
+    snapped = np.isfinite(xi) & (np.abs(xi - x[nearest]) <= tol)
+    inside = np.isfinite(xi) & (xi >= x[0] - tol) & (xi <= x[-1] + tol)
+    between = inside & ~snapped
+    out[snapped] = values[nearest[snapped]]
+    if between.any():
+        with np.errstate(invalid="ignore", divide="ignore"):
+            w = ((xi - x[lo]) / (x[hi] - x[lo]))[between][:, None]
+        out[between] = (1 - w) * values[lo[between]] + w * values[hi[between]]  # NaN where a neighbour is NaN
+    how = "none" if not inside.any() else "interpolated" if between.any() else "rounding"
+    return pd.DataFrame(out, index=index, columns=prior.columns), how, int((~inside).sum())
+
+
+def read_prior(prior_path, df, table_path=None):
+    """The prior stats of *prior_path* on the arc lengths of the profile table *df* (see prior_on_grid); how they were
+    matched is recorded for the run summary under *table_path*."""
+    prior, how, n_outside = prior_on_grid(pd.read_csv(prior_path, index_col=0), df.index)
+    if table_path is not None:
+        _PRIOR_GRID[table_path] = (how, n_outside)
+    return prior
+
+
+def report_prior_grid(inputs):
+    """Logs how the arc lengths of the profile tables were matched with the prior's. Returns the tables that share no
+    arc length with the prior."""
+    by_how = {}
+    for path in inputs:
+        if path in _PRIOR_GRID:
+            by_how.setdefault(_PRIOR_GRID[path][0], []).append(path)
+    names = lambda paths: ", ".join(os.path.basename(p) for p in paths[:5]) + (" ..." if len(paths) > 5 else "")
+    if by_how.get("rounding"):
+        log.info("%d table(s) have the arc lengths of the prior up to rounding (within %g of its spacing): %s",
+                 len(by_how["rounding"]), ARC_TOLERANCE, names(by_how["rounding"]))
+    if by_how.get("interpolated"):
+        log.warning("%d table(s) are sampled at other arc lengths than the prior: the prior is interpolated at their "
+                    "arc lengths: %s", len(by_how["interpolated"]), names(by_how["interpolated"]))
+    outside = [p for p in inputs if p in _PRIOR_GRID and _PRIOR_GRID[p][0] != "none" and _PRIOR_GRID[p][1]]
+    if outside:
+        log.warning("%d table(s) have arc lengths beyond the range of the prior, not compared there: %s",
+                    len(outside), names(outside))
+    if by_how.get("none"):
+        log.warning("%d table(s) have no arc length within the range of the prior and are not compared with it: %s",
+                    len(by_how["none"]), names(by_how["none"]))
+    return by_how.get("none", [])
+
+
 def envelope_bounds(prior, label, cfg):
     """Per-arc-length (lo, hi) envelope from the prior stats, or None if absent.
 
@@ -695,7 +768,7 @@ def estimate_batch_shifts(inputs, prior_dir, bins, mult_metrics, exclude_ids=Non
         if prior_path is None:
             continue
         df = load_profile_table(csv_path, exclude_ids, exclude_full)
-        prior = pd.read_csv(prior_path, index_col=0).reindex(df.index)
+        prior = read_prior(prior_path, df, csv_path)
         col_ages = {c: age_of(c) for c in df.columns}
         mult = metric in mult_metrics
         for lo, hi, label in bins:
@@ -755,7 +828,7 @@ def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, ex
             log.debug("no prior stats for (%s, %s); skipping", tract, metric)
             continue
         df = load_profile_table(csv_path, exclude_ids, exclude_full)
-        prior = pd.read_csv(prior_path, index_col=0).reindex(df.index)
+        prior = read_prior(prior_path, df, csv_path)
 
         col_ages = {c: age_of(c) for c in df.columns}
         for lo, hi, label in bins:
@@ -968,7 +1041,7 @@ def plot_excluded_profiles(inputs, prior_dir, bins, envelope_cfg, prof_outliers_
             df = load_profile_table(mpaths[metric])
             x = df.index.to_numpy(dtype=float)
             prior_path = find_prior_stats(prior_dir, tract, metric)
-            prior = pd.read_csv(prior_path, index_col=0).reindex(df.index) if prior_path else None
+            prior = read_prior(prior_path, df) if prior_path else None
             for c, (_, _, label) in enumerate(bins):
                 ax = axes[r][c]
                 color = BIN_COLORS[c % len(BIN_COLORS)]
@@ -1309,11 +1382,29 @@ def run_args(args, p) -> int:
                 desc = f"{val:+.4g}" if kind == "add" else f"×{val:.4g}"
                 log.info("  %-4s [%s]: %s %s (n=%d profiles)", metric, label, kind, desc, n)
                 brows.append({"metric": metric, "bin": label, "kind": kind, "shift": val, "n_profiles": n})
-            pd.DataFrame(brows).to_csv(os.path.join(stats_root, f"batch_shifts_{args.corr_reference}.csv"),
-                                       index=False)
+            if not brows:
+                log.warning("  no batch shift could be estimated: no profile has values where the prior has some, "
+                            "the envelope QC is not corrected")
+            pd.DataFrame(brows, columns=["metric", "bin", "kind", "shift", "n_profiles"]).to_csv(
+                os.path.join(stats_root, f"batch_shifts_{args.corr_reference}.csv"), index=False)
 
         qc = compute_profile_qc(inputs, args.prior_stats_dir, bins, args.corr_reference, env_cfg,
                                 exclude_ids=reg_ss, exclude_full=full_excl, batch_shifts=batch_shifts)
+        no_grid = report_prior_grid(inputs)
+        compared = qc["r"].notna() | qc["frac_inside"].notna()
+        if not compared.any():
+            log.error("No profile could be compared with the prior %s: %s. The profile QC (r, frac_inside) would flag "
+                      "nothing; check that the prior stats were computed for the same tracts, age bins and arc "
+                      "lengths", args.prior_stats_dir,
+                      "the tables share no arc length with it" if no_grid else
+                      "no profile table has prior stats" if qc.empty else
+                      "no prior stats for the age bins of the profiles, or no values where the prior has some")
+            return 1
+        if not compared.all():
+            missed = qc[~compared]
+            log.warning("%d of %d profile(s) could not be compared with the prior (no prior values at their arc "
+                        "lengths or for their age bin), they are not checked: r and frac_inside are empty in %s",
+                        len(missed), len(qc), f"profile_qc_{args.corr_reference}.csv")
         groups = detect_group_outliers(qc, args.value_min_inside, args.shape_outlier_method,
                                        args.corr_min, args.corr_iqr_k, args.shape_metric, exclude_metrics,
                                        args.min_valid_frac)

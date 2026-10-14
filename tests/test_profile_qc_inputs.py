@@ -455,5 +455,83 @@ class TestOutputFolders(unittest.TestCase):
             self.assertTrue(os.listdir(os.path.join(elsewhere, 'Plots')))  # an absolute path is used as given
             self.assertEqual(os.listdir(os.path.join(d, 'normQC')), ['Profiles_Stats'])  # --no-plots: no plot folder
 
+class TestPriorArcLengths(unittest.TestCase):
+    """The prior is compared at the arc lengths of the profiles: the same up to rounding, or interpolated."""
+
+    prior = pd.DataFrame({'a_mean': [0.0, 1.0, 2.0, np.nan, 4.0]}, index=pd.Index([0.0, 1.0, 2.0, 3.0, 4.0]))
+
+    def _on(self, arcs):
+        grid, how, n_outside = profile_qc.prior_on_grid(self.prior, pd.Index(arcs))
+        return list(grid['a_mean']), how, n_outside
+
+    def test_the_same_arc_lengths(self):
+        self.assertEqual(self._on([1.0, 2.0]), ([1.0, 2.0], 'exact', 0))
+
+    def test_arc_lengths_rounded_otherwise(self):
+        self.assertEqual(self._on([0.0001, 1.0004, 1.9999]), ([0.0, 1.0, 2.0], 'rounding', 0))
+
+    def test_another_sampling_is_interpolated(self):
+        values, how, n_outside = self._on([0.5, 1.25, 2.5, 4.5])
+        self.assertEqual(values[:2], [0.5, 1.25])
+        self.assertTrue(np.isnan(values[2]))  # next to a position without prior
+        self.assertTrue(np.isnan(values[3]))  # beyond the prior
+        self.assertEqual((how, n_outside), ('interpolated', 1))
+
+    def test_nothing_in_common(self):
+        values, how, n_outside = self._on([10.0, 11.0])
+        self.assertTrue(np.isnan(values).all())
+        self.assertEqual((how, n_outside), ('none', 2))
+
+
+class TestQCAtOtherArcLengths(unittest.TestCase):
+    """End to end: profiles sampled at other arc lengths than the prior are still checked, and a run where no profile
+    can be compared stops."""
+
+    @staticmethod
+    def _move(root, offset):
+        for f in Path(root).glob('*/*.csv'):
+            df = pd.read_csv(f, index_col=0)
+            df.index = pd.Index(np.round(df.index.to_numpy() + offset, 4), name=df.index.name)
+            df.to_csv(f)
+
+    def _run(self, offset):
+        d = self.tmp.name
+        norm, data = os.path.join(d, 'norm'), os.path.join(d, 'data')
+        TestOutputFolders._tables(norm, 12)
+        TestOutputFolders._tables(data, 8, outlier='sub-003_ses-012m_dwi')
+        self.assertEqual(profile_qc.main(['--profiles-dir', norm, '-o', os.path.join(d, 'normQC'), '--no-plots']), 0)
+        self._move(data, offset)
+        code = profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', norm, '-o', os.path.join(d, 'QC'),
+                                '--no-plots', '--envelope-batch-correct'])
+        return code, os.path.join(d, 'QC', 'Profiles_Stats')
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_rounded_and_interpolated_arc_lengths(self):
+        for offset in (1e-4, 0.7):  # the grid spacing is 2
+            with self.subTest(offset=offset):
+                code, stats = self._run(offset)
+                self.assertEqual(code, 0)
+                shifts = pd.read_csv(os.path.join(stats, 'batch_shifts_mean.csv'))
+                self.assertEqual(sorted(shifts['metric']), ['fa', 'md'])
+                qc = pd.read_csv(os.path.join(stats, 'profile_qc_mean.csv'))
+                self.assertTrue(qc['r'].notna().all())
+                outliers = pd.read_csv(os.path.join(stats, 'outliers_mean.csv'))
+                self.assertEqual(set(outliers[outliers['is_outlier']]['subject_session']), {'sub-003_ses-012m_dwi'})
+                self.tearDown()
+                self.setUp()
+
+    def test_no_arc_length_in_common_stops(self):
+        code, stats = self._run(100.0)
+        self.assertEqual(code, 1)
+        self.assertEqual(list(pd.read_csv(os.path.join(stats, 'batch_shifts_mean.csv')).columns),
+                         ['metric', 'bin', 'kind', 'shift', 'n_profiles'])
+        self.assertFalse(os.path.exists(os.path.join(stats, 'profile_qc_mean.csv')))
+
+
 if __name__ == '__main__':
     unittest.main()

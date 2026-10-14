@@ -273,6 +273,13 @@ first, the profiles of a single run as EXTRACT_Profile writes them
 QCed on its own. ``--prior-stats-dir`` takes either layout as well, since the age bin statistics are written next to
 the tables they were computed from.
 
+The profiles are compared with the prior at their own arc lengths: arc lengths that differ from the prior's only by
+rounding (by less than 1% of its spacing) are the same position, and profiles sampled at other arc lengths get the
+prior interpolated linearly between its two neighbouring positions (a warning names those tables). Positions beyond the
+range of the prior are not compared. If no profile can be compared with the prior (no arc length in common, or no
+prior statistics for the tracts or age bins of the profiles), qc-profiles stops with an error instead of reporting no
+outliers.
+
 The age of a profile
 ~~~~~~~~~~~~~~~~~~~~
 

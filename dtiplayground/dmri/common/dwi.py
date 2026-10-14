@@ -390,7 +390,7 @@ class DWI:
         self.images=None #image tensors [ size x, size y, size z , gradient index]
         self.gradients=None #gradient {'index': , 'gradient' : }
         self.information=None #other image information such as b value , origin, ...
-        self.b0_threshold=b0_threshold
+        self.b0_threshold=float(b0_threshold) ## a protocol can hold it as text ('10')
         
         ## image specific data (not to be used in computation)
         self.image_type=filetype
@@ -614,7 +614,7 @@ class DWI:
         self.information['space']=target_space
 
     def setB0Threshold(self,b0_threshold):
-        self.b0_threshold=b0_threshold
+        self.b0_threshold=float(b0_threshold)
 
     def getB0Threshold(self):
         return self.b0_threshold

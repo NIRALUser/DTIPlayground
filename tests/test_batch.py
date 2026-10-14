@@ -228,5 +228,18 @@ class TestPlanning(unittest.TestCase):
             batch.apply_overrides(batch._read_yaml(self.single), {'SUSCEPTIBILITY_Correct': {'phaseEncodingAxis': 1}})
 
 
+
+class TestB0Threshold(unittest.TestCase):
+    """A protocol can hold the b0 threshold as text (baseline_threshold: '10'); the baselines are still found."""
+
+    def test_a_threshold_given_as_text(self):
+        from dtiplayground.dmri.common.dwi import DWI
+        image = DWI()
+        image.setB0Threshold('10')
+        self.assertEqual(image.getB0Threshold(), 10.0)
+        image.gradients = [{'b_value': 0.0}, {'b_value': 5.0}, {'b_value': 1000.0}]
+        self.assertEqual([g['baseline'] for g in image.getGradients()], [True, True, False])
+        self.assertEqual(DWI(b0_threshold='50').getB0Threshold(), 50.0)
+
 if __name__ == '__main__':
     unittest.main()

@@ -542,7 +542,7 @@ def run_task(out, ds_id, config_dir, threads=None, overwrite=False):
         'default_protocols': None,
         'num_threads': threads,
         'execution_id': ds_id,
-        'baseline_threshold': _read_yaml(protocol_fn)['io'].get('baseline_threshold', 10),
+        'baseline_threshold': float(_read_yaml(protocol_fn)['io'].get('baseline_threshold', 10)),
         'output_format': None,
         'output_file_base': dataset.get('output_file_base') or None,
         'no_output_image': False,

@@ -118,7 +118,7 @@ def command_run_dir(args):
     protocol = yaml.safe_load(open(protocol_fn,'r'))
     options['num_threads'] = protocol['io']['num_threads']
     options['output_format'] = protocol['io']['output_format']
-    options['baseline_threshold'] = protocol['io']['baseline_threshold']
+    options['baseline_threshold'] = float(protocol['io']['baseline_threshold'])
     options['output_file_base'] = protocol['io'].get('output_filename_base')
     options['input_image_paths'] = [protocol['io']['input_image_1']]
     if 'input_image_2' in protocol['io']:

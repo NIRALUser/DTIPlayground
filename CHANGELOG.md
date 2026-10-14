@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.7)
+- dmriprep - batch processing: a dataset is processed by one task at a time. A task that starts while another one is processing the same dataset (e.g. a SLURM array submitted twice) stops with exit code 75 without touching it; the lock is `batch_task.lock` in the dataset folder, and the lock of a task that is gone is taken over. A local run (`--only` of a dataset that is being processed) reports it as skipped and no longer empties the `batch_log.txt` of the running task
+
 ##### 2026-10-14 (v0.8.6)
 - dmriprep: a protocol with the b0 threshold as text (`baseline_threshold: '10'`) made batch processing (`bids`, `run-batch`) and `run-dir` fail while loading the image with "TypeError: '<=' not supported between instances of 'int' and 'str'"; the threshold is now read as a number
 

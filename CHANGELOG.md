@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-14 (v0.8.11)
+- dmrifiberprofile - qc-profiles: `--exclude-no-age` excludes the profiles without an age (no row in `--age-csv` and no age in the column name). They are in no age bin, so they are not QC'd against the prior; with the option they are left out of the summaries and the cleaned profiles and listed in `excluded_cases.csv` with the reason `no age`. Without it they are kept, as before, and the warning naming them says that they are not QC'd
+
 ##### 2026-10-14 (v0.8.10)
 - dmrifiberprofile - qc-profiles with `--prior-stats-dir`: profiles whose arc lengths differ from those of the prior (rounding, or another sampling of the tract) were compared with nothing: `r` and `frac_inside` were empty in `profile_qc_<ref>.csv`, `batch_shifts_<ref>.csv` was empty with `--envelope-batch-correct`, and no profile was flagged, without a warning. The prior is now taken at the arc lengths of the profiles: the same position up to rounding (within 1% of the prior's spacing), else interpolated linearly (a warning names those tables); positions beyond the range of the prior are not compared. A run where no profile can be compared with the prior stops with an error, and a warning counts the profiles that cannot be compared. QC results of earlier versions with empty `r` / `frac_inside` checked nothing against the prior and should be recomputed
 

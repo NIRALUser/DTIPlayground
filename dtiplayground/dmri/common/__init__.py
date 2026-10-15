@@ -1,4 +1,6 @@
 import sys
+import os
+import socket
 import gc
 import datetime,time
 import uuid
@@ -110,6 +112,29 @@ def get_executables_ants(root_path):
     pg = filter(lambda x: not x.is_dir(), Path(r).glob('**/*'))
     pg = filter(lambda x: is_executable(x) and isInBin(x) and not not_ants(x) , pg)
     return pg
+
+def dump_yaml(data, path):
+    """Writes a YAML file atomically. Jobs running at the same time share the configuration directory
+    (~/.niral-dti): a reader gets the old or the new file, never an empty or partial one."""
+    path = Path(path)
+    tmp = path.with_name('.{}.{}.{}.tmp'.format(path.name, socket.gethostname(), os.getpid()))
+    with open(tmp, 'w') as f:
+        yaml.dump(data, f)
+    os.replace(tmp, path)
+
+def load_global_variables(path):
+    """Reads global_variables.yml. A missing, empty or incomplete file gives no path for the tools."""
+    gvals = None
+    if Path(path).exists():
+        gvals = yaml.safe_load(open(path, 'r'))
+    if not isinstance(gvals, dict):
+        gvals = {}
+    for tool in ('dtiplayground-tools', 'fsl'):
+        if not isinstance(gvals.get(tool), dict):
+            gvals[tool] = {'info': {}, 'path': None}
+        gvals[tool].setdefault('info', {})
+        gvals[tool].setdefault('path', None)
+    return gvals
 
 def get_global_variables():
     home_dir = Path.home()

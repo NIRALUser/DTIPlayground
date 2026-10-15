@@ -231,7 +231,7 @@ def update_software_paths(args, globalvars):
     software_paths=yaml.safe_load(open(software_info_path,'r'))
     software_paths=resolve_softwarepaths(software_paths, globalvars)
     software_filename=home_dir.joinpath('software_paths.yml')
-    yaml.dump(software_paths, open(software_filename,'w'))
+    dtiplayground.dmri.common.dump_yaml(software_paths, software_filename)
 
 ### command functions
 
@@ -271,7 +271,7 @@ def command_find_tools(args):
         logger("DTI Playground tools were not found",color.ERROR)
     ## update software paths
     logger("Updating global_variables.yml", color.PROCESS)
-    yaml.dump(globalvars, open(globalvars_fn,'w'))
+    dtiplayground.dmri.common.dump_yaml(globalvars, globalvars_fn)
     logger("Updating software paths",color.PROCESS)
     update_software_paths(args, globalvars)
     logger("Updates Completed",color.OK)
@@ -321,14 +321,14 @@ def command_install_tools(args):
             'path' : fsldir.resolve().__str__(),
             'info' : info
         }
-        yaml.dump(info, open(fsldir.joinpath('info.yml'),'w'))
+        dtiplayground.dmri.common.dump_yaml(info, fsldir.joinpath('info.yml'))
     else:
         if fsldir.exists():
             info = {
                 'name': 'fsl',
                 'version' : open(fsldir.joinpath('etc/fslversion'),'r').read().strip()
             }
-            yaml.dump(info, open(fsldir.joinpath('info.yml'),'w'))
+            dtiplayground.dmri.common.dump_yaml(info, fsldir.joinpath('info.yml'))
             globalvars['fsl']={
                 'path' : fsldir.resolve().__str__(),
                 'info' : info
@@ -387,7 +387,7 @@ def command_install_tools(args):
         logger("Removing temporary files finished")
 
     logger("Saving tool information to {}".format(globalvars_fn.__str__()))
-    yaml.dump(globalvars, open(globalvars_fn,'w'))
+    dtiplayground.dmri.common.dump_yaml(globalvars, globalvars_fn)
     if home_dir.joinpath('software_paths').exists() and not install_only:
         update_software_paths(args, globalvars)
     logger("Installation completed")
@@ -434,7 +434,7 @@ def command_init(args):
                     }
                 }
             })
-            yaml.dump(globalvars, open(globalvars_fn,'w'))
+            dtiplayground.dmri.common.dump_yaml(globalvars, globalvars_fn)
         else:
             logger("Couldn't find tool directory {}".format(str(tools_dir)),color.ERROR)
             exit(1)
@@ -444,8 +444,8 @@ def command_init(args):
     environment_filename=home_dir.joinpath("environment.yml")
     ## make configuration file (config.yml)
     config={"user_module_directories": [str(user_module_dir)],"protocol_template_path" : 'protocol_template.yml'}
-    yaml.dump(protocol_template,open(template_filename,'w'))
-    yaml.dump(config,open(config_filename,'w'))
+    dtiplayground.dmri.common.dump_yaml(protocol_template, template_filename)
+    dtiplayground.dmri.common.dump_yaml(config, config_filename)
     logger("Config file written to : {}".format(str(config_filename)),color.INFO)
     ## copy default software path
     software_filename=home_dir.joinpath('software_paths.yml')
@@ -454,7 +454,7 @@ def command_init(args):
     system_module_paths = [Path(dtiplayground.__file__).resolve().parent.joinpath('dmri/fiberprofile/modules')]
     modules=dtiplayground.dmri.common.module.load_modules(system_module_paths = system_module_paths, user_module_paths=config['user_module_directories'])
     environment=dtiplayground.dmri.common.module.generate_module_envionrment(modules,str(home_dir))
-    yaml.dump(environment,open(environment_filename,'w'))
+    dtiplayground.dmri.common.dump_yaml(environment, environment_filename)
     logger("Environment file written to : {}".format(str(environment_filename)),color.INFO)
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),color.OK)
 
@@ -476,7 +476,7 @@ def command_update(args):
     system_module_paths = [Path(dtiplayground.__file__).resolve().parent.joinpath('dmri/fiberprofile/modules')]
     modules=dtiplayground.dmri.common.module.load_modules(system_module_paths = system_module_paths,user_module_paths=config['user_module_directories'])
     environment=dtiplayground.dmri.common.module.generate_module_envionrment(modules,str(home_dir))
-    yaml.dump(environment,open(environment_filename,'w'))
+    dtiplayground.dmri.common.dump_yaml(environment, environment_filename)
     logger("Environment file written to : {}".format(str(environment_filename)),color.INFO)
     logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),color.OK)
     return True

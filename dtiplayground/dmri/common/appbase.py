@@ -21,6 +21,13 @@ import dtiplayground.dmri.common.module as module
 logger=common.logger.write 
 color= common.Color
 
+def _answer():
+    """The answer to a [Y/n] question; the default (yes) for a job without input (a cluster job)."""
+    try:
+        return input()
+    except EOFError:
+        return ''
+
 class AppBase:
     def __init__(self,config_root, app_name,*args,**kwargs):
         self.config_dir = Path(config_root)
@@ -91,12 +98,7 @@ class AppBase:
 
         globalvars_fn=Path(self.app['config_dir']).joinpath('global_variables.yml')
 
-        self.globalvars = {}
-        self.globalvars.setdefault('dtiplayground-tools',{'info':{},'path':None})
-        self.globalvars.setdefault('fsl',{'info':{},'path':None})
-
-        if globalvars_fn.exists():
-            self.globalvars = yaml.safe_load(open(globalvars_fn,'r'))
+        self.globalvars = common.load_global_variables(globalvars_fn)
 
         if tools_dir is not None:
             if tools_dir.exists():
@@ -108,7 +110,7 @@ class AppBase:
                     dptdir = Path(tmpdir)
                     if tmpdir != self.globalvars['dtiplayground-tools']['path']:
                         logger("Use the installed DTIPlaygroundTools? [Y/n]")
-                        yn=input()
+                        yn=_answer()
                         if yn.lower() == 'n':
                             pass
                         else:
@@ -119,7 +121,7 @@ class AppBase:
                     fsldir = Path(tmpdir)
                     if tmpdir != self.globalvars['fsl']['path']:
                         logger("Use the installed FSL? [Y/n]")
-                        yn=input()
+                        yn=_answer()
                         if yn.lower() == 'n':
                             pass
                         else:
@@ -236,18 +238,18 @@ class AppBase:
                         }
                     }
                 })
-                yaml.dump(self.globalvars, open(globalvars_fn,'w'))
+                common.dump_yaml(self.globalvars, globalvars_fn)
             else:
                 logger("Couldn't find tool directory {}".format(str(tools_dir)),color.ERROR)
                 exit(1)
 
-        yaml.dump(self.globalvars, open(globalvars_fn,'w'))
+        common.dump_yaml(self.globalvars, globalvars_fn)
 
         self.app['global_variables'] = self.globalvars
         self.initialize_logger(_args)
         self.initializeImpl(options)
         initialization_fn = Path(self.app['application_dir']).joinpath("init.yml")
-        yaml.dump(self.app, open(initialization_fn,'w'))
+        common.dump_yaml(self.app, initialization_fn)
         logger("Initialized. Local configuration will be stored in {}".format(str(home_dir)),color.OK)
 
 
@@ -337,14 +339,14 @@ class AppBase:
                     'path' : fsldir.resolve().__str__(),
                     'info' : info
                 }
-                yaml.dump(info, open(fsldir.joinpath('info.yml'),'w'))
+                common.dump_yaml(info, fsldir.joinpath('info.yml'))
             else:
                 if fsldir.exists():
                     info = {
                         'name': 'fsl',
                         'version' : open(fsldir.joinpath('etc/fslversion'),'r').read().strip()
                     }
-                    yaml.dump(info, open(fsldir.joinpath('info.yml'),'w'))
+                    common.dump_yaml(info, fsldir.joinpath('info.yml'))
                     globalvars['fsl']={
                         'path' : fsldir.resolve().__str__(),
                         'info' : info
@@ -417,7 +419,7 @@ class AppBase:
                 logger("Removing temporary files finished")
 
             logger("Saving tool information to {}".format(globalvars_fn.__str__()))
-            yaml.dump(globalvars, open(globalvars_fn,'w'))
+            common.dump_yaml(globalvars, globalvars_fn)
             if home_dir.joinpath('software_paths').exists() and not install_only:
                 self._update_software_paths(globalvars)
             logger("Installation completed")
@@ -478,7 +480,7 @@ class AppBase:
         software_paths=yaml.safe_load(open(software_info_path,'r'))
         software_paths=self._resolve_softwarepaths(software_paths, globalvars)
         software_filename=home_dir.joinpath('software_paths.yml')
-        yaml.dump(software_paths, open(software_filename,'w'))
+        common.dump_yaml(software_paths, software_filename)
     
     def _get_fsl_dir(self):
         logger('Looking up FSLDIR environment variable...', color.PROCESS)

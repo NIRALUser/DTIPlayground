@@ -44,8 +44,8 @@ class DMRIFiberProfileApp(AppBase):
         environment_filename=home_dir.joinpath("environment.yml")
         ## make configuration file (config.yml)
         config={"user_module_directories": [str(user_module_dir)],"protocol_template_path" : 'protocol_template.yml'}
-        yaml.dump(protocol_template,open(template_filename,'w'))
-        yaml.dump(config,open(config_filename,'w'))
+        common.dump_yaml(protocol_template, template_filename)
+        common.dump_yaml(config, config_filename)
         logger("Config file written to : {}".format(str(config_filename)),color.INFO)
         ## copy default software path
         software_filename=home_dir.joinpath('software_paths.yml')
@@ -55,7 +55,7 @@ class DMRIFiberProfileApp(AppBase):
         modules=module.load_modules(system_module_paths = system_module_paths, user_module_paths=config['user_module_directories'])
         # The below line spells "environment" wrong
         environment=module.generate_module_envionrment(modules,str(home_dir))
-        yaml.dump(environment,open(environment_filename,'w'))
+        common.dump_yaml(environment, environment_filename)
         logger("Environment file written to : {}".format(str(environment_filename)),color.INFO) 
         return True
 

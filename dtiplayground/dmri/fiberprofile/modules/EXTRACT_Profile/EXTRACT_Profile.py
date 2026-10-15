@@ -296,8 +296,12 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                         fvp_output_path.with_suffix('.json').unlink()
 
         # save the profiles of all subjects (same arc length samples) to a csv per tract and property
-        for info in tract_infos:
-            for prop in properties_to_profile:
+        for prop in properties_to_profile:
+            if not any(profiles[(info['name'], prop)] for info in tract_infos):
+                logger(f"No subject has an image for {prop}, no profile table is written for {prop}", common.Color.WARNING)
+                continue
+            Path(output_base_dir).joinpath(prop).mkdir(parents=True, exist_ok=True)
+            for info in tract_infos:
                 subject_profiles = profiles[(info['name'], prop)]
                 if result_case_columnwise:
                     tract_stat_df = pd.DataFrame({"Arc Length": info['grid'], **subject_profiles})

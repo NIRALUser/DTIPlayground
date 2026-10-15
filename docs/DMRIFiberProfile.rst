@@ -235,15 +235,17 @@ lists all the options of each.
     them once; replaces ``dtitractstat -f``.
 
 ``compute-axis``
-    1D axis of the tracts (the average curve per arc length bin), used by ``impute``.
+    1D axis of the tracts (the average curve per arc length bin), used by ``impute-profiles``.
 
 ``gather``
     Collect the profiles of several runs into one table per tract and metric,
     ``<tract>/<tract>_<metric>.csv`` (rows: arc length, columns: the scans).
 
-``impute``
-    Fill the missing profile values with a per-dataset SIREN on the (x, y, z, arc length) of the tract axes; uses a
-    GPU when there is one.
+``impute-profiles``
+    Impute the missing values of profile tables (e.g. the cleaned profiles of ``qc-profiles``) from the observed
+    values of the same scan, using the 3-D positions of the tract axes: linear along the profile, linear or nearest
+    neighbours in 3-D, or a SIREN per scan; ``--validate`` compares them on hidden values. See
+    `Imputing the profiles`_.
 
 ``qc-registration``
     QC of the registration of the subjects to the atlas: similarity of the deformed metric maps, angular error, CSF
@@ -260,9 +262,11 @@ A typical sequence, from the parametrized atlas fibers to the cleaned profiles::
     $ dmrifiberprofile parametrize-fibers Atlas/FibersRaw -o Atlas/FibersParam
     $ dmrifiberprofile gather --profiles-dir Output_Profiles --fibers-dir Atlas/FibersParam --out-dir Profiles
     $ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
-    $ dmrifiberprofile impute --profiles-dir Profiles --axis-dir FiberAxis --out-dir Profiles_Imputed
     $ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative-dir Atlas/normativeModel --out-dir RegistrationQC
-    $ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean -o ProfileQC
+    $ dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean -o ProfileQC
+    $ dmrifiberprofile impute-profiles --profiles-dir ProfileQC/Profiles_Clean --axis-dir FiberAxis --out-dir Profiles_Imputed
+
+The imputation comes after the QC, so that the QC sees only measured values.
 
 What qc-profiles reads
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -429,6 +433,136 @@ has the header line when no shift can be estimated (the run then warns).
 - ``tract``: the tract of a profile outlier; empty for the other reasons, which apply to every tract
 - ``reason``: ``registration`` (flagged in ``--registration-qc``), ``preprocessing`` (``--prep-qc``), ``no age``
   (``--exclude-no-age``) or ``profile`` (``is_outlier`` in ``profile_qc_<ref>.csv``)
+
+Imputing the profiles
+~~~~~~~~~~~~~~~~~~~~~
+
+``impute-profiles`` fills the missing values of profile tables, typically the cleaned profiles of ``qc-profiles``
+(``Profiles_Clean``). It reads every layout ``qc-profiles`` reads and writes the same layout to ``--out-dir``
+(``Profiles_Imputed``); the observed cells are copied verbatim, so the tables can be QCed and analysed like the
+others. Two kinds of values are missing, and both are imputed the same way:
+
+- blank cells, e.g. the locations sampled outside the brain, which ``qc-profiles`` writes empty
+- whole profiles: a scan that is in the tables of other tracts but not in the table of a tract, e.g. a profile
+  ``qc-profiles`` excluded as an outlier. The imputed profile is added to that table.
+
+A scan that is in no table (excluded for its registration, its preprocessing or a missing age) has nothing to impute
+from and stays out.
+
+Each scan and metric is imputed from its own observed values only. Every profile location (tract, arc length) has a
+3-D position in atlas space, the point of the tract axis at that arc length (``--axis-dir``, from ``compute-axis``;
+beyond the ends of an axis, along its first or last segment). The tracts are dense in the brain, so a location that
+is missing has observed neighbours in other tracts of the same scan. The methods (``--method``):
+
+``arc-linear`` (default)
+    Linear along the arc length of the same profile, between the observed values at both ends of a gap; gaps longer
+    than ``--max-gap`` mm (default 15, the longest gaps validated) are left. The missing start or end of a profile (``--arc-ends``): left
+    (``none``, default), the nearest observed value repeated (``constant``), or the line through the 3 nearest
+    observed values extended (``linear``), up to ``--max-gap`` mm. It can't fill a whole profile and needs no axes.
+
+``linear``
+    Linear in 3-D: barycentric interpolation in the tetrahedra (Delaunay) of the observed positions of the same metric,
+    in all tracts. A location outside them is left (``--fallback knn`` fills it).
+
+``knn``
+    The mean of the ``--k`` (default 1) nearest observed positions in 3-D, weighted by the inverse of their distance
+    (``--knn-weights uniform``: equally).
+
+``siren``
+    A sine network (SIREN) per scan, trained on the scan's observed values of all metrics jointly, each standardized
+    on its own; it predicts the missing ones. ``--siren-inputs`` sets what it sees of a location: the 3-D position
+    (``xyz``), with the arc length (``xyz+arc``), or with the tract (``xyz+tract``, default; a one-hot code). Uses a
+    GPU when there is one (``--device``); ``--epochs`` (default 1000), ``--omega0`` (default 30),
+    ``--hidden-layers``, ``--hidden-width``, ``--lr``, ``--seed``. The defaults are the best setting for gaps; for
+    whole profiles, ``--siren-inputs xyz --omega0 10 --epochs 100`` did best.
+
+The defaults impute only the gaps inside the profiles (``arc-linear``, ``--arc-ends none``, ``--fallback none``):
+in the validation on a normative cohort (`Validation of impute-profiles <ImputeValidation.html>`_), every method
+that uses only the scan's own values imputed missing starts and ends no better than the cohort mean at each
+location, and whole profiles and regions about twice as far off. Imputing them (``--arc-ends``, ``--fallback``,
+another ``--method``) is possible, but those values are estimates of limited use.
+
+``--fallback`` runs a second method on the cells the first one left, from the observed values as well (e.g.
+``--method arc-linear --fallback siren``: gaps along the profile, the rest from the network). Limits:
+
+- ``--max-distance`` (mm, default 10; 0: none): the 3-D methods fill only cells within that distance of an observed
+  position of the same metric
+- ``--min-observed`` (default 0.5): a metric of a scan with a smaller share of observed values is not imputed
+
+Next to the tables, ``--report-dir`` (default ``<out-dir>_report``) holds:
+
+- ``masks/``: the tables again, with 1 for an imputed cell, 0 for an observed one and blank for one still missing,
+  so the analyses can tell measured values from imputed ones
+- ``imputation_summary.csv``: one row per scan, tract and metric with missing values: ``n_positions``,
+  ``n_observed``, ``n_missing``, ``shape`` (``whole profile``, or ``end gap`` for a missing start or end and
+  ``gap`` for missing values inside the profile), ``n_imputed``, ``n_left``, ``methods``,
+  ``max_distance_mm`` (the largest distance from an imputed cell to an observed position) and ``left_reason``
+- ``imputation_settings.json``: the options of the run
+
+Imputed values are estimates, not measurements: report the share of imputed values, and consider leaving them out
+of analyses that handle missing values themselves (e.g. mixed models).
+
+Validation
+----------
+
+``--validate`` compares the methods and their settings on values that were measured: in a sample of scans
+(``--validate-scans``, default 30, chosen with ``--validate-seed``) it hides whole profiles of a share of the tracts
+(``--validate-whole-fraction``, default 0.1, all metrics of the tract), one gap inside the profile in a share of the
+other tracts (``--validate-gap-fraction``, default 0.2; ``--validate-gap-mm``, default 3 to 15 mm long) and the
+start or end of the profile in another share (pattern ``end gap``; ``--validate-end-gap-fraction``, default 0.2;
+``--validate-end-gap-mm``, default 1 to 8 mm, like the missing ends of real profiles), imputes them with every setting
+and compares with the hidden values. Those tracts are chosen at random, so their neighbours are usually
+observed. A regional artifact (signal dropout, susceptibility, motion) instead makes ``qc-profiles`` reject all the
+tracts that run through the same region, and takes away the neighbours the 3-D methods rely on. A second pass per
+scan hides such a region (pattern ``region``): every tract with a position inside a sphere around a random observed
+position loses its whole profile (``--validate-region-mm``, radius 10 to 25 mm by default; a sphere reaching more
+than half of the scan's tracts is drawn again; ``--validate-region-count``, default 1, 0: no region pass).
+``--validate-rounds`` (default 1) repeats both passes on every scan with other tracts, gaps and regions, for more
+hidden values per location. Only scans whose metrics are at least
+``--min-observed`` observed are used. Nothing is imputed into ``--out-dir``; the results are in
+``<report-dir>/validation``:
+
+- ``validation_summary.csv``: per setting and pattern (``gap``, ``end gap``, ``whole profile``, ``region``) the share of hidden values
+  filled (``coverage``) and the error, as an RMSE normalized by the between-scan SD at each location (``nrmse``; 1
+  is as far off as a scan typically is from the cohort mean there), its SD over the SIREN seeds, and
+  ``nrmse_common``, the error on the cells every setting filled (of the settings that fill any of the pattern, so
+  without ``arc-linear`` for whole profiles and regions). The errors are averaged over the metrics, so each counts the same. The between-scan SD of a
+  location is at least a quarter of the metric's median SD over all locations, so a location where a metric hardly
+  varies (e.g. the free water fraction in deep white matter) doesn't dominate. The row ``cohort mean (reference)``
+  is not a method: it imputes the mean of the other scans at each location, so it shows what an error of a method
+  means (``--no-validate-reference``: left out). Over a sample of scans its error is near 1 but not exactly: the
+  scans sampled may lie closer to the cohort mean, or farther, than the cohort as a whole. ``vs_reference`` is
+  therefore the error of a setting relative to that of the reference on the same cells: below 1, the setting does
+  better than the cohort mean, whatever the sample. It is in every table but the one per location
+- ``validation_by_metric.csv``, ``validation_by_tract.csv``: the same per metric and per tract and metric, also in
+  the units of the metric (``rmse``); the second one has the distance from the tract's axis to the nearest other tract
+- ``validation_by_location.csv``: the error at every profile location (tract, arc length and its 3-D position
+  ``x``, ``y``, ``z``) of the best setting of each method for each pattern (``--validate-location-settings all``:
+  of every setting), per metric and as the mean over the metrics (``metric`` ``all``), with the number of hidden values
+  there (``n_hidden``); it shows whether some locations are harder to impute than others
+- ``error_maps/<setting>.vtk``: the same on the tract axes, one polyline per tract at the profile locations, with
+  the point data ``gap_n``, ``gap_nrmse``, ``gap_nrmse_<metric>`` and the same for ``end``, ``whole`` and ``region``
+  (NaN where nothing was hidden); open it with the atlas tracts (e.g. in 3D Slicer or ParaView) and color by an error
+- ``error_maps/<setting>.png``: the error per location (mean over the metrics) in three projections (axial, coronal, sagittal), per
+  pattern; the largest errors are drawn on top, and locations with fewer than ``--validate-min-n`` (default 3)
+  hidden values are gray
+- ``validation_by_distance.csv``: the error by the distance from a hidden value to the nearest position still
+  observed in that scan (bins 0-2, 2-4, 4-6, 6-10, 10-15, 15-25, over 25 mm), per setting, pattern and metric and
+  their mean (``all``); it shows how fast a method degrades as the observed neighbours get farther away
+- ``axis_proximity.csv``: per tract, the distance from its positions to those of the nearest other tract (where the
+  3-D position alone can't tell the tracts apart)
+- ``validation_siren_epochs.png``: the error of every SIREN setting against the epochs, with the other methods as
+  lines
+- ``validation_settings.json``: the scans used and the settings
+
+The settings compared: ``--validate-methods`` (default all), ``--validate-k`` (``knn``, default 1,3,5,10,20,50) with
+``--validate-knn-weights`` (default both, ``distance`` and ``uniform``), ``--validate-arc-ends`` (``arc-linear``,
+default all three) and for
+``siren`` the grid of ``--validate-siren-inputs`` (default all three), ``--validate-omega0`` (default 5,10,20,30)
+and ``--validate-epochs`` (default 100,200,500,1000; one training per setting, read off at each value), each trained
+``--validate-seeds`` times (default 3). ``arc-linear`` fills every hidden gap and end there, whatever its length. The other
+limits (``--max-distance``, ``--min-observed``) apply as in an imputation. With the default grid a scan takes about a
+minute on a GPU.
 
 See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the remaining options.
 

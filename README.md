@@ -50,7 +50,7 @@ $ docker run -it --rm --user $(id -u):$(id -g) -e HOME=$HOME -v $HOME:$HOME -v <
 ```
 
 It launches DTIPlaygroundLab; open the link it prints in a browser. Add `--gpus all` (NVIDIA container toolkit) to
-use a GPU, e.g. for `dmrifiberprofile impute`.
+use a GPU, e.g. for `dmrifiberprofile impute-profiles --method siren`.
 
 ### FSL and DTIPlaygroundTools
 
@@ -314,7 +314,7 @@ Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifibe
 | `parametrize-fibers` | Resample fiber tracts on the arc length grid (one point per arc length bin) with point data `FiberLocationIndex` and `SamplingDistance2Origin`; replaces `dtitractstat -f` |
 | `compute-axis` | 1D axis of fiber tracts (average curve per arc length bin) as `<tract>_axis.vtk`; optionally with the profiles mapped onto the axis |
 | `gather` | Collect subject profiles into `<tract>/<tract>_<metric>.csv` (rows: arc length, columns: datasets), from `.fvp` trees and/or EXTRACT_Profile outputs |
-| `impute` | Fill missing profile values with a per-dataset SIREN on the (x, y, z, arc length) of the tract axes |
+| `impute-profiles` | Impute the missing values of profile tables (e.g. `Profiles_Clean` of `qc-profiles`: blank cells and excluded profiles alike) from the observed values of the same scan, with the 3-D positions of the tract axes (`--axis-dir`): `--method arc-linear` (along the profile, default), `linear` (3-D), `knn` (3-D) or `siren` (a network per scan); by default only the gaps inside profiles are filled ([validation](https://dtiplayground.readthedocs.io/en/latest/ImputeValidation.html)); masks of the imputed cells and `imputation_summary.csv` in `<out-dir>_report`. `--validate` compares the methods and settings on hidden observed values ([details](https://dtiplayground.readthedocs.io/en/latest/DMRIFiberProfile.html#imputing-the-profiles)) |
 | `qc-registration` | QC of the registration to the atlas (`sub-*/ses-*/AtlasReg/*_Deformed<METRIC>.nii.gz` + `*_DeformedDTI.nrrd`, or the dmriprep DTI_Register outputs `<scan>_Registered_<METRIC>.nii.gz` + `<scan>_DTI_Registered.nrrd` in any folder below `--data-dir`; missing FA/MD/AD/RD maps are computed from the registered tensor): similarity (MAE, SSIM, NCC), angular error, contiguity of disagreement, CSF check, age-conditional normative model, combined outlier flag. `--build-normative` builds the age-binned normative model from a reference dataset: mean/std/count of every deformed metric map (FA, MD, RD, AD, ...), the angular model and the log-Euclidean mean tensor (`DTI_mean.nrrd`) per age bin. `--tensor-flip` (default auto) corrects the tensor frame of the subjects as `detect-tensor-flip` (flips, voxel frame); every subject is also checked on its own (`TENSOR_frame_best`, `TENSOR_frame_gain_deg`, and a warning when another correction fits the atlas better) |
 | `qc-profiles` | Age-binned profile statistics (`_agebinstats.csv`, ages from `--age-csv` or the column names) and plots; profile QC against prior (normative) statistics with value and shape outliers; cleaned profile tables. `--profiles-dir` takes the gathered tables (`<tract>/<tract>_<metric>.csv`) or the profiles of a run as EXTRACT_Profile writes them (`00_EXTRACT_Profile/<metric>/<tract>_<metric>.csv`, either orientation), so `gather` is not needed to QC one run |
 
@@ -324,12 +324,14 @@ Besides running the EXTRACT_Profile pipeline (`dmrifiberprofile run`), `dmrifibe
 $ dmrifiberprofile parametrize-fibers Atlas/FibersRaw -o Atlas/FibersParam
 $ dmrifiberprofile gather --profiles-dir Output_Profiles --fibers-dir Atlas/FibersParam --out-dir Profiles
 $ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
-$ dmrifiberprofile impute --profiles-dir Profiles --axis-dir FiberAxis --out-dir Profiles_Imputed
 $ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative-dir Atlas/normativeModel --out-dir RegistrationQC
-$ dmrifiberprofile qc-profiles --profiles-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean -o ProfileQC
+$ dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean -o ProfileQC
+$ dmrifiberprofile impute-profiles --profiles-dir ProfileQC/Profiles_Clean --axis-dir FiberAxis --out-dir Profiles_Imputed
 ```
 
-`parametrize-fibers` computes the plane of origin and arc lengths like EXTRACT_Profile and stores the arc lengths in the fibers, so the atlas defines them once: EXTRACT_Profile (protocol option `arcLength: stored`, the default) and `compute-axis` (`--arc-source auto`, the default) use the stored arc lengths of parametrized fibers and compute them only for fibers without (`arcLength: compute` / `--arc-source dtiplayground` always compute them). Parametrized fibers from the older C++ tools store different arc lengths; re-parametrize the raw tracts with `parametrize-fibers`. `impute` uses a GPU when available (`--device`).
+The imputation comes after the QC, so that the QC sees only measured values.
+
+`parametrize-fibers` computes the plane of origin and arc lengths like EXTRACT_Profile and stores the arc lengths in the fibers, so the atlas defines them once: EXTRACT_Profile (protocol option `arcLength: stored`, the default) and `compute-axis` (`--arc-source auto`, the default) use the stored arc lengths of parametrized fibers and compute them only for fibers without (`arcLength: compute` / `--arc-source dtiplayground` always compute them). Parametrized fibers from the older C++ tools store different arc lengths; re-parametrize the raw tracts with `parametrize-fibers`. `impute-profiles --method siren` uses a GPU when available (`--device`).
 
 Normative profiles (the `normProfiles` of an atlas) are the age-bin statistics of the profiles of a reference dataset, computed with the atlas' parametrized fibers:
 

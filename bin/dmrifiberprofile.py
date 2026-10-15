@@ -831,7 +831,7 @@ def get_args():
     parser_make_datasheet.add_argument('--id-regex',help="Case id from the file names: group 1 (default: the part before '_dwi')",default=None)
     parser_make_datasheet.set_defaults(func=command_make_datasheet)
 
-    ## fiber profile analysis tools (flip-tensor, compute-axis, gather, impute, qc-registration, qc-profiles)
+    ## fiber profile analysis tools (flip-tensor, compute-axis, gather, impute-profiles, qc-registration, qc-profiles)
     importlib.import_module('dtiplayground.dmri.fiberprofile.analysis').add_commands(subparsers)
 
     ## log related

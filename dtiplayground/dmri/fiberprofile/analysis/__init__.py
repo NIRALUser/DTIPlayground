@@ -7,7 +7,7 @@
 #     parametrize-fibers  resample fiber tracts on the arc length grid (as EXTRACT_Profile)
 #     compute-axis     1D axis (average curve) of fiber tracts, parametrized by arc length
 #     gather           collect subject profiles into one CSV per tract and metric
-#     impute           fill missing profile values (per-dataset SIREN)
+#     impute-profiles  impute missing profile values from the same scan (3-D neighbours, SIREN)
 #     qc-registration  QC of the registration of subjects to the atlas
 #     qc-profiles      age-binned profile statistics and profile QC
 #
@@ -15,7 +15,7 @@
 import logging
 import sys
 
-COMMANDS = ['flip_tensor', 'detect_flip', 'parametrize', 'fiber_axis', 'gather', 'impute', 'registration_qc', 'profile_qc']
+COMMANDS = ['flip_tensor', 'detect_flip', 'parametrize', 'fiber_axis', 'gather', 'impute_profiles', 'registration_qc', 'profile_qc']
 
 
 def add_commands(subparsers):

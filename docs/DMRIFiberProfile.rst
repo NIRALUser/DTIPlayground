@@ -318,9 +318,9 @@ The output folders are in the ``-o`` folder (``--plots-dir``, ``--stats-dir``, `
 - ``--stats-dir`` (``Profiles_Stats``), the tables of the QC: ``summary_mean.csv`` and ``summary_median.csv``, the
   whole-tract mean and median of every metric per tract and dataset of the cleaned data (with ``--clean-dir``), and
   ``summary_mean_all.csv`` / ``summary_median_all.csv`` before the profile outliers are removed;
-  ``excluded_cases.csv`` (one row per registration, preprocessing, no age (``--exclude-no-age``) or profile exclusion), ``outliers_mean.csv`` (the
-  decision per case and tract), ``profile_qc_mean.csv`` (the detail per metric) and ``profile_qc_mean_clean.csv`` (the
-  same on the cleaned data); ``batch_shifts_mean.csv`` with ``--envelope-batch-correct``. ``mean`` is
+  ``excluded_cases.csv`` (one row per registration, preprocessing, no age (``--exclude-no-age``) or profile exclusion),
+  ``profile_qc_mean.csv`` (every profile compared with the prior, with the outlier decision of its tract and scan) and
+  ``profile_qc_mean_clean.csv`` (the comparison on the cleaned data); ``batch_shifts_mean.csv`` with ``--envelope-batch-correct``. ``mean`` is
   ``--corr-reference``.
 - ``--clean-dir``: the cleaned tables, in the layout of ``--profiles-dir``, with their age-bin statistics
 - ``--plots-dir`` (``StatPlots``) and ``--clean-plots-dir`` (``StatsPlots_Clean``): ``Plots/``, the plots of all the
@@ -351,10 +351,7 @@ floats in ``--age-units``, in a column named after them (``age_months`` by defau
      - tract and scan of the cleaned profiles
    * - ``profile_qc_<ref>.csv``
      - with ``--prior-stats-dir``
-     - tract, metric and scan compared with the prior
-   * - ``outliers_<ref>.csv``
-     - with ``--prior-stats-dir``
-     - tract and scan: the outlier decision
+     - tract, metric and scan compared with the prior, with the outlier decision
    * - ``profile_qc_<ref>_clean.csv``
      - with ``--prior-stats-dir`` and ``--clean-dir``
      - tract, metric and scan of the cleaned profiles compared with the prior
@@ -389,23 +386,25 @@ metric or age bin without prior statistics, have no row.
 - ``n_valid``: positions where the profile and the envelope both have a value; ``n_inside``: those inside the envelope
 - ``n_present``: positions where the profile has a value (not missing, not outside the brain); ``n_positions``:
   positions of the arc length grid
-- ``joint_frac_inside``, ``shape_r``, ``is_value_outlier``, ``is_shape_outlier``, ``is_outlier``: the decision for
-  the tract and scan, from ``outliers_<ref>.csv``, repeated on each of its metrics
 
-**outliers_<ref>.csv** -- the outlier decision, made once per tract and scan from all its metrics, and applied to
-all of them (a flagged scan is removed from every metric of that tract in ``--clean-dir``).
+The outlier decision is made once per tract and scan from all its metrics, and applies to all of them (a flagged scan
+is removed from every metric of that tract in ``--clean-dir``), so the following columns have the same value on the
+rows of the metrics of a tract and scan (the rows of one metric, e.g. ``metric == fa``, give one row per tract and
+scan):
 
-- ``tract``, ``subject_session``, ``age_<units>``, ``bin``
-- ``n_inside``, ``n_valid``, ``n_present``, ``n_positions``: the sums over the metrics of the tract, except
-  ``--outlier-exclude-metrics`` (``FWF``)
-- ``joint_frac_inside``: ``n_inside / n_valid``, the fraction inside the envelope over those metrics
-- ``frac_valid``: ``n_present / n_positions``, how much of the profile is there
-- ``is_value_outlier``: ``joint_frac_inside`` below ``--value-min-inside`` (0.9), or ``frac_valid`` below
+- ``joint_frac_inside``: the fraction of the positions inside the envelope over the metrics of the tract, except
+  ``--outlier-exclude-metrics`` (``FWF``): the sum of their ``n_inside`` over the sum of their ``n_valid``
+- ``joint_frac_valid``: how much of the profile is there over those metrics, the sum of ``n_present`` over the sum of
+  ``n_positions``
+- ``is_value_outlier``: ``joint_frac_inside`` below ``--value-min-inside`` (0.9), or ``joint_frac_valid`` below
   ``--min-valid-frac`` (0.75: too little of the profile is left to judge it)
 - ``shape_r``: ``r`` of the ``--shape-metric`` (``fa``)
 - ``is_shape_outlier``: ``shape_r`` below ``--corr-min`` (0.5), or with ``--shape-outlier-method iqr`` below
   ``Q1 - k·IQR`` of the ``shape_r`` of the tract and age bin (``--corr-iqr-k``, 1.5)
 - ``is_outlier``: ``is_value_outlier`` or ``is_shape_outlier``
+
+Up to version 0.8.14 the decision was also written to ``outliers_<ref>.csv``, one row per tract and scan; a run
+removes that table from ``--stats-dir`` when it finds one.
 
 **profile_qc_<ref>_clean.csv** -- the columns of ``profile_qc_<ref>.csv`` up to ``n_positions``, for the cleaned
 profiles: how the scans that are kept compare with the prior. No decision is made on them.
@@ -429,7 +428,7 @@ has the header line when no shift can be estimated (the run then warns).
 - ``age_<units>``
 - ``tract``: the tract of a profile outlier; empty for the other reasons, which apply to every tract
 - ``reason``: ``registration`` (flagged in ``--registration-qc``), ``preprocessing`` (``--prep-qc``), ``no age``
-  (``--exclude-no-age``) or ``profile`` (an outlier of ``outliers_<ref>.csv``)
+  (``--exclude-no-age``) or ``profile`` (``is_outlier`` in ``profile_qc_<ref>.csv``)
 
 See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the remaining options.
 

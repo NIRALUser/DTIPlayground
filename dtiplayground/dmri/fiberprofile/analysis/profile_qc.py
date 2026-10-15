@@ -101,8 +101,8 @@ or interpolated; a run where no profile can be compared with it stops):
 Outputs, in the ``-o`` folder (default: the working directory): the tables of
 the QC go to ``--stats-dir`` (default ``Profiles_Stats``): ``summary_mean_all.csv`` / ``summary_median_all.csv`` (whole-tract mean and median
 of every metric per (tract, dataset), before the profile outliers are removed),
-``profile_qc_<reference>.csv`` (per-metric detail + group flags),
-``outliers_<reference>.csv`` (per (subject-session, tract) decision) and
+``profile_qc_<reference>.csv`` (every profile compared with the prior: per-metric
+detail, and the outlier decision of its (subject-session, tract)) and
 ``excluded_cases.csv`` (registration, preprocessing, no age and profile exclusions, one
 row each).  The plots of all the data go to ``--plots-dir``/Plots, with one
 box+violin figure per (metric, age-bin).  With ``--clean-dir``, the flagged
@@ -1453,16 +1453,20 @@ def run_args(args, p) -> int:
                                        args.min_valid_frac)
 
         os.makedirs(stats_root, exist_ok=True)
-        # per-metric detail (correlations, envelope fractions) + the group flags
+        # every profile: per-metric detail (correlation, envelope fraction) + the decision of its (tract, scan)
         qc_out = qc.merge(
-            groups[["tract", "subject_session", "joint_frac_inside", "shape_r",
-                    "is_value_outlier", "is_shape_outlier", "is_outlier"]],
+            groups[["tract", "subject_session", "joint_frac_inside", "frac_valid", "shape_r",
+                    "is_value_outlier", "is_shape_outlier", "is_outlier"]].rename(
+                columns={"frac_valid": "joint_frac_valid"}),
             on=["tract", "subject_session"], how="left",
         )
         qc_csv = os.path.join(stats_root, f"profile_qc_{args.corr_reference}.csv")
         report_ages(qc_out).to_csv(qc_csv, index=False)
-        grp_csv = os.path.join(stats_root, f"outliers_{args.corr_reference}.csv")
-        report_ages(groups).to_csv(grp_csv, index=False)
+        ## the decision was a table of its own before 0.8.15: a stale one would contradict this run
+        old_csv = os.path.join(stats_root, f"outliers_{args.corr_reference}.csv")
+        if os.path.isfile(old_csv):
+            os.remove(old_csv)
+            log.info("Removed %s of an earlier run (the decision is now in %s)", old_csv, qc_csv)
 
         ng = len(groups)
         nv = int(groups["is_value_outlier"].sum())
@@ -1475,7 +1479,7 @@ def run_args(args, p) -> int:
                  100 * args.value_min_inside, env_desc, nv, 100 * nv / max(ng, 1))
         log.info("  shape outliers (%s): %d (%.1f%%)", shape_desc, ns, 100 * ns / max(ng, 1))
         log.info("  any outlier: %d (%.1f%%)", na, 100 * na / max(ng, 1))
-        log.info("Wrote %s and %s", qc_csv, grp_csv)
+        log.info("Wrote %s", qc_csv)
 
         if plots_sub and int(qc["r"].notna().sum()):
             n_fig = plot_correlations_by_metric_bin(qc, plots_sub, args.corr_reference, args.dpi, bins)

@@ -426,7 +426,7 @@ class TestOutputFolders(unittest.TestCase):
                                               '--plots-dir', plots, '--clean-plots-dir', clean_plots,
                                               '--no-plots']), 0)
             self.assertEqual(sorted(os.listdir(stats)),
-                             ['excluded_cases.csv', 'outliers_mean.csv', 'profile_qc_mean.csv',
+                             ['excluded_cases.csv', 'profile_qc_mean.csv',
                               'profile_qc_mean_clean.csv', 'summary_mean.csv', 'summary_mean_all.csv',
                               'summary_median.csv', 'summary_median_all.csv'])
             self.assertFalse(os.path.exists(plots) and os.listdir(plots))
@@ -491,6 +491,31 @@ class TestProfilesWithoutAge(unittest.TestCase):
             self.assertNotIn('sub-005_ses-V1_dwi', set(everything['dataset']))
 
 
+class TestOneQCTable(unittest.TestCase):
+    """profile_qc_<ref>.csv holds every profile compared with the prior and the decision of its tract and scan."""
+
+    def test_the_decision_is_in_the_profile_qc_table(self):
+        with tempfile.TemporaryDirectory() as d:
+            norm, data, out = os.path.join(d, 'norm'), os.path.join(d, 'data'), os.path.join(d, 'QC')
+            TestOutputFolders._tables(norm, 12)
+            TestOutputFolders._tables(data, 8, outlier='sub-003_ses-012m_dwi')
+            self.assertEqual(profile_qc.main(['--profiles-dir', norm, '-o', os.path.join(d, 'normQC'), '--no-plots']), 0)
+            stale = os.path.join(out, 'Profiles_Stats', 'outliers_mean.csv')  # the table of earlier versions
+            os.makedirs(os.path.dirname(stale))
+            Path(stale).write_text('tract,subject_session,is_outlier\n')
+            self.assertEqual(profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', norm, '-o', out,
+                                              '--no-plots']), 0)
+            self.assertFalse(os.path.exists(stale))
+            qc = pd.read_csv(os.path.join(out, 'Profiles_Stats', 'profile_qc_mean.csv'))
+            self.assertEqual(len(qc), 2 * 2 * 8)  # tracts x metrics x scans
+            self.assertEqual(list(qc.columns)[-6:], ['joint_frac_inside', 'joint_frac_valid', 'shape_r',
+                                                     'is_value_outlier', 'is_shape_outlier', 'is_outlier'])
+            flagged = qc[qc['is_outlier']]
+            self.assertEqual(set(flagged['subject_session']), {'sub-003_ses-012m_dwi'})
+            self.assertEqual(len(flagged), 4)  # the decision of a tract is on all its metrics
+            self.assertTrue((qc['joint_frac_valid'] == 1.0).all())
+
+
 class TestReportedAges(unittest.TestCase):
     """The ages in the tables of Profiles_Stats are floats in --age-units (months by default)."""
 
@@ -516,7 +541,7 @@ class TestReportedAges(unittest.TestCase):
     def test_months_by_default(self):
         with tempfile.TemporaryDirectory() as d:
             stats = self._run(d)
-            for name in ('summary_mean_all.csv', 'summary_median.csv', 'profile_qc_mean.csv', 'outliers_mean.csv',
+            for name in ('summary_mean_all.csv', 'summary_median.csv', 'profile_qc_mean.csv',
                          'profile_qc_mean_clean.csv'):
                 t, ages = self._ages(stats, name, 'age_months')
                 self.assertNotIn('age', t.columns)
@@ -528,7 +553,7 @@ class TestReportedAges(unittest.TestCase):
     def test_the_age_units_of_the_table_are_those_of_the_output(self):
         with tempfile.TemporaryDirectory() as d:
             stats = self._run(d, '--age-units', 'years')
-            for name in ('summary_mean_all.csv', 'outliers_mean.csv'):
+            for name in ('summary_mean_all.csv', 'profile_qc_mean.csv'):
                 t, ages = self._ages(stats, name, 'age_years')
                 self.assertEqual(ages['sub-001_ses-012m_dwi'], 1.125, name)
                 self.assertEqual(ages['sub-000_ses-012m_dwi'], 1.0, name)
@@ -600,8 +625,7 @@ class TestQCAtOtherArcLengths(unittest.TestCase):
                 self.assertEqual(sorted(shifts['metric']), ['fa', 'md'])
                 qc = pd.read_csv(os.path.join(stats, 'profile_qc_mean.csv'))
                 self.assertTrue(qc['r'].notna().all())
-                outliers = pd.read_csv(os.path.join(stats, 'outliers_mean.csv'))
-                self.assertEqual(set(outliers[outliers['is_outlier']]['subject_session']), {'sub-003_ses-012m_dwi'})
+                self.assertEqual(set(qc[qc['is_outlier']]['subject_session']), {'sub-003_ses-012m_dwi'})
                 self.tearDown()
                 self.setUp()
 

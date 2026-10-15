@@ -3,6 +3,10 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-15 (v0.8.15)
+- dmrifiberprofile - qc-profiles: `outliers_<ref>.csv` is merged into `profile_qc_<ref>.csv`. The outlier decision of each tract and scan (`joint_frac_inside`, `joint_frac_valid` -- `frac_valid` in the old table --, `shape_r`, `is_value_outlier`, `is_shape_outlier`, `is_outlier`) is on every metric row of that tract and scan; the rows of one metric (e.g. `metric == fa`) give one row per tract and scan. A stale `outliers_<ref>.csv` in `--stats-dir` is removed. Scripts reading `outliers_<ref>.csv` need to read `profile_qc_<ref>.csv`
+- Documentation: every table and column of `Profiles_Stats` is described (DMRIFiberProfile, "The tables of Profiles_Stats")
+
 ##### 2026-10-15 (v0.8.14)
 - dmrifiberprofile - qc-registration: `registration_qc.csv` gives the age of each session in `--age-units`, in the column `age_<units>` (`age_months` by default), as the tables of qc-profiles do; it was `age`, in months. Scripts reading the `age` column need the new name
 

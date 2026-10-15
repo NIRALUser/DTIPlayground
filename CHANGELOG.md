@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-15 (v0.8.17)
+- dmrifiberprofile - qc-registration: the preview of a session (`previews/<session>_preview.png`, written for the flagged outliers, or for every session with `--save-all-maps`) shows 4 equally spaced axial slices across the brain of the atlas, one row per slice (labelled `z=`), instead of one slice; the panels (atlas FA, DTI FA, FA diff, FA SSIM, angular error, largest blobs) are the columns, with one colorbar per column
+
 ##### 2026-10-15 (v0.8.16)
 - dmriprep, dmrifiberprofile, dmriautotract: jobs started at the same time after an upgrade (e.g. `dmriprep run` on several datasets of a cluster) could stop with "TypeError: 'NoneType' object is not subscriptable" (appbase `_initialize`): the first jobs of a new version set up its configuration and rewrite `~/.niral-dti/global_variables.yml`, and a job reading the file during a rewrite found it empty. The files of `~/.niral-dti` are now written atomically, an empty or incomplete `global_variables.yml` no longer stops a job, and the questions "Use the installed FSL/DTIPlaygroundTools? [Y/n]" take the default (yes) in a job without input
 

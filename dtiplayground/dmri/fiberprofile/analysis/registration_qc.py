@@ -61,7 +61,8 @@ see ``--age-regex``).  Cohorts that name sessions by visit instead (HBCD's
 columns are auto-detected -- an age column named after none of the usual
 conventions is still found by a partial ``candidate_age`` match, or can be named
 outright with ``--age-column``; use ``--age-units`` if the ages are not in
-months).
+months).  ``registration_qc.csv`` gives the age of each session in
+``--age-units`` (column ``age_<units>``, ``age_months`` by default).
 Scans whose age stays unknown are still QC'd against the atlas -- only the
 age-binned normative model needs an age, and those scans are skipped there with
 a warning.
@@ -1178,7 +1179,8 @@ def configure_parser(p):
     p.add_argument("--age-column", default=None, metavar="NAME",
                    help="Name of the --age-csv column holding the age (default: auto-detect)")
     p.add_argument("--age-units", default="months", choices=sorted(AGE_UNIT_TO_MONTHS),
-                   help="Units of the --age-csv age column (default: months)")
+                   help="Units of the --age-csv age column, and of the ages in registration_qc.csv (column "
+                        "age_<units>; default: months)")
     p.add_argument("--age-regex", default=AGE_RE.pattern,
                    help=f"Regex whose first group is the session-name age in months (default: {AGE_RE.pattern!r})")
     p.add_argument("--scalar-metrics", default="FA", help="Comma list of scalar metrics to QC (default: FA)")
@@ -1462,7 +1464,10 @@ def run_args(args, p) -> int:
     df["outlier_rule"] = rule
 
     csv = os.path.join(args.out_dir, "registration_qc.csv")
-    df.to_csv(csv, index=False)
+    ## the ages are in months here; the table gives them in --age-units, as age_<units>
+    report = df.copy()
+    report["age"] = pd.to_numeric(report["age"], errors="coerce") / AGE_UNIT_TO_MONTHS[args.age_units]
+    report.rename(columns={"age": f"age_{args.age_units}"}).to_csv(csv, index=False)
     n_out = int(df["is_outlier"].sum())
     log.info("Wrote %s | %d/%d sessions flagged (%s > %.2f)",
              csv, n_out, len(df), "Mahalanobis d" if rule == "mahalanobis" else "combined robust-z",

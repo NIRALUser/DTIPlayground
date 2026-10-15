@@ -295,7 +295,7 @@ Ages are kept as fractional months (an age of 1.5 years in the table is 18 month
 months (``--bins 0-3,4-9,10-60``): a bin ``lo-hi`` holds the ages from ``lo`` up to, not including, ``hi + 1`` months,
 so 3.5 months is in ``0-3m``. The tables of ``--stats-dir`` give the age of every scan in the column
 ``age_<units>``, in ``--age-units`` (``age_months`` by default; ``--age-units years`` for a table in years gives
-``age_years``).
+``age_years``). ``qc-registration`` writes the age of each session in ``registration_qc.csv`` the same way.
 
 Locations sampled outside the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

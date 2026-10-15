@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-15 (v0.8.18)
+- dmrifiberprofile - EXTRACT_Profile: a property whose image column is empty for every subject of the datasheet (e.g. FWFA or NODDI without such data) stopped the run after the profiling ("Cannot save file into a non-existent directory: '.../00_EXTRACT_Profile/FWFA'"). Such a property gets no profile table, with a warning; the tables of the other properties are written as before
+
 ##### 2026-10-15 (v0.8.17)
 - dmrifiberprofile - qc-registration: the preview of a session (`previews/<session>_preview.png`, written for the flagged outliers, or for every session with `--save-all-maps`) shows 4 equally spaced axial slices across the brain of the atlas, one row per slice (labelled `z=`), instead of one slice; the panels (atlas FA, DTI FA, FA diff, FA SSIM, angular error, largest blobs) are the columns, with one colorbar per column
 

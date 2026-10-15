@@ -326,6 +326,111 @@ The output folders are in the ``-o`` folder (``--plots-dir``, ``--stats-dir``, `
 - ``--plots-dir`` (``StatPlots``) and ``--clean-plots-dir`` (``StatsPlots_Clean``): ``Plots/``, the plots of all the
   data and of the cleaned data
 
+The tables of ``Profiles_Stats``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All of them are CSV files in ``--stats-dir`` (``Profiles_Stats``). ``<ref>`` in a name is ``--corr-reference``
+(``mean`` by default, else ``median``). A scan is identified by the column name of its profile,
+``<subject>_<session>_<prefix>`` (``dataset`` or ``subject_session`` below, e.g. ``sub-1007_ses-012m_dwi``). Ages are
+floats in ``--age-units``, in a column named after them (``age_months`` by default, ``age_years`` with
+``--age-units years``); a scan without an age has it empty. ``bin`` is the age bin of the scan (``--bins``, e.g.
+``10-60m``).
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 32 40
+
+   * - File
+     - Written
+     - One row per
+   * - ``summary_mean_all.csv``, ``summary_median_all.csv``
+     - always
+     - tract and scan, before the profile outliers are removed
+   * - ``summary_mean.csv``, ``summary_median.csv``
+     - with ``--clean-dir``
+     - tract and scan of the cleaned profiles
+   * - ``profile_qc_<ref>.csv``
+     - with ``--prior-stats-dir``
+     - tract, metric and scan compared with the prior
+   * - ``outliers_<ref>.csv``
+     - with ``--prior-stats-dir``
+     - tract and scan: the outlier decision
+   * - ``profile_qc_<ref>_clean.csv``
+     - with ``--prior-stats-dir`` and ``--clean-dir``
+     - tract, metric and scan of the cleaned profiles compared with the prior
+   * - ``batch_shifts_<ref>.csv``
+     - with ``--envelope-batch-correct``
+     - metric and age bin
+   * - ``excluded_cases.csv``
+     - when a scan is excluded
+     - exclusion
+
+**summary_mean_all.csv, summary_median_all.csv, summary_mean.csv, summary_median.csv** -- the whole-tract value of
+every metric: the mean (or median) of the profile along the arc length, ignoring missing positions and those sampled
+outside the brain. The ``_all`` tables hold every scan except those removed up front (``--registration-qc``,
+``--prep-qc``, ``--exclude-no-age``); the others hold the cleaned profiles, without the profile outliers either.
+
+- ``tract``, ``dataset``; ``sub``, ``ses``, ``prefix``: the parts of ``dataset`` (without ``sub-`` / ``ses-``)
+- ``age_<units>``
+- one column per metric (``fa``, ``md``, ``rd``, ``ad``, ...)
+
+**profile_qc_<ref>.csv** -- the comparison of each profile with the prior statistics of its tract, metric and age
+bin (``--prior-stats-dir``), at the arc lengths of the profile (see above). Profiles without an age, or of a tract,
+metric or age bin without prior statistics, have no row.
+
+- ``tract``, ``metric``, ``subject_session``, ``age_<units>``, ``bin``
+- ``r``: Pearson correlation of the profile with the prior mean (``--corr-reference median``: the prior median) along
+  the arc length. It measures the shape, so a shift or a scaling of the values does not change it. Empty when there
+  is nothing to correlate (fewer than 3 positions in common with the prior)
+- ``frac_inside``: ``n_inside / n_valid``, the fraction of the positions inside the envelope of the prior, ``mean ±
+  k·std`` (``--value-nsd``, 3) or the ``--value-pct-lo`` .. ``--value-pct-hi`` percentile band
+  (``--value-envelope percentile``); with ``--envelope-batch-correct`` the profile is corrected by the batch shift
+  first. Empty when there is no envelope (an age bin of the prior with a single subject has no std)
+- ``n_valid``: positions where the profile and the envelope both have a value; ``n_inside``: those inside the envelope
+- ``n_present``: positions where the profile has a value (not missing, not outside the brain); ``n_positions``:
+  positions of the arc length grid
+- ``joint_frac_inside``, ``shape_r``, ``is_value_outlier``, ``is_shape_outlier``, ``is_outlier``: the decision for
+  the tract and scan, from ``outliers_<ref>.csv``, repeated on each of its metrics
+
+**outliers_<ref>.csv** -- the outlier decision, made once per tract and scan from all its metrics, and applied to
+all of them (a flagged scan is removed from every metric of that tract in ``--clean-dir``).
+
+- ``tract``, ``subject_session``, ``age_<units>``, ``bin``
+- ``n_inside``, ``n_valid``, ``n_present``, ``n_positions``: the sums over the metrics of the tract, except
+  ``--outlier-exclude-metrics`` (``FWF``)
+- ``joint_frac_inside``: ``n_inside / n_valid``, the fraction inside the envelope over those metrics
+- ``frac_valid``: ``n_present / n_positions``, how much of the profile is there
+- ``is_value_outlier``: ``joint_frac_inside`` below ``--value-min-inside`` (0.9), or ``frac_valid`` below
+  ``--min-valid-frac`` (0.75: too little of the profile is left to judge it)
+- ``shape_r``: ``r`` of the ``--shape-metric`` (``fa``)
+- ``is_shape_outlier``: ``shape_r`` below ``--corr-min`` (0.5), or with ``--shape-outlier-method iqr`` below
+  ``Q1 - k·IQR`` of the ``shape_r`` of the tract and age bin (``--corr-iqr-k``, 1.5)
+- ``is_outlier``: ``is_value_outlier`` or ``is_shape_outlier``
+
+**profile_qc_<ref>_clean.csv** -- the columns of ``profile_qc_<ref>.csv`` up to ``n_positions``, for the cleaned
+profiles: how the scans that are kept compare with the prior. No decision is made on them.
+
+**batch_shifts_<ref>.csv** -- the shift between the cohort and the prior used by ``--envelope-batch-correct``, per
+metric and age bin. It is estimated from all the tracts: for each profile, the median along the arc length of its
+difference to the prior median (``value - prior``), or of its ratio for the metrics of ``--batch-mult-metrics``
+(``md,rd,ad``: ``value / prior``); the shift is the median of those over the profiles. A profile is corrected by
+subtracting the shift (or dividing by it) before the envelope check; the shape check is not affected. The table only
+has the header line when no shift can be estimated (the run then warns).
+
+- ``metric``, ``bin``
+- ``kind``: ``add`` or ``mul``
+- ``shift``: the offset (``add``) or the ratio (``mul``)
+- ``n_profiles``: the number of profiles it was estimated from
+
+**excluded_cases.csv** -- one row per exclusion, written when a scan is excluded.
+
+- ``sub``, ``ses``, ``prefix``: the scan (without ``sub-`` / ``ses-``); ``prefix`` is empty for a registration
+  failure of a whole session
+- ``age_<units>``
+- ``tract``: the tract of a profile outlier; empty for the other reasons, which apply to every tract
+- ``reason``: ``registration`` (flagged in ``--registration-qc``), ``preprocessing`` (``--prep-qc``), ``no age``
+  (``--exclude-no-age``) or ``profile`` (an outlier of ``outliers_<ref>.csv``)
+
 See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the remaining options.
 
 

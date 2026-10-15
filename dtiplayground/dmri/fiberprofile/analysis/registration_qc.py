@@ -97,7 +97,7 @@ Modes
   (+ ``DTI_count``) of the deformed tensors (in the atlas tensor frame).
 * default (QC)          : score ``--data-dir`` subjects, write a table and outlier
   flags.  NIfTI disagreement maps + a per-subject preview PNG (atlas FA, DTI FA,
-  FA diff, FA SSIM, angular error z, largest blobs) are written **only for
+  FA diff, FA SSIM, angular error z, largest blobs; 4 equally spaced axial slices) are written **only for
   flagged outliers**;
   ``--save-all-maps`` writes them for every session.
 
@@ -863,41 +863,62 @@ def load_normative_angular(normative_dir, label):
 # ---------------------------------------------------------------------------
 # QC
 # ---------------------------------------------------------------------------
+PREVIEW_SLICES = 4
+
+
+def preview_slices(atlas_fa, n=PREVIEW_SLICES):
+    """*n* equally spaced axial slices across the brain of the atlas (FA > 0), its first and last slices left out."""
+    z = np.flatnonzero((np.nan_to_num(atlas_fa) > 0).any(axis=(0, 1)))
+    lo, hi = (z[0], z[-1]) if z.size else (0, atlas_fa.shape[2] - 1)
+    return sorted(set(int(round(v)) for v in np.linspace(lo, hi, n + 2)[1:-1]))
+
+
 def make_preview(sid, atlas_fa, subj_fa, maps, out_dir):
     """One PNG per subject: atlas FA, DTI FA, FA diff, FA SSIM, angular error z,
-    and the largest contiguous disagreement blobs over the subject FA."""
+    and the largest contiguous disagreement blobs over the subject FA (columns),
+    on PREVIEW_SLICES equally spaced axial slices (rows)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    k = int(np.argmax([(atlas_fa[:, :, z] > 0.2).sum() for z in range(atlas_fa.shape[2])]))  # most-WM slice
-    sl = lambda a: np.rot90(a[:, :, k])
-    panels = [("Atlas FA", sl(atlas_fa), "gray", (0, 1)),
-              ("DTI FA", sl(subj_fa), "gray", (0, 1))]
+    panels = [("Atlas FA", atlas_fa, "gray", (0, 1)),
+              ("DTI FA", subj_fa, "gray", (0, 1))]
     if "FA_diff" in maps:
-        panels.append(("FA diff (subj−atlas)", sl(maps["FA_diff"]), "RdBu_r", (-0.4, 0.4)))
+        panels.append(("FA diff (subj−atlas)", maps["FA_diff"], "RdBu_r", (-0.4, 0.4)))
     if "FA_ssim" in maps:
-        panels.append(("FA SSIM", sl(maps["FA_ssim"]), "viridis", (0, 1)))
+        panels.append(("FA SSIM", maps["FA_ssim"], "viridis", (0, 1)))
     if "angular_z" in maps:
-        panels.append(("Angular error z", sl(maps["angular_z"]), "inferno", (0, 3)))
+        panels.append(("Angular error z", maps["angular_z"], "inferno", (0, 3)))
     elif "angular_deg" in maps:
-        panels.append(("Angular error (deg)", sl(maps["angular_deg"]), "hot", (0, 60)))
+        panels.append(("Angular error (deg)", maps["angular_deg"], "hot", (0, 60)))
     blob_key = next((k for k in ("FA_z_blobs", "FA_ssim_blobs", "angular_z_blobs",
                                  "angular_deg_blobs") if k in maps), None)
     if blob_key is not None:
-        panels.append((f"Largest blobs ({blob_key[:-6]})", sl(maps[blob_key]), None, (0, 1)))
+        panels.append((f"Largest blobs ({blob_key[:-6]})", maps[blob_key], None, (0, 1)))
 
-    fig, axes = plt.subplots(1, len(panels), figsize=(4 * len(panels), 4.6))
-    for ax, (title, img, cm, (vlo, vhi)) in zip(np.atleast_1d(axes), panels):
-        if cm is None:  # blob overlay on the subject FA
-            ax.imshow(sl(subj_fa), cmap="gray", vmin=0, vmax=1)
-            ax.imshow(np.ma.masked_where(img == 0, img), cmap="autumn", vmin=0, vmax=1, alpha=0.65)
-        else:
-            im = ax.imshow(img, cmap=cm, vmin=vlo, vmax=vhi)
-            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
-        ax.set_title(title, fontsize=11); ax.axis("off")
-    fig.suptitle(f"Registration QC — {sid} (axial z={k})", fontsize=13)
-    fig.tight_layout()
+    slices = preview_slices(atlas_fa)
+    fig, axes = plt.subplots(len(slices), len(panels), squeeze=False, layout="constrained",
+                             figsize=(3.4 * len(panels), 3.4 * len(slices) + 0.6))
+    for i, k in enumerate(slices):
+        sl = lambda a: np.rot90(a[:, :, k])
+        for j, (title, vol, cm, (vlo, vhi)) in enumerate(panels):
+            ax = axes[i, j]
+            if cm is None:  # blob overlay on the subject FA
+                ax.imshow(sl(subj_fa), cmap="gray", vmin=0, vmax=1)
+                img = sl(vol)
+                ax.imshow(np.ma.masked_where(img == 0, img), cmap="autumn", vmin=0, vmax=1, alpha=0.65)
+            else:
+                im = ax.imshow(sl(vol), cmap=cm, vmin=vlo, vmax=vhi)
+                if i == len(slices) - 1:
+                    fig.colorbar(im, ax=axes[:, j], location="bottom", fraction=0.04, pad=0.01)
+            if i == 0:
+                ax.set_title(title, fontsize=11)
+            if j == 0:
+                ax.set_ylabel(f"z={k}", fontsize=11)
+            ax.set_xticks([]); ax.set_yticks([])
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+    fig.suptitle(f"Registration QC — {sid} (axial z={', '.join(map(str, slices))})", fontsize=13)
     prev_dir = os.path.join(out_dir, "previews")
     os.makedirs(prev_dir, exist_ok=True)
     fig.savefig(os.path.join(prev_dir, f"{sid}_preview.png"), dpi=110)

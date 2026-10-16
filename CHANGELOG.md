@@ -3,6 +3,10 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-16 (v0.8.19)
+- dmriprep - QC_Report: with SUSCEPTIBILITY_Correct (topup), the report failed ("TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'") when the number of volumes of an input image equals one of its spatial sizes (e.g. 140 volumes of a 140x140x96 image): the number of gradients of that image was not found. It is now the axis left once the three spatial axes are taken out. To rerun such a dataset, remove its `SUSCEPTIBILITY_Correct` and `QC_Report` module folders
+- dmriprep - QC_Report: with SUSCEPTIBILITY_Correct, the image QC of the report ("Image QC could not be computed: expected str, bytes or os.PathLike object, not list") was skipped; it now compares the first input image with the preprocessed image. Removing the `QC_Report` folder of a finished dataset and rerunning adds it
+
 ##### 2026-10-15 (v0.8.18)
 - dmrifiberprofile - EXTRACT_Profile: a property whose image column is empty for every subject of the datasheet (e.g. FWFA or NODDI without such data) stopped the run after the profiling ("Cannot save file into a non-existent directory: '.../00_EXTRACT_Profile/FWFA'"). Such a property gets no profile table, with a warning; the tables of the other properties are written as before
 

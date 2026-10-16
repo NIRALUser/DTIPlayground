@@ -52,7 +52,7 @@ SHORT = {GAP: "gap", END: "end", WHOLE: "whole", REGION: "region"}
 ARC_ENDS = ("none", "constant", "linear")
 REFERENCE = "reference"  # validation: the cohort mean at each location (other scans), as a scale for the errors
 # validation: distance (mm) from a hidden value to the nearest observed position of the same metric, bin edges
-DISTANCE_BINS = [0.0, 2.0, 4.0, 6.0, 10.0, 15.0, 25.0, np.inf]
+DISTANCE_BINS = [0.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 25.0, np.inf]
 # validation: a region may hide at most this share of a scan's observed tracts (else another center is drawn)
 REGION_MAX_SHARE = 0.5
 SD_FLOOR = 0.25  # validation: the between-scan SD of a location is at least this share of the metric's median SD
@@ -569,11 +569,23 @@ def scan_shares(cohort, Y):
     return np.where(n > 0, (~np.isnan(Y) & cohort.valid).sum(axis=0) / np.maximum(n, 1), 0.0)
 
 
+def missing_tracts(cohort, Y):
+    """(number of tracts with a table and no observed value of any metric, number of tracts with a table) of a scan."""
+    observed = (~np.isnan(Y) & cohort.valid).any(axis=1)
+    n = missing = 0
+    for sl in cohort.slices.values():
+        if cohort.valid[sl].any():
+            n += 1
+            missing += not observed[sl].any()
+    return missing, n
+
+
 ### imputation of a cohort
 
 def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0.5, device="auto", log_every=25,
-                  prior=None):
-    """Impute every scan. Returns (imputed values scans x positions x metrics (NaN: not imputed), method index per
+                  prior=None, max_missing_tracts=None):
+    """Impute every scan; a scan missing more than a share *max_missing_tracts* of its tracts is left as it is.
+    Returns (imputed values scans x positions x metrics (NaN: not imputed), method index per
     cell (-1: none), distances to the nearest observed position, reasons {(scan, metric): text} for skipped ones)."""
     opts = dict(opts or {})
     methods = [method] + ([fallback] if fallback and fallback != method else [])
@@ -601,6 +613,14 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
         missing = np.isnan(Y) & cohort.valid
         if not missing.any():
             continue
+        if max_missing_tracts is not None:
+            n_missing, n_tracts = missing_tracts(cohort, Y)
+            if n_tracts and n_missing / n_tracts > max_missing_tracts:
+                for m, metric in enumerate(cohort.metrics):
+                    if missing[:, m].any():
+                        skipped[(scan, metric)] = "{} of {} tracts missing, above --max-missing-tracts {:g}".format(
+                            n_missing, n_tracts, max_missing_tracts)
+                continue
         share = scan_shares(cohort, Y)
         norm = prior.norm(s) if prior is not None else None
         for m, metric in enumerate(cohort.metrics):
@@ -991,6 +1011,9 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
                 d[:, 3] += np.bincount(b, weights=okn[hm, m], minlength=nb)
                 d[:, 4] += np.bincount(b, weights=np.where(okr[hm, m], nerr[hm, m], 0.0) ** 2, minlength=nb)
                 d[:, 5] += np.bincount(b, weights=np.where(okr[hm, m], nref[hm, m], 0.0) ** 2, minlength=nb)
+                oka = okn[hm, m] & ~np.isnan(nage[hm, m])  # paired with the age bin mean
+                d[:, 6] += np.bincount(b, weights=np.where(oka, nerr[hm, m], 0.0) ** 2, minlength=nb)
+                d[:, 7] += np.bincount(b, weights=np.where(oka, nage[hm, m], 0.0) ** 2, minlength=nb)
         for pat in present:
             rowsel = pattern == pat
             for m, metric in enumerate(cohort.metrics):
@@ -1034,13 +1057,18 @@ def distance_table(by_dist, cohort):
                          "distance_lo": DISTANCE_BINS[b], "n_hidden": int(d[b, 0]), "n_filled": int(d[b, 1]),
                          "coverage": d[b, 1] / d[b, 0],
                          "nrmse": math.sqrt(d[b, 2] / d[b, 3]) if d[b, 3] > 0 else np.nan,
-                         "vs_reference": math.sqrt(d[b, 4] / d[b, 5]) if d[b, 5] > 0 else np.nan})
+                         "vs_reference": math.sqrt(d[b, 4] / d[b, 5]) if d[b, 5] > 0 else np.nan,
+                         "vs_age_mean": math.sqrt(d[b, 6] / d[b, 7]) if d[b, 7] > 0 else np.nan,
+                         # the sums of the squared normalized errors of the setting and of the age bin mean on the
+                         # same values, e.g. to score a --max-distance from a run without one
+                         "nsse_paired_age": d[b, 6], "nsse_age_mean": d[b, 7]})
     t = pd.DataFrame(rows)
     if t.empty:
         return t
     keys = ["method", "setting", "siren_inputs", "omega0", "epochs", "pattern", "distance_mm", "distance_lo"]
     mean = t.groupby(keys, as_index=False, dropna=False).agg(n_hidden=("n_hidden", "sum"), n_filled=("n_filled", "sum"),
-                                                             nrmse=("nrmse", "mean"), vs_reference=("vs_reference", "mean"))
+                                                             nrmse=("nrmse", "mean"), vs_reference=("vs_reference", "mean"),
+                                                             vs_age_mean=("vs_age_mean", "mean"))
     mean["metric"] = "all"
     mean["coverage"] = mean["n_filled"] / mean["n_hidden"]
     t = pd.concat([t, mean], ignore_index=True)
@@ -1059,7 +1087,11 @@ def validate(cohort, args):
     rng = np.random.default_rng(args.validate_seed)
     shares = np.stack([scan_shares(cohort, cohort.scan(s)) for s in range(len(cohort.scans))])
     has = shares > 0  # metrics a scan doesn't have at all (e.g. no NODDI) don't count against it
-    eligible = np.flatnonzero(has.any(axis=1) & ((shares >= args.min_observed) | ~has).all(axis=1))
+    eligible = has.any(axis=1) & ((shares >= args.min_observed) | ~has).all(axis=1)
+    for s in np.flatnonzero(eligible):  # scans the imputation leaves (--max-missing-tracts) are not validated either
+        n_missing, n_tracts = missing_tracts(cohort, cohort.scan(s))
+        eligible[s] = not (n_tracts and n_missing / n_tracts > args.max_missing_tracts)
+    eligible = np.flatnonzero(eligible)
     prior = validation_prior(cohort, args, configs, siren)
     bins, scan_bin = report_bins(cohort, args, prior)
     if args.validate_scans_per_bin > 0:
@@ -1073,8 +1105,9 @@ def validate(cohort, args):
     else:
         sample = sorted(rng.choice(eligible, size=min(args.validate_scans, len(eligible)), replace=False).tolist())
     label = (lambda s: "") if bins is None else (lambda s: bins[scan_bin[s]][2] if scan_bin[s] >= 0 else "none")
-    log.info("Validation on %d of %d scans (%d eligible: each metric they have at least %g observed), %d round(s) of "
-             "hidden values per scan%s", len(sample), len(cohort.scans), len(eligible), args.min_observed,
+    log.info("Validation on %d of %d scans (%d eligible: each metric they have at least %g observed, at most %g of the "
+             "tracts missing), %d round(s) of hidden values per scan%s", len(sample), len(cohort.scans), len(eligible),
+             args.min_observed, args.max_missing_tracts,
              args.validate_rounds, "" if bins is None else "; per age bin: " + ", ".join(
                  "{} {}".format(b[2], sum(scan_bin[s] == i for s in sample)) for i, b in enumerate(bins)))
     # the scans of the same subject (other sessions) are left out of the norm and the reference with the scan itself
@@ -1107,7 +1140,7 @@ def validate(cohort, args):
     by_loc = defaultdict(lambda: np.zeros(shape, dtype=np.float32))
     # (method, setting, siren inputs, omega0, epochs, pattern, metric) -> (distance bins, [n hidden, n filled,
     # squared normalized error, n normalized])
-    by_dist = defaultdict(lambda: np.zeros((len(DISTANCE_BINS) - 1, 6)))
+    by_dist = defaultdict(lambda: np.zeros((len(DISTANCE_BINS) - 1, 8)))
     region_mm = tuple(parse_list(args.validate_region_mm, float))
     end_mm = tuple(parse_list(args.validate_end_gap_mm, float))
     totals = None
@@ -1449,9 +1482,10 @@ def add_parser(subparsers):
                    help="knn: number of neighbours (default: 20 on the deviations from the norm, 1 on the values)")
     p.add_argument("--knn-weights", default="distance", choices=("distance", "uniform"),
                    help="knn: weight the neighbours by 1/distance or equally (default: distance)")
-    p.add_argument("--max-distance", type=float, default=10.0,
+    p.add_argument("--max-distance", type=float, default=None,
                    help="linear, knn, siren: cells farther than this (mm) from an observed position of the same metric "
-                        "stay missing; 0: no limit (default: 10)")
+                        "are left (to --fallback); 0: no limit (default: 20 on the deviations from the norm, 10 on the "
+                        "values)")
     p.add_argument("--arc-ends", default=None, choices=ARC_ENDS,
                    help="arc-linear: the missing start and end of a profile: left, the nearest observed value repeated, "
                         "or the line through the 3 nearest observed values extended (up to --max-gap mm) (default: "
@@ -1461,6 +1495,10 @@ def add_parser(subparsers):
                         "0: no limit (default: 15)")
     p.add_argument("--min-observed", type=float, default=0.5,
                    help="A metric of a scan with a smaller share of observed values is not imputed (default: 0.5)")
+    p.add_argument("--max-missing-tracts", type=float, default=0.5,
+                   help="A scan missing a larger share of its tracts (no observed value of any metric, e.g. excluded by "
+                        "qc-profiles) is not imputed at all: its imputed values would be little more than the norm; "
+                        "1: no limit (default: 0.5)")
     p.add_argument("--siren-inputs", default=None, choices=SIREN_INPUTS,
                    help="siren: network inputs, the 3-D position alone, with the arc length, or with the tract (one-hot) "
                         "(default: xyz on the deviations from the norm, xyz+tract on the values)")
@@ -1553,9 +1591,9 @@ def add_parser(subparsers):
 # the settings with the smallest error over all four hiding patterns in the validation on a normative cohort (see the
 # documentation): on the deviations from the norm (with a prior) and on the scan's own values (without)
 DEFAULTS = {True: {"method": "siren", "fallback": "prior-mean", "k": 20, "arc_ends": "constant",
-                   "siren_inputs": "xyz", "epochs": 500, "omega0": 10.0},
+                   "siren_inputs": "xyz", "epochs": 500, "omega0": 10.0, "max_distance": 20.0},
             False: {"method": "arc-linear", "fallback": "none", "k": 1, "arc_ends": "none",
-                    "siren_inputs": "xyz+tract", "epochs": 1000, "omega0": 30.0}}
+                    "siren_inputs": "xyz+tract", "epochs": 1000, "omega0": 30.0, "max_distance": 10.0}}
 
 
 def resolve_defaults(args):
@@ -1618,7 +1656,7 @@ def run(args):
                       "hidden_layers": args.hidden_layers, "lr": args.lr}}
     fallback = None if args.fallback == "none" else args.fallback
     imputed, used, dists, skipped = impute_cohort(cohort, args.method, fallback, opts, args.min_observed, args.device,
-                                                  prior=prior)
+                                                  prior=prior, max_missing_tracts=args.max_missing_tracts)
     n = write_tables(cohort, imputed, args.out_dir, os.path.join(args.report_dir, "masks"), args.value_format)
     summary = summary_rows(cohort, imputed, used, dists, skipped)
     os.makedirs(args.report_dir, exist_ok=True)

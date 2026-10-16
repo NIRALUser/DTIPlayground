@@ -15,8 +15,11 @@ Phase 2: summary
 - **The best single setting**, the same for gaps, missing ends, whole profiles and regions, is SIREN on the
   deviations with the 3-D position as its only input (``xyz``, omega0 10, 500 epochs): its error is 0.39 of the
   age-bin mean's for gaps, 0.51 for missing ends, 0.73 for whole profiles and 0.86 for regions (0.62 overall). It
-  is the default with ``--prior-stats-dir``, with the age-bin mean for values farther than 10 mm from an observed
-  one (``--fallback prior-mean``).
+  is the default with ``--prior-stats-dir``, with the age-bin mean for values farther than 20 mm from an observed
+  one (``--fallback prior-mean``; regions then 0.84).
+- **Distance limit**: the deviations of the neighbours still impute a region better than the age-bin mean at 10-25
+  mm (0.84-0.90 of its error), so the default ``--max-distance`` on the deviations is 20 mm instead of 10 (see
+  `Phase 2: distance limit`_). The tables of the results below are with 10 mm.
 - Without SIREN: ``knn`` with k = 20 (0.68 overall, the default k on the deviations), ``linear`` (0.69; it fills
   only 71% of the missing ends, outside the convex hull of the observed positions) and ``arc-linear`` with constant
   ends (best for gaps and ends, 0.38 and 0.49, but no whole profiles or regions: 0.72 overall).
@@ -34,7 +37,8 @@ The data, patterns and hidden values are those of phase 1 (below), with these ch
 
 - **Scans**: 30 scans, 10 of each age bin (``--validate-scans-per-bin 10``; bins 0-3, 4-9 and 10-60 months with 28,
   117 and 278 scans in the cohort), 3 rounds each; the methods without SIREN also on all 421 eligible scans
-  (\* in the tables).
+  (\* in the tables). The 2 scans missing more than half of their tracts (``--max-missing-tracts``, now also in
+  ``qc-profiles``) are not eligible.
 - **Norm**: mean and SD per age bin and location, from the cohort itself without every scan of the validated
   scan's subject (``--validate-prior cohort``, ``--validate-leave-out subject``): its other sessions are not
   independent of it. The age bin statistics of ``Profiles_Clean`` were computed from all scans and are not used.
@@ -437,6 +441,83 @@ gaps and ends better and whole profiles and regions worse; ``xyz`` with omega0 1
    30  1000    0.68  0.69     0.64       0.43      0.57     0.80   0.91
    ==  ======  ====  =======  =========  ========  =======  =====  ======
 
+Phase 2: distance limit
+-----------------------
+
+``--max-distance`` decides which missing values a 3-D method fills from the scan's neighbours and which ones fall
+to the age-bin mean (``--fallback prior-mean``). The same hidden values were imputed without a limit
+(``--max-distance 0``), and scored at every limit with the values beyond it counted with the age-bin mean (from the
+sums of ``validation_by_distance.csv``). Relative to the age-bin mean, mean over the 11 measures:
+
+.. table::
+
+   =====================  ==============  =====  =======  =============  ======  =======
+   setting (deviations)   --max-distance  gap    end gap  whole profile  region  overall
+   =====================  ==============  =====  =======  =============  ======  =======
+   SIREN xyz (default)    4 mm            0.457  0.592    0.798          0.924   0.693
+   SIREN xyz (default)    6 mm            0.398  0.533    0.759          0.894   0.646
+   SIREN xyz (default)    10 mm           0.394  0.507    0.731          0.860   0.623
+   SIREN xyz (default)    15 mm           0.394  0.506    0.727          0.844   0.618
+   SIREN xyz (default)    20 mm           0.394  0.506    0.726          0.835   0.615
+   SIREN xyz (default)    25 mm           0.394  0.506    0.726          0.831   0.614
+   SIREN xyz (default)    none            0.394  0.506    0.726          0.831   0.614
+   knn k=20               4 mm            0.577  0.673    0.786          0.916   0.738
+   knn k=20               6 mm            0.537  0.629    0.748          0.878   0.698
+   knn k=20               10 mm           0.534  0.607    0.718          0.839   0.675
+   knn k=20               15 mm           0.534  0.606    0.713          0.816   0.667
+   knn k=20               20 mm           0.534  0.606    0.712          0.804   0.664
+   knn k=20               25 mm           0.534  0.606    0.712          0.797   0.662
+   knn k=20               none            0.534  0.606    0.712          0.797   0.662
+   knn k=20, all scans *  4 mm            0.596  0.669    0.784          0.917   0.741
+   knn k=20, all scans *  6 mm            0.571  0.639    0.750          0.892   0.713
+   knn k=20, all scans *  10 mm           0.569  0.631    0.729          0.867   0.699
+   knn k=20, all scans *  15 mm           0.569  0.631    0.724          0.854   0.694
+   knn k=20, all scans *  20 mm           0.569  0.630    0.723          0.848   0.693
+   knn k=20, all scans *  25 mm           0.569  0.630    0.723          0.845   0.692
+   knn k=20, all scans *  none            0.569  0.630    0.723          0.844   0.692
+   =====================  ==============  =====  =======  =============  ======  =======
+
+At 10 mm the scores are those of the results above. Beyond 10 mm only regions have many values (the share of the
+hidden values beyond each limit):
+
+.. table::
+
+   ==============  ====  =======  =============  ======
+   --max-distance  gap   end gap  whole profile  region
+   ==============  ====  =======  =============  ======
+   4 mm            7.2%  15.0%    28.3%          68.5%
+   6 mm            0.6%  4.1%     10.9%          48.7%
+   10 mm           0.0%  0.3%     2.3%           26.7%
+   15 mm           0.0%  0.0%     0.6%           13.1%
+   20 mm           0.0%  0.0%     0.0%           5.7%
+   25 mm           0.0%  0.0%     0.0%           1.7%
+   none            0.0%  0.0%     0.0%           0.0%
+   ==============  ====  =======  =============  ======
+
+The error by the distance to the nearest observed value of the same measure, relative to the age-bin mean, and the
+number of hidden values there (30 scans):
+
+.. table::
+
+   =============  ====================  ======  ======  ======  ======  ======  =====  =====  =======
+   pattern        setting (deviations)  0-2     2-4     4-6     6-10    10-15   15-20  20-25  > 25 mm
+   =============  ====================  ======  ======  ======  ======  ======  =====  =====  =======
+   whole profile  SIREN xyz             0.57    0.76    0.82    0.79    0.88    0.84   1.99
+   whole profile  knn k=20              0.56    0.74    0.82    0.77    0.86    0.81   3.22
+   whole profile  hidden values         173448  211057  93181   46145   9009    3069   22     0
+   region         SIREN xyz             0.61    0.78    0.86    0.86    0.89    0.88   0.90   0.97
+   region         knn k=20              0.58    0.75    0.82    0.84    0.85    0.84   0.86   0.95
+   region         hidden values         122826  266134  244497  270985  168454  91487  49775  20438
+   =============  ====================  ======  ======  ======  ======  ======  =====  =====  =======
+
+The error grows with the distance up to about 6 mm and then levels off at 0.84-0.90 for regions: the deviation of a
+scan is shared over long distances, so a far neighbour is still better than none. Whole profiles have few values
+beyond 15 mm, and the 22 beyond 20 mm are imputed worse than the age-bin mean. A limit of 20 mm has nearly all the
+gain of none (0.615 against 0.614 overall for SIREN, 0.835 against 0.831 for regions) and is the default on the
+deviations. ``linear`` is left out of this table: outside the convex hull of the observed positions it fills
+nothing at any limit. On the values (without ``--prior-stats-dir``) the default stays 10 mm: there the error
+grows fast with the distance (phase 1).
+
 Phase 2: reproducing
 --------------------
 
@@ -450,7 +531,7 @@ Phase 2: reproducing
         --validate-relative yes --out-dir ValidationSirenXyz
 
 and the same for the other SIREN inputs and ``--validate-relative no``, and with ``--validate-scans 1000`` for all
-scans. With the same seed, every run hides the same values.
+scans; the distance limit with ``--max-distance 0``. With the same seed, every run hides the same values.
 
 Phase 1: summary
 ----------------

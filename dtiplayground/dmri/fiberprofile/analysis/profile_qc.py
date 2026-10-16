@@ -561,9 +561,10 @@ def write_metric_summaries(inputs, exclude_ids, out_dir, exclude_full=None, suff
     return len(means)
 
 
-def write_excluded_cases(reg_failed, prep_failed, groups, out_dir, filename="excluded_cases.csv", no_age=()):
+def write_excluded_cases(reg_failed, prep_failed, groups, out_dir, filename="excluded_cases.csv", no_age=(),
+                         most_missing=None):
     """List every excluded case, one row each (registration, preprocessing,
-    no age and profile on separate rows), with sub/ses (prefixes stripped),
+    no age, profile and most tracts missing on separate rows), with sub/ses (prefixes stripped),
     prefix, tract, reason."""
     def strip(tok, pre):
         return tok[len(pre):] if tok.startswith(pre) else tok
@@ -586,6 +587,11 @@ def write_excluded_cases(reg_failed, prep_failed, groups, out_dir, filename="exc
             t = str(g["subject_session"]).split("_")
             rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
                          "prefix": "_".join(t[2:]), age_column(): months_to(g["age"], _AGE_UNITS), "tract": g["tract"], "reason": "profile"})
+    for ident, (missing, total) in sorted((most_missing or {}).items()):
+        t = ident.split("_")
+        rows.append({"sub": strip(t[0], "sub-"), "ses": strip(t[1], "ses-") if len(t) > 1 else "",
+                     "prefix": "_".join(t[2:]), age_column(): months_to(age_of(ident, record=False), _AGE_UNITS),
+                     "tract": "", "reason": "{} of {} tracts missing".format(missing, total)})
 
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, filename)
@@ -981,6 +987,40 @@ def _outside_lookup(mask):
     return lookup
 
 
+def table_cases(path):
+    """The case identifiers of a profile CSV (its columns, or the rows of a ``case_id`` table), without reading the
+    values."""
+    with open(path) as fh:
+        header = fh.readline().rstrip("\n").split(",")
+    if header and header[0].strip() == CASE_COLUMN:
+        return [str(c) for c in pd.read_csv(path, usecols=[0]).iloc[:, 0]]
+    return [c.strip() for c in header[1:]]
+
+
+def scans_missing_most_tracts(inputs, outliers_by_tract, exclude_ids=(), exclude_full=(), max_share=0.5):
+    """{scan: (tracts missing, tracts)} of the scans for which more than *max_share* of the tracts have no profile
+    left (absent from every table of the tract, or a profile outlier there), but some do: without any, there is
+    nothing left to remove. Excluded scans (*exclude_ids* by subject_session, *exclude_full* by identifier) are not
+    counted."""
+    from collections import defaultdict
+    present = defaultdict(set)
+    tracts = set()
+    for path in inputs:
+        tract = tract_and_metric(path)[0]
+        tracts.add(tract)
+        for case in table_cases(path):
+            if case in exclude_full or subject_session_of(case) in exclude_ids:
+                continue
+            present[case].add(tract)
+    out = {}
+    for case, have in present.items():
+        kept = {t for t in have if case not in outliers_by_tract.get(t, ())}
+        missing = len(tracts) - len(kept)
+        if kept and missing / len(tracts) > max_share:  # without any profile left, there is nothing to remove
+            out[case] = (missing, len(tracts))
+    return out
+
+
 def write_without_columns(in_path, out_path, drop_names, drop_subject_sessions=()):
     """Copy a profile CSV dropping the given identifier columns (by exact name or
     by subject_session); retained cells are preserved byte-for-byte.
@@ -1273,6 +1313,10 @@ def configure_parser(p):
     p.add_argument("--clean-dir", default=None,
                    help="If given, drop outlier (subject-session, tract) profiles from ALL of that tract's "
                         "metric tables and write cleaned profiles to this folder")
+    p.add_argument("--max-missing-tracts", type=float, default=0.5,
+                   help="With --clean-dir: a scan missing a larger share of the tracts after the profile QC (absent from "
+                        "a tract's tables, or a profile outlier there) is removed from every table; 1: no limit "
+                        "(default: 0.5)")
     p.add_argument("--clean-plots-dir", default="StatsPlots_Clean",
                    help="Folder for the plots of the cleaned data (default: StatsPlots_Clean)")
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
@@ -1394,6 +1438,7 @@ def run_args(args, p) -> int:
 
     # --- optional: profile QC / outlier detection vs prior reference -------
     groups = None
+    most_missing = {}
     if args.prior_stats_dir:
         if not os.path.isdir(args.prior_stats_dir):
             p.error(f"prior stats dir not found: {args.prior_stats_dir}")
@@ -1500,21 +1545,30 @@ def run_args(args, p) -> int:
 
         # --- apply outliers -> cleaned profiles + recomputed stats ---------
         if args.clean_dir:
+            ## a scan with most of its tracts gone (absent or outliers) is removed altogether: what is left of it is
+            ## unrepresentative, and imputing it would give little more than the norm
+            most_missing = scans_missing_most_tracts(inputs, outliers_by_tract, reg_ss, full_excl,
+                                                     args.max_missing_tracts) if args.max_missing_tracts < 1 else {}
+            if most_missing:
+                log.info("Removing %d scan(s) missing more than %g of the tracts after the profile QC: %s",
+                         len(most_missing), args.max_missing_tracts, ", ".join(
+                             "{} ({} of {})".format(c, m, n) for c, (m, n) in sorted(most_missing.items())))
             n_dropped_cols = 0
             n_blanked = 0
             clean_tables = []
             for f in inputs:
                 tract = tract_and_metric(f)[0]
-                drop = outliers_by_tract.get(tract, set()) | full_excl
+                drop = outliers_by_tract.get(tract, set()) | full_excl | set(most_missing)
                 rel = os.path.relpath(f, args.profiles_dir)
                 clean_path = os.path.join(args.clean_dir, rel)
                 n_blanked += write_without_columns(f, clean_path, drop, drop_subject_sessions=reg_ss)
                 clean_tables.append(clean_path)
                 n_dropped_cols += len(drop)
             log.info("Wrote cleaned profiles to %s/ (removed profile-QC outliers + %d registration-failed "
-                     "subject-sessions + %d preprocessing-failed scans%s across %d tables%s)",
+                     "subject-sessions + %d preprocessing-failed scans%s%s across %d tables%s)",
                      args.clean_dir, len(reg_failed), len(prep_failed),
-                     " + %d scan(s) without an age" % len(no_age) if no_age else "", len(inputs),
+                     " + %d scan(s) without an age" % len(no_age) if no_age else "",
+                     " + %d scan(s) missing most tracts" % len(most_missing) if most_missing else "", len(inputs),
                      "; %d cell(s) sampled outside the brain written empty" % n_blanked if n_blanked else "")
 
             # recompute age-bin stats (+ plots) on the cleaned data
@@ -1538,12 +1592,14 @@ def run_args(args, p) -> int:
                 n_cfig = plot_correlations_by_metric_bin(qc_clean, clean_sub, args.corr_reference, args.dpi, bins)
                 log.info("Wrote %d cleaned-data correlation QC plots under %s/", n_cfig, clean_sub)
 
-    # --- log of excluded cases (registration + preprocessing + profile) ----
+    # --- log of excluded cases (registration + preprocessing + profile + most tracts missing) ----
     n_prof_out = int(groups["is_outlier"].sum()) if groups is not None else 0
-    if reg_failed or prep_failed or no_age or n_prof_out:
-        exc_path, n_exc = write_excluded_cases(reg_failed, prep_failed, groups, stats_root, no_age=no_age)
-        log.info("Wrote %d excluded-case rows (%d registration, %d preprocessing, %d no age, %d profile) to %s",
-                 n_exc, len(reg_failed), len(prep_failed), len(no_age), n_prof_out, exc_path)
+    if reg_failed or prep_failed or no_age or n_prof_out or most_missing:
+        exc_path, n_exc = write_excluded_cases(reg_failed, prep_failed, groups, stats_root, no_age=no_age,
+                                               most_missing=most_missing)
+        log.info("Wrote %d excluded-case rows (%d registration, %d preprocessing, %d no age, %d profile, %d most "
+                 "tracts missing) to %s", n_exc, len(reg_failed), len(prep_failed), len(no_age), n_prof_out,
+                 len(most_missing), exc_path)
 
     return 0
 

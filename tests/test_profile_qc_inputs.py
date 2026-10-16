@@ -639,3 +639,28 @@ class TestQCAtOtherArcLengths(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestScansMissingMostTracts(unittest.TestCase):
+    """A scan with most of its tracts gone after the profile QC (absent, or outliers) is removed from the cleaned
+    profiles altogether."""
+
+    def test_absent_and_outlier_tracts_count(self):
+        scans = {'T1': ['A', 'B', 'C', 'D'], 'T2': ['A', 'C', 'D'], 'T3': ['A', 'C'], 'T4': ['A']}
+        with tempfile.TemporaryDirectory() as d:
+            inputs = []
+            for tract, cases in scans.items():
+                header = 'Arc Length,' + ','.join('sub-{}_ses-010m_dwi'.format(c) for c in cases)
+                row = '0,' + ','.join('0.5' for _ in cases)
+                inputs.append(_write(os.path.join(d, tract, tract + '_fa.csv'), header + '\n' + row + '\n'))
+            outliers = {'T2': {'sub-C_ses-010m_dwi'}, 'T3': {'sub-C_ses-010m_dwi'}}
+            got = profile_qc.scans_missing_most_tracts(inputs, outliers, max_share=0.5)
+            # B: 1 of 4 tracts (3 missing); C: 3 tracts, 2 of them outliers (3 missing); D: 2 of 4 (not more than half)
+            self.assertEqual(got, {'sub-B_ses-010m_dwi': (3, 4), 'sub-C_ses-010m_dwi': (3, 4)})
+            self.assertEqual(profile_qc.scans_missing_most_tracts(inputs, outliers, exclude_ids={'sub-B_ses-010m'},
+                                                                  max_share=0.5), {'sub-C_ses-010m_dwi': (3, 4)})
+
+    def test_the_cases_of_both_orientations(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(profile_qc.table_cases(_write(os.path.join(d, 'a.csv'), ARC_ROWS)), COLUMNS)
+            self.assertEqual(profile_qc.table_cases(_write(os.path.join(d, 'b.csv'), CASE_ROWS)), COLUMNS)

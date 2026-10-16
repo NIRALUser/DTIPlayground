@@ -215,9 +215,9 @@ A later run into the same output folder (e.g. after an interruption, or with add
 unchanged -- same input images (path, size, modification time), tract and settings -- and only computes the others.
 When a scan is done, all its profiles are stored with their settings in one file, `subject_profiles/<scan id>.npz`,
 so a later run reads one file per scan. A scan without it (an interrupted scan, or an output of a version before
-0.8.20) reuses its `.fvp` files, kept with `cleanup: noCleanup` (the default) next to the settings and input files
-they were computed from (`<profile>.json`). `duringProcessing` and `endOfProcessing` remove the `.fvp` files but keep
-`subject_profiles`; `overwrite` recomputes everything.
+0.8.20) reuses its `.fvp` files, if kept (`cleanup: noCleanup`) next to the settings and input files they were
+computed from (`<profile>.json`). `duringProcessing` (the default since 0.8.20) removes each `.fvp` file once written
+and `endOfProcessing` at the end; both keep `subject_profiles`. `overwrite` recomputes everything.
 
 Analysis and QC of the profiles
 ===============================
@@ -326,11 +326,15 @@ The output folders are in the ``-o`` folder (``--plots-dir``, ``--stats-dir``, `
 - ``--stats-dir`` (``Profiles_Stats``), the tables of the QC: ``summary_mean.csv`` and ``summary_median.csv``, the
   whole-tract mean and median of every metric per tract and dataset of the cleaned data (with ``--clean-dir``), and
   ``summary_mean_all.csv`` / ``summary_median_all.csv`` before the profile outliers are removed;
-  ``excluded_cases.csv`` (one row per registration, preprocessing, no age (``--exclude-no-age``) or profile exclusion),
+  ``excluded_cases.csv`` (one row per registration, preprocessing, no age (``--exclude-no-age``), profile or most
+  tracts missing (``--max-missing-tracts``) exclusion),
   ``profile_qc_mean.csv`` (every profile compared with the prior, with the outlier decision of its tract and scan) and
   ``profile_qc_mean_clean.csv`` (the comparison on the cleaned data); ``batch_shifts_mean.csv`` with ``--envelope-batch-correct``. ``mean`` is
   ``--corr-reference``.
-- ``--clean-dir``: the cleaned tables, in the layout of ``--profiles-dir``, with their age-bin statistics
+- ``--clean-dir``: the cleaned tables, in the layout of ``--profiles-dir``, with their age-bin statistics. A scan
+  missing more than ``--max-missing-tracts`` (default 0.5; 1: no limit) of the tracts after the profile QC (absent
+  from the tables of a tract, or a profile outlier there) is removed from every table: what is left of it is not
+  representative, and imputing it (``impute-profiles``) would give little more than the norm
 - ``--plots-dir`` (``StatPlots``) and ``--clean-plots-dir`` (``StatsPlots_Clean``): ``Plots/``, the plots of all the
   data and of the cleaned data
 
@@ -436,7 +440,8 @@ has the header line when no shift can be estimated (the run then warns).
 - ``age_<units>``
 - ``tract``: the tract of a profile outlier; empty for the other reasons, which apply to every tract
 - ``reason``: ``registration`` (flagged in ``--registration-qc``), ``preprocessing`` (``--prep-qc``), ``no age``
-  (``--exclude-no-age``) or ``profile`` (``is_outlier`` in ``profile_qc_<ref>.csv``)
+  (``--exclude-no-age``), ``profile`` (``is_outlier`` in ``profile_qc_<ref>.csv``) or ``<n> of <m> tracts missing``
+  (``--max-missing-tracts``)
 
 Imputing the profiles
 ~~~~~~~~~~~~~~~~~~~~~
@@ -504,9 +509,10 @@ The defaults are the settings with the smallest error over all kinds of missing 
 regions) in the validation on a normative infant cohort (`Validation of impute-profiles <ImputeValidation.html>`_):
 
 - with ``--prior-stats-dir``: ``siren`` on the deviations (``xyz``, ``--omega0 10``, ``--epochs 500``) with
-  ``--fallback prior-mean`` for the cells farther than ``--max-distance`` from an observed one. Its error was 39% of
-  that of the age bin mean for gaps inside profiles, 51% for missing ends, 73% for whole profiles and 86% for a
-  region of rejected tracts. ``--method knn`` (k = 20 on the deviations) needs no GPU and was about 8% worse overall.
+  ``--fallback prior-mean`` for the cells farther than ``--max-distance`` (20 mm) from an observed one. Its error was
+  39% of that of the age bin mean for gaps inside profiles, 51% for missing ends, 73% for whole profiles and 84% for
+  a region of rejected tracts. ``--method knn`` (k = 20 on the deviations) needs no GPU and was about 8% worse
+  overall.
 - without: ``arc-linear`` on the values (``--arc-ends none``, ``--fallback none``), which fills only the gaps inside
   profiles. Without the norm, every method imputed missing ends no better than the age bin mean, and whole profiles
   and regions 2 to 2.5 times as far off; other methods and ``--fallback`` can still be chosen, but those values are
@@ -514,9 +520,16 @@ regions) in the validation on a normative infant cohort (`Validation of impute-p
 
 Limits:
 
-- ``--max-distance`` (mm, default 10; 0: none): the 3-D methods fill only cells within that distance of an observed
-  position of the same metric
-- ``--min-observed`` (default 0.5): a metric of a scan with a smaller share of observed values is not imputed
+- ``--max-distance`` (mm; 0: none): the 3-D methods fill only cells within that distance of an observed position of
+  the same metric, the others are left to ``--fallback``. Default 20 on the deviations: up to there, the deviations
+  of the neighbours still imputed a region better than the age bin mean (0.84-0.90 of its error at 10-25 mm); 10 on
+  the values, whose error grows fast with the distance
+- ``--min-observed`` (default 0.5): a metric of a scan with a smaller share of observed values is not imputed (except
+  by ``prior-mean``, which needs no observed value)
+- ``--max-missing-tracts`` (default 0.5; 1: none): a scan missing a larger share of its tracts (no observed value of
+  any metric, e.g. excluded by ``qc-profiles``) is not imputed at all, by any method: its imputed values would be
+  little more than the norm. In the normative cohort of the validation, 2 of 423 scans (38 and 63 of 69 tracts
+  missing); with 0.25, 7 scans
 
 Next to the tables, ``--report-dir`` (default ``<out-dir>_report``) holds:
 
@@ -557,7 +570,7 @@ the cohort itself (``--validate-prior cohort``, default, for a normative cohort;
 default: its other sessions are not independent of it; ``scan``: the scan only), or from ``--prior-stats-dir``
 (``--validate-prior files``, the statistics of another cohort: those of the cohort validated would include the
 hidden values). Only scans whose metrics are at least
-``--min-observed`` observed are used. Nothing is imputed into ``--out-dir``; the results are in
+``--min-observed`` observed, and that miss at most ``--max-missing-tracts`` of their tracts, are used. Nothing is imputed into ``--out-dir``; the results are in
 ``<report-dir>/validation``:
 
 - ``validation_summary.csv``: per setting and pattern (``gap``, ``end gap``, ``whole profile``, ``region``) the share of hidden values
@@ -591,7 +604,7 @@ hidden values). Only scans whose metrics are at least
   pattern; the largest errors are drawn on top, and locations with fewer than ``--validate-min-n`` (default 3)
   hidden values are gray
 - ``validation_by_distance.csv``: the error by the distance from a hidden value to the nearest position still
-  observed in that scan (bins 0-2, 2-4, 4-6, 6-10, 10-15, 15-25, over 25 mm), per setting, pattern and metric and
+  observed in that scan (bins 0-2, 2-4, 4-6, 6-10, 10-15, 15-20, 20-25, over 25 mm), per setting, pattern and metric and
   their mean (``all``); it shows how fast a method degrades as the observed neighbours get farther away
 - ``axis_proximity.csv``: per tract, the distance from its positions to those of the nearest other tract (where the
   3-D position alone can't tell the tracts apart)

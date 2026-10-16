@@ -286,7 +286,7 @@ class TestValidation(unittest.TestCase):
             dist = pd.read_csv(vdir / 'validation_by_distance.csv')
             self.assertEqual(set(dist['pattern']), {ip.GAP, ip.END, ip.WHOLE, ip.REGION})
             lin = dist[(dist['setting'] == 'linear') & (dist['metric'] == 'all')]
-            self.assertTrue(set(lin['distance_mm']) <= {'0-2', '2-4', '4-6', '6-10', '10-15', '15-25', '25-inf'})
+            self.assertTrue(set(lin['distance_mm']) <= {'0-2', '2-4', '4-6', '6-10', '10-15', '15-20', '20-25', '25-inf'})
             self.assertEqual(int(lin['n_hidden'].sum()), int(s[s['setting'] == 'linear']['n_hidden'].sum()))
             prox = pd.read_csv(vdir / 'axis_proximity.csv').set_index('tract')
             self.assertAlmostEqual(prox.loc['T_a', 'min_mm'], 1.0, places=3)  # T_x is 1 mm above T_a
@@ -422,6 +422,7 @@ class TestPrior(unittest.TestCase):
             b = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'b', prior_stats_dir=prof))
             self.assertEqual((b.method, b.fallback, b.relative_to_prior), ('siren', 'prior-mean', True))
             self.assertEqual((b.siren_inputs, b.omega0, b.epochs, b.k), ('xyz', 10.0, 500, 20))
+            self.assertEqual((a.max_distance, b.max_distance), (10.0, 20.0))
             c = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'c', prior_stats_dir=prof, method='knn', k=5))
             self.assertEqual((c.method, c.k, c.relative_to_prior), ('knn', 5, True))
             d = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'd', method='siren'))
@@ -454,6 +455,21 @@ class TestPrior(unittest.TestCase):
                 errs[rel] = np.max(np.abs(df[AGED[7]].to_numpy() - truth))
             self.assertGreater(errs[False], 0.1)  # the level of a neighbouring tract
             self.assertLess(errs[True], 0.01)  # the scan's deviation, on the norm of T_b
+
+    def test_scan_missing_most_tracts_is_left(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for tract in ('T_a', 'T_b', 'T_c'):  # 3 of 5 tracts of scan 4
+                for metric in ('fa', 'md'):
+                    drop(prof / tract / '{}_{}.csv'.format(tract, metric), AGED[4])
+            out = Path(tmp) / 'out'
+            ip.run(args_for(prof, axes, out, method='prior-mean', prior_stats_dir=prof))
+            self.assertNotIn(AGED[4], pd.read_csv(out / 'T_a' / 'T_a_fa.csv', index_col=0).columns)
+            summary = pd.read_csv(Path(str(out) + '_report') / 'imputation_summary.csv')
+            self.assertTrue(summary.loc[summary['scan'] == AGED[4], 'left_reason'].str.contains('3 of 5 tracts').all())
+            ip.run(args_for(prof, axes, Path(tmp) / 'all', method='prior-mean', prior_stats_dir=prof,
+                            max_missing_tracts=1))
+            self.assertIn(AGED[4], pd.read_csv(Path(tmp) / 'all' / 'T_a' / 'T_a_fa.csv', index_col=0).columns)
 
     def test_prior_mean_fills_a_missing_metric(self):
         with tempfile.TemporaryDirectory() as tmp:

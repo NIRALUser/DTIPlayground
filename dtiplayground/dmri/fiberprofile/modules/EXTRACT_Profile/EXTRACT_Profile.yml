@@ -90,18 +90,18 @@ protocol: #define protocol parameters here
     cleanup:
         type: list
         caption: Cleanup method
-        default_value: noCleanup
+        default_value: duringProcessing
         candidates:
             - value: noCleanup
               caption: No cleanup
-              description: Keep the profile of each scan (.fvp) and fiber files; a later run reuses the profiles whose settings and input files are unchanged
+              description: Keep the profile of each scan (.fvp) and fiber files, besides the profiles of each finished scan (subject_profiles/<id>.npz)
             - value: duringProcessing
               caption: During processing
-              description: Remove the profiles of each scan (.fvp) and fiber files the moment they're no longer needed (everything is recomputed by a later run)
+              description: Remove the profile of each scan (.fvp) and fiber files once written; the profiles of each finished scan are kept in subject_profiles/<id>.npz
             - value: endOfProcessing
               caption: End of processing
-              description: Remove the profiles of each scan (.fvp) and fiber files after processing is complete (everything is recomputed by a later run)
-        description: Remove the profiles of each scan (.fvp, per property and tract folders) and fiber files after processing; kept, they are reused by a later run when their settings and input files are unchanged
+              description: Remove the profile of each scan (.fvp) and fiber files after processing is complete; the profiles of each scan are kept in subject_profiles/<id>.npz
+        description: Remove the profiles of each scan (.fvp, per property and tract folders) and fiber files; a later run reuses the profiles whose settings and input files are unchanged from subject_profiles/<id>.npz (kept by every method), or from the .fvp files of a scan without it
     stepSize:
         type: float
         caption: Step size

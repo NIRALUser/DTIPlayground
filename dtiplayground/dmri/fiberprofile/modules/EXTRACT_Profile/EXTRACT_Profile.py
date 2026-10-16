@@ -1,6 +1,8 @@
+import hashlib
 import json
 import os.path
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List
 
@@ -63,6 +65,63 @@ def signature_matches(signature_path, signature):
 def write_signature(signature_path, signature):
     with open(signature_path, 'w') as f:
         json.dump(signature, f, sort_keys=True, default=str, indent=1)
+
+
+def read_fvp(path):
+    """Arc lengths and values of a profile written by fibers.write_fvp (4 header lines, a column header, then CSV);
+    a plain parse, much faster than pandas for the many small files of a run."""
+    with open(path, 'r') as f:
+        rows = [line.split(',') for line in f.read().splitlines()[5:] if line.strip() != '']
+    return np.array([float(r[0]) for r in rows]), np.array([float(r[2]) for r in rows])
+
+
+def reuse_fvp(fvp_path, signature, grid):
+    """Values of the profile of a previous run (.fvp) if its signature (<profile>.json) matches and its arc lengths
+    are the grid, otherwise None."""
+    if not signature_matches(fvp_path.with_suffix('.json'), signature):
+        return None
+    try:
+        arcs, values = read_fvp(fvp_path)
+    except (OSError, ValueError, IndexError):
+        return None
+    if len(arcs) == len(grid) and np.allclose(arcs, grid, atol=1e-4):
+        return values
+    return None
+
+
+# folder of the records of the subjects (<subject id>.npz): all the profiles of a subject with the hash of their
+# signature and grid, written when the subject is done, so that a later run reads one file per subject instead of
+# two per profile. Kept by the cleanup.
+RECORD_DIR = 'subject_profiles'
+READ_THREADS = 16
+
+
+def record_key(tract_name, prop):
+    return f'{tract_name}\t{prop}'
+
+
+def read_record(path):
+    """{key: (hash, profile values)} of the record of a subject, {} if it can't be read (the profiles are then taken
+    from the .fvp files or computed)."""
+    try:
+        with np.load(path, allow_pickle=False) as d:
+            keys, hashes, offsets, values = d['keys'], d['hashes'], d['offsets'], d['values']
+        return {str(k): (str(h), values[offsets[i]:offsets[i + 1]]) for i, (k, h) in enumerate(zip(keys, hashes))}
+    except Exception:
+        return {}
+
+
+def write_record(path, entries):
+    """Writes the record of a subject ({key: (hash, profile values)}) atomically: an interrupted run leaves no
+    partial record."""
+    keys = sorted(entries)
+    values = [np.asarray(entries[k][1], dtype=np.float64) for k in keys]
+    offsets = np.concatenate([[0], np.cumsum([len(v) for v in values])]).astype(np.int64)
+    tmp = Path(str(path) + '.tmp')
+    with open(tmp, 'wb') as f:
+        np.savez(f, keys=np.array(keys, dtype=str), hashes=np.array([entries[k][0] for k in keys], dtype=str),
+                 offsets=offsets, values=np.concatenate(values) if values else np.zeros(0))
+    os.replace(tmp, path)
 
 
 class CleanupMethod():
@@ -215,7 +274,21 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                 'signature': tract_signature})
 
         profiles = {(info['name'], prop): {} for info in tract_infos for prop in properties_to_profile}  # subject id -> profile values
-        intermediate_dirs = []
+        settings_text = json.dumps({k: self.protocol.get(k) for k in PROFILE_SETTINGS}, sort_keys=True, default=str)
+        for info in tract_infos:  # the part of the record hash shared by all subjects
+            info['record_text'] = json.dumps([info['signature'], ['{:.6g}'.format(a) for a in info['grid']]], sort_keys=True, default=str)
+        record_dir = Path(output_base_dir).joinpath(RECORD_DIR)
+        record_dir.mkdir(parents=True, exist_ok=True)
+        record_names = set(os.listdir(record_dir))  # listed once: the records of the subjects of a previous run
+        listings = {}  # folder of the .fvp of a tract and property -> names of its files, listed once
+
+        def listing(folder):
+            if folder not in listings:
+                folder.mkdir(parents=True, exist_ok=True)
+                listings[folder] = set(os.listdir(folder))
+            return listings[folder]
+
+        pool = ThreadPoolExecutor(READ_THREADS)  # the .fvp of a subject are read in parallel (network file systems)
         for row_index, row in df.iterrows():
             subject_id = str(row[parameter_to_col_map['Case ID']])
             displacement_field = None
@@ -227,44 +300,79 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     subject_properties.append(prop)
                 else:
                     logger(f"No image for {prop} of subject {subject_id} (column '{sources[prop][1]}' is empty), {prop} is not profiled", common.Color.WARNING)
+            if len(subject_properties) == 0:
+                continue
+            # input files of the subject, stat'ed once for all tracts and properties
+            stamps = {}
+            for prop in subject_properties:
+                column = sources[prop][1]
+                if column not in stamps:
+                    stamps[column] = file_stamp(row[column])
+            displacement_stamp = file_stamp(row[parameter_to_col_map['Deformation Field']]) if use_displacement_field else None
+            stamp_texts = {column: json.dumps(s, sort_keys=True) for column, s in stamps.items()}
+            displacement_text = json.dumps(displacement_stamp, sort_keys=True)
+
+            record_path = record_dir.joinpath(f'{subject_id}.npz')
+            record = read_record(record_path) if not overwrite and record_path.name in record_names else {}
+            entries = {}  # record key -> (hash, profile values) of the profiles of this subject
+            pending = []  # profiles not in the record: from the .fvp of a previous run, or computed
             for info in tract_infos:
-                tract = info['tract']
-                todo = []
                 for prop in subject_properties:
-                    tract_output_path: Path = Path(output_base_dir).joinpath(prop).joinpath(info['name'])
-                    tract_output_path.mkdir(parents=True, exist_ok=True)
-                    if tract_output_path not in intermediate_dirs:
-                        intermediate_dirs.append(tract_output_path)
-                    profile_name = f'{subject_id}_' + Path(tract).name.replace('_extracted_done', f'_{prop}_profile')  ## file name only, tract may be an absolute path
-                    fiber_output_path = tract_output_path.joinpath(profile_name)
-                    fvp_output_path = tract_output_path.joinpath(Path(profile_name).stem + '.fvp')
-                    signature_path = fvp_output_path.with_suffix('.json')
                     kind, column, scalar_name = sources[prop]
-                    signature = {'property': prop, 'source': [kind, column, scalar_name], 'image': file_stamp(row[column]),
-                                 'displacement_field': file_stamp(row[parameter_to_col_map['Deformation Field']]) if use_displacement_field else None,
-                                 'tract': info['signature'],
-                                 'settings': {k: self.protocol.get(k) for k in PROFILE_SETTINGS}}
-                    if fvp_output_path.exists() and not overwrite:
-                        if signature_matches(signature_path, signature):
-                            fvp_data = pd.read_csv(fvp_output_path, skiprows=[0, 1, 2, 3])
-                            if len(fvp_data) == len(info['grid']) and np.allclose(fvp_data["Arc_Length"].to_numpy(), info['grid'], atol=1e-4):
-                                logger(f"Skipping profile of {prop} for subject {subject_id} and tract {tract}, using {fvp_output_path}")
-                                profiles[(info['name'], prop)][subject_id] = fvp_data["Parameter_Value"].to_numpy()
-                                continue
-                        logger(f"Recomputing the profile of {prop} for subject {subject_id} and tract {tract}: its settings or input files changed since {fvp_output_path} was computed")
-                    todo.append((prop, fiber_output_path, fvp_output_path, signature))
+                    key = record_key(info['name'], prop)
+                    profile_hash = hashlib.sha1('\n'.join([prop, kind, column, str(scalar_name), stamp_texts[column], displacement_text,
+                                                           info['record_text'], settings_text]).encode()).hexdigest()
+                    stored = record.get(key)
+                    if stored is not None and stored[0] == profile_hash and len(stored[1]) == len(info['grid']):
+                        entries[key] = stored
+                        profiles[(info['name'], prop)][subject_id] = stored[1]
+                    else:
+                        pending.append((info, prop, key, profile_hash))
+            number_from_record = len(entries)
+
+            candidates, todo_by_tract = [], {}
+            for info, prop, key, profile_hash in pending:
+                tract = info['tract']
+                tract_output_path: Path = Path(output_base_dir).joinpath(prop).joinpath(info['name'])
+                profile_name = f'{subject_id}_' + Path(tract).name.replace('_extracted_done', f'_{prop}_profile')  ## file name only, tract may be an absolute path
+                fiber_output_path = tract_output_path.joinpath(profile_name)
+                fvp_output_path = tract_output_path.joinpath(Path(profile_name).stem + '.fvp')
+                kind, column, scalar_name = sources[prop]
+                signature = {'property': prop, 'source': [kind, column, scalar_name], 'image': stamps[column],
+                             'displacement_field': displacement_stamp,
+                             'tract': info['signature'],
+                             'settings': {k: self.protocol.get(k) for k in PROFILE_SETTINGS}}
+                item = (info, prop, key, profile_hash, fiber_output_path, fvp_output_path, signature)
+                if not overwrite and fvp_output_path.name in listing(tract_output_path):
+                    candidates.append(item)
+                else:
+                    todo_by_tract.setdefault(info['name'], []).append(item)
+            number_from_fvp = 0
+            for item, values in zip(candidates, pool.map(lambda c: reuse_fvp(c[5], c[6], c[0]['grid']), candidates)):
+                info, prop, key, profile_hash = item[:4]
+                if values is not None:
+                    entries[key] = (profile_hash, values)
+                    profiles[(info['name'], prop)][subject_id] = values
+                    number_from_fvp += 1
+                else:
+                    logger(f"Recomputing the profile of {prop} for subject {subject_id} and tract {info['tract']}: its settings or input files changed since {item[5]} was computed")
+                    todo_by_tract.setdefault(info['name'], []).append(item)
+
+            for info in tract_infos:
+                todo = todo_by_tract.get(info['name'], [])
                 if len(todo) == 0:
                     continue
-
+                tract = info['tract']
                 if use_displacement_field and displacement_field is None:
                     displacement_field_path = row[parameter_to_col_map['Deformation Field']]
                     if not isinstance(displacement_field_path, str) or displacement_field_path.strip() == '':
                         raise Exception(f"No deformation field for subject {subject_id} (column '{parameter_to_col_map['Deformation Field']}')")
                     displacement_field = fibers.Image(displacement_field_path)
-                logger(f"Sampling {', '.join(p for p, _, _, _ in todo)} of subject {subject_id} along tract {tract}")
+                logger(f"Sampling {', '.join(item[1] for item in todo)} of subject {subject_id} along tract {tract}")
                 sampled = {}
                 tensor_scalars = {}  # column -> scalars of the tensors sampled along this tract
-                for prop, _, _, _ in todo:
+                for item in todo:
+                    prop = item[1]
                     kind, column, scalar_name = sources[prop]
                     if (kind, column) not in images:
                         images[(kind, column)] = fibers.TensorImage(row[column]) if kind == 'tensor' else fibers.Image(row[column])
@@ -276,7 +384,7 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     else:
                         sampled[prop] = fibers.sample_scalar(info['bundle'], images[(kind, column)], displacement_field)
 
-                for prop, fiber_output_path, fvp_output_path, signature in todo:
+                for _, prop, key, profile_hash, fiber_output_path, fvp_output_path, signature in todo:
                     subject_bundle = fibers.FiberBundle(info['bundle'].points, info['bundle'].offsets, {prop: sampled[prop], 'ArcLength': info['arcs']})
                     if noNaN:
                         keep = fibers.fibers_without_nan(info['bundle'], sampled[prop])
@@ -288,12 +396,19 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                     profile = fibers.gaussian_profile(subject_bundle.point_data['ArcLength'], subject_bundle.point_data[prop], info['grid'], support_bandwidth)
                     fibers.write_fvp(fvp_output_path, profile, prop, step_size, support_bandwidth)
                     write_signature(fvp_output_path.with_suffix('.json'), signature)
+                    entries[key] = (profile_hash, profile['mean'])
                     profiles[(info['name'], prop)][subject_id] = profile['mean']
                     if cleanupMethod == CleanupMethod.DURING:
                         if write_fiber_files:
                             fiber_output_path.unlink()
                         fvp_output_path.unlink()
                         fvp_output_path.with_suffix('.json').unlink()
+
+            number_computed = len(entries) - number_from_record - number_from_fvp
+            if number_from_record < len(entries):  # profiles of other tracts or properties of a previous run are kept
+                write_record(record_path, {**record, **entries})
+            logger(f"Subject {subject_id}: {number_from_record} profiles reused from {RECORD_DIR}, {number_from_fvp} from .fvp files, {number_computed} computed")
+        pool.shutdown()
 
         # save the profiles of all subjects (same arc length samples) to a csv per tract and property
         for prop in properties_to_profile:
@@ -310,10 +425,12 @@ class EXTRACT_Profile(base.modules.DTIFiberProfileModule):
                                                  columns=['case_id'] + ['{:g}'.format(a) for a in info['grid']])
                 tract_stat_df.to_csv(Path(output_base_dir).joinpath(prop).joinpath(f"{info['name']}_{prop}.csv"), index=False, float_format='%.6g')  ## same precision as the .fvp files
 
-        if cleanupMethod == CleanupMethod.END or cleanupMethod == CleanupMethod.DURING:
-            for d in intermediate_dirs:
-                if d.exists():
-                    shutil.rmtree(d)
+        if cleanupMethod == CleanupMethod.END or cleanupMethod == CleanupMethod.DURING:  # the records are kept
+            for prop in properties_to_profile:
+                for info in tract_infos:
+                    d = Path(output_base_dir).joinpath(prop).joinpath(info['name'])
+                    if d.exists():
+                        shutil.rmtree(d)
         self.result['output']['success'] = True
         return self.result
 

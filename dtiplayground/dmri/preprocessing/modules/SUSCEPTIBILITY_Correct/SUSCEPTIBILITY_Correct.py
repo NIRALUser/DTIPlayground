@@ -42,6 +42,16 @@ def find_fsl(lookup_dirs=[]):
 
     return str(fsldir),fsl_version
     
+def numberOfGradients(sizes, image_size):
+    """The size of the gradient axis: the axis of sizes left once the three spatial axes (image_size) are taken
+    out, by position, so that it is found even when it equals the size of a spatial axis (e.g. 148 gradients of a
+    148x148 image)."""
+    rest = list(sizes)
+    for n in image_size:
+        if n in rest:
+            rest.remove(n)
+    return rest[0] if rest else None
+
 class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
@@ -121,9 +131,6 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         image_path_dict = {}
         all_list_report_paths = []
         var_num_grad = self.result['report']['csv_data']['original_number_of_gradients']
-        # TODO: change number of gradient computation => function that returns information based on grad info
-        # currently info is based on assumption that number of gradients is different from any axis size
-        # this assumption is made in several parts of the code
         #print (self.result['input'][0]["output"]['image_path'])
         if self.result['input'][0]["output"]['image_path']:
             list_image_paths = self.result['input']
@@ -141,14 +148,13 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                 if 'image_information' in list_image_paths[path]['output']:
                     sizes = list_image_paths[path]['output']['image_information']['sizes']
                     image_size = list_image_paths[path]['output']['image_information']['image_size']
-                if sizes:    
-                    for number in sizes:
-                        if number not in image_size:
-                            if not var_num_grad:
-                                self.result['report']['csv_data']['original_number_of_gradients'] = [number]
-                                var_num_grad = number
-                            else:
-                                self.result['report']['csv_data']['original_number_of_gradients'] += [number]
+                if sizes:
+                    number = numberOfGradients(sizes, image_size)
+                    if not var_num_grad:
+                        self.result['report']['csv_data']['original_number_of_gradients'] = [number]
+                        var_num_grad = number
+                    else:
+                        self.result['report']['csv_data']['original_number_of_gradients'] += [number]
 
         else:
             self.result['report']['csv_data']['original_number_of_gradients'] = [None, None]
@@ -177,9 +183,9 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                     if "output_directory" in previous_result["input"]:
                         image_path_dict[inputs]['input_path'] = previous_result["input"]["output_directory"]
                     if 'image_information' in previous_result['input']:
-                        for number in previous_result['input']['image_information']['sizes']:
-                            if number not in previous_result['input']['image_information']['image_size']:
-                                self.result['report']['csv_data']['original_number_of_gradients'][info['index']] = number
+                        information = previous_result['input']['image_information']
+                        self.result['report']['csv_data']['original_number_of_gradients'][info['index']] = \
+                            numberOfGradients(information['sizes'], information['image_size'])
         
         print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
             

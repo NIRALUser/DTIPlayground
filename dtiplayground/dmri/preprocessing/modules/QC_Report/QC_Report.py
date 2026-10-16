@@ -98,7 +98,7 @@ class QC_Report(prep.modules.DTIPrepModule):
                     excluded_gradients += module['report']['csv_data']['excluded_gradients']
 
         else: #SUSCEPTIBILITY_Correct in protocol
-            number_input_gradients = self.result_history[1]['report']['csv_data']['original_number_of_gradients'][0] + self.result_history[1]['report']['csv_data']['original_number_of_gradients'][1]
+            number_input_gradients = sum(n for n in self.result_history[1]['report']['csv_data']['original_number_of_gradients'] if n)
             excluded_gradients = [[], [], []]
             if self.result_history[1]['report']['csv_data']['excluded_gradients']:
                 if self.result_history[1]['report']['csv_data']['excluded_gradients'][0]:
@@ -124,7 +124,8 @@ class QC_Report(prep.modules.DTIPrepModule):
             global_report += "* 1 gradient excluded or corrected out of " + str(number_input_gradients) + "\n"
         else:
             global_report += "* " + str(number_of_excluded_gradients) + " gradients excluded or corrected out of " + str(number_input_gradients) + "\n"
-        global_report += "* " + str(round((number_input_gradients - number_of_excluded_gradients)/number_input_gradients*100, 2)) + "% of original gradients are preserved \n"
+        if number_input_gradients:
+            global_report += "* " + str(round((number_input_gradients - number_of_excluded_gradients)/number_input_gradients*100, 2)) + "% of original gradients are preserved \n"
         global_report += "* * * * \n"
             
         return(global_report, number_input_gradients, excluded_gradients, number_of_excluded_gradients)
@@ -137,7 +138,9 @@ class QC_Report(prep.modules.DTIPrepModule):
         the pipeline has two) and the image of this report."""
         stages = []
         image_name = self.result_history[1]['report']['csv_data']['image_name']
-        raw = image_name[0] if isinstance(image_name, list) else image_name
+        raw = image_name
+        while isinstance(raw, list): ## SUSCEPTIBILITY_Correct: [[input images], output image]
+            raw = raw[0] if raw else None
         if raw and Path(raw).exists():
             stages.append(('raw', 'raw', DWI(str(raw))))
         stages.append(('preprocessed', 'qced', self.image))

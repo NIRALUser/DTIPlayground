@@ -17,6 +17,11 @@
 #     siren        a SIREN (sine network) per scan, all metrics jointly, on the 3-D position (and arc length or the
 #                  tract, --siren-inputs); GPU when there is one
 #
+#   With a normative prior (--prior-stats-dir, the age bin statistics of qc-profiles, and the ages of the scans), a
+#   method imputes the deviations of the scan from the norm of its age bin instead of its values (--relative-to-prior):
+#   z = (value - mean) / SD at each location, imputed, then back to values with the norm of the missing location.
+#   prior-mean imputes the norm itself (the mean of the scan's age bin), also for a metric the scan lacks entirely.
+#
 #   --validate hides observed values (gaps within profiles and whole profiles) of a sample of scans, imputes them with
 #   the methods and settings to compare, and reports the errors.
 #
@@ -35,7 +40,9 @@ import pandas as pd
 
 log = logging.getLogger("impute")
 
-METHODS = ("arc-linear", "linear", "knn", "siren")
+METHODS = ("arc-linear", "linear", "knn", "siren", "prior-mean")
+SPATIAL = ("linear", "knn", "siren")  # methods that need the 3-D positions (--axis-dir)
+DEFAULT_BINS = "0-3,4-9,10-60"  # as qc-profiles --bins
 SIREN_INPUTS = ("xyz", "xyz+arc", "xyz+tract")
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF", "FW_FA", "FW_MD", "FW_RD", "FW_AD"]
 GAP, END, WHOLE, REGION = "gap", "end gap", "whole profile", "region"
@@ -379,10 +386,159 @@ def fit_siren(X, Y, cfg, device, seed=0, checkpoints=None):
     return preds
 
 
+### normative prior (age bins)
+
+def bins_from_spec(spec):
+    """[(lo, hi, label)] of a bin list "0-3,4-9,10-60" (months, inclusive), the oldest open-ended, as qc-profiles."""
+    from dtiplayground.dmri.fiberprofile.analysis.profile_qc import parse_bins
+    return parse_bins(spec)
+
+
+def bins_from_labels(labels):
+    """The bins of the column labels of age bin statistics ('0-3m', '4-9m', ...), the oldest open-ended."""
+    spec = []
+    for label in labels:
+        m = re.fullmatch(r"(\d+)-(\d+)m", label)
+        if m:
+            spec.append("{}-{}".format(m.group(1), m.group(2)))
+    return bins_from_spec(",".join(spec))
+
+
+def scan_ages(cohort, age_csv=None, age_units="months", age_regex=None, age_column=None):
+    """Age in months (or None) of every scan: its row in *age_csv*, else the pattern on its name (as qc-profiles)."""
+    from dtiplayground.dmri.fiberprofile.analysis.profile_qc import age_of, set_age_source
+    table = None
+    if age_csv:
+        from dtiplayground.dmri.common.age_table import load_age_table
+        table = load_age_table(age_csv, age_units, age_column)
+    set_age_source(table, age_regex)
+    return [age_of(scan, record=False) for scan in cohort.scans]
+
+
+def subject_of(scan):
+    """The subject of a profile column (``<subject>_<session>_<prefix>``)."""
+    return scan.split("_")[0]
+
+
+def scan_bins(ages, bins):
+    """Index of the age bin of every age (-1: no age or in no bin)."""
+    from dtiplayground.dmri.common.age_table import in_age_bin
+    out = []
+    for age in ages:
+        out.append(next((i for i, (lo, hi, _) in enumerate(bins) if in_age_bin(age, lo, hi)), -1))
+    return np.asarray(out, dtype=np.int64)
+
+
+class Prior:
+    """The norm of every position and metric per age bin: mean and SD (bins x positions x metrics), and the bin of
+    every scan. From the age bin statistics of qc-profiles (from_files), or from the cohort itself, leaving out the
+    scan the norm is asked for (from_cohort, for the validation: the cohort is the normative set)."""
+
+    def __init__(self, bins, scan_bin, mean=None, sd=None, sums=None):
+        self.bins, self.scan_bin = bins, scan_bin
+        self.mean, self.sd, self.sums = mean, sd, sums
+        self.floor = None
+
+    @classmethod
+    def from_files(cls, cohort, prior_dir, ages):
+        from dtiplayground.dmri.fiberprofile.analysis.profile_qc import find_prior_stats, prior_on_grid
+        if not os.path.isdir(prior_dir):
+            raise FileNotFoundError("prior stats folder not found: {}".format(prior_dir))
+        bins, mean, sd = None, None, None
+        mi = {m: i for i, m in enumerate(cohort.metrics)}
+        missing = []
+        for t in cohort.tables:
+            path = find_prior_stats(prior_dir, t.tract, t.metric)
+            if path is None:
+                missing.append("{} {}".format(t.tract, t.metric))
+                continue
+            stats = pd.read_csv(path, index_col=0)
+            if bins is None:
+                bins = bins_from_labels([c[:-5] for c in stats.columns if c.endswith("_mean")])
+                mean = np.full((len(bins), cohort.n_positions, len(cohort.metrics)), np.nan)
+                sd = np.full_like(mean, np.nan)
+            on_grid = prior_on_grid(stats, t.values.index)[0]
+            rows = cohort.rows[id(t)]
+            for b, (_, _, label) in enumerate(bins):
+                if "{}_mean".format(label) in on_grid.columns:
+                    mean[b, rows, mi[t.metric]] = on_grid["{}_mean".format(label)].to_numpy(dtype=float)
+                    sd[b, rows, mi[t.metric]] = on_grid["{}_std".format(label)].to_numpy(dtype=float)
+        if bins is None:
+            raise ValueError("no age bin statistics (*_agebinstats.csv) for the profile tables in {}".format(prior_dir))
+        if missing:
+            log.warning("%d table(s) have no age bin statistics in %s, no norm there: %s", len(missing), prior_dir,
+                        ", ".join(missing[:5]) + (" ..." if len(missing) > 5 else ""))
+        prior = cls(bins, scan_bins(ages, bins), mean=mean, sd=sd)
+        prior.set_floor()
+        return prior
+
+    @classmethod
+    def from_cohort(cls, cohort, bins, ages):
+        sb = scan_bins(ages, bins)
+        shape = (len(bins), cohort.n_positions, len(cohort.metrics))
+        s1, s2, n = np.zeros(shape), np.zeros(shape), np.zeros(shape)
+        for s in range(len(cohort.scans)):
+            if sb[s] < 0:
+                continue
+            y = cohort.values[s].astype(np.float64)
+            ok = ~np.isnan(y)
+            s1[sb[s]] += np.where(ok, y, 0.0)
+            s2[sb[s]] += np.where(ok, y, 0.0) ** 2
+            n[sb[s]] += ok
+        prior = cls(bins, sb, sums=(s1, s2, n))
+        with np.errstate(invalid="ignore", divide="ignore"):
+            mean = s1 / n
+            sd = np.sqrt(np.maximum(s2 - n * mean ** 2, 0.0) / (n - 1))
+        prior.mean, prior.sd = np.where(n > 0, mean, np.nan), np.where(n > 1, sd, np.nan)
+        prior.set_floor()
+        return prior
+
+    def set_floor(self):
+        """SD floor per metric: SD_FLOOR of its median SD over the bins and positions (a location where a metric hardly
+        varies would make every deviation large)."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            self.floor = SD_FLOOR * np.nanmedian(np.where(self.sd > 0, self.sd, np.nan).reshape(-1, self.sd.shape[2]),
+                                                 axis=0)
+
+    def norm(self, s, Y=None, others=()):
+        """(mean, SD) (positions x metrics) of the age bin of scan *s*, or None without a bin. From the cohort, the
+        scan's own values *Y* are left out, and those of the scans *others* (the subject's other scans: (values,
+        bin) of each)."""
+        b = self.scan_bin[s]
+        if b < 0:
+            return None
+        if self.sums is None:
+            mean, sd = self.mean[b], self.sd[b]
+        else:
+            s1, s2, n = (a[b] for a in self.sums)
+            y = Y if Y is not None else np.full(s1.shape, np.nan)
+            ok = ~np.isnan(y)
+            s1, s2, n = s1 - np.where(ok, y, 0.0), s2 - np.where(ok, y, 0.0) ** 2, n - ok
+            for yo, bo in others:
+                if bo == b:
+                    ok = ~np.isnan(yo)
+                    s1, s2, n = s1 - np.where(ok, yo, 0.0), s2 - np.where(ok, yo, 0.0) ** 2, n - ok
+            with np.errstate(invalid="ignore", divide="ignore"):
+                mean = np.where(n > 0, s1 / n, np.nan)
+                sd = np.where(n > 1, np.sqrt(np.maximum(s2 - n * mean ** 2, 0.0) / (n - 1)), np.nan)
+        return mean, np.where(np.isfinite(sd), np.fmax(sd, self.floor[None, :]), np.nan)
+
+
 ### imputation of one scan
 
-def impute_scan(Y, cohort, method, opts, cache=None, features=None, device=None):
-    """Imputed values (positions x metrics, NaN where not imputed) of one scan with *method*."""
+def impute_scan(Y, cohort, method, opts, cache=None, features=None, device=None, norm=None, relative=False):
+    """Imputed values (positions x metrics, NaN where not imputed) of one scan with *method*. *norm*: (mean, SD) of
+    the scan's age bin; with *relative*, the method imputes the deviations from it (z) and they are turned back into
+    values with the norm of each imputed location."""
+    if method == "prior-mean":
+        return np.full(Y.shape, np.nan) if norm is None else norm[0].copy()
+    if relative:
+        if norm is None:
+            return np.full(Y.shape, np.nan)
+        mean, sd = norm
+        z = impute_scan((Y - mean) / sd, cohort, method, opts, cache, features, device)
+        return mean + z * sd
     if method == "arc-linear":
         return impute_arc_linear(Y, cohort, opts.get("max_gap"), opts.get("ends", "none"))
     if method == "knn":
@@ -414,14 +570,18 @@ def scan_shares(cohort, Y):
 
 ### imputation of a cohort
 
-def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0.5, device="auto", log_every=25):
+def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0.5, device="auto", log_every=25,
+                  prior=None):
     """Impute every scan. Returns (imputed values scans x positions x metrics (NaN: not imputed), method index per
     cell (-1: none), distances to the nearest observed position, reasons {(scan, metric): text} for skipped ones)."""
     opts = dict(opts or {})
     methods = [method] + ([fallback] if fallback and fallback != method else [])
-    needs_points = any(m != "arc-linear" for m in methods)
+    needs_points = any(m in SPATIAL for m in methods)
     if needs_points and cohort.points is None:
-        raise ValueError("--axis-dir is needed for the methods {}".format(", ".join(m for m in methods if m != "arc-linear")))
+        raise ValueError("--axis-dir is needed for the methods {}".format(", ".join(m for m in methods if m in SPATIAL)))
+    relative = bool(opts.get("relative"))
+    if (relative or "prior-mean" in methods) and prior is None:
+        raise ValueError("--relative-to-prior and prior-mean need a normative prior (--prior-stats-dir)")
     features = dev = None
     if "siren" in methods:
         dev = pick_device(device)
@@ -441,17 +601,21 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
         if not missing.any():
             continue
         share = scan_shares(cohort, Y)
+        norm = prior.norm(s) if prior is not None else None
         for m, metric in enumerate(cohort.metrics):
-            if missing[:, m].any() and share[m] < min_observed:
+            if missing[:, m].any() and share[m] < min_observed and methods != ["prior-mean"]:
                 skipped[(scan, metric)] = ("no observed value" if share[m] == 0 else
                                            "{:.0%} observed, below --min-observed {:g}".format(share[m], min_observed))
+            if missing[:, m].any() and prior is not None and norm is None:
+                skipped[(scan, metric)] = "no age, or an age in no bin of the prior"
         dist = nearest_observed(cohort.points, Y, cohort.valid) if needs_points else np.full(Y.shape, np.inf)
         dists[s] = np.minimum(dist, np.finfo(np.float32).max)
         cache = {}
         for mth in methods:  # a fallback imputes from the observed values too, not from those of the first method
-            pred = impute_scan(Y, cohort, mth, opts, cache, features, dev)
-            pred = limit(pred, Y, cohort, dist, opts.get("max_distance"), spatial=mth != "arc-linear")
-            pred[:, share < min_observed] = np.nan
+            pred = impute_scan(Y, cohort, mth, opts, cache, features, dev, norm, relative and mth != "prior-mean")
+            pred = limit(pred, Y, cohort, dist, opts.get("max_distance"), spatial=mth in SPATIAL)
+            if mth != "prior-mean":  # the norm needs no observed value of the scan (e.g. a metric it lacks)
+                pred[:, share < min_observed] = np.nan
             new = ~np.isnan(pred) & np.isnan(imputed[s])
             imputed[s][new] = pred[new]
             used[s][new] = METHODS.index(mth)
@@ -673,6 +837,11 @@ def validation_configs(args):
         for k in parse_list(args.validate_k, int):
             for w in weights:
                 configs.append(("knn k={} {}".format(k, w), "knn", dict(base, k=k, weights=w)))
+    relative = validate_relative(args)
+    configs = [(name + (" (z)" if rel else ""), method, dict(opts, relative=rel))
+               for rel in relative for name, method, opts in configs]
+    if "prior-mean" in methods:
+        configs.append(("prior-mean", "prior-mean", dict(base, relative=False)))
     siren = []
     if "siren" in methods:
         for inputs in [x.strip() for x in args.validate_siren_inputs.split(",") if x.strip()]:
@@ -680,8 +849,51 @@ def validation_configs(args):
                 raise ValueError("unknown SIREN inputs {} ({})".format(inputs, ", ".join(SIREN_INPUTS)))
             for omega0 in parse_list(args.validate_omega0, float):
                 for seed in range(args.validate_seeds):
-                    siren.append((inputs, omega0, seed))
+                    for rel in relative:
+                        siren.append((inputs, omega0, seed, rel))
     return configs, siren
+
+
+def validation_prior(cohort, args, configs, siren):
+    """The normative prior of the validation (for the settings that need one, and the age bin mean reference): from
+    the cohort itself, each scan left out of its own norm (--validate-prior cohort, for a normative cohort), or the
+    age bin statistics of --prior-stats-dir (files: from another cohort)."""
+    needed = any(o.get("relative") or m == "prior-mean" for _, m, o in configs) or any(x[3] for x in siren)
+    ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
+    if not needed and (all(a is None for a in ages) or (args.validate_prior == "files" and not args.prior_stats_dir)):
+        return None  # only for the age bin reference, which is then left out
+    if args.validate_prior == "files":
+        if not args.prior_stats_dir:
+            raise ValueError("--validate-prior files needs --prior-stats-dir")
+        prior = Prior.from_files(cohort, args.prior_stats_dir, ages)
+    else:
+        prior = Prior.from_cohort(cohort, bins_from_spec(args.bins), ages)
+    n = np.bincount(prior.scan_bin[prior.scan_bin >= 0], minlength=len(prior.bins))
+    log.info("Prior (%s): age bins %s with %s scans; %d scan(s) without an age bin", args.validate_prior,
+             ", ".join(b[2] for b in prior.bins), ", ".join(str(x) for x in n), int((prior.scan_bin < 0).sum()))
+    return prior
+
+
+def report_bins(cohort, args, prior):
+    """(age bins, bin of every scan) the validation is reported by: those of the prior, else of --bins with the ages
+    of the scans; (None, None) without any age."""
+    if prior is not None:
+        return prior.bins, prior.scan_bin
+    ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
+    if all(a is None for a in ages):
+        return None, None
+    bins = bins_from_spec(args.bins)
+    return bins, scan_bins(ages, bins)
+
+
+def validate_relative(args):
+    """[False] (values), [True] (deviations from the prior) or both, of --validate-relative."""
+    out = []
+    for x in [v.strip() for v in args.validate_relative.split(",") if v.strip()]:
+        if x not in ("no", "yes"):
+            raise ValueError("unknown --validate-relative {} (no, yes)".format(x))
+        out.append(x == "yes")
+    return out
 
 
 def parse_list(text, kind):
@@ -689,9 +901,9 @@ def parse_list(text, kind):
 
 
 def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev, args, loc_sd, acc, by_loc, by_dist,
-                  totals=None):
+                  totals=None, norm=None, age_bin=""):
     """Hide the positions *hidden* ({position: pattern}) of one scan, impute them with every setting and add the
-    errors to the accumulators."""
+    errors to the accumulators (per tract and the scan's *age_bin*)."""
     hp = np.zeros(cohort.n_positions, dtype=bool)
     hp[list(hidden)] = True
     pattern = np.array([hidden.get(p, "") for p in range(cohort.n_positions)])
@@ -702,17 +914,27 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
     dbin = np.clip(np.digitize(dist, DISTANCE_BINS) - 1, 0, len(DISTANCE_BINS) - 2)
     preds = {}
     cache = {}
+    zcache = {}
     for name, method, opts in configs:
-        p = impute_scan(Ym, cohort, method, opts, cache)
-        preds[(method, name, "", np.nan, np.nan, np.nan)] = limit(p, Ym, cohort, dist, args.max_distance,
-                                                                   spatial=method != "arc-linear")
-    for inputs, omega0, seed in siren:
+        rel = opts.get("relative", False)
+        if (rel or method == "prior-mean") and norm is None:
+            continue  # no norm for this scan: these settings are left out
+        p = impute_scan(Ym, cohort, method, opts, zcache if rel else cache, norm=norm, relative=rel)
+        preds[(method + (" (z)" if rel else ""), name, "", np.nan, np.nan, np.nan)] = \
+            limit(p, Ym, cohort, dist, args.max_distance, spatial=method in SPATIAL)
+    for inputs, omega0, seed, rel in siren:
+        if rel and norm is None:
+            continue
         Yp = np.where(cohort.has_point[:, None], Ym, np.nan)
+        if rel:
+            Yp = (Yp - norm[0]) / norm[1]
         ck = fit_siren(features[inputs], Yp, dict(cfg, omega0=omega0, epochs=max(epochs)), dev,
                        seed=args.seed + seed, checkpoints=epochs)
         for e, p in ck.items():
-            preds[("siren", "siren {} omega0={:g}".format(inputs, omega0), inputs, omega0, e, seed)] = \
-                limit(p, Ym, cohort, dist, args.max_distance)
+            if rel:
+                p = norm[0] + p * norm[1]
+            preds[("siren (z)" if rel else "siren", "siren {} omega0={:g}{}".format(inputs, omega0, " (z)" if rel else ""),
+                   inputs, omega0, e, seed)] = limit(p, Ym, cohort, dist, args.max_distance)
     hidden_cells = ~np.isnan(truth)
     present = [pat for pat in PATTERNS if (pattern == pat).any()]
     # cells every setting filled, of the settings that fill some of the pattern (arc-linear fills no whole profile)
@@ -733,9 +955,16 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
         ref = np.where(hidden_cells, ref, np.nan)
         preds[(REFERENCE, "cohort mean (reference)", "", np.nan, np.nan, np.nan)] = ref
         nref = (ref - truth) / loc_sd
+    # the second reference: the mean of the scan's age bin (the norm, without the scan's subject); across a range of
+    # ages with large changes (infancy) the cohort mean is a poor summary of a scan
+    nage = np.full(truth.shape, np.nan) if norm is None else (np.where(hidden_cells, norm[0], np.nan) - truth) / loc_sd
     for key, p in preds.items():
         err = p - truth
         nerr = err / loc_sd
+        # completed: the cells the setting leaves filled with the age bin mean (a deviation of 0), so every setting is
+        # scored on every hidden value
+        cerr = err if norm is None else np.where(np.isnan(p), norm[0], p) - truth
+        ncerr = cerr / loc_sd
         okr = ~np.isnan(nerr) & ~np.isnan(nref)  # cells with both errors, for the ratio to the reference
         loc = by_loc[key[:5]]
         for pat in present:
@@ -778,9 +1007,16 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
                     c = common[pat][sl, m][h] & okn
                     r = okr[sl, m][h]
                     nr = nref[sl, m][h]
-                    acc[key + (pat, metric, tract)] += [h.sum(), ok.sum(), np.sum(e[ok] ** 2), np.sum(ne[okn] ** 2),
+                    na = nage[sl, m][h]
+                    ra = okn & ~np.isnan(na)
+                    ce = cerr[sl, m][h]
+                    nce = ncerr[sl, m][h]
+                    rc = ~np.isnan(nce) & ~np.isnan(na)
+                    acc[key + (pat, metric, tract, age_bin)] += [h.sum(), ok.sum(), np.sum(e[ok] ** 2), np.sum(ne[okn] ** 2),
                                                         okn.sum(), np.sum(ne[c] ** 2), c.sum(), np.sum(ne[r] ** 2),
-                                                        np.sum(nr[r] ** 2)]
+                                                        np.sum(nr[r] ** 2), np.sum(ne[ra] ** 2),
+                                                        np.sum(na[ra] ** 2), np.sum(ce[rc] ** 2), rc.sum(),
+                                                        np.sum(nce[rc] ** 2), np.sum(na[rc] ** 2)]
 
 
 def distance_table(by_dist, cohort):
@@ -823,10 +1059,27 @@ def validate(cohort, args):
     shares = np.stack([scan_shares(cohort, cohort.scan(s)) for s in range(len(cohort.scans))])
     has = shares > 0  # metrics a scan doesn't have at all (e.g. no NODDI) don't count against it
     eligible = np.flatnonzero(has.any(axis=1) & ((shares >= args.min_observed) | ~has).all(axis=1))
-    sample = sorted(rng.choice(eligible, size=min(args.validate_scans, len(eligible)), replace=False).tolist())
+    prior = validation_prior(cohort, args, configs, siren)
+    bins, scan_bin = report_bins(cohort, args, prior)
+    if args.validate_scans_per_bin > 0:
+        if bins is None:
+            raise ValueError("--validate-scans-per-bin needs ages")
+        sample = []
+        for b in range(len(bins)):
+            pool = eligible[scan_bin[eligible] == b]
+            sample += rng.choice(pool, size=min(args.validate_scans_per_bin, len(pool)), replace=False).tolist()
+        sample = sorted(sample)
+    else:
+        sample = sorted(rng.choice(eligible, size=min(args.validate_scans, len(eligible)), replace=False).tolist())
+    label = (lambda s: "") if bins is None else (lambda s: bins[scan_bin[s]][2] if scan_bin[s] >= 0 else "none")
     log.info("Validation on %d of %d scans (%d eligible: each metric they have at least %g observed), %d round(s) of "
-             "hidden values per scan", len(sample), len(cohort.scans), len(eligible), args.min_observed,
-             args.validate_rounds)
+             "hidden values per scan%s", len(sample), len(cohort.scans), len(eligible), args.min_observed,
+             args.validate_rounds, "" if bins is None else "; per age bin: " + ", ".join(
+                 "{} {}".format(b[2], sum(scan_bin[s] == i for s in sample)) for i, b in enumerate(bins)))
+    # the scans of the same subject (other sessions) are left out of the norm and the reference with the scan itself
+    subject_scans = defaultdict(list)
+    for i, scan in enumerate(cohort.scans):
+        subject_scans[subject_of(scan)].append(i)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         loc_sd = np.nanstd(cohort.values, axis=0)  # between-scan SD per position and metric (normalizes the errors)
@@ -846,7 +1099,7 @@ def validate(cohort, args):
                  args.validate_omega0, args.validate_epochs, args.validate_seeds)
     # (method, setting, siren inputs, omega0, epochs, seed, pattern, metric, tract) -> n hidden, n filled, squared
     # error, squared normalized error, n normalized, squared normalized error on the common cells, n common
-    acc = defaultdict(lambda: np.zeros(9))
+    acc = defaultdict(lambda: np.zeros(15))
     # (method, setting, siren inputs, omega0, epochs) -> (pattern, position, metric, [n hidden, n filled, squared
     # error, squared normalized error, n normalized]), summed over scans, rounds and SIREN seeds
     shape = (len(PATTERNS), cohort.n_positions, len(cohort.metrics), 5)
@@ -865,6 +1118,13 @@ def validate(cohort, args):
     rounds = [(s, r) for s in sample for r in range(args.validate_rounds)]
     for n, (s, r) in enumerate(rounds, 1):
         Y = cohort.scan(s)
+        others = [o for o in subject_scans[subject_of(cohort.scans[s])] if o != s] \
+            if args.validate_leave_out == "subject" else []
+        norm = None if prior is None else prior.norm(s, Y, [(cohort.scan(o), prior.scan_bin[o]) for o in others])
+        tot = totals
+        if totals is not None and others:
+            vals = cohort.values[others].astype(np.float64)
+            tot = (totals[0] - np.nansum(vals, axis=0), totals[1] - (~np.isnan(vals)).sum(axis=0))
         # pass 1: random whole profiles and gaps; pass 2: a region (its own pass, so it doesn't take the neighbours of
         # the profiles of pass 1)
         passes = [hide(cohort, Y, rng, args.validate_gap_fraction, gap_mm, args.validate_whole_fraction,
@@ -874,18 +1134,20 @@ def validate(cohort, args):
         for hidden in passes:
             if hidden:
                 validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev, args, loc_sd, acc,
-                              by_loc, by_dist, totals)
+                              by_loc, by_dist, tot, norm, label(s))
         log.info("  ... %d/%d scans%s validated (%.0f s)", n, len(rounds),
                  "" if args.validate_rounds == 1 else " x rounds", time.time() - t0)
 
     rows = []
     for k, a in acc.items():
-        method, name, inputs, omega0, epochs_, seed, pat, metric, tract = k
+        method, name, inputs, omega0, epochs_, seed, pat, metric, tract, age_bin = k
         cn = a[6]
         rows.append({"method": method, "setting": name, "siren_inputs": inputs, "omega0": omega0, "epochs": epochs_,
-                     "seed": seed, "pattern": pat, "metric": metric, "tract": tract, "n_hidden": int(a[0]),
+                     "seed": seed, "pattern": pat, "metric": metric, "tract": tract, "age_bin": age_bin, "n_hidden": int(a[0]),
                      "n_filled": int(a[1]), "sse": a[2], "nsse": a[3], "n_norm": int(a[4]), "nsse_common": a[5],
-                     "n_common": int(cn), "nsse_paired": a[7], "nsse_reference": a[8]})
+                     "n_common": int(cn), "nsse_paired": a[7], "nsse_reference": a[8],
+                     "nsse_paired_age": a[9], "nsse_age_mean": a[10], "sse_completed": a[11],
+                     "n_completed": int(a[12]), "nsse_completed": a[13], "nsse_age_mean_completed": a[14]})
     cells = pd.DataFrame(rows)
     by_tract = aggregate(cells, ["method", "setting", "siren_inputs", "omega0", "epochs", "seed", "pattern", "metric", "tract"])
     prox = axis_proximity(cohort)
@@ -896,22 +1158,28 @@ def validate(cohort, args):
     by_tract.to_csv(os.path.join(out, "validation_by_tract.csv"), index=False)
     per_seed = aggregate(cells, ["method", "setting", "siren_inputs", "omega0", "epochs", "seed", "pattern", "metric"])
     per_seed.to_csv(os.path.join(out, "validation_by_metric.csv"), index=False)
+    if bins is not None:
+        aggregate(cells, ["method", "setting", "siren_inputs", "omega0", "epochs", "seed", "pattern", "metric",
+                          "age_bin"]).to_csv(os.path.join(out, "validation_by_age_bin.csv"), index=False)
     # every metric counts the same: the mean of the errors of the metrics (pooled squared errors would be dominated by
     # the metric with the largest normalized errors)
     summary = per_seed.groupby(["method", "setting", "siren_inputs", "omega0", "epochs", "seed", "pattern"],
                                as_index=False, dropna=False).agg(
         n_hidden=("n_hidden", "sum"), n_filled=("n_filled", "sum"), nrmse=("nrmse", "mean"),
-        nrmse_common=("nrmse_common", "mean"), vs_reference=("vs_reference", "mean"))
+        nrmse_common=("nrmse_common", "mean"), vs_reference=("vs_reference", "mean"),
+        vs_age_mean=("vs_age_mean", "mean"), vs_age_mean_completed=("vs_age_mean_completed", "mean"))
     summary["coverage"] = summary["n_filled"] / summary["n_hidden"].where(summary["n_hidden"] > 0)
     summary = summary.groupby(["method", "setting", "siren_inputs", "omega0", "epochs", "pattern"], as_index=False,
                               dropna=False).agg(
         n_seeds=("seed", "size"), n_hidden=("n_hidden", "mean"), coverage=("coverage", "mean"),
         nrmse=("nrmse", "mean"), nrmse_sd=("nrmse", "std"), nrmse_common=("nrmse_common", "mean"),
-        vs_reference=("vs_reference", "mean"))
+        vs_reference=("vs_reference", "mean"), vs_age_mean=("vs_age_mean", "mean"),
+        vs_age_mean_completed=("vs_age_mean_completed", "mean"))
     summary = summary.sort_values(["pattern", "nrmse_common", "nrmse"])
     summary.to_csv(os.path.join(out, "validation_summary.csv"), index=False)
     with open(os.path.join(out, "validation_settings.json"), "w") as fh:
-        json.dump({"scans": [cohort.scans[s] for s in sample], "rounds": args.validate_rounds,
+        json.dump({"scans": [cohort.scans[s] for s in sample], "leave_out": args.validate_leave_out,
+                   "scans_per_bin": args.validate_scans_per_bin, "rounds": args.validate_rounds,
                    "gap_fraction": args.validate_gap_fraction, "knn_weights": args.validate_knn_weights,
                    "gap_mm": gap_mm, "whole_fraction": args.validate_whole_fraction,
                    "region_mm": region_mm, "region_count": args.validate_region_count,
@@ -1095,14 +1363,24 @@ def aggregate(cells, keys):
     g = cells.groupby(keys, as_index=False, dropna=False).agg(
         n_hidden=("n_hidden", "sum"), n_filled=("n_filled", "sum"), sse=("sse", "sum"), nsse=("nsse", "sum"),
         n_norm=("n_norm", "sum"), nsse_common=("nsse_common", "sum"), n_common=("n_common", "sum"),
-        nsse_paired=("nsse_paired", "sum"), nsse_reference=("nsse_reference", "sum"))
+        nsse_paired=("nsse_paired", "sum"), nsse_reference=("nsse_reference", "sum"),
+        nsse_paired_age=("nsse_paired_age", "sum"), nsse_age_mean=("nsse_age_mean", "sum"),
+        sse_completed=("sse_completed", "sum"), n_completed=("n_completed", "sum"),
+        nsse_completed=("nsse_completed", "sum"), nsse_age_mean_completed=("nsse_age_mean_completed", "sum"))
     g["coverage"] = g["n_filled"] / g["n_hidden"].where(g["n_hidden"] > 0)
     g["rmse"] = np.sqrt(g["sse"] / g["n_filled"].where(g["n_filled"] > 0))
     g["nrmse"] = np.sqrt(g["nsse"] / g["n_norm"].where(g["n_norm"] > 0))
     g["nrmse_common"] = np.sqrt(g["nsse_common"] / g["n_common"].where(g["n_common"] > 0))
     # the error relative to that of the reference on the same cells: below 1, better than the cohort mean
     g["vs_reference"] = np.sqrt(g["nsse_paired"] / g["nsse_reference"].where(g["nsse_reference"] > 0))
-    return g.drop(columns=["sse", "nsse", "nsse_common", "nsse_paired", "nsse_reference"])
+    # ... and to that of the mean of the scan's age bin (the norm; with a prior only)
+    g["vs_age_mean"] = np.sqrt(g["nsse_paired_age"] / g["nsse_age_mean"].where(g["nsse_age_mean"] > 0))
+    # ... and both on every hidden value, the cells the setting leaves filled with the age bin mean
+    g["rmse_completed"] = np.sqrt(g["sse_completed"] / g["n_completed"].where(g["n_completed"] > 0))
+    g["vs_age_mean_completed"] = np.sqrt(g["nsse_completed"] / g["nsse_age_mean_completed"].where(
+        g["nsse_age_mean_completed"] > 0))
+    return g.drop(columns=["sse", "nsse", "nsse_common", "nsse_paired", "nsse_reference", "nsse_paired_age",
+                           "nsse_age_mean", "sse_completed", "nsse_completed", "nsse_age_mean_completed"])
 
 
 def plot_epochs(summary, path):
@@ -1116,15 +1394,17 @@ def plot_epochs(summary, path):
     styles = ["-", "--", ":", "-."]
     for ax, pat in zip(axes[0], pats):
         d = summary[summary["pattern"] == pat]
-        sir = d[d["method"] == "siren"]
-        for j, omega0 in enumerate(sorted(sir["omega0"].unique())):
-            for inputs in SIREN_INPUTS:
-                c = sir[(sir["siren_inputs"] == inputs) & (sir["omega0"] == omega0)].sort_values("epochs")
-                if len(c):
-                    ax.errorbar(c["epochs"], c["nrmse"], yerr=c["nrmse_sd"].fillna(0), color=colors[inputs],
-                                ls=styles[j % len(styles)], marker="o", ms=3, capsize=2,
-                                label="{} ω0={:g}".format(inputs, omega0))
-        others = d[(d["method"] != "siren") & np.isfinite(d["nrmse"])]
+        sir = d[d["method"].str.startswith("siren")]
+        for meth, marker in (("siren", "o"), ("siren (z)", "^")):
+            for j, omega0 in enumerate(sorted(sir["omega0"].unique())):
+                for inputs in SIREN_INPUTS:
+                    c = sir[(sir["method"] == meth) & (sir["siren_inputs"] == inputs) & (sir["omega0"] == omega0)]
+                    c = c.sort_values("epochs")
+                    if len(c):
+                        ax.errorbar(c["epochs"], c["nrmse"], yerr=c["nrmse_sd"].fillna(0), color=colors[inputs],
+                                    ls=styles[j % len(styles)], marker=marker, ms=4, capsize=2,
+                                    label="{} ω0={:g}{}".format(inputs, omega0, " (z)" if meth != "siren" else ""))
+        others = d[~d["method"].str.startswith("siren") & np.isfinite(d["nrmse"])]
         grays = plt.cm.Greys(np.linspace(0.45, 0.95, max(len(others), 1)))
         for k, (_, r) in enumerate(others.iterrows()):
             ax.axhline(r["nrmse"], color=grays[k], lw=1.2, ls=styles[k % len(styles)], label=r["setting"])
@@ -1188,11 +1468,34 @@ def add_parser(subparsers):
     p.add_argument("--lr", type=float, default=1e-4, help="siren: Adam learning rate (default: 1e-4)")
     p.add_argument("--device", default="auto", choices=["auto", "cuda", "mps", "cpu"], help="siren: torch device (default: auto)")
     p.add_argument("--seed", type=int, default=0, help="siren: random seed (default: 0)")
+    n = p.add_argument_group("normative prior (deviations from the norm, prior-mean)")
+    n.add_argument("--prior-stats-dir", default=None,
+                   help="Age bin statistics of a normative cohort (*_agebinstats.csv of qc-profiles, either layout)")
+    n.add_argument("--relative-to-prior", action="store_true",
+                   help="The method imputes the deviations of the scan from the norm of its age bin, (value - mean) / "
+                        "SD at each location, which are turned back into values with the norm of the imputed location")
+    n.add_argument("--age-csv", default=None,
+                   help="Ages of the scans (as qc-profiles --age-csv); else read from the column names (--age-regex)")
+    n.add_argument("--age-column", default=None, metavar="NAME", help="--age-csv column of the age (default: auto-detect)")
+    n.add_argument("--age-units", default="months", choices=sorted(__import__(
+        "dtiplayground.dmri.common.age_table", fromlist=["x"]).AGE_UNIT_TO_MONTHS), help="Units of --age-csv (default: months)")
+    n.add_argument("--age-regex", default=None,
+                   help="Pattern of the age in months in a column name, group 1 (default: that of qc-profiles, ses-(\\d+)m)")
+    n.add_argument("--bins", default=DEFAULT_BINS,
+                   help="Validation with --validate-prior cohort, and the errors per age bin: age bins in months, inclusive, the oldest open-ended "
+                        "(default: %(default)s, as qc-profiles)")
     p.add_argument("--value-format", default="%.6g", help="printf format of the imputed values (default: %%.6g, as EXTRACT_Profile)")
     v = p.add_argument_group("validation (--validate)")
     v.add_argument("--validate", action="store_true",
                    help="Compare methods and settings on hidden observed values of a sample of scans instead of imputing")
     v.add_argument("--validate-scans", type=int, default=30, help="Number of scans (default: 30)")
+    v.add_argument("--validate-scans-per-bin", type=int, default=0,
+                   help="Instead of --validate-scans: number of scans of each age bin (of the prior or --bins), so "
+                        "every age is represented; 0: off (default: 0)")
+    v.add_argument("--validate-leave-out", default="subject", choices=("subject", "scan"),
+                   help="Left out of the norm (--validate-prior cohort) and of the reference with a validated scan: "
+                        "every scan of its subject (subject, default: its other sessions are not independent of it) "
+                        "or the scan only")
     v.add_argument("--validate-seed", type=int, default=0, help="Seed of the scan sample and the hidden values (default: 0)")
     v.add_argument("--validate-rounds", type=int, default=1,
                    help="Rounds of hidden values per scan, each with other tracts and gaps; more rounds give more "
@@ -1207,7 +1510,15 @@ def add_parser(subparsers):
                         "sphere around a random observed position loses its whole profile, as with a regional artifact; "
                         "0: none (default: 1)")
     v.add_argument("--validate-region-mm", default="10,25", help="Range of the region radii, mm (default: 10,25)")
-    v.add_argument("--validate-methods", default="arc-linear,linear,knn,siren", help="Methods to compare (default: all)")
+    v.add_argument("--validate-methods", default="arc-linear,linear,knn,siren,prior-mean",
+                   help="Methods to compare (default: all)")
+    v.add_argument("--validate-relative", default="no,yes",
+                   help="Compare the methods on the values (no), on the deviations from the prior (yes) or both "
+                        "(default: no,yes); the deviations and prior-mean need ages")
+    v.add_argument("--validate-prior", default="cohort", choices=("cohort", "files"),
+                   help="Prior of the validation: from the profiles themselves, every scan left out of its own norm "
+                        "(cohort, default: for a normative cohort, whose statistics include the scans validated), or "
+                        "--prior-stats-dir (files: the statistics of another cohort)")
     v.add_argument("--validate-k", default="1,3,5,10,20,50", help="knn: values of k (default: 1,3,5,10,20,50)")
     v.add_argument("--validate-arc-ends", default="none,constant,linear",
                    help="arc-linear: --arc-ends to compare (default: none,constant,linear)")
@@ -1253,19 +1564,32 @@ def run(args):
     if args.validate:
         validate(cohort, args)
         return 0
-    if args.method != "arc-linear" or args.fallback not in ("none", "arc-linear"):
-        if axes is None:
-            log.error("--axis-dir is needed for %s", args.method if args.method != "arc-linear" else args.fallback)
+    spatial = [m for m in (args.method, args.fallback) if m in SPATIAL]
+    if spatial and axes is None:
+        log.error("--axis-dir is needed for %s", ", ".join(spatial))
+        return 1
+    prior = None
+    if args.relative_to_prior or "prior-mean" in (args.method, args.fallback):
+        if not args.prior_stats_dir:
+            log.error("--relative-to-prior and prior-mean need --prior-stats-dir (the age bin statistics of a normative "
+                      "cohort, from qc-profiles)")
             return 1
+        ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
+        prior = Prior.from_files(cohort, args.prior_stats_dir, ages)
+        n = np.bincount(prior.scan_bin[prior.scan_bin >= 0], minlength=len(prior.bins))
+        log.info("Prior %s: age bins %s with %s scan(s); %d scan(s) without an age bin are not imputed",
+                 args.prior_stats_dir, ", ".join(b[2] for b in prior.bins), ", ".join(str(x) for x in n),
+                 int((prior.scan_bin < 0).sum()))
     missing = int((np.isnan(cohort.values) & cohort.valid[None]).sum())
     log.info("%d missing cells (blank, or whole profiles of scans absent from a table)", missing)
     opts = {"k": args.k, "weights": args.knn_weights, "max_distance": args.max_distance, "max_gap": args.max_gap,
-            "ends": args.arc_ends,
+            "ends": args.arc_ends, "relative": args.relative_to_prior,
             "seed": args.seed, "siren_inputs": args.siren_inputs,
             "siren": {"epochs": args.epochs, "omega0": args.omega0, "hidden": args.hidden_width,
                       "hidden_layers": args.hidden_layers, "lr": args.lr}}
     fallback = None if args.fallback == "none" else args.fallback
-    imputed, used, dists, skipped = impute_cohort(cohort, args.method, fallback, opts, args.min_observed, args.device)
+    imputed, used, dists, skipped = impute_cohort(cohort, args.method, fallback, opts, args.min_observed, args.device,
+                                                  prior=prior)
     n = write_tables(cohort, imputed, args.out_dir, os.path.join(args.report_dir, "masks"), args.value_format)
     summary = summary_rows(cohort, imputed, used, dists, skipped)
     os.makedirs(args.report_dir, exist_ok=True)

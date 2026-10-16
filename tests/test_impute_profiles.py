@@ -35,7 +35,8 @@ def field(metric, pts, s):
     return 0.001 * (1.0 + 0.01 * x - 0.02 * y + 0.01 * s)
 
 
-def make_dataset(root, rowwise=False, tracts=('T_a', 'T_b', 'T_c', 'T_d', 'T_x'), metrics=('fa', 'md')):
+def make_dataset(root, rowwise=False, tracts=('T_a', 'T_b', 'T_c', 'T_d', 'T_x'), metrics=('fa', 'md'), scans=None,
+                 value=None):
     """Gathered tables (<tract>/<tract>_<metric>.csv) or, *rowwise*, EXTRACT_Profile tables with one row per scan
     (<metric>/<tract>_<metric>.csv), and the tract axes."""
     root = Path(root)
@@ -44,7 +45,8 @@ def make_dataset(root, rowwise=False, tracts=('T_a', 'T_b', 'T_c', 'T_d', 'T_x')
     for tract in tracts:
         fiber_axis.write_polydata(fiber_axis.build_axis_polydata(points_of(tract), ARCS), axes / '{}_axis.vtk'.format(tract))
         for metric in metrics:
-            values = {scan: field(metric, points_of(tract), s) for s, scan in enumerate(SCANS)}
+            values = {scan: (value or field)(metric, points_of(tract), s) if value is None else value(metric, tract, s)
+                      for s, scan in enumerate(scans or SCANS)}
             df = pd.DataFrame(values, index=pd.Index(ARCS, name='Arc_Length'))
             if rowwise:
                 path = prof / metric / '{}_{}.csv'.format(tract, metric)
@@ -331,3 +333,123 @@ class TestValidation(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# phase 2: scans with ages in their names, tracts with very different levels, and a deviation per scan that is the
+# same everywhere: the raw values of the neighbouring tracts say little, the deviations everything
+AGED = ['sub-{:02d}_ses-{:03d}m_dwi'.format(i, age) for i, age in enumerate([1, 2, 3, 5, 6, 8, 12, 20, 30, 40, 50, 60])]
+LEVEL = {'T_a': 0.30, 'T_b': 0.60, 'T_c': 0.35, 'T_d': 0.50, 'T_x': 0.45}
+
+
+def leveled(metric, tract, s):
+    scale = 1.0 if metric == 'fa' else 0.002
+    return np.full(len(ARCS), scale * (LEVEL[tract] + 0.01 * (s % 4) + 0.002 * s))
+
+
+def aged_dataset(tmp):
+    from dtiplayground.dmri.fiberprofile.analysis import profile_qc
+    prof, axes = make_dataset(tmp, scans=AGED, value=leveled)
+    tables = sorted(str(p) for p in prof.rglob('*.csv'))
+    profile_qc.write_agebin_stats(tables, profile_qc.parse_bins(ip.DEFAULT_BINS), 1)
+    return prof, axes
+
+
+class TestPrior(unittest.TestCase):
+
+    def test_prior_from_files_and_bins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            cohort = ip.Cohort(ip.read_tables(str(prof)), ip.read_axes(str(axes), list(LEVEL)))
+            ages = ip.scan_ages(cohort)
+            self.assertEqual(ages[:3], [1.0, 2.0, 3.0])
+            prior = ip.Prior.from_files(cohort, str(prof), ages)
+            self.assertEqual([b[2] for b in prior.bins], ['0-3m', '4-9m', '10-60m'])
+            self.assertEqual(prior.scan_bin.tolist(), [0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2])
+            mean, sd = prior.norm(0)
+            sl, m = cohort.slices['T_b'], cohort.metrics.index('fa')
+            expect = np.mean([leveled('fa', 'T_b', s)[0] for s in range(3)])
+            self.assertTrue(np.allclose(mean[sl, m], expect))
+
+    def test_prior_from_cohort_leaves_the_scan_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            cohort = ip.Cohort(ip.read_tables(str(prof)), None)
+            prior = ip.Prior.from_cohort(cohort, ip.bins_from_spec(ip.DEFAULT_BINS), ip.scan_ages(cohort))
+            mean, sd = prior.norm(6, cohort.scan(6))  # bin 10-60m: scans 6..11, without 6
+            m = cohort.metrics.index('fa')
+            others = [leveled('fa', 'T_a', s)[0] for s in range(7, 12)]
+            sl = cohort.slices['T_a']
+            self.assertTrue(np.allclose(mean[sl, m], np.mean(others)))
+            self.assertTrue(np.allclose(sd[sl, m], max(np.std(others, ddof=1), prior.floor[m])))
+
+    def test_prior_from_cohort_leaves_the_subject_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            cohort = ip.Cohort(ip.read_tables(str(prof)), None)
+            prior = ip.Prior.from_cohort(cohort, ip.bins_from_spec(ip.DEFAULT_BINS), ip.scan_ages(cohort))
+            # scan 7 as another session of the subject of scan 6 (same bin), scan 0 one in another bin
+            mean, _ = prior.norm(6, cohort.scan(6), [(cohort.scan(7), prior.scan_bin[7]),
+                                                     (cohort.scan(0), prior.scan_bin[0])])
+            m, sl = cohort.metrics.index('fa'), cohort.slices['T_a']
+            self.assertTrue(np.allclose(mean[sl, m], np.mean([leveled('fa', 'T_a', s)[0] for s in range(8, 12)])))
+
+    def test_validation_per_age_bin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            out = Path(tmp) / 'Imp'
+            ip.run(args_for(prof, axes, out, validate=True, validate_scans_per_bin=2, validate_whole_fraction=0.4,
+                            validate_gap_fraction=0.5, validate_region_mm='2,3', validate_methods='linear,prior-mean',
+                            no_plots=True))
+            v = Path(str(out) + '_report') / 'validation'
+            self.assertEqual(len(json.load(open(v / 'validation_settings.json'))['scans']), 6)
+            a = pd.read_csv(v / 'validation_by_age_bin.csv')
+            self.assertEqual(set(a['age_bin']), {'0-3m', '4-9m', '10-60m'})
+            self.assertTrue({'linear', 'linear (z)', 'prior-mean'} <= set(a['setting']))
+            s = pd.read_csv(v / 'validation_summary.csv').set_index(['setting', 'pattern'])
+            self.assertTrue(np.allclose(s.xs('prior-mean')['vs_age_mean'], 1.0))  # its own reference
+            self.assertTrue(np.allclose(s.xs('cohort mean (reference)')['vs_reference'], 1.0))
+            # completed with the age bin mean: prior-mean stays 1, a setting that fills nothing of a pattern too
+            self.assertTrue(np.allclose(s.xs('prior-mean')['vs_age_mean_completed'], 1.0))
+            m = pd.read_csv(v / 'validation_by_metric.csv')
+            self.assertTrue((m.loc[m.method != 'reference', 'n_completed'] == m.loc[m.method != 'reference', 'n_hidden']).all())
+
+    def test_relative_knn_recovers_whole_profiles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for metric in ('fa', 'md'):
+                drop(prof / 'T_b' / 'T_b_{}.csv'.format(metric), AGED[7])
+            truth = leveled('fa', 'T_b', 7)
+            errs = {}
+            for rel in (False, True):
+                out = Path(tmp) / ('z' if rel else 'raw')
+                kw = dict(method='knn', k=1, prior_stats_dir=prof)
+                if rel:
+                    kw['relative_to_prior'] = True
+                ip.run(args_for(prof, axes, out, **kw))
+                df = pd.read_csv(out / 'T_b' / 'T_b_fa.csv', index_col=0)
+                errs[rel] = np.max(np.abs(df[AGED[7]].to_numpy() - truth))
+            self.assertGreater(errs[False], 0.1)  # the level of a neighbouring tract
+            self.assertLess(errs[True], 0.01)  # the scan's deviation, on the norm of T_b
+
+    def test_prior_mean_fills_a_missing_metric(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for tract in LEVEL:  # scan 4 has no md at all
+                drop(prof / tract / '{}_md.csv'.format(tract), AGED[4])
+            out = Path(tmp) / 'out'
+            ip.run(args_for(prof, None, out, method='prior-mean', prior_stats_dir=prof))
+            df = pd.read_csv(out / 'T_c' / 'T_c_md.csv', index_col=0)
+            expect = np.mean([leveled('md', 'T_c', s)[0] for s in (3, 4, 5)])  # the 4-9m bin of the statistics
+            self.assertTrue(np.allclose(df[AGED[4]], expect, rtol=1e-4))
+
+    def test_validation_with_prior(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            out = Path(tmp) / 'Imp'
+            ip.run(args_for(prof, axes, out, validate=True, validate_scans=12, validate_whole_fraction=0.4,
+                            validate_gap_fraction=0.5, validate_region_mm='2,3', validate_methods='knn,linear,prior-mean',
+                            validate_k='1', no_plots=True))
+            s = pd.read_csv(Path(str(out) + '_report') / 'validation' / 'validation_summary.csv')
+            self.assertTrue({'knn k=1 distance (z)', 'linear (z)', 'prior-mean'} <= set(s['setting']))
+            w = s[s['pattern'] == ip.WHOLE].set_index('setting')
+            self.assertLess(w.loc['knn k=1 distance (z)', 'nrmse'], w.loc['knn k=1 distance', 'nrmse'])

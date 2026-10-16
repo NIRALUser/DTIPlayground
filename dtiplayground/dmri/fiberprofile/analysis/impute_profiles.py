@@ -26,6 +26,7 @@
 #   the methods and settings to compare, and reports the errors.
 #
 
+import argparse
 import json
 import logging
 import math
@@ -1437,32 +1438,36 @@ def add_parser(subparsers):
     p.add_argument("--report-dir", default=None,
                    help="Masks of the imputed cells (masks/), imputation_summary.csv and the validation (validation/) "
                         "(default: <out-dir>_report)")
-    p.add_argument("--method", default="arc-linear", choices=METHODS,
-                   help="Imputation method (default: arc-linear; with --fallback none, only the gaps inside profiles are "
-                        "filled: from the same scan, whole profiles are imputed worse than by the cohort mean, see the "
-                        "documentation)")
-    p.add_argument("--fallback", default="none", choices=("none",) + METHODS,
-                   help="Method for the cells the first one leaves, e.g. knn after linear for positions outside the "
-                        "observed ones (default: none)")
-    p.add_argument("--k", type=int, default=1, help="knn: number of neighbours (default: 1)")
+    p.add_argument("--method", default=None, choices=METHODS,
+                   help="Imputation method (default: with --prior-stats-dir siren, on the deviations from the norm; "
+                        "without, arc-linear, which fills only the gaps inside profiles: from the scan's own values, "
+                        "whole profiles are imputed worse than by the age bin mean, see the documentation)")
+    p.add_argument("--fallback", default=None, choices=("none",) + METHODS,
+                   help="Method for the cells the first one leaves, e.g. positions farther than --max-distance from an "
+                        "observed one (default: with --prior-stats-dir prior-mean, the age bin mean; without, none)")
+    p.add_argument("--k", type=int, default=None,
+                   help="knn: number of neighbours (default: 20 on the deviations from the norm, 1 on the values)")
     p.add_argument("--knn-weights", default="distance", choices=("distance", "uniform"),
                    help="knn: weight the neighbours by 1/distance or equally (default: distance)")
     p.add_argument("--max-distance", type=float, default=10.0,
                    help="linear, knn, siren: cells farther than this (mm) from an observed position of the same metric "
                         "stay missing; 0: no limit (default: 10)")
-    p.add_argument("--arc-ends", default="none", choices=ARC_ENDS,
+    p.add_argument("--arc-ends", default=None, choices=ARC_ENDS,
                    help="arc-linear: the missing start and end of a profile: left, the nearest observed value repeated, "
-                        "or the line through the 3 nearest observed values extended (up to --max-gap mm) (default: none)")
+                        "or the line through the 3 nearest observed values extended (up to --max-gap mm) (default: "
+                        "constant on the deviations from the norm, none on the values)")
     p.add_argument("--max-gap", type=float, default=15.0,
                    help="arc-linear: longest gap (mm, between its observed ends) filled, the range of the validation; "
                         "0: no limit (default: 15)")
     p.add_argument("--min-observed", type=float, default=0.5,
                    help="A metric of a scan with a smaller share of observed values is not imputed (default: 0.5)")
-    p.add_argument("--siren-inputs", default="xyz+tract", choices=SIREN_INPUTS,
+    p.add_argument("--siren-inputs", default=None, choices=SIREN_INPUTS,
                    help="siren: network inputs, the 3-D position alone, with the arc length, or with the tract (one-hot) "
-                        "(default: xyz+tract, best for gaps; for whole profiles xyz with --epochs 100 --omega0 10)")
-    p.add_argument("--epochs", type=int, default=1000, help="siren: training epochs (default: 1000)")
-    p.add_argument("--omega0", type=float, default=30.0, help="siren: omega_0 (default: 30)")
+                        "(default: xyz on the deviations from the norm, xyz+tract on the values)")
+    p.add_argument("--epochs", type=int, default=None,
+                   help="siren: training epochs (default: 500 on the deviations from the norm, 1000 on the values)")
+    p.add_argument("--omega0", type=float, default=None,
+                   help="siren: omega_0 (default: 10 on the deviations from the norm, 30 on the values)")
     p.add_argument("--hidden-layers", type=int, default=3, help="siren: hidden sine layers (default: 3)")
     p.add_argument("--hidden-width", type=int, default=256, help="siren: layer width (default: 256)")
     p.add_argument("--lr", type=float, default=1e-4, help="siren: Adam learning rate (default: 1e-4)")
@@ -1471,9 +1476,10 @@ def add_parser(subparsers):
     n = p.add_argument_group("normative prior (deviations from the norm, prior-mean)")
     n.add_argument("--prior-stats-dir", default=None,
                    help="Age bin statistics of a normative cohort (*_agebinstats.csv of qc-profiles, either layout)")
-    n.add_argument("--relative-to-prior", action="store_true",
+    n.add_argument("--relative-to-prior", action=argparse.BooleanOptionalAction, default=None,
                    help="The method imputes the deviations of the scan from the norm of its age bin, (value - mean) / "
-                        "SD at each location, which are turned back into values with the norm of the imputed location")
+                        "SD at each location, which are turned back into values with the norm of the imputed location "
+                        "(default: with --prior-stats-dir; --no-relative-to-prior imputes the values)")
     n.add_argument("--age-csv", default=None,
                    help="Ages of the scans (as qc-profiles --age-csv); else read from the column names (--age-regex)")
     n.add_argument("--age-column", default=None, metavar="NAME", help="--age-csv column of the age (default: auto-detect)")
@@ -1544,9 +1550,29 @@ def add_parser(subparsers):
     p.set_defaults(func=run)
 
 
+# the settings with the smallest error over all four hiding patterns in the validation on a normative cohort (see the
+# documentation): on the deviations from the norm (with a prior) and on the scan's own values (without)
+DEFAULTS = {True: {"method": "siren", "fallback": "prior-mean", "k": 20, "arc_ends": "constant",
+                   "siren_inputs": "xyz", "epochs": 500, "omega0": 10.0},
+            False: {"method": "arc-linear", "fallback": "none", "k": 1, "arc_ends": "none",
+                    "siren_inputs": "xyz+tract", "epochs": 1000, "omega0": 30.0}}
+
+
+def resolve_defaults(args):
+    """Fill the settings left unset: --relative-to-prior when --prior-stats-dir is given, then the best settings of
+    that mode (DEFAULTS)."""
+    if getattr(args, "relative_to_prior", None) is None:
+        args.relative_to_prior = bool(args.prior_stats_dir)
+    for name, value in DEFAULTS[bool(args.relative_to_prior)].items():
+        if getattr(args, name, None) is None:
+            setattr(args, name, value)
+    return args
+
+
 def run(args):
     from dtiplayground.dmri.fiberprofile.analysis import setup_logging
     setup_logging(args.verbose)
+    resolve_defaults(args)
     args.max_distance = args.max_distance or None
     args.max_gap = args.max_gap or None
     args.report_dir = args.report_dir or os.path.normpath(args.out_dir) + "_report"
@@ -1568,6 +1594,9 @@ def run(args):
     if spatial and axes is None:
         log.error("--axis-dir is needed for %s", ", ".join(spatial))
         return 1
+    if "siren" in (args.method, args.fallback):
+        log.info("siren: one network per scan (inputs %s, omega_0 %g, %d epochs) on %s", args.siren_inputs,
+                 args.omega0, args.epochs, pick_device(args.device))
     prior = None
     if args.relative_to_prior or "prior-mean" in (args.method, args.fallback):
         if not args.prior_stats_dir:

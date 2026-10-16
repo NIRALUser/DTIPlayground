@@ -413,6 +413,31 @@ class TestPrior(unittest.TestCase):
             m = pd.read_csv(v / 'validation_by_metric.csv')
             self.assertTrue((m.loc[m.method != 'reference', 'n_completed'] == m.loc[m.method != 'reference', 'n_hidden']).all())
 
+    def test_defaults_follow_the_prior(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            a = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'a'))
+            self.assertEqual((a.method, a.fallback, a.relative_to_prior), ('arc-linear', 'none', False))
+            self.assertEqual((a.siren_inputs, a.omega0, a.epochs, a.k), ('xyz+tract', 30.0, 1000, 1))
+            b = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'b', prior_stats_dir=prof))
+            self.assertEqual((b.method, b.fallback, b.relative_to_prior), ('siren', 'prior-mean', True))
+            self.assertEqual((b.siren_inputs, b.omega0, b.epochs, b.k), ('xyz', 10.0, 500, 20))
+            c = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'c', prior_stats_dir=prof, method='knn', k=5))
+            self.assertEqual((c.method, c.k, c.relative_to_prior), ('knn', 5, True))
+            d = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'd', method='siren'))
+            self.assertEqual((d.relative_to_prior, d.siren_inputs), (False, 'xyz+tract'))
+
+    def test_default_with_prior_fills_everything(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            drop(prof / 'T_b' / 'T_b_fa.csv', AGED[7])
+            out = Path(tmp) / 'out'
+            ip.run(args_for(prof, axes, out, prior_stats_dir=prof, epochs=20, device='cpu'))
+            df = pd.read_csv(out / 'T_b' / 'T_b_fa.csv', index_col=0)
+            self.assertFalse(df[AGED[7]].isna().any())
+            settings = json.load(open(Path(str(out) + '_report') / 'imputation_settings.json'))
+            self.assertEqual((settings['method'], settings['fallback']), ('siren', 'prior-mean'))
+
     def test_relative_knn_recovers_whole_profiles(self):
         with tempfile.TemporaryDirectory() as tmp:
             prof, axes = aged_dataset(tmp)
@@ -422,9 +447,8 @@ class TestPrior(unittest.TestCase):
             errs = {}
             for rel in (False, True):
                 out = Path(tmp) / ('z' if rel else 'raw')
-                kw = dict(method='knn', k=1, prior_stats_dir=prof)
-                if rel:
-                    kw['relative_to_prior'] = True
+                kw = dict(method='knn', k=1, prior_stats_dir=prof, fallback='none')
+                kw['relative_to_prior' if rel else 'no_relative_to_prior'] = True
                 ip.run(args_for(prof, axes, out, **kw))
                 df = pd.read_csv(out / 'T_b' / 'T_b_fa.csv', index_col=0)
                 errs[rel] = np.max(np.abs(df[AGED[7]].to_numpy() - truth))

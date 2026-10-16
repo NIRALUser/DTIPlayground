@@ -211,9 +211,13 @@ Without a protocol file, the defaults of EXTRACT_Profile are used; `--atlas` set
 
     $ dmrifiberprofile run -i DATA_FOLDER --atlas ATLAS_FIBERS_FOLDER -o OUTPUT_DIR
 
-With `cleanup: noCleanup` (the default), the profile of each scan, tract and property (`.fvp`) is kept with the
-settings and input files it was computed from; a later run into the same output folder reuses the unchanged ones and
-only computes the others (e.g. added scans). With `duringProcessing` or `endOfProcessing` everything is recomputed.
+A later run into the same output folder (e.g. after an interruption, or with added scans) reuses the profiles that are
+unchanged -- same input images (path, size, modification time), tract and settings -- and only computes the others.
+When a scan is done, all its profiles are stored with their settings in one file, `subject_profiles/<scan id>.npz`,
+so a later run reads one file per scan. A scan without it (an interrupted scan, or an output of a version before
+0.8.20) reuses its `.fvp` files, kept with `cleanup: noCleanup` (the default) next to the settings and input files
+they were computed from (`<profile>.json`). `duringProcessing` and `endOfProcessing` remove the `.fvp` files but keep
+`subject_profiles`; `overwrite` recomputes everything.
 
 Analysis and QC of the profiles
 ===============================
@@ -264,7 +268,7 @@ A typical sequence, from the parametrized atlas fibers to the cleaned profiles::
     $ dmrifiberprofile compute-axis Atlas/FibersParam -o FiberAxis
     $ dmrifiberprofile qc-registration --data-dir Data --atlas-dir Atlas --normative-dir Atlas/normativeModel --out-dir RegistrationQC
     $ dmrifiberprofile qc-profiles --profiles-dir Profiles --prior-stats-dir Atlas/normProfiles --registration-qc RegistrationQC --clean-dir Profiles_Clean -o ProfileQC
-    $ dmrifiberprofile impute-profiles --profiles-dir ProfileQC/Profiles_Clean --axis-dir FiberAxis --out-dir Profiles_Imputed
+    $ dmrifiberprofile impute-profiles --profiles-dir ProfileQC/Profiles_Clean --axis-dir FiberAxis --out-dir Profiles_Imputed --prior-stats-dir Atlas/normProfiles
 
 The imputation comes after the QC, so that the QC sees only measured values.
 
@@ -449,41 +453,66 @@ others. Two kinds of values are missing, and both are imputed the same way:
 A scan that is in no table (excluded for its registration, its preprocessing or a missing age) has nothing to impute
 from and stays out.
 
-Each scan and metric is imputed from its own observed values only. Every profile location (tract, arc length) has a
+Each scan is imputed from its own observed values, either the values themselves or, with the norm of a normative
+cohort (``--prior-stats-dir``), their deviations from it. Every profile location (tract, arc length) has a
 3-D position in atlas space, the point of the tract axis at that arc length (``--axis-dir``, from ``compute-axis``;
 beyond the ends of an axis, along its first or last segment). The tracts are dense in the brain, so a location that
-is missing has observed neighbours in other tracts of the same scan. The methods (``--method``):
+is missing has observed neighbours in other tracts of the same scan.
 
-``arc-linear`` (default)
+With the norm (``--prior-stats-dir``, the age bin statistics ``*_agebinstats.csv`` that ``qc-profiles`` writes for a
+normative cohort, either layout), the method imputes the scan's deviation from the mean of its age bin,
+(value - mean) / SD at each location, and turns it back into a value with the mean and SD of the missing location
+(``--relative-to-prior``, the default with ``--prior-stats-dir``; ``--no-relative-to-prior`` imputes the values). A
+scan that is above the norm in a tract tends to be above it in the neighbouring tracts as well, and the norm carries
+what the neighbours can't: the level of each tract at the scan's age. The age of a scan comes from ``--age-csv``
+(``--age-column``, ``--age-units``, as for ``qc-profiles``) or its name (``--age-regex``, default ``ses-<months>m``);
+a scan without an age, or outside the age bins, is not imputed with the norm.
+
+The methods (``--method``):
+
+``arc-linear`` (default without ``--prior-stats-dir``)
     Linear along the arc length of the same profile, between the observed values at both ends of a gap; gaps longer
     than ``--max-gap`` mm (default 15, the longest gaps validated) are left. The missing start or end of a profile (``--arc-ends``): left
-    (``none``, default), the nearest observed value repeated (``constant``), or the line through the 3 nearest
-    observed values extended (``linear``), up to ``--max-gap`` mm. It can't fill a whole profile and needs no axes.
+    (``none``, default on the values), the nearest observed value repeated (``constant``, default on the
+    deviations), or the line through the 3 nearest observed values extended (``linear``), up to ``--max-gap`` mm.
+    It can't fill a whole profile and needs no axes.
 
 ``linear``
     Linear in 3-D: barycentric interpolation in the tetrahedra (Delaunay) of the observed positions of the same metric,
     in all tracts. A location outside them is left (``--fallback knn`` fills it).
 
 ``knn``
-    The mean of the ``--k`` (default 1) nearest observed positions in 3-D, weighted by the inverse of their distance
-    (``--knn-weights uniform``: equally).
+    The mean of the ``--k`` nearest observed positions in 3-D (default 20 on the deviations, 1 on the values),
+    weighted by the inverse of their distance (``--knn-weights uniform``: equally).
 
 ``siren``
     A sine network (SIREN) per scan, trained on the scan's observed values of all metrics jointly, each standardized
     on its own; it predicts the missing ones. ``--siren-inputs`` sets what it sees of a location: the 3-D position
-    (``xyz``), with the arc length (``xyz+arc``), or with the tract (``xyz+tract``, default; a one-hot code). Uses a
-    GPU when there is one (``--device``); ``--epochs`` (default 1000), ``--omega0`` (default 30),
-    ``--hidden-layers``, ``--hidden-width``, ``--lr``, ``--seed``. The defaults are the best setting for gaps; for
-    whole profiles, ``--siren-inputs xyz --omega0 10 --epochs 100`` did best.
+    (``xyz``), with the arc length (``xyz+arc``), or with the tract (``xyz+tract``; a one-hot code). Uses a
+    GPU when there is one (``--device``; a scan takes seconds on a GPU, longer on a CPU); ``--epochs``,
+    ``--omega0``, ``--hidden-layers``, ``--hidden-width``, ``--lr``, ``--seed``. On the deviations the default is
+    ``xyz``, ``--omega0 10``, ``--epochs 500`` (default with ``--prior-stats-dir``), on the values ``xyz+tract``,
+    ``--omega0 30``, ``--epochs 1000``.
 
-The defaults impute only the gaps inside the profiles (``arc-linear``, ``--arc-ends none``, ``--fallback none``):
-in the validation on a normative cohort (`Validation of impute-profiles <ImputeValidation.html>`_), every method
-that uses only the scan's own values imputed missing starts and ends no better than the cohort mean at each
-location, and whole profiles and regions about twice as far off. Imputing them (``--arc-ends``, ``--fallback``,
-another ``--method``) is possible, but those values are estimates of limited use.
+``prior-mean``
+    The mean of the scan's age bin (needs ``--prior-stats-dir``); it also fills a metric the scan doesn't have at all.
 
-``--fallback`` runs a second method on the cells the first one left, from the observed values as well (e.g.
-``--method arc-linear --fallback siren``: gaps along the profile, the rest from the network). Limits:
+``--fallback`` runs a second method on the cells the first one left (e.g. ``--method arc-linear --fallback siren``:
+gaps along the profile, the rest from the network).
+
+The defaults are the settings with the smallest error over all kinds of missing values (gaps, ends, whole profiles,
+regions) in the validation on a normative infant cohort (`Validation of impute-profiles <ImputeValidation.html>`_):
+
+- with ``--prior-stats-dir``: ``siren`` on the deviations (``xyz``, ``--omega0 10``, ``--epochs 500``) with
+  ``--fallback prior-mean`` for the cells farther than ``--max-distance`` from an observed one. Its error was 39% of
+  that of the age bin mean for gaps inside profiles, 51% for missing ends, 73% for whole profiles and 86% for a
+  region of rejected tracts. ``--method knn`` (k = 20 on the deviations) needs no GPU and was about 8% worse overall.
+- without: ``arc-linear`` on the values (``--arc-ends none``, ``--fallback none``), which fills only the gaps inside
+  profiles. Without the norm, every method imputed missing ends no better than the age bin mean, and whole profiles
+  and regions 2 to 2.5 times as far off; other methods and ``--fallback`` can still be chosen, but those values are
+  estimates of limited use.
+
+Limits:
 
 - ``--max-distance`` (mm, default 10; 0: none): the 3-D methods fill only cells within that distance of an observed
   position of the same metric
@@ -500,13 +529,16 @@ Next to the tables, ``--report-dir`` (default ``<out-dir>_report``) holds:
 - ``imputation_settings.json``: the options of the run
 
 Imputed values are estimates, not measurements: report the share of imputed values, and consider leaving them out
-of analyses that handle missing values themselves (e.g. mixed models).
+of analyses that handle missing values themselves (e.g. mixed models). With the norm, the imputed values of a
+scan are drawn towards its age bin mean where its own neighbours say little, so a group analysis of normative and
+other scans should not rely on imputed values for group differences.
 
 Validation
 ----------
 
 ``--validate`` compares the methods and their settings on values that were measured: in a sample of scans
-(``--validate-scans``, default 30, chosen with ``--validate-seed``) it hides whole profiles of a share of the tracts
+(``--validate-scans``, default 30, chosen with ``--validate-seed``; ``--validate-scans-per-bin N``: N of each age
+bin, so every age is represented) it hides whole profiles of a share of the tracts
 (``--validate-whole-fraction``, default 0.1, all metrics of the tract), one gap inside the profile in a share of the
 other tracts (``--validate-gap-fraction``, default 0.2; ``--validate-gap-mm``, default 3 to 15 mm long) and the
 start or end of the profile in another share (pattern ``end gap``; ``--validate-end-gap-fraction``, default 0.2;
@@ -518,7 +550,13 @@ scan hides such a region (pattern ``region``): every tract with a position insid
 position loses its whole profile (``--validate-region-mm``, radius 10 to 25 mm by default; a sphere reaching more
 than half of the scan's tracts is drawn again; ``--validate-region-count``, default 1, 0: no region pass).
 ``--validate-rounds`` (default 1) repeats both passes on every scan with other tracts, gaps and regions, for more
-hidden values per location. Only scans whose metrics are at least
+hidden values per location. Each setting is compared on the values and on the deviations from
+the norm (``--validate-relative``, default both), and ``prior-mean`` imputes the age bin mean. The norm comes from
+the cohort itself (``--validate-prior cohort``, default, for a normative cohort; age bins ``--bins``, default
+0-3,4-9,10-60 months) without every scan of the validated scan's subject (``--validate-leave-out subject``,
+default: its other sessions are not independent of it; ``scan``: the scan only), or from ``--prior-stats-dir``
+(``--validate-prior files``, the statistics of another cohort: those of the cohort validated would include the
+hidden values). Only scans whose metrics are at least
 ``--min-observed`` observed are used. Nothing is imputed into ``--out-dir``; the results are in
 ``<report-dir>/validation``:
 
@@ -533,9 +571,15 @@ hidden values per location. Only scans whose metrics are at least
   means (``--no-validate-reference``: left out). Over a sample of scans its error is near 1 but not exactly: the
   scans sampled may lie closer to the cohort mean, or farther, than the cohort as a whole. ``vs_reference`` is
   therefore the error of a setting relative to that of the reference on the same cells: below 1, the setting does
-  better than the cohort mean, whatever the sample. It is in every table but the one per location
+  better than the cohort mean, whatever the sample. It is in every table but the one per location. When the scans
+  have ages, ``vs_age_mean`` is the same relative to the mean of the scan's age bin (``prior-mean``), the better
+  reference across an age range with large changes such as infancy, and ``vs_age_mean_completed`` relative to it
+  on every hidden value, with the values a setting leaves (e.g. farther than ``--max-distance``) counted with the age
+  bin mean; it compares settings that fill different shares of the values, as an imputation with
+  ``--fallback prior-mean`` would. ``rmse_completed`` is that error in the units of the metric
 - ``validation_by_metric.csv``, ``validation_by_tract.csv``: the same per metric and per tract and metric, also in
   the units of the metric (``rmse``); the second one has the distance from the tract's axis to the nearest other tract
+- ``validation_by_age_bin.csv``: the same per metric and age bin of the scans validated
 - ``validation_by_location.csv``: the error at every profile location (tract, arc length and its 3-D position
   ``x``, ``y``, ``z``) of the best setting of each method for each pattern (``--validate-location-settings all``:
   of every setting), per metric and as the mean over the metrics (``metric`` ``all``), with the number of hidden values

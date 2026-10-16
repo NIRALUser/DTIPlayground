@@ -1,0 +1,35 @@
+key,method,gap,end gap,whole profile,region,overall
+linear (z),linear (z),0.463,0.7039,0.7273,0.8801,0.6936
+knn k=20 distance (z),knn (z),0.5684,0.6307,0.7323,0.8764,0.7019
+knn k=50 distance (z),knn (z),0.5901,0.6503,0.7115,0.8637,0.7039
+knn k=10 distance (z),knn (z),0.5599,0.6174,0.7558,0.9003,0.7084
+knn k=5 distance (z),knn (z),0.558,0.6085,0.7919,0.9284,0.7217
+knn k=20 uniform (z),knn (z),0.6054,0.6742,0.7413,0.8766,0.7244
+knn k=10 uniform (z),knn (z),0.5911,0.6506,0.7566,0.8992,0.7244
+knn k=3 distance (z),knn (z),0.5555,0.6015,0.8291,0.9419,0.732
+knn k=5 uniform (z),knn (z),0.5817,0.6289,0.7903,0.9281,0.7323
+knn k=50 uniform (z),knn (z),0.6346,0.7034,0.7258,0.8672,0.7328
+knn k=3 uniform (z),knn (z),0.5711,0.6124,0.8292,0.9418,0.7386
+arc-linear ends=constant (z),arc-linear (z),0.4169,0.5386,1,1,0.7389
+knn k=1 distance (z),knn (z),0.5526,0.591,0.862,0.9535,0.7398
+knn k=1 uniform (z),knn (z),0.5526,0.591,0.862,0.9535,0.7398
+arc-linear ends=linear (z),arc-linear (z),0.4169,0.7421,1,1,0.7898
+arc-linear (z),arc-linear (z),0.4169,1,1,1,0.8542
+arc-linear,arc-linear,0.866,1,1,1,0.9665
+arc-linear ends=constant,arc-linear,0.866,1.069,1,1,0.9837
+arc-linear ends=linear,arc-linear,0.866,1.122,1,1,0.997
+prior-mean,prior-mean,1,1,1,1,1
+cohort mean (reference),reference,1.272,1.198,1.264,1.258,1.248
+linear,linear,1.32,1.207,2.304,2.584,1.854
+knn k=20 distance,knn,2.014,1.585,2.514,2.819,2.233
+knn k=50 distance,knn,2.085,1.686,2.41,2.751,2.233
+knn k=10 distance,knn,1.944,1.45,2.62,2.949,2.241
+knn k=5 distance,knn,1.875,1.306,2.804,3.104,2.272
+knn k=3 distance,knn,1.82,1.246,2.914,3.172,2.288
+knn k=1 uniform,knn,1.747,1.186,3.005,3.221,2.29
+knn k=1 distance,knn,1.747,1.186,3.005,3.221,2.29
+knn k=3 uniform,knn,1.869,1.269,2.913,3.172,2.306
+knn k=5 uniform,knn,1.963,1.364,2.799,3.101,2.307
+knn k=10 uniform,knn,2.085,1.595,2.62,2.942,2.311
+knn k=20 uniform,knn,2.17,1.763,2.541,2.819,2.323
+knn k=50 uniform,knn,2.241,1.858,2.455,2.763,2.329

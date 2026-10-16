@@ -1,0 +1,41 @@
+key,0-3m,4-9m,10-60m
+prior-mean,1,1,1
+cohort mean (reference),1.671,1.152,0.9811
+arc-linear,1,1,1
+arc-linear (z),1,1,1
+arc-linear ends=constant,0.9206,0.9378,1.206
+arc-linear ends=constant (z),0.4406,0.5456,0.5353
+arc-linear ends=linear,0.9284,0.8613,1.504
+arc-linear ends=linear (z),0.6006,0.6684,0.6936
+knn k=1 distance,0.9793,1.089,1.241
+knn k=1 distance (z),0.5074,0.604,0.6275
+knn k=1 uniform,0.9793,1.089,1.241
+knn k=1 uniform (z),0.5074,0.604,0.6275
+knn k=10 distance,1.189,1.525,1.425
+knn k=10 distance (z),0.5558,0.6268,0.6378
+knn k=10 uniform,1.3,1.725,1.533
+knn k=10 uniform (z),0.5872,0.6683,0.669
+knn k=20 distance,1.268,1.708,1.529
+knn k=20 distance (z),0.5612,0.6513,0.6532
+knn k=20 uniform,1.401,1.926,1.676
+knn k=20 uniform (z),0.5973,0.7127,0.6955
+knn k=3 distance,1.031,1.149,1.289
+knn k=3 distance (z),0.5267,0.6066,0.6257
+knn k=3 uniform,1.05,1.174,1.313
+knn k=3 uniform (z),0.5394,0.6173,0.634
+knn k=5 distance,1.073,1.277,1.342
+knn k=5 distance (z),0.5416,0.6125,0.629
+knn k=5 uniform,1.12,1.364,1.395
+knn k=5 uniform (z),0.5641,0.6316,0.6463
+knn k=50 distance,1.319,1.746,1.663
+knn k=50 distance (z),0.5781,0.6694,0.6776
+knn k=50 uniform,1.454,1.93,1.842
+knn k=50 uniform (z),0.6224,0.7423,0.7285
+linear,1.061,1.134,1.206
+linear (z),0.7101,0.7235,0.6956
+siren xyz omega0=10 (z) e=500,0.4714,0.5488,0.5443
+siren xyz omega0=10 e=500,0.9037,1.039,1.258
+siren xyz+arc omega0=10 (z) e=1000,0.4267,0.4757,0.4991
+siren xyz+arc omega0=10 e=1000,0.8537,0.957,1.1
+siren xyz+tract omega0=30 (z) e=1000,0.4276,0.5076,0.5051
+siren xyz+tract omega0=30 e=1000,0.88,0.9933,1.131

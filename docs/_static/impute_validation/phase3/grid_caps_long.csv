@@ -1,0 +1,2145 @@
+setting,method,pattern,cap,ratio
+knn k=20 distance (z),knn (z),end gap,2,0.7956
+knn k=20 distance (z),knn (z),end gap,4,0.6731
+knn k=20 distance (z),knn (z),end gap,6,0.6287
+knn k=20 distance (z),knn (z),end gap,10,0.6073
+knn k=20 distance (z),knn (z),end gap,15,0.6063
+knn k=20 distance (z),knn (z),end gap,20,0.6061
+knn k=20 distance (z),knn (z),end gap,25,0.6061
+knn k=20 distance (z),knn (z),end gap,inf,0.6061
+knn k=20 distance (z),knn (z),gap,2,0.7193
+knn k=20 distance (z),knn (z),gap,4,0.5771
+knn k=20 distance (z),knn (z),gap,6,0.537
+knn k=20 distance (z),knn (z),gap,10,0.5341
+knn k=20 distance (z),knn (z),gap,15,0.5341
+knn k=20 distance (z),knn (z),gap,20,0.5341
+knn k=20 distance (z),knn (z),gap,25,0.5341
+knn k=20 distance (z),knn (z),gap,inf,0.5341
+knn k=20 distance (z),knn (z),region,2,0.9666
+knn k=20 distance (z),knn (z),region,4,0.9159
+knn k=20 distance (z),knn (z),region,6,0.8778
+knn k=20 distance (z),knn (z),region,10,0.8389
+knn k=20 distance (z),knn (z),region,15,0.8161
+knn k=20 distance (z),knn (z),region,20,0.8039
+knn k=20 distance (z),knn (z),region,25,0.7974
+knn k=20 distance (z),knn (z),region,inf,0.7969
+knn k=20 distance (z),knn (z),whole profile,2,0.8888
+knn k=20 distance (z),knn (z),whole profile,4,0.7861
+knn k=20 distance (z),knn (z),whole profile,6,0.748
+knn k=20 distance (z),knn (z),whole profile,10,0.718
+knn k=20 distance (z),knn (z),whole profile,15,0.713
+knn k=20 distance (z),knn (z),whole profile,20,0.7119
+knn k=20 distance (z),knn (z),whole profile,25,0.7119
+knn k=20 distance (z),knn (z),whole profile,inf,0.7119
+population q=10 diagonal,population,end gap,2,0.7582
+population q=10 diagonal,population,end gap,4,0.7582
+population q=10 diagonal,population,end gap,6,0.7582
+population q=10 diagonal,population,end gap,10,0.7582
+population q=10 diagonal,population,end gap,15,0.7582
+population q=10 diagonal,population,end gap,20,0.7582
+population q=10 diagonal,population,end gap,25,0.7582
+population q=10 diagonal,population,end gap,inf,0.7582
+population q=10 diagonal,population,gap,2,0.6575
+population q=10 diagonal,population,gap,4,0.6575
+population q=10 diagonal,population,gap,6,0.6575
+population q=10 diagonal,population,gap,10,0.6575
+population q=10 diagonal,population,gap,15,0.6575
+population q=10 diagonal,population,gap,20,0.6575
+population q=10 diagonal,population,gap,25,0.6575
+population q=10 diagonal,population,gap,inf,0.6575
+population q=10 diagonal,population,region,2,0.7168
+population q=10 diagonal,population,region,4,0.7168
+population q=10 diagonal,population,region,6,0.7168
+population q=10 diagonal,population,region,10,0.7168
+population q=10 diagonal,population,region,15,0.7168
+population q=10 diagonal,population,region,20,0.7168
+population q=10 diagonal,population,region,25,0.7168
+population q=10 diagonal,population,region,inf,0.7168
+population q=10 diagonal,population,whole measure,2,0.6975
+population q=10 diagonal,population,whole measure,4,0.6975
+population q=10 diagonal,population,whole measure,6,0.6975
+population q=10 diagonal,population,whole measure,10,0.6975
+population q=10 diagonal,population,whole measure,15,0.6975
+population q=10 diagonal,population,whole measure,20,0.6975
+population q=10 diagonal,population,whole measure,25,0.6975
+population q=10 diagonal,population,whole measure,inf,0.6975
+population q=10 diagonal,population,whole profile,2,0.7088
+population q=10 diagonal,population,whole profile,4,0.7088
+population q=10 diagonal,population,whole profile,6,0.7088
+population q=10 diagonal,population,whole profile,10,0.7088
+population q=10 diagonal,population,whole profile,15,0.7088
+population q=10 diagonal,population,whole profile,20,0.7088
+population q=10 diagonal,population,whole profile,25,0.7088
+population q=10 diagonal,population,whole profile,inf,0.7088
+population q=10 diagonal + knn k=20,population+knn,end gap,2,0.6467
+population q=10 diagonal + knn k=20,population+knn,end gap,4,0.6063
+population q=10 diagonal + knn k=20,population+knn,end gap,6,0.6045
+population q=10 diagonal + knn k=20,population+knn,end gap,10,0.6038
+population q=10 diagonal + knn k=20,population+knn,end gap,15,0.6039
+population q=10 diagonal + knn k=20,population+knn,end gap,20,0.6038
+population q=10 diagonal + knn k=20,population+knn,end gap,25,0.6038
+population q=10 diagonal + knn k=20,population+knn,end gap,inf,0.6038
+population q=10 diagonal + knn k=20,population+knn,gap,2,0.5352
+population q=10 diagonal + knn k=20,population+knn,gap,4,0.5018
+population q=10 diagonal + knn k=20,population+knn,gap,6,0.4992
+population q=10 diagonal + knn k=20,population+knn,gap,10,0.4993
+population q=10 diagonal + knn k=20,population+knn,gap,15,0.4993
+population q=10 diagonal + knn k=20,population+knn,gap,20,0.4993
+population q=10 diagonal + knn k=20,population+knn,gap,25,0.4993
+population q=10 diagonal + knn k=20,population+knn,gap,inf,0.4993
+population q=10 diagonal + knn k=20,population+knn,region,2,0.7004
+population q=10 diagonal + knn k=20,population+knn,region,4,0.6975
+population q=10 diagonal + knn k=20,population+knn,region,6,0.7066
+population q=10 diagonal + knn k=20,population+knn,region,10,0.7245
+population q=10 diagonal + knn k=20,population+knn,region,15,0.7368
+population q=10 diagonal + knn k=20,population+knn,region,20,0.7438
+population q=10 diagonal + knn k=20,population+knn,region,25,0.7476
+population q=10 diagonal + knn k=20,population+knn,region,inf,0.7492
+population q=10 diagonal + knn k=20,population+knn,whole measure,2,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole measure,4,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole measure,6,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole measure,10,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole measure,15,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole measure,20,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole measure,25,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole measure,inf,0.6975
+population q=10 diagonal + knn k=20,population+knn,whole profile,2,0.6648
+population q=10 diagonal + knn k=20,population+knn,whole profile,4,0.6552
+population q=10 diagonal + knn k=20,population+knn,whole profile,6,0.6609
+population q=10 diagonal + knn k=20,population+knn,whole profile,10,0.6645
+population q=10 diagonal + knn k=20,population+knn,whole profile,15,0.6667
+population q=10 diagonal + knn k=20,population+knn,whole profile,20,0.6673
+population q=10 diagonal + knn k=20,population+knn,whole profile,25,0.6673
+population q=10 diagonal + knn k=20,population+knn,whole profile,inf,0.6673
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,2,0.6013
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,4,0.5178
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,6,0.506
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,10,0.5038
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,15,0.5039
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,20,0.5039
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,25,0.5039
+population q=10 diagonal + siren xyz omega0=10,population+siren,end gap,inf,0.5039
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,2,0.4659
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,4,0.3889
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,6,0.3848
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,10,0.3868
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,15,0.3868
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,20,0.3868
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,25,0.3868
+population q=10 diagonal + siren xyz omega0=10,population+siren,gap,inf,0.3868
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,2,0.7039
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,4,0.7096
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,6,0.7265
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,10,0.7488
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,15,0.7641
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,20,0.7742
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,25,0.7809
+population q=10 diagonal + siren xyz omega0=10,population+siren,region,inf,0.7829
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,2,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,4,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,6,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,10,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,15,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,20,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,25,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole measure,inf,0.6975
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,2,0.6699
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,4,0.6734
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,6,0.6836
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,10,0.6882
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,15,0.6909
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,20,0.691
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,25,0.691
+population q=10 diagonal + siren xyz omega0=10,population+siren,whole profile,inf,0.691
+population q=10 isotropic,population,end gap,2,0.7528
+population q=10 isotropic,population,end gap,4,0.7528
+population q=10 isotropic,population,end gap,6,0.7528
+population q=10 isotropic,population,end gap,10,0.7528
+population q=10 isotropic,population,end gap,15,0.7528
+population q=10 isotropic,population,end gap,20,0.7528
+population q=10 isotropic,population,end gap,25,0.7528
+population q=10 isotropic,population,end gap,inf,0.7528
+population q=10 isotropic,population,gap,2,0.6523
+population q=10 isotropic,population,gap,4,0.6523
+population q=10 isotropic,population,gap,6,0.6523
+population q=10 isotropic,population,gap,10,0.6523
+population q=10 isotropic,population,gap,15,0.6523
+population q=10 isotropic,population,gap,20,0.6523
+population q=10 isotropic,population,gap,25,0.6523
+population q=10 isotropic,population,gap,inf,0.6523
+population q=10 isotropic,population,region,2,0.7107
+population q=10 isotropic,population,region,4,0.7107
+population q=10 isotropic,population,region,6,0.7107
+population q=10 isotropic,population,region,10,0.7107
+population q=10 isotropic,population,region,15,0.7107
+population q=10 isotropic,population,region,20,0.7107
+population q=10 isotropic,population,region,25,0.7107
+population q=10 isotropic,population,region,inf,0.7107
+population q=10 isotropic,population,whole measure,2,0.6914
+population q=10 isotropic,population,whole measure,4,0.6914
+population q=10 isotropic,population,whole measure,6,0.6914
+population q=10 isotropic,population,whole measure,10,0.6914
+population q=10 isotropic,population,whole measure,15,0.6914
+population q=10 isotropic,population,whole measure,20,0.6914
+population q=10 isotropic,population,whole measure,25,0.6914
+population q=10 isotropic,population,whole measure,inf,0.6914
+population q=10 isotropic,population,whole profile,2,0.7042
+population q=10 isotropic,population,whole profile,4,0.7042
+population q=10 isotropic,population,whole profile,6,0.7042
+population q=10 isotropic,population,whole profile,10,0.7042
+population q=10 isotropic,population,whole profile,15,0.7042
+population q=10 isotropic,population,whole profile,20,0.7042
+population q=10 isotropic,population,whole profile,25,0.7042
+population q=10 isotropic,population,whole profile,inf,0.7042
+population q=10 isotropic + knn k=20,population+knn,end gap,2,0.64
+population q=10 isotropic + knn k=20,population+knn,end gap,4,0.5967
+population q=10 isotropic + knn k=20,population+knn,end gap,6,0.5935
+population q=10 isotropic + knn k=20,population+knn,end gap,10,0.5929
+population q=10 isotropic + knn k=20,population+knn,end gap,15,0.5928
+population q=10 isotropic + knn k=20,population+knn,end gap,20,0.5928
+population q=10 isotropic + knn k=20,population+knn,end gap,25,0.5928
+population q=10 isotropic + knn k=20,population+knn,end gap,inf,0.5928
+population q=10 isotropic + knn k=20,population+knn,gap,2,0.5316
+population q=10 isotropic + knn k=20,population+knn,gap,4,0.4989
+population q=10 isotropic + knn k=20,population+knn,gap,6,0.4963
+population q=10 isotropic + knn k=20,population+knn,gap,10,0.4965
+population q=10 isotropic + knn k=20,population+knn,gap,15,0.4965
+population q=10 isotropic + knn k=20,population+knn,gap,20,0.4965
+population q=10 isotropic + knn k=20,population+knn,gap,25,0.4965
+population q=10 isotropic + knn k=20,population+knn,gap,inf,0.4965
+population q=10 isotropic + knn k=20,population+knn,region,2,0.6942
+population q=10 isotropic + knn k=20,population+knn,region,4,0.6901
+population q=10 isotropic + knn k=20,population+knn,region,6,0.6968
+population q=10 isotropic + knn k=20,population+knn,region,10,0.7127
+population q=10 isotropic + knn k=20,population+knn,region,15,0.7241
+population q=10 isotropic + knn k=20,population+knn,region,20,0.7309
+population q=10 isotropic + knn k=20,population+knn,region,25,0.7346
+population q=10 isotropic + knn k=20,population+knn,region,inf,0.7362
+population q=10 isotropic + knn k=20,population+knn,whole measure,2,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole measure,4,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole measure,6,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole measure,10,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole measure,15,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole measure,20,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole measure,25,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole measure,inf,0.6914
+population q=10 isotropic + knn k=20,population+knn,whole profile,2,0.6604
+population q=10 isotropic + knn k=20,population+knn,whole profile,4,0.6492
+population q=10 isotropic + knn k=20,population+knn,whole profile,6,0.6547
+population q=10 isotropic + knn k=20,population+knn,whole profile,10,0.6571
+population q=10 isotropic + knn k=20,population+knn,whole profile,15,0.6589
+population q=10 isotropic + knn k=20,population+knn,whole profile,20,0.6596
+population q=10 isotropic + knn k=20,population+knn,whole profile,25,0.6596
+population q=10 isotropic + knn k=20,population+knn,whole profile,inf,0.6596
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,2,0.5951
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,4,0.5114
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,6,0.4985
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,10,0.496
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,15,0.496
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,20,0.496
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,25,0.496
+population q=10 isotropic + siren xyz omega0=10,population+siren,end gap,inf,0.496
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,2,0.4629
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,4,0.383
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,6,0.3762
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,10,0.3774
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,15,0.3774
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,20,0.3774
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,25,0.3774
+population q=10 isotropic + siren xyz omega0=10,population+siren,gap,inf,0.3774
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,2,0.6976
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,4,0.7025
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,6,0.7178
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,10,0.7388
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,15,0.7556
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,20,0.7651
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,25,0.7712
+population q=10 isotropic + siren xyz omega0=10,population+siren,region,inf,0.7735
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,2,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,4,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,6,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,10,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,15,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,20,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,25,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole measure,inf,0.6914
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,2,0.6657
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,4,0.6681
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,6,0.6777
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,10,0.6841
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,15,0.6853
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,20,0.6856
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,25,0.6856
+population q=10 isotropic + siren xyz omega0=10,population+siren,whole profile,inf,0.6856
+population q=10 metric,population,end gap,2,0.7546
+population q=10 metric,population,end gap,4,0.7546
+population q=10 metric,population,end gap,6,0.7546
+population q=10 metric,population,end gap,10,0.7546
+population q=10 metric,population,end gap,15,0.7546
+population q=10 metric,population,end gap,20,0.7546
+population q=10 metric,population,end gap,25,0.7546
+population q=10 metric,population,end gap,inf,0.7546
+population q=10 metric,population,gap,2,0.6537
+population q=10 metric,population,gap,4,0.6537
+population q=10 metric,population,gap,6,0.6537
+population q=10 metric,population,gap,10,0.6537
+population q=10 metric,population,gap,15,0.6537
+population q=10 metric,population,gap,20,0.6537
+population q=10 metric,population,gap,25,0.6537
+population q=10 metric,population,gap,inf,0.6537
+population q=10 metric,population,region,2,0.7139
+population q=10 metric,population,region,4,0.7139
+population q=10 metric,population,region,6,0.7139
+population q=10 metric,population,region,10,0.7139
+population q=10 metric,population,region,15,0.7139
+population q=10 metric,population,region,20,0.7139
+population q=10 metric,population,region,25,0.7139
+population q=10 metric,population,region,inf,0.7139
+population q=10 metric,population,whole measure,2,0.691
+population q=10 metric,population,whole measure,4,0.691
+population q=10 metric,population,whole measure,6,0.691
+population q=10 metric,population,whole measure,10,0.691
+population q=10 metric,population,whole measure,15,0.691
+population q=10 metric,population,whole measure,20,0.691
+population q=10 metric,population,whole measure,25,0.691
+population q=10 metric,population,whole measure,inf,0.691
+population q=10 metric,population,whole profile,2,0.7058
+population q=10 metric,population,whole profile,4,0.7058
+population q=10 metric,population,whole profile,6,0.7058
+population q=10 metric,population,whole profile,10,0.7058
+population q=10 metric,population,whole profile,15,0.7058
+population q=10 metric,population,whole profile,20,0.7058
+population q=10 metric,population,whole profile,25,0.7058
+population q=10 metric,population,whole profile,inf,0.7058
+population q=10 metric + knn k=20,population+knn,end gap,2,0.6425
+population q=10 metric + knn k=20,population+knn,end gap,4,0.5986
+population q=10 metric + knn k=20,population+knn,end gap,6,0.5947
+population q=10 metric + knn k=20,population+knn,end gap,10,0.5936
+population q=10 metric + knn k=20,population+knn,end gap,15,0.5936
+population q=10 metric + knn k=20,population+knn,end gap,20,0.5936
+population q=10 metric + knn k=20,population+knn,end gap,25,0.5936
+population q=10 metric + knn k=20,population+knn,end gap,inf,0.5936
+population q=10 metric + knn k=20,population+knn,gap,2,0.5318
+population q=10 metric + knn k=20,population+knn,gap,4,0.4973
+population q=10 metric + knn k=20,population+knn,gap,6,0.4948
+population q=10 metric + knn k=20,population+knn,gap,10,0.4951
+population q=10 metric + knn k=20,population+knn,gap,15,0.4951
+population q=10 metric + knn k=20,population+knn,gap,20,0.4951
+population q=10 metric + knn k=20,population+knn,gap,25,0.4951
+population q=10 metric + knn k=20,population+knn,gap,inf,0.4951
+population q=10 metric + knn k=20,population+knn,region,2,0.6977
+population q=10 metric + knn k=20,population+knn,region,4,0.6933
+population q=10 metric + knn k=20,population+knn,region,6,0.7004
+population q=10 metric + knn k=20,population+knn,region,10,0.7164
+population q=10 metric + knn k=20,population+knn,region,15,0.7276
+population q=10 metric + knn k=20,population+knn,region,20,0.7343
+population q=10 metric + knn k=20,population+knn,region,25,0.7379
+population q=10 metric + knn k=20,population+knn,region,inf,0.7394
+population q=10 metric + knn k=20,population+knn,whole measure,2,0.691
+population q=10 metric + knn k=20,population+knn,whole measure,4,0.691
+population q=10 metric + knn k=20,population+knn,whole measure,6,0.691
+population q=10 metric + knn k=20,population+knn,whole measure,10,0.691
+population q=10 metric + knn k=20,population+knn,whole measure,15,0.691
+population q=10 metric + knn k=20,population+knn,whole measure,20,0.691
+population q=10 metric + knn k=20,population+knn,whole measure,25,0.691
+population q=10 metric + knn k=20,population+knn,whole measure,inf,0.691
+population q=10 metric + knn k=20,population+knn,whole profile,2,0.6622
+population q=10 metric + knn k=20,population+knn,whole profile,4,0.65
+population q=10 metric + knn k=20,population+knn,whole profile,6,0.6553
+population q=10 metric + knn k=20,population+knn,whole profile,10,0.6583
+population q=10 metric + knn k=20,population+knn,whole profile,15,0.6602
+population q=10 metric + knn k=20,population+knn,whole profile,20,0.6608
+population q=10 metric + knn k=20,population+knn,whole profile,25,0.6609
+population q=10 metric + knn k=20,population+knn,whole profile,inf,0.6609
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,2,0.597
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,4,0.5122
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,6,0.5002
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,10,0.4986
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,15,0.4988
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,20,0.4987
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,25,0.4987
+population q=10 metric + siren xyz omega0=10,population+siren,end gap,inf,0.4987
+population q=10 metric + siren xyz omega0=10,population+siren,gap,2,0.4644
+population q=10 metric + siren xyz omega0=10,population+siren,gap,4,0.3845
+population q=10 metric + siren xyz omega0=10,population+siren,gap,6,0.3801
+population q=10 metric + siren xyz omega0=10,population+siren,gap,10,0.3829
+population q=10 metric + siren xyz omega0=10,population+siren,gap,15,0.3829
+population q=10 metric + siren xyz omega0=10,population+siren,gap,20,0.3829
+population q=10 metric + siren xyz omega0=10,population+siren,gap,25,0.3829
+population q=10 metric + siren xyz omega0=10,population+siren,gap,inf,0.3829
+population q=10 metric + siren xyz omega0=10,population+siren,region,2,0.7012
+population q=10 metric + siren xyz omega0=10,population+siren,region,4,0.7059
+population q=10 metric + siren xyz omega0=10,population+siren,region,6,0.7221
+population q=10 metric + siren xyz omega0=10,population+siren,region,10,0.7448
+population q=10 metric + siren xyz omega0=10,population+siren,region,15,0.7606
+population q=10 metric + siren xyz omega0=10,population+siren,region,20,0.7695
+population q=10 metric + siren xyz omega0=10,population+siren,region,25,0.7751
+population q=10 metric + siren xyz omega0=10,population+siren,region,inf,0.7769
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,2,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,4,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,6,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,10,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,15,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,20,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,25,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole measure,inf,0.691
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,2,0.6682
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,4,0.6683
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,6,0.6782
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,10,0.6841
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,15,0.6866
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,20,0.6872
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,25,0.6872
+population q=10 metric + siren xyz omega0=10,population+siren,whole profile,inf,0.6872
+population q=120 isotropic,population,end gap,2,0.7001
+population q=120 isotropic,population,end gap,4,0.7001
+population q=120 isotropic,population,end gap,6,0.7001
+population q=120 isotropic,population,end gap,10,0.7001
+population q=120 isotropic,population,end gap,15,0.7001
+population q=120 isotropic,population,end gap,20,0.7001
+population q=120 isotropic,population,end gap,25,0.7001
+population q=120 isotropic,population,end gap,inf,0.7001
+population q=120 isotropic,population,gap,2,0.5571
+population q=120 isotropic,population,gap,4,0.5571
+population q=120 isotropic,population,gap,6,0.5571
+population q=120 isotropic,population,gap,10,0.5571
+population q=120 isotropic,population,gap,15,0.5571
+population q=120 isotropic,population,gap,20,0.5571
+population q=120 isotropic,population,gap,25,0.5571
+population q=120 isotropic,population,gap,inf,0.5571
+population q=120 isotropic,population,region,2,0.6748
+population q=120 isotropic,population,region,4,0.6748
+population q=120 isotropic,population,region,6,0.6748
+population q=120 isotropic,population,region,10,0.6748
+population q=120 isotropic,population,region,15,0.6748
+population q=120 isotropic,population,region,20,0.6748
+population q=120 isotropic,population,region,25,0.6748
+population q=120 isotropic,population,region,inf,0.6748
+population q=120 isotropic,population,whole measure,2,0.5787
+population q=120 isotropic,population,whole measure,4,0.5787
+population q=120 isotropic,population,whole measure,6,0.5787
+population q=120 isotropic,population,whole measure,10,0.5787
+population q=120 isotropic,population,whole measure,15,0.5787
+population q=120 isotropic,population,whole measure,20,0.5787
+population q=120 isotropic,population,whole measure,25,0.5787
+population q=120 isotropic,population,whole measure,inf,0.5787
+population q=120 isotropic,population,whole profile,2,0.64
+population q=120 isotropic,population,whole profile,4,0.64
+population q=120 isotropic,population,whole profile,6,0.64
+population q=120 isotropic,population,whole profile,10,0.64
+population q=120 isotropic,population,whole profile,15,0.64
+population q=120 isotropic,population,whole profile,20,0.64
+population q=120 isotropic,population,whole profile,25,0.64
+population q=120 isotropic,population,whole profile,inf,0.64
+population q=120 isotropic + knn k=20,population+knn,end gap,2,0.6274
+population q=120 isotropic + knn k=20,population+knn,end gap,4,0.6015
+population q=120 isotropic + knn k=20,population+knn,end gap,6,0.5968
+population q=120 isotropic + knn k=20,population+knn,end gap,10,0.5941
+population q=120 isotropic + knn k=20,population+knn,end gap,15,0.594
+population q=120 isotropic + knn k=20,population+knn,end gap,20,0.594
+population q=120 isotropic + knn k=20,population+knn,end gap,25,0.594
+population q=120 isotropic + knn k=20,population+knn,end gap,inf,0.594
+population q=120 isotropic + knn k=20,population+knn,gap,2,0.4766
+population q=120 isotropic + knn k=20,population+knn,gap,4,0.4587
+population q=120 isotropic + knn k=20,population+knn,gap,6,0.4596
+population q=120 isotropic + knn k=20,population+knn,gap,10,0.4597
+population q=120 isotropic + knn k=20,population+knn,gap,15,0.4597
+population q=120 isotropic + knn k=20,population+knn,gap,20,0.4597
+population q=120 isotropic + knn k=20,population+knn,gap,25,0.4597
+population q=120 isotropic + knn k=20,population+knn,gap,inf,0.4597
+population q=120 isotropic + knn k=20,population+knn,region,2,0.6653
+population q=120 isotropic + knn k=20,population+knn,region,4,0.6673
+population q=120 isotropic + knn k=20,population+knn,region,6,0.6743
+population q=120 isotropic + knn k=20,population+knn,region,10,0.6861
+population q=120 isotropic + knn k=20,population+knn,region,15,0.6949
+population q=120 isotropic + knn k=20,population+knn,region,20,0.6997
+population q=120 isotropic + knn k=20,population+knn,region,25,0.7017
+population q=120 isotropic + knn k=20,population+knn,region,inf,0.7025
+population q=120 isotropic + knn k=20,population+knn,whole measure,2,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole measure,4,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole measure,6,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole measure,10,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole measure,15,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole measure,20,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole measure,25,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole measure,inf,0.5787
+population q=120 isotropic + knn k=20,population+knn,whole profile,2,0.6157
+population q=120 isotropic + knn k=20,population+knn,whole profile,4,0.6162
+population q=120 isotropic + knn k=20,population+knn,whole profile,6,0.6235
+population q=120 isotropic + knn k=20,population+knn,whole profile,10,0.6261
+population q=120 isotropic + knn k=20,population+knn,whole profile,15,0.6271
+population q=120 isotropic + knn k=20,population+knn,whole profile,20,0.6283
+population q=120 isotropic + knn k=20,population+knn,whole profile,25,0.6284
+population q=120 isotropic + knn k=20,population+knn,whole profile,inf,0.6284
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,2,0.5809
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,4,0.5121
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,6,0.4991
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,10,0.4954
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,15,0.4955
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,20,0.4956
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,25,0.4956
+population q=120 isotropic + siren xyz omega0=10,population+siren,end gap,inf,0.4956
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,2,0.4122
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,4,0.3681
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,6,0.368
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,10,0.3681
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,15,0.3681
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,20,0.3681
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,25,0.3681
+population q=120 isotropic + siren xyz omega0=10,population+siren,gap,inf,0.3681
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,2,0.6689
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,4,0.6792
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,6,0.6923
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,10,0.7083
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,15,0.7199
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,20,0.7256
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,25,0.7289
+population q=120 isotropic + siren xyz omega0=10,population+siren,region,inf,0.73
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,2,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,4,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,6,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,10,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,15,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,20,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,25,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole measure,inf,0.5787
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,2,0.6241
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,4,0.636
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,6,0.6472
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,10,0.6532
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,15,0.6544
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,20,0.655
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,25,0.655
+population q=120 isotropic + siren xyz omega0=10,population+siren,whole profile,inf,0.655
+population q=160 isotropic,population,end gap,2,0.703
+population q=160 isotropic,population,end gap,4,0.703
+population q=160 isotropic,population,end gap,6,0.703
+population q=160 isotropic,population,end gap,10,0.703
+population q=160 isotropic,population,end gap,15,0.703
+population q=160 isotropic,population,end gap,20,0.703
+population q=160 isotropic,population,end gap,25,0.703
+population q=160 isotropic,population,end gap,inf,0.703
+population q=160 isotropic,population,gap,2,0.5542
+population q=160 isotropic,population,gap,4,0.5542
+population q=160 isotropic,population,gap,6,0.5542
+population q=160 isotropic,population,gap,10,0.5542
+population q=160 isotropic,population,gap,15,0.5542
+population q=160 isotropic,population,gap,20,0.5542
+population q=160 isotropic,population,gap,25,0.5542
+population q=160 isotropic,population,gap,inf,0.5542
+population q=160 isotropic,population,region,2,0.6752
+population q=160 isotropic,population,region,4,0.6752
+population q=160 isotropic,population,region,6,0.6752
+population q=160 isotropic,population,region,10,0.6752
+population q=160 isotropic,population,region,15,0.6752
+population q=160 isotropic,population,region,20,0.6752
+population q=160 isotropic,population,region,25,0.6752
+population q=160 isotropic,population,region,inf,0.6752
+population q=160 isotropic,population,whole measure,2,0.5722
+population q=160 isotropic,population,whole measure,4,0.5722
+population q=160 isotropic,population,whole measure,6,0.5722
+population q=160 isotropic,population,whole measure,10,0.5722
+population q=160 isotropic,population,whole measure,15,0.5722
+population q=160 isotropic,population,whole measure,20,0.5722
+population q=160 isotropic,population,whole measure,25,0.5722
+population q=160 isotropic,population,whole measure,inf,0.5722
+population q=160 isotropic,population,whole profile,2,0.6356
+population q=160 isotropic,population,whole profile,4,0.6356
+population q=160 isotropic,population,whole profile,6,0.6356
+population q=160 isotropic,population,whole profile,10,0.6356
+population q=160 isotropic,population,whole profile,15,0.6356
+population q=160 isotropic,population,whole profile,20,0.6356
+population q=160 isotropic,population,whole profile,25,0.6356
+population q=160 isotropic,population,whole profile,inf,0.6356
+population q=160 isotropic + knn k=20,population+knn,end gap,2,0.6348
+population q=160 isotropic + knn k=20,population+knn,end gap,4,0.6111
+population q=160 isotropic + knn k=20,population+knn,end gap,6,0.6052
+population q=160 isotropic + knn k=20,population+knn,end gap,10,0.6027
+population q=160 isotropic + knn k=20,population+knn,end gap,15,0.6028
+population q=160 isotropic + knn k=20,population+knn,end gap,20,0.6028
+population q=160 isotropic + knn k=20,population+knn,end gap,25,0.6028
+population q=160 isotropic + knn k=20,population+knn,end gap,inf,0.6028
+population q=160 isotropic + knn k=20,population+knn,gap,2,0.4789
+population q=160 isotropic + knn k=20,population+knn,gap,4,0.4612
+population q=160 isotropic + knn k=20,population+knn,gap,6,0.4616
+population q=160 isotropic + knn k=20,population+knn,gap,10,0.4617
+population q=160 isotropic + knn k=20,population+knn,gap,15,0.4617
+population q=160 isotropic + knn k=20,population+knn,gap,20,0.4617
+population q=160 isotropic + knn k=20,population+knn,gap,25,0.4617
+population q=160 isotropic + knn k=20,population+knn,gap,inf,0.4617
+population q=160 isotropic + knn k=20,population+knn,region,2,0.6663
+population q=160 isotropic + knn k=20,population+knn,region,4,0.6683
+population q=160 isotropic + knn k=20,population+knn,region,6,0.6748
+population q=160 isotropic + knn k=20,population+knn,region,10,0.6863
+population q=160 isotropic + knn k=20,population+knn,region,15,0.6946
+population q=160 isotropic + knn k=20,population+knn,region,20,0.6991
+population q=160 isotropic + knn k=20,population+knn,region,25,0.7014
+population q=160 isotropic + knn k=20,population+knn,region,inf,0.7023
+population q=160 isotropic + knn k=20,population+knn,whole measure,2,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole measure,4,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole measure,6,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole measure,10,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole measure,15,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole measure,20,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole measure,25,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole measure,inf,0.5722
+population q=160 isotropic + knn k=20,population+knn,whole profile,2,0.612
+population q=160 isotropic + knn k=20,population+knn,whole profile,4,0.6115
+population q=160 isotropic + knn k=20,population+knn,whole profile,6,0.618
+population q=160 isotropic + knn k=20,population+knn,whole profile,10,0.6207
+population q=160 isotropic + knn k=20,population+knn,whole profile,15,0.6211
+population q=160 isotropic + knn k=20,population+knn,whole profile,20,0.622
+population q=160 isotropic + knn k=20,population+knn,whole profile,25,0.6221
+population q=160 isotropic + knn k=20,population+knn,whole profile,inf,0.6221
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,2,0.5854
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,4,0.5193
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,6,0.5054
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,10,0.501
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,15,0.5011
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,20,0.5011
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,25,0.5011
+population q=160 isotropic + siren xyz omega0=10,population+siren,end gap,inf,0.5011
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,2,0.4158
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,4,0.3654
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,6,0.3634
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,10,0.3638
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,15,0.3638
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,20,0.3638
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,25,0.3638
+population q=160 isotropic + siren xyz omega0=10,population+siren,gap,inf,0.3638
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,2,0.6699
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,4,0.6806
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,6,0.6931
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,10,0.7073
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,15,0.7192
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,20,0.7254
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,25,0.7287
+population q=160 isotropic + siren xyz omega0=10,population+siren,region,inf,0.7299
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,2,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,4,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,6,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,10,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,15,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,20,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,25,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole measure,inf,0.5722
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,2,0.6202
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,4,0.6334
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,6,0.6424
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,10,0.6472
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,15,0.6481
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,20,0.6483
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,25,0.6483
+population q=160 isotropic + siren xyz omega0=10,population+siren,whole profile,inf,0.6483
+population q=20 diagonal,population,end gap,2,0.7569
+population q=20 diagonal,population,end gap,4,0.7569
+population q=20 diagonal,population,end gap,6,0.7569
+population q=20 diagonal,population,end gap,10,0.7569
+population q=20 diagonal,population,end gap,15,0.7569
+population q=20 diagonal,population,end gap,20,0.7569
+population q=20 diagonal,population,end gap,25,0.7569
+population q=20 diagonal,population,end gap,inf,0.7569
+population q=20 diagonal,population,gap,2,0.6319
+population q=20 diagonal,population,gap,4,0.6319
+population q=20 diagonal,population,gap,6,0.6319
+population q=20 diagonal,population,gap,10,0.6319
+population q=20 diagonal,population,gap,15,0.6319
+population q=20 diagonal,population,gap,20,0.6319
+population q=20 diagonal,population,gap,25,0.6319
+population q=20 diagonal,population,gap,inf,0.6319
+population q=20 diagonal,population,region,2,0.6986
+population q=20 diagonal,population,region,4,0.6986
+population q=20 diagonal,population,region,6,0.6986
+population q=20 diagonal,population,region,10,0.6986
+population q=20 diagonal,population,region,15,0.6986
+population q=20 diagonal,population,region,20,0.6986
+population q=20 diagonal,population,region,25,0.6986
+population q=20 diagonal,population,region,inf,0.6986
+population q=20 diagonal,population,whole measure,2,0.6791
+population q=20 diagonal,population,whole measure,4,0.6791
+population q=20 diagonal,population,whole measure,6,0.6791
+population q=20 diagonal,population,whole measure,10,0.6791
+population q=20 diagonal,population,whole measure,15,0.6791
+population q=20 diagonal,population,whole measure,20,0.6791
+population q=20 diagonal,population,whole measure,25,0.6791
+population q=20 diagonal,population,whole measure,inf,0.6791
+population q=20 diagonal,population,whole profile,2,0.6825
+population q=20 diagonal,population,whole profile,4,0.6825
+population q=20 diagonal,population,whole profile,6,0.6825
+population q=20 diagonal,population,whole profile,10,0.6825
+population q=20 diagonal,population,whole profile,15,0.6825
+population q=20 diagonal,population,whole profile,20,0.6825
+population q=20 diagonal,population,whole profile,25,0.6825
+population q=20 diagonal,population,whole profile,inf,0.6825
+population q=20 diagonal + knn k=20,population+knn,end gap,2,0.6474
+population q=20 diagonal + knn k=20,population+knn,end gap,4,0.6099
+population q=20 diagonal + knn k=20,population+knn,end gap,6,0.6068
+population q=20 diagonal + knn k=20,population+knn,end gap,10,0.6053
+population q=20 diagonal + knn k=20,population+knn,end gap,15,0.6053
+population q=20 diagonal + knn k=20,population+knn,end gap,20,0.6052
+population q=20 diagonal + knn k=20,population+knn,end gap,25,0.6052
+population q=20 diagonal + knn k=20,population+knn,end gap,inf,0.6052
+population q=20 diagonal + knn k=20,population+knn,gap,2,0.5209
+population q=20 diagonal + knn k=20,population+knn,gap,4,0.4911
+population q=20 diagonal + knn k=20,population+knn,gap,6,0.4899
+population q=20 diagonal + knn k=20,population+knn,gap,10,0.4899
+population q=20 diagonal + knn k=20,population+knn,gap,15,0.4899
+population q=20 diagonal + knn k=20,population+knn,gap,20,0.4899
+population q=20 diagonal + knn k=20,population+knn,gap,25,0.4899
+population q=20 diagonal + knn k=20,population+knn,gap,inf,0.4899
+population q=20 diagonal + knn k=20,population+knn,region,2,0.683
+population q=20 diagonal + knn k=20,population+knn,region,4,0.6814
+population q=20 diagonal + knn k=20,population+knn,region,6,0.6901
+population q=20 diagonal + knn k=20,population+knn,region,10,0.708
+population q=20 diagonal + knn k=20,population+knn,region,15,0.72
+population q=20 diagonal + knn k=20,population+knn,region,20,0.7269
+population q=20 diagonal + knn k=20,population+knn,region,25,0.7317
+population q=20 diagonal + knn k=20,population+knn,region,inf,0.7339
+population q=20 diagonal + knn k=20,population+knn,whole measure,2,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole measure,4,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole measure,6,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole measure,10,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole measure,15,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole measure,20,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole measure,25,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole measure,inf,0.6791
+population q=20 diagonal + knn k=20,population+knn,whole profile,2,0.6424
+population q=20 diagonal + knn k=20,population+knn,whole profile,4,0.6373
+population q=20 diagonal + knn k=20,population+knn,whole profile,6,0.6447
+population q=20 diagonal + knn k=20,population+knn,whole profile,10,0.6504
+population q=20 diagonal + knn k=20,population+knn,whole profile,15,0.6532
+population q=20 diagonal + knn k=20,population+knn,whole profile,20,0.654
+population q=20 diagonal + knn k=20,population+knn,whole profile,25,0.654
+population q=20 diagonal + knn k=20,population+knn,whole profile,inf,0.654
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,2,0.6017
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,4,0.5196
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,6,0.506
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,10,0.503
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,15,0.5036
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,20,0.5037
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,25,0.5037
+population q=20 diagonal + siren xyz omega0=10,population+siren,end gap,inf,0.5037
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,2,0.4526
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,4,0.3832
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,6,0.3775
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,10,0.3777
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,15,0.3777
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,20,0.3777
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,25,0.3777
+population q=20 diagonal + siren xyz omega0=10,population+siren,gap,inf,0.3777
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,2,0.6869
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,4,0.6948
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,6,0.7113
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,10,0.7322
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,15,0.7465
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,20,0.7553
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,25,0.7612
+population q=20 diagonal + siren xyz omega0=10,population+siren,region,inf,0.7638
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,2,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,4,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,6,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,10,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,15,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,20,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,25,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole measure,inf,0.6791
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,2,0.6479
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,4,0.6561
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,6,0.6689
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,10,0.6763
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,15,0.6779
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,20,0.6785
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,25,0.6785
+population q=20 diagonal + siren xyz omega0=10,population+siren,whole profile,inf,0.6785
+population q=20 isotropic,population,end gap,2,0.7461
+population q=20 isotropic,population,end gap,4,0.7461
+population q=20 isotropic,population,end gap,6,0.7461
+population q=20 isotropic,population,end gap,10,0.7461
+population q=20 isotropic,population,end gap,15,0.7461
+population q=20 isotropic,population,end gap,20,0.7461
+population q=20 isotropic,population,end gap,25,0.7461
+population q=20 isotropic,population,end gap,inf,0.7461
+population q=20 isotropic,population,gap,2,0.6282
+population q=20 isotropic,population,gap,4,0.6282
+population q=20 isotropic,population,gap,6,0.6282
+population q=20 isotropic,population,gap,10,0.6282
+population q=20 isotropic,population,gap,15,0.6282
+population q=20 isotropic,population,gap,20,0.6282
+population q=20 isotropic,population,gap,25,0.6282
+population q=20 isotropic,population,gap,inf,0.6282
+population q=20 isotropic,population,region,2,0.697
+population q=20 isotropic,population,region,4,0.697
+population q=20 isotropic,population,region,6,0.697
+population q=20 isotropic,population,region,10,0.697
+population q=20 isotropic,population,region,15,0.697
+population q=20 isotropic,population,region,20,0.697
+population q=20 isotropic,population,region,25,0.697
+population q=20 isotropic,population,region,inf,0.697
+population q=20 isotropic,population,whole measure,2,0.6716
+population q=20 isotropic,population,whole measure,4,0.6716
+population q=20 isotropic,population,whole measure,6,0.6716
+population q=20 isotropic,population,whole measure,10,0.6716
+population q=20 isotropic,population,whole measure,15,0.6716
+population q=20 isotropic,population,whole measure,20,0.6716
+population q=20 isotropic,population,whole measure,25,0.6716
+population q=20 isotropic,population,whole measure,inf,0.6716
+population q=20 isotropic,population,whole profile,2,0.6825
+population q=20 isotropic,population,whole profile,4,0.6825
+population q=20 isotropic,population,whole profile,6,0.6825
+population q=20 isotropic,population,whole profile,10,0.6825
+population q=20 isotropic,population,whole profile,15,0.6825
+population q=20 isotropic,population,whole profile,20,0.6825
+population q=20 isotropic,population,whole profile,25,0.6825
+population q=20 isotropic,population,whole profile,inf,0.6825
+population q=20 isotropic + knn k=20,population+knn,end gap,2,0.6389
+population q=20 isotropic + knn k=20,population+knn,end gap,4,0.5993
+population q=20 isotropic + knn k=20,population+knn,end gap,6,0.5943
+population q=20 isotropic + knn k=20,population+knn,end gap,10,0.5924
+population q=20 isotropic + knn k=20,population+knn,end gap,15,0.5924
+population q=20 isotropic + knn k=20,population+knn,end gap,20,0.5924
+population q=20 isotropic + knn k=20,population+knn,end gap,25,0.5924
+population q=20 isotropic + knn k=20,population+knn,end gap,inf,0.5924
+population q=20 isotropic + knn k=20,population+knn,gap,2,0.5182
+population q=20 isotropic + knn k=20,population+knn,gap,4,0.4886
+population q=20 isotropic + knn k=20,population+knn,gap,6,0.4878
+population q=20 isotropic + knn k=20,population+knn,gap,10,0.4879
+population q=20 isotropic + knn k=20,population+knn,gap,15,0.4879
+population q=20 isotropic + knn k=20,population+knn,gap,20,0.4879
+population q=20 isotropic + knn k=20,population+knn,gap,25,0.4879
+population q=20 isotropic + knn k=20,population+knn,gap,inf,0.4879
+population q=20 isotropic + knn k=20,population+knn,region,2,0.6818
+population q=20 isotropic + knn k=20,population+knn,region,4,0.6792
+population q=20 isotropic + knn k=20,population+knn,region,6,0.6856
+population q=20 isotropic + knn k=20,population+knn,region,10,0.7002
+population q=20 isotropic + knn k=20,population+knn,region,15,0.7108
+population q=20 isotropic + knn k=20,population+knn,region,20,0.7171
+population q=20 isotropic + knn k=20,population+knn,region,25,0.7212
+population q=20 isotropic + knn k=20,population+knn,region,inf,0.7228
+population q=20 isotropic + knn k=20,population+knn,whole measure,2,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole measure,4,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole measure,6,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole measure,10,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole measure,15,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole measure,20,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole measure,25,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole measure,inf,0.6716
+population q=20 isotropic + knn k=20,population+knn,whole profile,2,0.6428
+population q=20 isotropic + knn k=20,population+knn,whole profile,4,0.6359
+population q=20 isotropic + knn k=20,population+knn,whole profile,6,0.6436
+population q=20 isotropic + knn k=20,population+knn,whole profile,10,0.6473
+population q=20 isotropic + knn k=20,population+knn,whole profile,15,0.6495
+population q=20 isotropic + knn k=20,population+knn,whole profile,20,0.6502
+population q=20 isotropic + knn k=20,population+knn,whole profile,25,0.6502
+population q=20 isotropic + knn k=20,population+knn,whole profile,inf,0.6502
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,2,0.5936
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,4,0.5105
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,6,0.4959
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,10,0.4922
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,15,0.4923
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,20,0.4925
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,25,0.4925
+population q=20 isotropic + siren xyz omega0=10,population+siren,end gap,inf,0.4925
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,2,0.4518
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,4,0.3848
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,6,0.3806
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,10,0.3809
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,15,0.3809
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,20,0.3809
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,25,0.3809
+population q=20 isotropic + siren xyz omega0=10,population+siren,gap,inf,0.3809
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,2,0.6853
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,4,0.6907
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,6,0.7058
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,10,0.7256
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,15,0.7401
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,20,0.7489
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,25,0.7544
+population q=20 isotropic + siren xyz omega0=10,population+siren,region,inf,0.7562
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,2,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,4,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,6,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,10,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,15,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,20,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,25,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole measure,inf,0.6716
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,2,0.6493
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,4,0.6566
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,6,0.6698
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,10,0.6744
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,15,0.6758
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,20,0.6762
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,25,0.6762
+population q=20 isotropic + siren xyz omega0=10,population+siren,whole profile,inf,0.6762
+population q=20 metric,population,end gap,2,0.7449
+population q=20 metric,population,end gap,4,0.7449
+population q=20 metric,population,end gap,6,0.7449
+population q=20 metric,population,end gap,10,0.7449
+population q=20 metric,population,end gap,15,0.7449
+population q=20 metric,population,end gap,20,0.7449
+population q=20 metric,population,end gap,25,0.7449
+population q=20 metric,population,end gap,inf,0.7449
+population q=20 metric,population,gap,2,0.6291
+population q=20 metric,population,gap,4,0.6291
+population q=20 metric,population,gap,6,0.6291
+population q=20 metric,population,gap,10,0.6291
+population q=20 metric,population,gap,15,0.6291
+population q=20 metric,population,gap,20,0.6291
+population q=20 metric,population,gap,25,0.6291
+population q=20 metric,population,gap,inf,0.6291
+population q=20 metric,population,region,2,0.6976
+population q=20 metric,population,region,4,0.6976
+population q=20 metric,population,region,6,0.6976
+population q=20 metric,population,region,10,0.6976
+population q=20 metric,population,region,15,0.6976
+population q=20 metric,population,region,20,0.6976
+population q=20 metric,population,region,25,0.6976
+population q=20 metric,population,region,inf,0.6976
+population q=20 metric,population,whole measure,2,0.6721
+population q=20 metric,population,whole measure,4,0.6721
+population q=20 metric,population,whole measure,6,0.6721
+population q=20 metric,population,whole measure,10,0.6721
+population q=20 metric,population,whole measure,15,0.6721
+population q=20 metric,population,whole measure,20,0.6721
+population q=20 metric,population,whole measure,25,0.6721
+population q=20 metric,population,whole measure,inf,0.6721
+population q=20 metric,population,whole profile,2,0.6836
+population q=20 metric,population,whole profile,4,0.6836
+population q=20 metric,population,whole profile,6,0.6836
+population q=20 metric,population,whole profile,10,0.6836
+population q=20 metric,population,whole profile,15,0.6836
+population q=20 metric,population,whole profile,20,0.6836
+population q=20 metric,population,whole profile,25,0.6836
+population q=20 metric,population,whole profile,inf,0.6836
+population q=20 metric + knn k=20,population+knn,end gap,2,0.6388
+population q=20 metric + knn k=20,population+knn,end gap,4,0.5997
+population q=20 metric + knn k=20,population+knn,end gap,6,0.5951
+population q=20 metric + knn k=20,population+knn,end gap,10,0.5935
+population q=20 metric + knn k=20,population+knn,end gap,15,0.5935
+population q=20 metric + knn k=20,population+knn,end gap,20,0.5934
+population q=20 metric + knn k=20,population+knn,end gap,25,0.5934
+population q=20 metric + knn k=20,population+knn,end gap,inf,0.5934
+population q=20 metric + knn k=20,population+knn,gap,2,0.5183
+population q=20 metric + knn k=20,population+knn,gap,4,0.4879
+population q=20 metric + knn k=20,population+knn,gap,6,0.4867
+population q=20 metric + knn k=20,population+knn,gap,10,0.4867
+population q=20 metric + knn k=20,population+knn,gap,15,0.4867
+population q=20 metric + knn k=20,population+knn,gap,20,0.4867
+population q=20 metric + knn k=20,population+knn,gap,25,0.4867
+population q=20 metric + knn k=20,population+knn,gap,inf,0.4867
+population q=20 metric + knn k=20,population+knn,region,2,0.6822
+population q=20 metric + knn k=20,population+knn,region,4,0.6797
+population q=20 metric + knn k=20,population+knn,region,6,0.6862
+population q=20 metric + knn k=20,population+knn,region,10,0.7011
+population q=20 metric + knn k=20,population+knn,region,15,0.7113
+population q=20 metric + knn k=20,population+knn,region,20,0.7176
+population q=20 metric + knn k=20,population+knn,region,25,0.7218
+population q=20 metric + knn k=20,population+knn,region,inf,0.7234
+population q=20 metric + knn k=20,population+knn,whole measure,2,0.6721
+population q=20 metric + knn k=20,population+knn,whole measure,4,0.6721
+population q=20 metric + knn k=20,population+knn,whole measure,6,0.6721
+population q=20 metric + knn k=20,population+knn,whole measure,10,0.6721
+population q=20 metric + knn k=20,population+knn,whole measure,15,0.6721
+population q=20 metric + knn k=20,population+knn,whole measure,20,0.6721
+population q=20 metric + knn k=20,population+knn,whole measure,25,0.6721
+population q=20 metric + knn k=20,population+knn,whole measure,inf,0.6721
+population q=20 metric + knn k=20,population+knn,whole profile,2,0.6436
+population q=20 metric + knn k=20,population+knn,whole profile,4,0.6363
+population q=20 metric + knn k=20,population+knn,whole profile,6,0.6437
+population q=20 metric + knn k=20,population+knn,whole profile,10,0.6478
+population q=20 metric + knn k=20,population+knn,whole profile,15,0.6499
+population q=20 metric + knn k=20,population+knn,whole profile,20,0.6508
+population q=20 metric + knn k=20,population+knn,whole profile,25,0.6508
+population q=20 metric + knn k=20,population+knn,whole profile,inf,0.6508
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,2,0.5944
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,4,0.5135
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,6,0.4993
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,10,0.4959
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,15,0.496
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,20,0.4961
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,25,0.4961
+population q=20 metric + siren xyz omega0=10,population+siren,end gap,inf,0.4961
+population q=20 metric + siren xyz omega0=10,population+siren,gap,2,0.4523
+population q=20 metric + siren xyz omega0=10,population+siren,gap,4,0.3825
+population q=20 metric + siren xyz omega0=10,population+siren,gap,6,0.3786
+population q=20 metric + siren xyz omega0=10,population+siren,gap,10,0.3788
+population q=20 metric + siren xyz omega0=10,population+siren,gap,15,0.3788
+population q=20 metric + siren xyz omega0=10,population+siren,gap,20,0.3788
+population q=20 metric + siren xyz omega0=10,population+siren,gap,25,0.3788
+population q=20 metric + siren xyz omega0=10,population+siren,gap,inf,0.3788
+population q=20 metric + siren xyz omega0=10,population+siren,region,2,0.6861
+population q=20 metric + siren xyz omega0=10,population+siren,region,4,0.6934
+population q=20 metric + siren xyz omega0=10,population+siren,region,6,0.7092
+population q=20 metric + siren xyz omega0=10,population+siren,region,10,0.7286
+population q=20 metric + siren xyz omega0=10,population+siren,region,15,0.7436
+population q=20 metric + siren xyz omega0=10,population+siren,region,20,0.7521
+population q=20 metric + siren xyz omega0=10,population+siren,region,25,0.7571
+population q=20 metric + siren xyz omega0=10,population+siren,region,inf,0.7593
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,2,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,4,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,6,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,10,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,15,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,20,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,25,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole measure,inf,0.6721
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,2,0.6502
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,4,0.6558
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,6,0.6694
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,10,0.6759
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,15,0.6775
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,20,0.6777
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,25,0.6778
+population q=20 metric + siren xyz omega0=10,population+siren,whole profile,inf,0.6778
+population q=40 diagonal,population,end gap,2,0.7512
+population q=40 diagonal,population,end gap,4,0.7512
+population q=40 diagonal,population,end gap,6,0.7512
+population q=40 diagonal,population,end gap,10,0.7512
+population q=40 diagonal,population,end gap,15,0.7512
+population q=40 diagonal,population,end gap,20,0.7512
+population q=40 diagonal,population,end gap,25,0.7512
+population q=40 diagonal,population,end gap,inf,0.7512
+population q=40 diagonal,population,gap,2,0.5999
+population q=40 diagonal,population,gap,4,0.5999
+population q=40 diagonal,population,gap,6,0.5999
+population q=40 diagonal,population,gap,10,0.5999
+population q=40 diagonal,population,gap,15,0.5999
+population q=40 diagonal,population,gap,20,0.5999
+population q=40 diagonal,population,gap,25,0.5999
+population q=40 diagonal,population,gap,inf,0.5999
+population q=40 diagonal,population,region,2,0.6869
+population q=40 diagonal,population,region,4,0.6869
+population q=40 diagonal,population,region,6,0.6869
+population q=40 diagonal,population,region,10,0.6869
+population q=40 diagonal,population,region,15,0.6869
+population q=40 diagonal,population,region,20,0.6869
+population q=40 diagonal,population,region,25,0.6869
+population q=40 diagonal,population,region,inf,0.6869
+population q=40 diagonal,population,whole measure,2,0.6414
+population q=40 diagonal,population,whole measure,4,0.6414
+population q=40 diagonal,population,whole measure,6,0.6414
+population q=40 diagonal,population,whole measure,10,0.6414
+population q=40 diagonal,population,whole measure,15,0.6414
+population q=40 diagonal,population,whole measure,20,0.6414
+population q=40 diagonal,population,whole measure,25,0.6414
+population q=40 diagonal,population,whole measure,inf,0.6414
+population q=40 diagonal,population,whole profile,2,0.6603
+population q=40 diagonal,population,whole profile,4,0.6603
+population q=40 diagonal,population,whole profile,6,0.6603
+population q=40 diagonal,population,whole profile,10,0.6603
+population q=40 diagonal,population,whole profile,15,0.6603
+population q=40 diagonal,population,whole profile,20,0.6603
+population q=40 diagonal,population,whole profile,25,0.6603
+population q=40 diagonal,population,whole profile,inf,0.6603
+population q=40 diagonal + knn k=20,population+knn,end gap,2,0.6496
+population q=40 diagonal + knn k=20,population+knn,end gap,4,0.6182
+population q=40 diagonal + knn k=20,population+knn,end gap,6,0.6137
+population q=40 diagonal + knn k=20,population+knn,end gap,10,0.6113
+population q=40 diagonal + knn k=20,population+knn,end gap,15,0.6112
+population q=40 diagonal + knn k=20,population+knn,end gap,20,0.6112
+population q=40 diagonal + knn k=20,population+knn,end gap,25,0.6112
+population q=40 diagonal + knn k=20,population+knn,end gap,inf,0.6112
+population q=40 diagonal + knn k=20,population+knn,gap,2,0.5009
+population q=40 diagonal + knn k=20,population+knn,gap,4,0.4775
+population q=40 diagonal + knn k=20,population+knn,gap,6,0.4767
+population q=40 diagonal + knn k=20,population+knn,gap,10,0.4766
+population q=40 diagonal + knn k=20,population+knn,gap,15,0.4766
+population q=40 diagonal + knn k=20,population+knn,gap,20,0.4766
+population q=40 diagonal + knn k=20,population+knn,gap,25,0.4766
+population q=40 diagonal + knn k=20,population+knn,gap,inf,0.4766
+population q=40 diagonal + knn k=20,population+knn,region,2,0.6727
+population q=40 diagonal + knn k=20,population+knn,region,4,0.6736
+population q=40 diagonal + knn k=20,population+knn,region,6,0.6837
+population q=40 diagonal + knn k=20,population+knn,region,10,0.7012
+population q=40 diagonal + knn k=20,population+knn,region,15,0.7123
+population q=40 diagonal + knn k=20,population+knn,region,20,0.7188
+population q=40 diagonal + knn k=20,population+knn,region,25,0.7226
+population q=40 diagonal + knn k=20,population+knn,region,inf,0.7245
+population q=40 diagonal + knn k=20,population+knn,whole measure,2,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole measure,4,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole measure,6,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole measure,10,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole measure,15,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole measure,20,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole measure,25,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole measure,inf,0.6414
+population q=40 diagonal + knn k=20,population+knn,whole profile,2,0.6259
+population q=40 diagonal + knn k=20,population+knn,whole profile,4,0.6252
+population q=40 diagonal + knn k=20,population+knn,whole profile,6,0.6351
+population q=40 diagonal + knn k=20,population+knn,whole profile,10,0.642
+population q=40 diagonal + knn k=20,population+knn,whole profile,15,0.6452
+population q=40 diagonal + knn k=20,population+knn,whole profile,20,0.6466
+population q=40 diagonal + knn k=20,population+knn,whole profile,25,0.6466
+population q=40 diagonal + knn k=20,population+knn,whole profile,inf,0.6466
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,2,0.6014
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,4,0.5195
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,6,0.5055
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,10,0.5021
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,15,0.5021
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,20,0.5022
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,25,0.5022
+population q=40 diagonal + siren xyz omega0=10,population+siren,end gap,inf,0.5022
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,2,0.4337
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,4,0.3782
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,6,0.374
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,10,0.3748
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,15,0.3748
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,20,0.3748
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,25,0.3748
+population q=40 diagonal + siren xyz omega0=10,population+siren,gap,inf,0.3748
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,2,0.6764
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,4,0.6872
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,6,0.7045
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,10,0.725
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,15,0.7378
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,20,0.7447
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,25,0.7498
+population q=40 diagonal + siren xyz omega0=10,population+siren,region,inf,0.7521
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,2,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,4,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,6,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,10,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,15,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,20,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,25,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole measure,inf,0.6414
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,2,0.6331
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,4,0.6479
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,6,0.661
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,10,0.6702
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,15,0.6725
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,20,0.673
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,25,0.673
+population q=40 diagonal + siren xyz omega0=10,population+siren,whole profile,inf,0.673
+population q=40 isotropic,population,end gap,2,0.7282
+population q=40 isotropic,population,end gap,4,0.7282
+population q=40 isotropic,population,end gap,6,0.7282
+population q=40 isotropic,population,end gap,10,0.7282
+population q=40 isotropic,population,end gap,15,0.7282
+population q=40 isotropic,population,end gap,20,0.7282
+population q=40 isotropic,population,end gap,25,0.7282
+population q=40 isotropic,population,end gap,inf,0.7282
+population q=40 isotropic,population,gap,2,0.5954
+population q=40 isotropic,population,gap,4,0.5954
+population q=40 isotropic,population,gap,6,0.5954
+population q=40 isotropic,population,gap,10,0.5954
+population q=40 isotropic,population,gap,15,0.5954
+population q=40 isotropic,population,gap,20,0.5954
+population q=40 isotropic,population,gap,25,0.5954
+population q=40 isotropic,population,gap,inf,0.5954
+population q=40 isotropic,population,region,2,0.6842
+population q=40 isotropic,population,region,4,0.6842
+population q=40 isotropic,population,region,6,0.6842
+population q=40 isotropic,population,region,10,0.6842
+population q=40 isotropic,population,region,15,0.6842
+population q=40 isotropic,population,region,20,0.6842
+population q=40 isotropic,population,region,25,0.6842
+population q=40 isotropic,population,region,inf,0.6842
+population q=40 isotropic,population,whole measure,2,0.6311
+population q=40 isotropic,population,whole measure,4,0.6311
+population q=40 isotropic,population,whole measure,6,0.6311
+population q=40 isotropic,population,whole measure,10,0.6311
+population q=40 isotropic,population,whole measure,15,0.6311
+population q=40 isotropic,population,whole measure,20,0.6311
+population q=40 isotropic,population,whole measure,25,0.6311
+population q=40 isotropic,population,whole measure,inf,0.6311
+population q=40 isotropic,population,whole profile,2,0.6609
+population q=40 isotropic,population,whole profile,4,0.6609
+population q=40 isotropic,population,whole profile,6,0.6609
+population q=40 isotropic,population,whole profile,10,0.6609
+population q=40 isotropic,population,whole profile,15,0.6609
+population q=40 isotropic,population,whole profile,20,0.6609
+population q=40 isotropic,population,whole profile,25,0.6609
+population q=40 isotropic,population,whole profile,inf,0.6609
+population q=40 isotropic + knn k=20,population+knn,end gap,2,0.6322
+population q=40 isotropic + knn k=20,population+knn,end gap,4,0.5991
+population q=40 isotropic + knn k=20,population+knn,end gap,6,0.5919
+population q=40 isotropic + knn k=20,population+knn,end gap,10,0.5891
+population q=40 isotropic + knn k=20,population+knn,end gap,15,0.5891
+population q=40 isotropic + knn k=20,population+knn,end gap,20,0.5891
+population q=40 isotropic + knn k=20,population+knn,end gap,25,0.5891
+population q=40 isotropic + knn k=20,population+knn,end gap,inf,0.5891
+population q=40 isotropic + knn k=20,population+knn,gap,2,0.4976
+population q=40 isotropic + knn k=20,population+knn,gap,4,0.4735
+population q=40 isotropic + knn k=20,population+knn,gap,6,0.4729
+population q=40 isotropic + knn k=20,population+knn,gap,10,0.4728
+population q=40 isotropic + knn k=20,population+knn,gap,15,0.4728
+population q=40 isotropic + knn k=20,population+knn,gap,20,0.4728
+population q=40 isotropic + knn k=20,population+knn,gap,25,0.4728
+population q=40 isotropic + knn k=20,population+knn,gap,inf,0.4728
+population q=40 isotropic + knn k=20,population+knn,region,2,0.6707
+population q=40 isotropic + knn k=20,population+knn,region,4,0.6704
+population q=40 isotropic + knn k=20,population+knn,region,6,0.6781
+population q=40 isotropic + knn k=20,population+knn,region,10,0.693
+population q=40 isotropic + knn k=20,population+knn,region,15,0.7033
+population q=40 isotropic + knn k=20,population+knn,region,20,0.7095
+population q=40 isotropic + knn k=20,population+knn,region,25,0.7125
+population q=40 isotropic + knn k=20,population+knn,region,inf,0.7134
+population q=40 isotropic + knn k=20,population+knn,whole measure,2,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole measure,4,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole measure,6,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole measure,10,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole measure,15,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole measure,20,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole measure,25,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole measure,inf,0.6311
+population q=40 isotropic + knn k=20,population+knn,whole profile,2,0.6266
+population q=40 isotropic + knn k=20,population+knn,whole profile,4,0.6245
+population q=40 isotropic + knn k=20,population+knn,whole profile,6,0.6332
+population q=40 isotropic + knn k=20,population+knn,whole profile,10,0.6378
+population q=40 isotropic + knn k=20,population+knn,whole profile,15,0.6399
+population q=40 isotropic + knn k=20,population+knn,whole profile,20,0.6408
+population q=40 isotropic + knn k=20,population+knn,whole profile,25,0.6408
+population q=40 isotropic + knn k=20,population+knn,whole profile,inf,0.6408
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,2,0.5887
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,4,0.5105
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,6,0.4948
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,10,0.4892
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,15,0.489
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,20,0.4891
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,25,0.4891
+population q=40 isotropic + siren xyz omega0=10,population+siren,end gap,inf,0.4891
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,2,0.432
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,4,0.3753
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,6,0.3726
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,10,0.3733
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,15,0.3733
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,20,0.3733
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,25,0.3733
+population q=40 isotropic + siren xyz omega0=10,population+siren,gap,inf,0.3733
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,2,0.6743
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,4,0.6831
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,6,0.6987
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,10,0.7188
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,15,0.7329
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,20,0.7407
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,25,0.7456
+population q=40 isotropic + siren xyz omega0=10,population+siren,region,inf,0.7473
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,2,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,4,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,6,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,10,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,15,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,20,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,25,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole measure,inf,0.6311
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,2,0.6341
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,4,0.644
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,6,0.656
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,10,0.6626
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,15,0.6638
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,20,0.6643
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,25,0.6643
+population q=40 isotropic + siren xyz omega0=10,population+siren,whole profile,inf,0.6643
+population q=40 metric,population,end gap,2,0.7253
+population q=40 metric,population,end gap,4,0.7253
+population q=40 metric,population,end gap,6,0.7253
+population q=40 metric,population,end gap,10,0.7253
+population q=40 metric,population,end gap,15,0.7253
+population q=40 metric,population,end gap,20,0.7253
+population q=40 metric,population,end gap,25,0.7253
+population q=40 metric,population,end gap,inf,0.7253
+population q=40 metric,population,gap,2,0.5986
+population q=40 metric,population,gap,4,0.5986
+population q=40 metric,population,gap,6,0.5986
+population q=40 metric,population,gap,10,0.5986
+population q=40 metric,population,gap,15,0.5986
+population q=40 metric,population,gap,20,0.5986
+population q=40 metric,population,gap,25,0.5986
+population q=40 metric,population,gap,inf,0.5986
+population q=40 metric,population,region,2,0.6845
+population q=40 metric,population,region,4,0.6845
+population q=40 metric,population,region,6,0.6845
+population q=40 metric,population,region,10,0.6845
+population q=40 metric,population,region,15,0.6845
+population q=40 metric,population,region,20,0.6845
+population q=40 metric,population,region,25,0.6845
+population q=40 metric,population,region,inf,0.6845
+population q=40 metric,population,whole measure,2,0.6325
+population q=40 metric,population,whole measure,4,0.6325
+population q=40 metric,population,whole measure,6,0.6325
+population q=40 metric,population,whole measure,10,0.6325
+population q=40 metric,population,whole measure,15,0.6325
+population q=40 metric,population,whole measure,20,0.6325
+population q=40 metric,population,whole measure,25,0.6325
+population q=40 metric,population,whole measure,inf,0.6325
+population q=40 metric,population,whole profile,2,0.6621
+population q=40 metric,population,whole profile,4,0.6621
+population q=40 metric,population,whole profile,6,0.6621
+population q=40 metric,population,whole profile,10,0.6621
+population q=40 metric,population,whole profile,15,0.6621
+population q=40 metric,population,whole profile,20,0.6621
+population q=40 metric,population,whole profile,25,0.6621
+population q=40 metric,population,whole profile,inf,0.6621
+population q=40 metric + knn k=20,population+knn,end gap,2,0.6313
+population q=40 metric + knn k=20,population+knn,end gap,4,0.5993
+population q=40 metric + knn k=20,population+knn,end gap,6,0.5921
+population q=40 metric + knn k=20,population+knn,end gap,10,0.5889
+population q=40 metric + knn k=20,population+knn,end gap,15,0.5889
+population q=40 metric + knn k=20,population+knn,end gap,20,0.5889
+population q=40 metric + knn k=20,population+knn,end gap,25,0.5889
+population q=40 metric + knn k=20,population+knn,end gap,inf,0.5889
+population q=40 metric + knn k=20,population+knn,gap,2,0.4995
+population q=40 metric + knn k=20,population+knn,gap,4,0.4749
+population q=40 metric + knn k=20,population+knn,gap,6,0.4738
+population q=40 metric + knn k=20,population+knn,gap,10,0.4737
+population q=40 metric + knn k=20,population+knn,gap,15,0.4737
+population q=40 metric + knn k=20,population+knn,gap,20,0.4737
+population q=40 metric + knn k=20,population+knn,gap,25,0.4737
+population q=40 metric + knn k=20,population+knn,gap,inf,0.4737
+population q=40 metric + knn k=20,population+knn,region,2,0.671
+population q=40 metric + knn k=20,population+knn,region,4,0.671
+population q=40 metric + knn k=20,population+knn,region,6,0.6788
+population q=40 metric + knn k=20,population+knn,region,10,0.6936
+population q=40 metric + knn k=20,population+knn,region,15,0.7038
+population q=40 metric + knn k=20,population+knn,region,20,0.71
+population q=40 metric + knn k=20,population+knn,region,25,0.7133
+population q=40 metric + knn k=20,population+knn,region,inf,0.7144
+population q=40 metric + knn k=20,population+knn,whole measure,2,0.6325
+population q=40 metric + knn k=20,population+knn,whole measure,4,0.6325
+population q=40 metric + knn k=20,population+knn,whole measure,6,0.6325
+population q=40 metric + knn k=20,population+knn,whole measure,10,0.6325
+population q=40 metric + knn k=20,population+knn,whole measure,15,0.6325
+population q=40 metric + knn k=20,population+knn,whole measure,20,0.6325
+population q=40 metric + knn k=20,population+knn,whole measure,25,0.6325
+population q=40 metric + knn k=20,population+knn,whole measure,inf,0.6325
+population q=40 metric + knn k=20,population+knn,whole profile,2,0.6277
+population q=40 metric + knn k=20,population+knn,whole profile,4,0.625
+population q=40 metric + knn k=20,population+knn,whole profile,6,0.6332
+population q=40 metric + knn k=20,population+knn,whole profile,10,0.638
+population q=40 metric + knn k=20,population+knn,whole profile,15,0.6403
+population q=40 metric + knn k=20,population+knn,whole profile,20,0.6414
+population q=40 metric + knn k=20,population+knn,whole profile,25,0.6414
+population q=40 metric + knn k=20,population+knn,whole profile,inf,0.6414
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,2,0.5892
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,4,0.5137
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,6,0.4982
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,10,0.4932
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,15,0.4931
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,20,0.4932
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,25,0.4932
+population q=40 metric + siren xyz omega0=10,population+siren,end gap,inf,0.4932
+population q=40 metric + siren xyz omega0=10,population+siren,gap,2,0.4328
+population q=40 metric + siren xyz omega0=10,population+siren,gap,4,0.3729
+population q=40 metric + siren xyz omega0=10,population+siren,gap,6,0.3703
+population q=40 metric + siren xyz omega0=10,population+siren,gap,10,0.3704
+population q=40 metric + siren xyz omega0=10,population+siren,gap,15,0.3704
+population q=40 metric + siren xyz omega0=10,population+siren,gap,20,0.3704
+population q=40 metric + siren xyz omega0=10,population+siren,gap,25,0.3704
+population q=40 metric + siren xyz omega0=10,population+siren,gap,inf,0.3704
+population q=40 metric + siren xyz omega0=10,population+siren,region,2,0.675
+population q=40 metric + siren xyz omega0=10,population+siren,region,4,0.6841
+population q=40 metric + siren xyz omega0=10,population+siren,region,6,0.7005
+population q=40 metric + siren xyz omega0=10,population+siren,region,10,0.72
+population q=40 metric + siren xyz omega0=10,population+siren,region,15,0.734
+population q=40 metric + siren xyz omega0=10,population+siren,region,20,0.7419
+population q=40 metric + siren xyz omega0=10,population+siren,region,25,0.7468
+population q=40 metric + siren xyz omega0=10,population+siren,region,inf,0.7485
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,2,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,4,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,6,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,10,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,15,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,20,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,25,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole measure,inf,0.6325
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,2,0.6345
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,4,0.6452
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,6,0.6584
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,10,0.6651
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,15,0.6669
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,20,0.6673
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,25,0.6673
+population q=40 metric + siren xyz omega0=10,population+siren,whole profile,inf,0.6673
+population q=5 diagonal,population,end gap,2,0.7751
+population q=5 diagonal,population,end gap,4,0.7751
+population q=5 diagonal,population,end gap,6,0.7751
+population q=5 diagonal,population,end gap,10,0.7751
+population q=5 diagonal,population,end gap,15,0.7751
+population q=5 diagonal,population,end gap,20,0.7751
+population q=5 diagonal,population,end gap,25,0.7751
+population q=5 diagonal,population,end gap,inf,0.7751
+population q=5 diagonal,population,gap,2,0.6875
+population q=5 diagonal,population,gap,4,0.6875
+population q=5 diagonal,population,gap,6,0.6875
+population q=5 diagonal,population,gap,10,0.6875
+population q=5 diagonal,population,gap,15,0.6875
+population q=5 diagonal,population,gap,20,0.6875
+population q=5 diagonal,population,gap,25,0.6875
+population q=5 diagonal,population,gap,inf,0.6875
+population q=5 diagonal,population,region,2,0.7411
+population q=5 diagonal,population,region,4,0.7411
+population q=5 diagonal,population,region,6,0.7411
+population q=5 diagonal,population,region,10,0.7411
+population q=5 diagonal,population,region,15,0.7411
+population q=5 diagonal,population,region,20,0.7411
+population q=5 diagonal,population,region,25,0.7411
+population q=5 diagonal,population,region,inf,0.7411
+population q=5 diagonal,population,whole measure,2,0.7335
+population q=5 diagonal,population,whole measure,4,0.7335
+population q=5 diagonal,population,whole measure,6,0.7335
+population q=5 diagonal,population,whole measure,10,0.7335
+population q=5 diagonal,population,whole measure,15,0.7335
+population q=5 diagonal,population,whole measure,20,0.7335
+population q=5 diagonal,population,whole measure,25,0.7335
+population q=5 diagonal,population,whole measure,inf,0.7335
+population q=5 diagonal,population,whole profile,2,0.7354
+population q=5 diagonal,population,whole profile,4,0.7354
+population q=5 diagonal,population,whole profile,6,0.7354
+population q=5 diagonal,population,whole profile,10,0.7354
+population q=5 diagonal,population,whole profile,15,0.7354
+population q=5 diagonal,population,whole profile,20,0.7354
+population q=5 diagonal,population,whole profile,25,0.7354
+population q=5 diagonal,population,whole profile,inf,0.7354
+population q=5 diagonal + knn k=20,population+knn,end gap,2,0.6565
+population q=5 diagonal + knn k=20,population+knn,end gap,4,0.6144
+population q=5 diagonal + knn k=20,population+knn,end gap,6,0.6079
+population q=5 diagonal + knn k=20,population+knn,end gap,10,0.6049
+population q=5 diagonal + knn k=20,population+knn,end gap,15,0.6051
+population q=5 diagonal + knn k=20,population+knn,end gap,20,0.605
+population q=5 diagonal + knn k=20,population+knn,end gap,25,0.605
+population q=5 diagonal + knn k=20,population+knn,end gap,inf,0.605
+population q=5 diagonal + knn k=20,population+knn,gap,2,0.5491
+population q=5 diagonal + knn k=20,population+knn,gap,4,0.5118
+population q=5 diagonal + knn k=20,population+knn,gap,6,0.5081
+population q=5 diagonal + knn k=20,population+knn,gap,10,0.5082
+population q=5 diagonal + knn k=20,population+knn,gap,15,0.5082
+population q=5 diagonal + knn k=20,population+knn,gap,20,0.5082
+population q=5 diagonal + knn k=20,population+knn,gap,25,0.5082
+population q=5 diagonal + knn k=20,population+knn,gap,inf,0.5082
+population q=5 diagonal + knn k=20,population+knn,region,2,0.7209
+population q=5 diagonal + knn k=20,population+knn,region,4,0.7162
+population q=5 diagonal + knn k=20,population+knn,region,6,0.7233
+population q=5 diagonal + knn k=20,population+knn,region,10,0.7411
+population q=5 diagonal + knn k=20,population+knn,region,15,0.7534
+population q=5 diagonal + knn k=20,population+knn,region,20,0.7604
+population q=5 diagonal + knn k=20,population+knn,region,25,0.7647
+population q=5 diagonal + knn k=20,population+knn,region,inf,0.7671
+population q=5 diagonal + knn k=20,population+knn,whole measure,2,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole measure,4,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole measure,6,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole measure,10,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole measure,15,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole measure,20,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole measure,25,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole measure,inf,0.7335
+population q=5 diagonal + knn k=20,population+knn,whole profile,2,0.683
+population q=5 diagonal + knn k=20,population+knn,whole profile,4,0.6699
+population q=5 diagonal + knn k=20,population+knn,whole profile,6,0.6742
+population q=5 diagonal + knn k=20,population+knn,whole profile,10,0.6783
+population q=5 diagonal + knn k=20,population+knn,whole profile,15,0.6799
+population q=5 diagonal + knn k=20,population+knn,whole profile,20,0.68
+population q=5 diagonal + knn k=20,population+knn,whole profile,25,0.68
+population q=5 diagonal + knn k=20,population+knn,whole profile,inf,0.68
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,2,0.6092
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,4,0.5265
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,6,0.5104
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,10,0.5054
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,15,0.5058
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,20,0.5058
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,25,0.5058
+population q=5 diagonal + siren xyz omega0=10,population+siren,end gap,inf,0.5058
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,2,0.4802
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,4,0.395
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,6,0.3845
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,10,0.3844
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,15,0.3844
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,20,0.3844
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,25,0.3844
+population q=5 diagonal + siren xyz omega0=10,population+siren,gap,inf,0.3844
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,2,0.7244
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,4,0.7279
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,6,0.7428
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,10,0.765
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,15,0.7822
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,20,0.792
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,25,0.7977
+population q=5 diagonal + siren xyz omega0=10,population+siren,region,inf,0.8
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,2,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,4,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,6,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,10,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,15,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,20,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,25,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole measure,inf,0.7335
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,2,0.6873
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,4,0.6849
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,6,0.6921
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,10,0.6973
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,15,0.6997
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,20,0.6994
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,25,0.6994
+population q=5 diagonal + siren xyz omega0=10,population+siren,whole profile,inf,0.6994
+population q=5 isotropic,population,end gap,2,0.7701
+population q=5 isotropic,population,end gap,4,0.7701
+population q=5 isotropic,population,end gap,6,0.7701
+population q=5 isotropic,population,end gap,10,0.7701
+population q=5 isotropic,population,end gap,15,0.7701
+population q=5 isotropic,population,end gap,20,0.7701
+population q=5 isotropic,population,end gap,25,0.7701
+population q=5 isotropic,population,end gap,inf,0.7701
+population q=5 isotropic,population,gap,2,0.681
+population q=5 isotropic,population,gap,4,0.681
+population q=5 isotropic,population,gap,6,0.681
+population q=5 isotropic,population,gap,10,0.681
+population q=5 isotropic,population,gap,15,0.681
+population q=5 isotropic,population,gap,20,0.681
+population q=5 isotropic,population,gap,25,0.681
+population q=5 isotropic,population,gap,inf,0.681
+population q=5 isotropic,population,region,2,0.7318
+population q=5 isotropic,population,region,4,0.7318
+population q=5 isotropic,population,region,6,0.7318
+population q=5 isotropic,population,region,10,0.7318
+population q=5 isotropic,population,region,15,0.7318
+population q=5 isotropic,population,region,20,0.7318
+population q=5 isotropic,population,region,25,0.7318
+population q=5 isotropic,population,region,inf,0.7318
+population q=5 isotropic,population,whole measure,2,0.727
+population q=5 isotropic,population,whole measure,4,0.727
+population q=5 isotropic,population,whole measure,6,0.727
+population q=5 isotropic,population,whole measure,10,0.727
+population q=5 isotropic,population,whole measure,15,0.727
+population q=5 isotropic,population,whole measure,20,0.727
+population q=5 isotropic,population,whole measure,25,0.727
+population q=5 isotropic,population,whole measure,inf,0.727
+population q=5 isotropic,population,whole profile,2,0.7316
+population q=5 isotropic,population,whole profile,4,0.7316
+population q=5 isotropic,population,whole profile,6,0.7316
+population q=5 isotropic,population,whole profile,10,0.7316
+population q=5 isotropic,population,whole profile,15,0.7316
+population q=5 isotropic,population,whole profile,20,0.7316
+population q=5 isotropic,population,whole profile,25,0.7316
+population q=5 isotropic,population,whole profile,inf,0.7316
+population q=5 isotropic + knn k=20,population+knn,end gap,2,0.6493
+population q=5 isotropic + knn k=20,population+knn,end gap,4,0.6039
+population q=5 isotropic + knn k=20,population+knn,end gap,6,0.597
+population q=5 isotropic + knn k=20,population+knn,end gap,10,0.5938
+population q=5 isotropic + knn k=20,population+knn,end gap,15,0.5938
+population q=5 isotropic + knn k=20,population+knn,end gap,20,0.5938
+population q=5 isotropic + knn k=20,population+knn,end gap,25,0.5938
+population q=5 isotropic + knn k=20,population+knn,end gap,inf,0.5938
+population q=5 isotropic + knn k=20,population+knn,gap,2,0.5457
+population q=5 isotropic + knn k=20,population+knn,gap,4,0.5086
+population q=5 isotropic + knn k=20,population+knn,gap,6,0.5048
+population q=5 isotropic + knn k=20,population+knn,gap,10,0.5048
+population q=5 isotropic + knn k=20,population+knn,gap,15,0.5048
+population q=5 isotropic + knn k=20,population+knn,gap,20,0.5048
+population q=5 isotropic + knn k=20,population+knn,gap,25,0.5048
+population q=5 isotropic + knn k=20,population+knn,gap,inf,0.5048
+population q=5 isotropic + knn k=20,population+knn,region,2,0.7115
+population q=5 isotropic + knn k=20,population+knn,region,4,0.7048
+population q=5 isotropic + knn k=20,population+knn,region,6,0.7106
+population q=5 isotropic + knn k=20,population+knn,region,10,0.7267
+population q=5 isotropic + knn k=20,population+knn,region,15,0.7381
+population q=5 isotropic + knn k=20,population+knn,region,20,0.7445
+population q=5 isotropic + knn k=20,population+knn,region,25,0.7479
+population q=5 isotropic + knn k=20,population+knn,region,inf,0.7496
+population q=5 isotropic + knn k=20,population+knn,whole measure,2,0.727
+population q=5 isotropic + knn k=20,population+knn,whole measure,4,0.727
+population q=5 isotropic + knn k=20,population+knn,whole measure,6,0.727
+population q=5 isotropic + knn k=20,population+knn,whole measure,10,0.727
+population q=5 isotropic + knn k=20,population+knn,whole measure,15,0.727
+population q=5 isotropic + knn k=20,population+knn,whole measure,20,0.727
+population q=5 isotropic + knn k=20,population+knn,whole measure,25,0.727
+population q=5 isotropic + knn k=20,population+knn,whole measure,inf,0.727
+population q=5 isotropic + knn k=20,population+knn,whole profile,2,0.6801
+population q=5 isotropic + knn k=20,population+knn,whole profile,4,0.6649
+population q=5 isotropic + knn k=20,population+knn,whole profile,6,0.6695
+population q=5 isotropic + knn k=20,population+knn,whole profile,10,0.6725
+population q=5 isotropic + knn k=20,population+knn,whole profile,15,0.6738
+population q=5 isotropic + knn k=20,population+knn,whole profile,20,0.6742
+population q=5 isotropic + knn k=20,population+knn,whole profile,25,0.6742
+population q=5 isotropic + knn k=20,population+knn,whole profile,inf,0.6742
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,2,0.6039
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,4,0.52
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,6,0.5041
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,10,0.4997
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,15,0.4993
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,20,0.4993
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,25,0.4993
+population q=5 isotropic + siren xyz omega0=10,population+siren,end gap,inf,0.4993
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,2,0.4771
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,4,0.3929
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,6,0.3848
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,10,0.3852
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,15,0.3852
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,20,0.3852
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,25,0.3852
+population q=5 isotropic + siren xyz omega0=10,population+siren,gap,inf,0.3852
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,2,0.7146
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,4,0.7169
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,6,0.731
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,10,0.7525
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,15,0.7689
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,20,0.7783
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,25,0.7836
+population q=5 isotropic + siren xyz omega0=10,population+siren,region,inf,0.7861
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,2,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,4,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,6,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,10,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,15,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,20,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,25,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole measure,inf,0.727
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,2,0.6845
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,4,0.6833
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,6,0.693
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,10,0.6985
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,15,0.7005
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,20,0.7005
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,25,0.7005
+population q=5 isotropic + siren xyz omega0=10,population+siren,whole profile,inf,0.7005
+population q=5 metric,population,end gap,2,0.7724
+population q=5 metric,population,end gap,4,0.7724
+population q=5 metric,population,end gap,6,0.7724
+population q=5 metric,population,end gap,10,0.7724
+population q=5 metric,population,end gap,15,0.7724
+population q=5 metric,population,end gap,20,0.7724
+population q=5 metric,population,end gap,25,0.7724
+population q=5 metric,population,end gap,inf,0.7724
+population q=5 metric,population,gap,2,0.6825
+population q=5 metric,population,gap,4,0.6825
+population q=5 metric,population,gap,6,0.6825
+population q=5 metric,population,gap,10,0.6825
+population q=5 metric,population,gap,15,0.6825
+population q=5 metric,population,gap,20,0.6825
+population q=5 metric,population,gap,25,0.6825
+population q=5 metric,population,gap,inf,0.6825
+population q=5 metric,population,region,2,0.7333
+population q=5 metric,population,region,4,0.7333
+population q=5 metric,population,region,6,0.7333
+population q=5 metric,population,region,10,0.7333
+population q=5 metric,population,region,15,0.7333
+population q=5 metric,population,region,20,0.7333
+population q=5 metric,population,region,25,0.7333
+population q=5 metric,population,region,inf,0.7333
+population q=5 metric,population,whole measure,2,0.7281
+population q=5 metric,population,whole measure,4,0.7281
+population q=5 metric,population,whole measure,6,0.7281
+population q=5 metric,population,whole measure,10,0.7281
+population q=5 metric,population,whole measure,15,0.7281
+population q=5 metric,population,whole measure,20,0.7281
+population q=5 metric,population,whole measure,25,0.7281
+population q=5 metric,population,whole measure,inf,0.7281
+population q=5 metric,population,whole profile,2,0.7326
+population q=5 metric,population,whole profile,4,0.7326
+population q=5 metric,population,whole profile,6,0.7326
+population q=5 metric,population,whole profile,10,0.7326
+population q=5 metric,population,whole profile,15,0.7326
+population q=5 metric,population,whole profile,20,0.7326
+population q=5 metric,population,whole profile,25,0.7326
+population q=5 metric,population,whole profile,inf,0.7326
+population q=5 metric + knn k=20,population+knn,end gap,2,0.6512
+population q=5 metric + knn k=20,population+knn,end gap,4,0.6052
+population q=5 metric + knn k=20,population+knn,end gap,6,0.5974
+population q=5 metric + knn k=20,population+knn,end gap,10,0.5937
+population q=5 metric + knn k=20,population+knn,end gap,15,0.5937
+population q=5 metric + knn k=20,population+knn,end gap,20,0.5937
+population q=5 metric + knn k=20,population+knn,end gap,25,0.5937
+population q=5 metric + knn k=20,population+knn,end gap,inf,0.5937
+population q=5 metric + knn k=20,population+knn,gap,2,0.5465
+population q=5 metric + knn k=20,population+knn,gap,4,0.5081
+population q=5 metric + knn k=20,population+knn,gap,6,0.5042
+population q=5 metric + knn k=20,population+knn,gap,10,0.5042
+population q=5 metric + knn k=20,population+knn,gap,15,0.5042
+population q=5 metric + knn k=20,population+knn,gap,20,0.5042
+population q=5 metric + knn k=20,population+knn,gap,25,0.5042
+population q=5 metric + knn k=20,population+knn,gap,inf,0.5042
+population q=5 metric + knn k=20,population+knn,region,2,0.713
+population q=5 metric + knn k=20,population+knn,region,4,0.706
+population q=5 metric + knn k=20,population+knn,region,6,0.7116
+population q=5 metric + knn k=20,population+knn,region,10,0.7277
+population q=5 metric + knn k=20,population+knn,region,15,0.739
+population q=5 metric + knn k=20,population+knn,region,20,0.7453
+population q=5 metric + knn k=20,population+knn,region,25,0.7487
+population q=5 metric + knn k=20,population+knn,region,inf,0.7504
+population q=5 metric + knn k=20,population+knn,whole measure,2,0.7281
+population q=5 metric + knn k=20,population+knn,whole measure,4,0.7281
+population q=5 metric + knn k=20,population+knn,whole measure,6,0.7281
+population q=5 metric + knn k=20,population+knn,whole measure,10,0.7281
+population q=5 metric + knn k=20,population+knn,whole measure,15,0.7281
+population q=5 metric + knn k=20,population+knn,whole measure,20,0.7281
+population q=5 metric + knn k=20,population+knn,whole measure,25,0.7281
+population q=5 metric + knn k=20,population+knn,whole measure,inf,0.7281
+population q=5 metric + knn k=20,population+knn,whole profile,2,0.6807
+population q=5 metric + knn k=20,population+knn,whole profile,4,0.6646
+population q=5 metric + knn k=20,population+knn,whole profile,6,0.6685
+population q=5 metric + knn k=20,population+knn,whole profile,10,0.6716
+population q=5 metric + knn k=20,population+knn,whole profile,15,0.6729
+population q=5 metric + knn k=20,population+knn,whole profile,20,0.6731
+population q=5 metric + knn k=20,population+knn,whole profile,25,0.6731
+population q=5 metric + knn k=20,population+knn,whole profile,inf,0.6731
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,2,0.6064
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,4,0.5227
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,6,0.5067
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,10,0.5022
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,15,0.5021
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,20,0.5021
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,25,0.5021
+population q=5 metric + siren xyz omega0=10,population+siren,end gap,inf,0.5021
+population q=5 metric + siren xyz omega0=10,population+siren,gap,2,0.4791
+population q=5 metric + siren xyz omega0=10,population+siren,gap,4,0.3922
+population q=5 metric + siren xyz omega0=10,population+siren,gap,6,0.3833
+population q=5 metric + siren xyz omega0=10,population+siren,gap,10,0.3833
+population q=5 metric + siren xyz omega0=10,population+siren,gap,15,0.3833
+population q=5 metric + siren xyz omega0=10,population+siren,gap,20,0.3833
+population q=5 metric + siren xyz omega0=10,population+siren,gap,25,0.3833
+population q=5 metric + siren xyz omega0=10,population+siren,gap,inf,0.3833
+population q=5 metric + siren xyz omega0=10,population+siren,region,2,0.7162
+population q=5 metric + siren xyz omega0=10,population+siren,region,4,0.7181
+population q=5 metric + siren xyz omega0=10,population+siren,region,6,0.7319
+population q=5 metric + siren xyz omega0=10,population+siren,region,10,0.7532
+population q=5 metric + siren xyz omega0=10,population+siren,region,15,0.7706
+population q=5 metric + siren xyz omega0=10,population+siren,region,20,0.7806
+population q=5 metric + siren xyz omega0=10,population+siren,region,25,0.7855
+population q=5 metric + siren xyz omega0=10,population+siren,region,inf,0.788
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,2,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,4,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,6,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,10,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,15,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,20,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,25,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole measure,inf,0.7281
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,2,0.6849
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,4,0.682
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,6,0.6899
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,10,0.6952
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,15,0.6973
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,20,0.697
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,25,0.697
+population q=5 metric + siren xyz omega0=10,population+siren,whole profile,inf,0.697
+population q=80 diagonal,population,end gap,2,0.7225
+population q=80 diagonal,population,end gap,4,0.7225
+population q=80 diagonal,population,end gap,6,0.7225
+population q=80 diagonal,population,end gap,10,0.7225
+population q=80 diagonal,population,end gap,15,0.7225
+population q=80 diagonal,population,end gap,20,0.7225
+population q=80 diagonal,population,end gap,25,0.7225
+population q=80 diagonal,population,end gap,inf,0.7225
+population q=80 diagonal,population,gap,2,0.5729
+population q=80 diagonal,population,gap,4,0.5729
+population q=80 diagonal,population,gap,6,0.5729
+population q=80 diagonal,population,gap,10,0.5729
+population q=80 diagonal,population,gap,15,0.5729
+population q=80 diagonal,population,gap,20,0.5729
+population q=80 diagonal,population,gap,25,0.5729
+population q=80 diagonal,population,gap,inf,0.5729
+population q=80 diagonal,population,region,2,0.6747
+population q=80 diagonal,population,region,4,0.6747
+population q=80 diagonal,population,region,6,0.6747
+population q=80 diagonal,population,region,10,0.6747
+population q=80 diagonal,population,region,15,0.6747
+population q=80 diagonal,population,region,20,0.6747
+population q=80 diagonal,population,region,25,0.6747
+population q=80 diagonal,population,region,inf,0.6747
+population q=80 diagonal,population,whole measure,2,0.6076
+population q=80 diagonal,population,whole measure,4,0.6076
+population q=80 diagonal,population,whole measure,6,0.6076
+population q=80 diagonal,population,whole measure,10,0.6076
+population q=80 diagonal,population,whole measure,15,0.6076
+population q=80 diagonal,population,whole measure,20,0.6076
+population q=80 diagonal,population,whole measure,25,0.6076
+population q=80 diagonal,population,whole measure,inf,0.6076
+population q=80 diagonal,population,whole profile,2,0.6424
+population q=80 diagonal,population,whole profile,4,0.6424
+population q=80 diagonal,population,whole profile,6,0.6424
+population q=80 diagonal,population,whole profile,10,0.6424
+population q=80 diagonal,population,whole profile,15,0.6424
+population q=80 diagonal,population,whole profile,20,0.6424
+population q=80 diagonal,population,whole profile,25,0.6424
+population q=80 diagonal,population,whole profile,inf,0.6424
+population q=80 diagonal + knn k=20,population+knn,end gap,2,0.6388
+population q=80 diagonal + knn k=20,population+knn,end gap,4,0.6188
+population q=80 diagonal + knn k=20,population+knn,end gap,6,0.6195
+population q=80 diagonal + knn k=20,population+knn,end gap,10,0.62
+population q=80 diagonal + knn k=20,population+knn,end gap,15,0.62
+population q=80 diagonal + knn k=20,population+knn,end gap,20,0.6199
+population q=80 diagonal + knn k=20,population+knn,end gap,25,0.6199
+population q=80 diagonal + knn k=20,population+knn,end gap,inf,0.6199
+population q=80 diagonal + knn k=20,population+knn,gap,2,0.4885
+population q=80 diagonal + knn k=20,population+knn,gap,4,0.4711
+population q=80 diagonal + knn k=20,population+knn,gap,6,0.4723
+population q=80 diagonal + knn k=20,population+knn,gap,10,0.4724
+population q=80 diagonal + knn k=20,population+knn,gap,15,0.4724
+population q=80 diagonal + knn k=20,population+knn,gap,20,0.4724
+population q=80 diagonal + knn k=20,population+knn,gap,25,0.4724
+population q=80 diagonal + knn k=20,population+knn,gap,inf,0.4724
+population q=80 diagonal + knn k=20,population+knn,region,2,0.6629
+population q=80 diagonal + knn k=20,population+knn,region,4,0.6657
+population q=80 diagonal + knn k=20,population+knn,region,6,0.6756
+population q=80 diagonal + knn k=20,population+knn,region,10,0.6923
+population q=80 diagonal + knn k=20,population+knn,region,15,0.7032
+population q=80 diagonal + knn k=20,population+knn,region,20,0.7092
+population q=80 diagonal + knn k=20,population+knn,region,25,0.7125
+population q=80 diagonal + knn k=20,population+knn,region,inf,0.714
+population q=80 diagonal + knn k=20,population+knn,whole measure,2,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole measure,4,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole measure,6,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole measure,10,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole measure,15,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole measure,20,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole measure,25,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole measure,inf,0.6076
+population q=80 diagonal + knn k=20,population+knn,whole profile,2,0.6144
+population q=80 diagonal + knn k=20,population+knn,whole profile,4,0.62
+population q=80 diagonal + knn k=20,population+knn,whole profile,6,0.6295
+population q=80 diagonal + knn k=20,population+knn,whole profile,10,0.6362
+population q=80 diagonal + knn k=20,population+knn,whole profile,15,0.639
+population q=80 diagonal + knn k=20,population+knn,whole profile,20,0.6404
+population q=80 diagonal + knn k=20,population+knn,whole profile,25,0.6404
+population q=80 diagonal + knn k=20,population+knn,whole profile,inf,0.6404
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,2,0.5864
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,4,0.5173
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,6,0.5102
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,10,0.5112
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,15,0.5115
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,20,0.5116
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,25,0.5116
+population q=80 diagonal + siren xyz omega0=10,population+siren,end gap,inf,0.5116
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,2,0.4209
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,4,0.3757
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,6,0.3753
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,10,0.3759
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,15,0.3759
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,20,0.3759
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,25,0.3759
+population q=80 diagonal + siren xyz omega0=10,population+siren,gap,inf,0.3759
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,2,0.6663
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,4,0.6776
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,6,0.6937
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,10,0.7131
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,15,0.7258
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,20,0.7326
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,25,0.7367
+population q=80 diagonal + siren xyz omega0=10,population+siren,region,inf,0.7388
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,2,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,4,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,6,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,10,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,15,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,20,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,25,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole measure,inf,0.6076
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,2,0.6215
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,4,0.6383
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,6,0.6497
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,10,0.6565
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,15,0.6596
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,20,0.6601
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,25,0.6601
+population q=80 diagonal + siren xyz omega0=10,population+siren,whole profile,inf,0.6601
+population q=80 isotropic,population,end gap,2,0.7083
+population q=80 isotropic,population,end gap,4,0.7083
+population q=80 isotropic,population,end gap,6,0.7083
+population q=80 isotropic,population,end gap,10,0.7083
+population q=80 isotropic,population,end gap,15,0.7083
+population q=80 isotropic,population,end gap,20,0.7083
+population q=80 isotropic,population,end gap,25,0.7083
+population q=80 isotropic,population,end gap,inf,0.7083
+population q=80 isotropic,population,gap,2,0.5683
+population q=80 isotropic,population,gap,4,0.5683
+population q=80 isotropic,population,gap,6,0.5683
+population q=80 isotropic,population,gap,10,0.5683
+population q=80 isotropic,population,gap,15,0.5683
+population q=80 isotropic,population,gap,20,0.5683
+population q=80 isotropic,population,gap,25,0.5683
+population q=80 isotropic,population,gap,inf,0.5683
+population q=80 isotropic,population,region,2,0.6724
+population q=80 isotropic,population,region,4,0.6724
+population q=80 isotropic,population,region,6,0.6724
+population q=80 isotropic,population,region,10,0.6724
+population q=80 isotropic,population,region,15,0.6724
+population q=80 isotropic,population,region,20,0.6724
+population q=80 isotropic,population,region,25,0.6724
+population q=80 isotropic,population,region,inf,0.6724
+population q=80 isotropic,population,whole measure,2,0.5934
+population q=80 isotropic,population,whole measure,4,0.5934
+population q=80 isotropic,population,whole measure,6,0.5934
+population q=80 isotropic,population,whole measure,10,0.5934
+population q=80 isotropic,population,whole measure,15,0.5934
+population q=80 isotropic,population,whole measure,20,0.5934
+population q=80 isotropic,population,whole measure,25,0.5934
+population q=80 isotropic,population,whole measure,inf,0.5934
+population q=80 isotropic,population,whole profile,2,0.6416
+population q=80 isotropic,population,whole profile,4,0.6416
+population q=80 isotropic,population,whole profile,6,0.6416
+population q=80 isotropic,population,whole profile,10,0.6416
+population q=80 isotropic,population,whole profile,15,0.6416
+population q=80 isotropic,population,whole profile,20,0.6416
+population q=80 isotropic,population,whole profile,25,0.6416
+population q=80 isotropic,population,whole profile,inf,0.6416
+population q=80 isotropic + knn k=20,population+knn,end gap,2,0.6258
+population q=80 isotropic + knn k=20,population+knn,end gap,4,0.5969
+population q=80 isotropic + knn k=20,population+knn,end gap,6,0.5933
+population q=80 isotropic + knn k=20,population+knn,end gap,10,0.5924
+population q=80 isotropic + knn k=20,population+knn,end gap,15,0.5923
+population q=80 isotropic + knn k=20,population+knn,end gap,20,0.5922
+population q=80 isotropic + knn k=20,population+knn,end gap,25,0.5922
+population q=80 isotropic + knn k=20,population+knn,end gap,inf,0.5922
+population q=80 isotropic + knn k=20,population+knn,gap,2,0.4825
+population q=80 isotropic + knn k=20,population+knn,gap,4,0.4633
+population q=80 isotropic + knn k=20,population+knn,gap,6,0.4641
+population q=80 isotropic + knn k=20,population+knn,gap,10,0.4641
+population q=80 isotropic + knn k=20,population+knn,gap,15,0.4641
+population q=80 isotropic + knn k=20,population+knn,gap,20,0.4641
+population q=80 isotropic + knn k=20,population+knn,gap,25,0.4641
+population q=80 isotropic + knn k=20,population+knn,gap,inf,0.4641
+population q=80 isotropic + knn k=20,population+knn,region,2,0.6612
+population q=80 isotropic + knn k=20,population+knn,region,4,0.6624
+population q=80 isotropic + knn k=20,population+knn,region,6,0.6701
+population q=80 isotropic + knn k=20,population+knn,region,10,0.6835
+population q=80 isotropic + knn k=20,population+knn,region,15,0.6936
+population q=80 isotropic + knn k=20,population+knn,region,20,0.6995
+population q=80 isotropic + knn k=20,population+knn,region,25,0.7018
+population q=80 isotropic + knn k=20,population+knn,region,inf,0.7027
+population q=80 isotropic + knn k=20,population+knn,whole measure,2,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole measure,4,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole measure,6,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole measure,10,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole measure,15,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole measure,20,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole measure,25,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole measure,inf,0.5934
+population q=80 isotropic + knn k=20,population+knn,whole profile,2,0.6144
+population q=80 isotropic + knn k=20,population+knn,whole profile,4,0.6152
+population q=80 isotropic + knn k=20,population+knn,whole profile,6,0.6233
+population q=80 isotropic + knn k=20,population+knn,whole profile,10,0.6268
+population q=80 isotropic + knn k=20,population+knn,whole profile,15,0.6284
+population q=80 isotropic + knn k=20,population+knn,whole profile,20,0.6294
+population q=80 isotropic + knn k=20,population+knn,whole profile,25,0.6294
+population q=80 isotropic + knn k=20,population+knn,whole profile,inf,0.6294
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,2,0.5786
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,4,0.5084
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,6,0.4967
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,10,0.4956
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,15,0.4956
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,20,0.4955
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,25,0.4955
+population q=80 isotropic + siren xyz omega0=10,population+siren,end gap,inf,0.4955
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,2,0.4176
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,4,0.3677
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,6,0.3657
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,10,0.3661
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,15,0.3661
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,20,0.3661
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,25,0.3661
+population q=80 isotropic + siren xyz omega0=10,population+siren,gap,inf,0.3661
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,2,0.6647
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,4,0.6745
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,6,0.6893
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,10,0.7069
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,15,0.7204
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,20,0.7271
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,25,0.7303
+population q=80 isotropic + siren xyz omega0=10,population+siren,region,inf,0.7315
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,2,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,4,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,6,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,10,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,15,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,20,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,25,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole measure,inf,0.5934
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,2,0.6216
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,4,0.6347
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,6,0.6451
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,10,0.6513
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,15,0.6526
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,20,0.6531
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,25,0.6531
+population q=80 isotropic + siren xyz omega0=10,population+siren,whole profile,inf,0.6531
+population q=80 metric,population,end gap,2,0.7056
+population q=80 metric,population,end gap,4,0.7056
+population q=80 metric,population,end gap,6,0.7056
+population q=80 metric,population,end gap,10,0.7056
+population q=80 metric,population,end gap,15,0.7056
+population q=80 metric,population,end gap,20,0.7056
+population q=80 metric,population,end gap,25,0.7056
+population q=80 metric,population,end gap,inf,0.7056
+population q=80 metric,population,gap,2,0.5714
+population q=80 metric,population,gap,4,0.5714
+population q=80 metric,population,gap,6,0.5714
+population q=80 metric,population,gap,10,0.5714
+population q=80 metric,population,gap,15,0.5714
+population q=80 metric,population,gap,20,0.5714
+population q=80 metric,population,gap,25,0.5714
+population q=80 metric,population,gap,inf,0.5714
+population q=80 metric,population,region,2,0.6715
+population q=80 metric,population,region,4,0.6715
+population q=80 metric,population,region,6,0.6715
+population q=80 metric,population,region,10,0.6715
+population q=80 metric,population,region,15,0.6715
+population q=80 metric,population,region,20,0.6715
+population q=80 metric,population,region,25,0.6715
+population q=80 metric,population,region,inf,0.6715
+population q=80 metric,population,whole measure,2,0.5934
+population q=80 metric,population,whole measure,4,0.5934
+population q=80 metric,population,whole measure,6,0.5934
+population q=80 metric,population,whole measure,10,0.5934
+population q=80 metric,population,whole measure,15,0.5934
+population q=80 metric,population,whole measure,20,0.5934
+population q=80 metric,population,whole measure,25,0.5934
+population q=80 metric,population,whole measure,inf,0.5934
+population q=80 metric,population,whole profile,2,0.6414
+population q=80 metric,population,whole profile,4,0.6414
+population q=80 metric,population,whole profile,6,0.6414
+population q=80 metric,population,whole profile,10,0.6414
+population q=80 metric,population,whole profile,15,0.6414
+population q=80 metric,population,whole profile,20,0.6414
+population q=80 metric,population,whole profile,25,0.6414
+population q=80 metric,population,whole profile,inf,0.6414
+population q=80 metric + knn k=20,population+knn,end gap,2,0.6246
+population q=80 metric + knn k=20,population+knn,end gap,4,0.5976
+population q=80 metric + knn k=20,population+knn,end gap,6,0.5932
+population q=80 metric + knn k=20,population+knn,end gap,10,0.5921
+population q=80 metric + knn k=20,population+knn,end gap,15,0.5921
+population q=80 metric + knn k=20,population+knn,end gap,20,0.5921
+population q=80 metric + knn k=20,population+knn,end gap,25,0.5921
+population q=80 metric + knn k=20,population+knn,end gap,inf,0.5921
+population q=80 metric + knn k=20,population+knn,gap,2,0.4842
+population q=80 metric + knn k=20,population+knn,gap,4,0.465
+population q=80 metric + knn k=20,population+knn,gap,6,0.4655
+population q=80 metric + knn k=20,population+knn,gap,10,0.4654
+population q=80 metric + knn k=20,population+knn,gap,15,0.4654
+population q=80 metric + knn k=20,population+knn,gap,20,0.4654
+population q=80 metric + knn k=20,population+knn,gap,25,0.4654
+population q=80 metric + knn k=20,population+knn,gap,inf,0.4654
+population q=80 metric + knn k=20,population+knn,region,2,0.6606
+population q=80 metric + knn k=20,population+knn,region,4,0.6622
+population q=80 metric + knn k=20,population+knn,region,6,0.67
+population q=80 metric + knn k=20,population+knn,region,10,0.6835
+population q=80 metric + knn k=20,population+knn,region,15,0.6938
+population q=80 metric + knn k=20,population+knn,region,20,0.6996
+population q=80 metric + knn k=20,population+knn,region,25,0.702
+population q=80 metric + knn k=20,population+knn,region,inf,0.7028
+population q=80 metric + knn k=20,population+knn,whole measure,2,0.5934
+population q=80 metric + knn k=20,population+knn,whole measure,4,0.5934
+population q=80 metric + knn k=20,population+knn,whole measure,6,0.5934
+population q=80 metric + knn k=20,population+knn,whole measure,10,0.5934
+population q=80 metric + knn k=20,population+knn,whole measure,15,0.5934
+population q=80 metric + knn k=20,population+knn,whole measure,20,0.5934
+population q=80 metric + knn k=20,population+knn,whole measure,25,0.5934
+population q=80 metric + knn k=20,population+knn,whole measure,inf,0.5934
+population q=80 metric + knn k=20,population+knn,whole profile,2,0.6142
+population q=80 metric + knn k=20,population+knn,whole profile,4,0.6147
+population q=80 metric + knn k=20,population+knn,whole profile,6,0.6224
+population q=80 metric + knn k=20,population+knn,whole profile,10,0.6261
+population q=80 metric + knn k=20,population+knn,whole profile,15,0.6279
+population q=80 metric + knn k=20,population+knn,whole profile,20,0.6289
+population q=80 metric + knn k=20,population+knn,whole profile,25,0.629
+population q=80 metric + knn k=20,population+knn,whole profile,inf,0.629
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,2,0.5786
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,4,0.5094
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,6,0.4963
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,10,0.4932
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,15,0.4927
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,20,0.4927
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,25,0.4927
+population q=80 metric + siren xyz omega0=10,population+siren,end gap,inf,0.4927
+population q=80 metric + siren xyz omega0=10,population+siren,gap,2,0.4187
+population q=80 metric + siren xyz omega0=10,population+siren,gap,4,0.3685
+population q=80 metric + siren xyz omega0=10,population+siren,gap,6,0.3664
+population q=80 metric + siren xyz omega0=10,population+siren,gap,10,0.3667
+population q=80 metric + siren xyz omega0=10,population+siren,gap,15,0.3667
+population q=80 metric + siren xyz omega0=10,population+siren,gap,20,0.3667
+population q=80 metric + siren xyz omega0=10,population+siren,gap,25,0.3667
+population q=80 metric + siren xyz omega0=10,population+siren,gap,inf,0.3667
+population q=80 metric + siren xyz omega0=10,population+siren,region,2,0.6641
+population q=80 metric + siren xyz omega0=10,population+siren,region,4,0.6745
+population q=80 metric + siren xyz omega0=10,population+siren,region,6,0.6897
+population q=80 metric + siren xyz omega0=10,population+siren,region,10,0.7093
+population q=80 metric + siren xyz omega0=10,population+siren,region,15,0.7227
+population q=80 metric + siren xyz omega0=10,population+siren,region,20,0.7302
+population q=80 metric + siren xyz omega0=10,population+siren,region,25,0.7342
+population q=80 metric + siren xyz omega0=10,population+siren,region,inf,0.7354
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,2,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,4,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,6,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,10,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,15,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,20,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,25,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole measure,inf,0.5934
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,2,0.621
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,4,0.6325
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,6,0.6442
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,10,0.652
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,15,0.654
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,20,0.6545
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,25,0.6545
+population q=80 metric + siren xyz omega0=10,population+siren,whole profile,inf,0.6545
+prior-mean,prior-mean,end gap,2,1
+prior-mean,prior-mean,end gap,4,1
+prior-mean,prior-mean,end gap,6,1
+prior-mean,prior-mean,end gap,10,1
+prior-mean,prior-mean,end gap,15,1
+prior-mean,prior-mean,end gap,20,1
+prior-mean,prior-mean,end gap,25,1
+prior-mean,prior-mean,end gap,inf,1
+prior-mean,prior-mean,gap,2,1
+prior-mean,prior-mean,gap,4,1
+prior-mean,prior-mean,gap,6,1
+prior-mean,prior-mean,gap,10,1
+prior-mean,prior-mean,gap,15,1
+prior-mean,prior-mean,gap,20,1
+prior-mean,prior-mean,gap,25,1
+prior-mean,prior-mean,gap,inf,1
+prior-mean,prior-mean,region,2,1
+prior-mean,prior-mean,region,4,1
+prior-mean,prior-mean,region,6,1
+prior-mean,prior-mean,region,10,1
+prior-mean,prior-mean,region,15,1
+prior-mean,prior-mean,region,20,1
+prior-mean,prior-mean,region,25,1
+prior-mean,prior-mean,region,inf,1
+prior-mean,prior-mean,whole measure,2,1
+prior-mean,prior-mean,whole measure,4,1
+prior-mean,prior-mean,whole measure,6,1
+prior-mean,prior-mean,whole measure,10,1
+prior-mean,prior-mean,whole measure,15,1
+prior-mean,prior-mean,whole measure,20,1
+prior-mean,prior-mean,whole measure,25,1
+prior-mean,prior-mean,whole measure,inf,1
+prior-mean,prior-mean,whole profile,2,1
+prior-mean,prior-mean,whole profile,4,1
+prior-mean,prior-mean,whole profile,6,1
+prior-mean,prior-mean,whole profile,10,1
+prior-mean,prior-mean,whole profile,15,1
+prior-mean,prior-mean,whole profile,20,1
+prior-mean,prior-mean,whole profile,25,1
+prior-mean,prior-mean,whole profile,inf,1
+siren xyz omega0=10 (z),siren (z),end gap,2,0.7563
+siren xyz omega0=10 (z),siren (z),end gap,4,0.5921
+siren xyz omega0=10 (z),siren (z),end gap,6,0.5321
+siren xyz omega0=10 (z),siren (z),end gap,10,0.5059
+siren xyz omega0=10 (z),siren (z),end gap,15,0.5044
+siren xyz omega0=10 (z),siren (z),end gap,20,0.5042
+siren xyz omega0=10 (z),siren (z),end gap,25,0.5042
+siren xyz omega0=10 (z),siren (z),end gap,inf,0.5042
+siren xyz omega0=10 (z),siren (z),gap,2,0.6608
+siren xyz omega0=10 (z),siren (z),gap,4,0.456
+siren xyz omega0=10 (z),siren (z),gap,6,0.3959
+siren xyz omega0=10 (z),siren (z),gap,10,0.3913
+siren xyz omega0=10 (z),siren (z),gap,15,0.3913
+siren xyz omega0=10 (z),siren (z),gap,20,0.3913
+siren xyz omega0=10 (z),siren (z),gap,25,0.3913
+siren xyz omega0=10 (z),siren (z),gap,inf,0.3913
+siren xyz omega0=10 (z),siren (z),region,2,0.9687
+siren xyz omega0=10 (z),siren (z),region,4,0.9243
+siren xyz omega0=10 (z),siren (z),region,6,0.8938
+siren xyz omega0=10 (z),siren (z),region,10,0.8594
+siren xyz omega0=10 (z),siren (z),region,15,0.8417
+siren xyz omega0=10 (z),siren (z),region,20,0.8326
+siren xyz omega0=10 (z),siren (z),region,25,0.8288
+siren xyz omega0=10 (z),siren (z),region,inf,0.8287
+siren xyz omega0=10 (z),siren (z),whole profile,2,0.8923
+siren xyz omega0=10 (z),siren (z),whole profile,4,0.7982
+siren xyz omega0=10 (z),siren (z),whole profile,6,0.7593
+siren xyz omega0=10 (z),siren (z),whole profile,10,0.7306
+siren xyz omega0=10 (z),siren (z),whole profile,15,0.7277
+siren xyz omega0=10 (z),siren (z),whole profile,20,0.7267
+siren xyz omega0=10 (z),siren (z),whole profile,25,0.7267
+siren xyz omega0=10 (z),siren (z),whole profile,inf,0.7267

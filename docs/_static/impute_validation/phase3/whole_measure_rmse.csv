@@ -1,0 +1,7 @@
+setting,fa,md,rd,ad,FWFA,FWMD,FWRD,FWAD,FWF,NDI,ODI
+prior-mean,,,,,0.06701,7.694e-05,8.168e-05,9.24e-05,,0.06355,0.04377
+knn k=20 distance (z),,,,,0.06701,7.694e-05,8.168e-05,9.24e-05,,0.06355,0.04377
+siren xyz omega0=10 (z),,,,,0.06701,7.694e-05,8.168e-05,9.24e-05,,0.06355,0.04377
+population q=80 isotropic,,,,,0.03865,4.033e-05,3.587e-05,7.582e-05,,0.03713,0.03426
+population q=80 isotropic + knn k=20,,,,,0.03865,4.033e-05,3.587e-05,7.582e-05,,0.03713,0.03426
+population q=80 isotropic + siren xyz omega0=10,,,,,0.03865,4.033e-05,3.587e-05,7.582e-05,,0.03713,0.03426

@@ -1,0 +1,7 @@
+setting,gap,end gap,whole profile,region,whole measure,overall,overall with measure
+prior-mean,1,1,1,1,1,1,1
+knn k=20 distance (z),0.5341,0.606,0.7122,0.8072,1,0.6649,0.7319
+siren xyz omega0=10 (z),0.3913,0.5042,0.7267,0.8326,1,0.6137,0.691
+population q=80 isotropic,0.5683,0.7083,0.6416,0.6724,0.5934,0.6476,0.6368
+population q=80 isotropic + knn k=20,0.4633,0.5969,0.6152,0.6624,0.5934,0.5845,0.5863
+population q=80 isotropic + siren xyz omega0=10,0.3677,0.5084,0.6347,0.6745,0.5934,0.5463,0.5558

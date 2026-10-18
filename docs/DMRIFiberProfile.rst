@@ -502,17 +502,39 @@ The methods (``--method``):
 ``prior-mean``
     The mean of the scan's age bin (needs ``--prior-stats-dir``); it also fills a metric the scan doesn't have at all.
 
+``population``
+    A probabilistic PCA (``--components``, default 80; ``--noise``: one noise variance for all values, ``isotropic``,
+    default, one per metric or one per value) of the deviations of a normative cohort from the norm of their age bins,
+    over all tracts and metrics jointly. The observed deviations of a scan give the most likely values of its
+    missing ones and their SD, so it imputes a whole profile, a region, and also a metric the scan doesn't have at
+    all (e.g. no free water fit) from its other metrics. Its SDs are calibrated per metric
+    (``--sd-calibration-folds``, default 5: the model is fitted again in 5 folds of the scans, by subject, each
+    predicting hidden whole profiles of the others, and the SDs are scaled so they match those errors). The model is
+    fitted (EM, ``--max-iter``; the cells observed in at least ``--min-scans`` scans) on the profiles being imputed,
+    with ``--prior-stats-dir`` or, without it, the norm of their own age bins (``--bins``): with 80 components about
+    3 minutes, most of it the calibration of the SDs. ``--fit-model model.npz`` saves it, with the norm it was fitted with, and ``--model model.npz`` imputes
+    another cohort on the same tracts with it (the model replaces ``--prior-stats-dir``).
+
+With a prior, ``--norm`` sets what the deviations of ``--relative-to-prior`` are from:
+
+- ``population`` (default): the scan's own prediction by the population model and its SD. The method (e.g.
+  ``siren``) imputes what the model misses, the residuals, from the 3-D neighbours within ``--max-distance``, and
+  ``--fallback population`` fills the rest with the model's prediction.
+- ``age-bin``: the mean and SD of the scan's age bin (the behaviour of 0.8.20).
+
 ``--fallback`` runs a second method on the cells the first one left (e.g. ``--method arc-linear --fallback siren``:
 gaps along the profile, the rest from the network).
 
 The defaults are the settings with the smallest error over all kinds of missing values (gaps, ends, whole profiles,
 regions) in the validation on a normative infant cohort (`Validation of impute-profiles <ImputeValidation.html>`_):
 
-- with ``--prior-stats-dir``: ``siren`` on the deviations (``xyz``, ``--omega0 10``, ``--epochs 500``) with
-  ``--fallback prior-mean`` for the cells farther than ``--max-distance`` (20 mm) from an observed one. Its error was
-  39% of that of the age bin mean for gaps inside profiles, 51% for missing ends, 73% for whole profiles and 84% for
-  a region of rejected tracts. ``--method knn`` (k = 20 on the deviations) needs no GPU and was about 8% worse
-  overall.
+- with ``--prior-stats-dir`` (or ``--model``): ``siren`` on the deviations from the population prediction
+  (``--norm population``; ``xyz``, ``--omega0 10``, ``--epochs 500``) within ``--max-distance`` 4 mm of an observed
+  value, and ``--fallback population`` (80 components) beyond. Its error was 37% of that of the age bin mean for
+  gaps inside profiles, 51% for missing ends, 64% for whole profiles, 68% for a region of rejected tracts and 59%
+  for a whole measure the scan lacks (the free water or NODDI metrics), 11% lower overall than ``siren`` on the
+  deviations from the age bin norm (``--norm age-bin``, the default of 0.8.20), which can't impute a missing
+  measure. ``--method knn`` (k = 20) needs no GPU for the residuals and was about 7% worse overall.
 - without: ``arc-linear`` on the values (``--arc-ends none``, ``--fallback none``), which fills only the gaps inside
   profiles. Without the norm, every method imputed missing ends no better than the age bin mean, and whole profiles
   and regions 2 to 2.5 times as far off; other methods and ``--fallback`` can still be chosen, but those values are
@@ -521,11 +543,12 @@ regions) in the validation on a normative infant cohort (`Validation of impute-p
 Limits:
 
 - ``--max-distance`` (mm; 0: none): the 3-D methods fill only cells within that distance of an observed position of
-  the same metric, the others are left to ``--fallback``. Default 20 on the deviations: up to there, the deviations
-  of the neighbours still imputed a region better than the age bin mean (0.84-0.90 of its error at 10-25 mm); 10 on
-  the values, whose error grows fast with the distance
+  the same metric, the others are left to ``--fallback``. Default 4 on the deviations from the population
+  prediction: farther, the model alone was better than its residuals imputed from the neighbours; 20 on the
+  deviations from the age bin norm: up to there, the neighbours still imputed a region better than the age bin mean
+  (0.84-0.90 of its error at 10-25 mm); 10 on the values, whose error grows fast with the distance
 - ``--min-observed`` (default 0.5): a metric of a scan with a smaller share of observed values is not imputed (except
-  by ``prior-mean``, which needs no observed value)
+  by ``prior-mean`` and ``population``, which need no observed value of the metric)
 - ``--max-missing-tracts`` (default 0.5; 1: none): a scan missing a larger share of its tracts (no observed value of
   any metric, e.g. excluded by ``qc-profiles``) is not imputed at all, by any method: its imputed values would be
   little more than the norm. In the normative cohort of the validation, 2 of 423 scans (38 and 63 of 69 tracts
@@ -538,7 +561,11 @@ Next to the tables, ``--report-dir`` (default ``<out-dir>_report``) holds:
 - ``imputation_summary.csv``: one row per scan, tract and metric with missing values: ``n_positions``,
   ``n_observed``, ``n_missing``, ``shape`` (``whole profile``, or ``end gap`` for a missing start or end and
   ``gap`` for missing values inside the profile), ``n_imputed``, ``n_left``, ``methods``,
-  ``max_distance_mm`` (the largest distance from an imputed cell to an observed position) and ``left_reason``
+  ``max_distance_mm`` (the largest distance from an imputed cell to an observed position), ``mean_sd`` (the mean SD
+  of the values imputed with the population model) and ``left_reason``
+- ``sd/``: with the population model, the tables again with the SD of each value imputed with it (blank
+  elsewhere). For a value imputed from the residuals (``--norm population``), the SD is that of the model alone, an
+  upper bound where the neighbours were close
 - ``imputation_settings.json``: the options of the run
 
 Imputed values are estimates, not measurements: report the share of imputed values, and consider leaving them out
@@ -562,7 +589,12 @@ tracts that run through the same region, and takes away the neighbours the 3-D m
 scan hides such a region (pattern ``region``): every tract with a position inside a sphere around a random observed
 position loses its whole profile (``--validate-region-mm``, radius 10 to 25 mm by default; a sphere reaching more
 than half of the scan's tracts is drawn again; ``--validate-region-count``, default 1, 0: no region pass).
-``--validate-rounds`` (default 1) repeats both passes on every scan with other tracts, gaps and regions, for more
+A third pass hides a whole measure (pattern ``whole measure``): all values of one family of metrics the scan has,
+as for a scan without that model fit (``--validate-measure-families``, default ``fw``, the free water tensor
+metrics FW-FA, FW-MD, FW-RD, FW-AD, and ``noddi``, NDI and ODI; also ``fwf`` and ``dti``; ``none``: no such pass); only
+``prior-mean`` and ``population`` can impute it. The hidden values of the first two passes don't depend on the
+third, so they are the same as in a validation without it.
+``--validate-rounds`` (default 1) repeats the passes on every scan with other tracts, gaps and regions, for more
 hidden values per location. Each setting is compared on the values and on the deviations from
 the norm (``--validate-relative``, default both), and ``prior-mean`` imputes the age bin mean. The norm comes from
 the cohort itself (``--validate-prior cohort``, default, for a normative cohort; age bins ``--bins``, default
@@ -573,7 +605,8 @@ hidden values). Only scans whose metrics are at least
 ``--min-observed`` observed, and that miss at most ``--max-missing-tracts`` of their tracts, are used. Nothing is imputed into ``--out-dir``; the results are in
 ``<report-dir>/validation``:
 
-- ``validation_summary.csv``: per setting and pattern (``gap``, ``end gap``, ``whole profile``, ``region``) the share of hidden values
+- ``validation_summary.csv``: per setting and pattern (``gap``, ``end gap``, ``whole profile``, ``region``,
+  ``whole measure``) the share of hidden values
   filled (``coverage``) and the error, as an RMSE normalized by the between-scan SD at each location (``nrmse``; 1
   is as far off as a scan typically is from the cohort mean there), its SD over the SIREN seeds, and
   ``nrmse_common``, the error on the cells every setting filled (of the settings that fill any of the pattern, so
@@ -606,6 +639,10 @@ hidden values). Only scans whose metrics are at least
 - ``validation_by_distance.csv``: the error by the distance from a hidden value to the nearest position still
   observed in that scan (bins 0-2, 2-4, 4-6, 6-10, 10-15, 15-20, 20-25, over 25 mm), per setting, pattern and metric and
   their mean (``all``); it shows how fast a method degrades as the observed neighbours get farther away
+- ``validation_calibration.csv``: for ``population`` (and the combinations with it) and ``prior-mean`` (the SD of
+  the age bin), the errors relative to the predicted SDs per setting, pattern and metric and their mean (``all``):
+  ``rms_z``, the RMS of error / SD (1 if the SDs are right, above 1 if they are too small) and ``within_1.96sd``,
+  the share of the errors within 1.96 SD (0.95 if right)
 - ``axis_proximity.csv``: per tract, the distance from its positions to those of the nearest other tract (where the
   3-D position alone can't tell the tracts apart)
 - ``validation_siren_epochs.png``: the error of every SIREN setting against the epochs, with the other methods as
@@ -617,7 +654,13 @@ The settings compared: ``--validate-methods`` (default all), ``--validate-k`` (`
 default all three) and for
 ``siren`` the grid of ``--validate-siren-inputs`` (default all three), ``--validate-omega0`` (default 5,10,20,30)
 and ``--validate-epochs`` (default 100,200,500,1000; one training per setting, read off at each value), each trained
-``--validate-seeds`` times (default 3). ``arc-linear`` fills every hidden gap and end there, whatever its length. The other
+``--validate-seeds`` times (default 3). ``population`` is compared for each of ``--validate-components`` (default
+5,10,20,40,80) and ``--validate-noise`` (default all three), alone and with the residuals from its prediction
+imputed by ``--validate-population-local`` (default ``knn,siren``: ``knn`` with each ``--validate-k``, ``siren`` with
+each input and omega_0 of the grid at its most epochs) within ``--max-distance``, as ``--norm population`` does. Its
+model must not have seen the scans validated: the scans are split by subject into ``--validate-folds`` folds
+(default 5), and the model of a fold is fitted on the other subjects of the cohort, with their own norm
+(``--validate-prior cohort``). ``arc-linear`` fills every hidden gap and end there, whatever its length. The other
 limits (``--max-distance``, ``--min-observed``) apply as in an imputation. With the default grid a scan takes about a
 minute on a GPU.
 

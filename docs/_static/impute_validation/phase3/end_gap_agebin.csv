@@ -1,0 +1,7 @@
+setting,0-3m,4-9m,10-60m
+prior-mean,1,1,1
+knn k=20 distance (z),0.5592,0.6624,0.6483
+siren xyz omega0=10 (z),0.4718,0.5419,0.5398
+population q=80 isotropic,0.6867,0.7452,0.7346
+population q=80 isotropic + knn k=20,0.59,0.597,0.6268
+population q=80 isotropic + siren xyz omega0=10,0.5011,0.5232,0.5255

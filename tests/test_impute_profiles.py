@@ -346,9 +346,9 @@ def leveled(metric, tract, s):
     return np.full(len(ARCS), scale * (LEVEL[tract] + 0.01 * (s % 4) + 0.002 * s))
 
 
-def aged_dataset(tmp):
+def aged_dataset(tmp, metrics=('fa', 'md')):
     from dtiplayground.dmri.fiberprofile.analysis import profile_qc
-    prof, axes = make_dataset(tmp, scans=AGED, value=leveled)
+    prof, axes = make_dataset(tmp, scans=AGED, value=leveled, metrics=metrics)
     tables = sorted(str(p) for p in prof.rglob('*.csv'))
     profile_qc.write_agebin_stats(tables, profile_qc.parse_bins(ip.DEFAULT_BINS), 1)
     return prof, axes
@@ -420,9 +420,12 @@ class TestPrior(unittest.TestCase):
             self.assertEqual((a.method, a.fallback, a.relative_to_prior), ('arc-linear', 'none', False))
             self.assertEqual((a.siren_inputs, a.omega0, a.epochs, a.k), ('xyz+tract', 30.0, 1000, 1))
             b = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'b', prior_stats_dir=prof))
-            self.assertEqual((b.method, b.fallback, b.relative_to_prior), ('siren', 'prior-mean', True))
+            self.assertEqual((b.method, b.fallback, b.relative_to_prior, b.norm), ('siren', 'population', True,
+                                                                                    'population'))
             self.assertEqual((b.siren_inputs, b.omega0, b.epochs, b.k), ('xyz', 10.0, 500, 20))
-            self.assertEqual((a.max_distance, b.max_distance), (10.0, 20.0))
+            e = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'e', prior_stats_dir=prof, norm='age-bin'))
+            self.assertEqual((e.method, e.fallback), ('siren', 'prior-mean'))
+            self.assertEqual((a.max_distance, b.max_distance, e.max_distance), (10.0, 4.0, 20.0))
             c = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'c', prior_stats_dir=prof, method='knn', k=5))
             self.assertEqual((c.method, c.k, c.relative_to_prior), ('knn', 5, True))
             d = ip.resolve_defaults(args_for(prof, axes, Path(tmp) / 'd', method='siren'))
@@ -437,7 +440,8 @@ class TestPrior(unittest.TestCase):
             df = pd.read_csv(out / 'T_b' / 'T_b_fa.csv', index_col=0)
             self.assertFalse(df[AGED[7]].isna().any())
             settings = json.load(open(Path(str(out) + '_report') / 'imputation_settings.json'))
-            self.assertEqual((settings['method'], settings['fallback']), ('siren', 'prior-mean'))
+            self.assertEqual((settings['method'], settings['fallback'], settings['norm']),
+                             ('siren', 'population', 'population'))
 
     def test_relative_knn_recovers_whole_profiles(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -493,3 +497,107 @@ class TestPrior(unittest.TestCase):
             self.assertTrue({'knn k=1 distance (z)', 'linear (z)', 'prior-mean'} <= set(s['setting']))
             w = s[s['pattern'] == ip.WHOLE].set_index('setting')
             self.assertLess(w.loc['knn k=1 distance (z)', 'nrmse'], w.loc['knn k=1 distance', 'nrmse'])
+
+
+# phase 3: the population model. In the aged dataset the deviation of a scan from the norm of its age bin is the same
+# in every cell, in units of the bin's SD: one component explains it all
+
+
+class TestPopulation(unittest.TestCase):
+
+    def test_ppca_recovers_a_low_rank_matrix(self):
+        rng = np.random.default_rng(0)
+        W = rng.normal(size=(300, 3))
+        Z = rng.normal(size=(200, 3)) @ W.T + 0.05 * rng.normal(size=(200, 300))
+        Zm = np.where(rng.random(Z.shape) < 0.3, np.nan, Z)
+        for noise, groups in (('isotropic', None), ('metric', np.arange(300) % 2), ('diagonal', None)):
+            mu, Wf, psi, info = ip.fit_ppca(Zm, 3, noise, groups, device='cpu')
+            self.assertGreater(info['explained'], 0.95)
+            self.assertTrue(np.allclose(np.sqrt(psi), 0.05, rtol=0.3))
+            # a row's missing cells from its observed ones
+            o = ~np.isnan(Zm[0])
+            Wo = Wf[o] / psi[o, None]
+            x = np.linalg.solve(np.eye(3) + Wo.T @ Wf[o], Wo.T @ (Zm[0, o] - mu[o]))
+            err = (mu + Wf @ x - Z[0])[~o]
+            self.assertLess(np.sqrt(np.mean(err ** 2)), 0.1 * np.std(Z[0]))
+
+    def test_sd_calibration(self):
+        rng = np.random.default_rng(1)
+        W = rng.normal(size=(200, 2))
+        Z = rng.normal(size=(120, 2)) @ W.T + 0.1 * rng.normal(size=(120, 200))
+        data = argparse.Namespace(values=Z, tracts=np.arange(200) // 10)
+        groups = np.arange(200) % 2
+        right = ip.ppca_sd_scale(data, groups, np.arange(120), 2, 'isotropic', 300, 1e-6, 'cpu')
+        self.assertTrue(np.allclose(right, 1.0, atol=0.15))  # the model is right: its SDs too
+        over = ip.ppca_sd_scale(data, groups, np.arange(120), 60, 'isotropic', 300, 1e-6, 'cpu')
+        self.assertTrue((over > right).all())  # too many components: the SDs come out too small
+
+    def test_population_fills_a_missing_metric(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for tract in LEVEL:  # scan 4 has no md at all
+                drop(prof / tract / '{}_md.csv'.format(tract), AGED[4])
+            errs = {}
+            for method in ('prior-mean', 'population'):
+                out = Path(tmp) / method
+                self.assertEqual(ip.run(args_for(prof, None, out, method=method, prior_stats_dir=prof, components=1,
+                                                 fallback='none')), 0)
+                df = pd.read_csv(out / 'T_c' / 'T_c_md.csv', index_col=0)
+                errs[method] = np.max(np.abs(df[AGED[4]] - leveled('md', 'T_c', 4)))
+            self.assertLess(errs['population'], 0.1 * errs['prior-mean'])
+            report = Path(tmp) / 'population_report'
+            sd = pd.read_csv(report / 'sd' / 'T_c' / 'T_c_md.csv', index_col=0)
+            self.assertEqual(list(sd.columns), [AGED[4]])
+            self.assertTrue((sd[AGED[4]] > 0).all())
+            summary = pd.read_csv(report / 'imputation_summary.csv')
+            self.assertTrue((summary['methods'] == 'population').all())
+            self.assertTrue((summary['mean_sd'] > 0).all())
+
+    def test_model_fitted_once_imputes_another_cohort(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            model = Path(tmp) / 'model.npz'
+            # fitted on the norm of the profiles' own age bins (no --prior-stats-dir)
+            self.assertEqual(ip.run(args_for(prof, None, Path(tmp) / 'fit', method='population', components=1,
+                                             fit_model=model)), 0)
+            for tract in LEVEL:
+                drop(prof / tract / '{}_md.csv'.format(tract), AGED[9])
+            out = Path(tmp) / 'out'
+            self.assertEqual(ip.run(args_for(prof, None, out, model=model, method='population', fallback='none')), 0)
+            df = pd.read_csv(out / 'T_a' / 'T_a_md.csv', index_col=0)
+            self.assertLess(np.max(np.abs(df[AGED[9]] - leveled('md', 'T_a', 9))), 2e-5)
+            settings = json.load(open(Path(str(out) + '_report') / 'imputation_settings.json'))
+            self.assertTrue(settings['relative_to_prior'])  # a model is a prior
+            loaded = ip.Population.load(model)
+            self.assertIn('sd_scale', loaded.info)
+            self.assertEqual(len(loaded.sd_scale), len(loaded.mu))
+
+    def test_hide_measure(self):
+        self.assertEqual([ip.family_of(m) for m in ('fa', 'FW_FA', 'FWMD', 'FWF', 'NDI', 'other')],
+                         ['dti', 'fw', 'fw', 'fwf', 'noddi', None])
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp, metrics=('fa', 'md', 'NDI', 'ODI'))
+            cohort = ip.Cohort(ip.read_tables(str(prof)), ip.read_axes(str(axes), list(LEVEL)))
+            hidden, metrics = ip.hide_measure(cohort, cohort.scan(0), np.random.default_rng(0), ['noddi', 'fw'])
+            self.assertEqual([cohort.metrics[m] for m in metrics], ['NDI', 'ODI'])
+            self.assertEqual(len(hidden), cohort.n_positions)
+            self.assertEqual(set(hidden.values()), {ip.MEASURE})
+
+    def test_validation_with_population(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp, metrics=('fa', 'md', 'NDI'))
+            out = Path(tmp) / 'Imp'
+            ip.run(args_for(prof, axes, out, validate=True, validate_scans=12, validate_whole_fraction=0.4,
+                            validate_gap_fraction=0.5, validate_region_mm='2,3',
+                            validate_methods='knn,prior-mean,population', validate_k='1', validate_components='1,2',
+                            validate_noise='isotropic', validate_folds=12, validate_population_local='knn',
+                            validate_measure_families='noddi', min_scans=5, device='cpu', no_plots=True))
+            vdir = Path(str(out) + '_report') / 'validation'
+            s = pd.read_csv(vdir / 'validation_summary.csv')
+            self.assertTrue({'population q=1 isotropic', 'population q=2 isotropic',
+                             'population q=1 isotropic + knn k=1'} <= set(s['setting']))
+            m = s[s['pattern'] == ip.MEASURE].set_index('setting')
+            self.assertLess(m.loc['population q=1 isotropic', 'vs_age_mean_completed'], 0.5)
+            self.assertAlmostEqual(m.loc['knn k=1 distance (z)', 'vs_age_mean_completed'], 1.0)  # nothing to impute from
+            cal = pd.read_csv(vdir / 'validation_calibration.csv')
+            self.assertTrue({'population', 'prior-mean'} <= set(cal['method']))

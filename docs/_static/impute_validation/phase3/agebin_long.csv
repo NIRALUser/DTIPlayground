@@ -1,0 +1,901 @@
+method,setting,siren_inputs,omega0,epochs,seed,pattern,metric,age_bin,n_hidden,n_filled,n_norm,n_common,n_completed,coverage,rmse,nrmse,nrmse_common,vs_reference,vs_age_mean,rmse_completed,vs_age_mean_completed
+population,population q=80 isotropic,,,,,end gap,FWAD,0-3m,1790,1790,1790,1790,1790,1,9.023e-05,0.8494,0.8494,0.454,0.6976,9.023e-05,0.6976
+population,population q=80 isotropic,,,,,end gap,FWAD,10-60m,1787,1787,1787,1787,1787,1,7.168e-05,0.6311,0.6311,0.7433,0.7106,7.168e-05,0.7106
+population,population q=80 isotropic,,,,,end gap,FWAD,4-9m,1750,1750,1750,1750,1750,1,7.252e-05,0.6531,0.6531,0.6634,0.7753,7.252e-05,0.7753
+population,population q=80 isotropic,,,,,end gap,FWF,0-3m,1790,1790,1790,1790,1790,1,0.05442,0.8318,0.8318,0.8693,0.8922,0.05442,0.8922
+population,population q=80 isotropic,,,,,end gap,FWF,10-60m,1787,1787,1787,1787,1787,1,0.05367,0.7236,0.7236,0.9372,0.896,0.05367,0.896
+population,population q=80 isotropic,,,,,end gap,FWF,4-9m,1750,1750,1750,1750,1750,1,0.04572,0.5994,0.5994,0.776,0.8241,0.04572,0.8241
+population,population q=80 isotropic,,,,,end gap,FWFA,0-3m,1790,1790,1790,1790,1790,1,0.05713,0.671,0.671,0.3608,0.7035,0.05713,0.7035
+population,population q=80 isotropic,,,,,end gap,FWFA,10-60m,1787,1787,1787,1787,1787,1,0.05724,0.6939,0.6939,0.7386,0.7203,0.05724,0.7203
+population,population q=80 isotropic,,,,,end gap,FWFA,4-9m,1750,1750,1750,1750,1750,1,0.0426,0.5778,0.5778,0.6076,0.6854,0.0426,0.6854
+population,population q=80 isotropic,,,,,end gap,FWMD,0-3m,1790,1790,1790,1790,1790,1,5.598e-05,0.7153,0.7153,0.2947,0.5308,5.598e-05,0.5308
+population,population q=80 isotropic,,,,,end gap,FWMD,10-60m,1787,1787,1787,1787,1787,1,3.776e-05,0.461,0.461,0.5901,0.552,3.776e-05,0.552
+population,population q=80 isotropic,,,,,end gap,FWMD,4-9m,1750,1750,1750,1750,1750,1,3.742e-05,0.4633,0.4633,0.4776,0.5754,3.742e-05,0.5754
+population,population q=80 isotropic,,,,,end gap,FWRD,0-3m,1790,1790,1790,1790,1790,1,5.072e-05,0.6885,0.6885,0.2782,0.5154,5.072e-05,0.5154
+population,population q=80 isotropic,,,,,end gap,FWRD,10-60m,1787,1787,1787,1787,1787,1,3.552e-05,0.4745,0.4745,0.5959,0.5612,3.552e-05,0.5612
+population,population q=80 isotropic,,,,,end gap,FWRD,4-9m,1750,1750,1750,1750,1750,1,3.479e-05,0.4628,0.4628,0.4748,0.5601,3.479e-05,0.5601
+population,population q=80 isotropic,,,,,end gap,NDI,0-3m,1790,1790,1790,1790,1790,1,0.05785,0.58,0.58,0.347,0.7551,0.05785,0.7551
+population,population q=80 isotropic,,,,,end gap,NDI,10-60m,1787,1787,1787,1787,1787,1,0.05484,0.5041,0.5041,0.6455,0.6342,0.05484,0.6342
+population,population q=80 isotropic,,,,,end gap,NDI,4-9m,1750,1750,1750,1750,1750,1,0.03987,0.4432,0.4432,0.5414,0.7468,0.03987,0.7468
+population,population q=80 isotropic,,,,,end gap,ODI,0-3m,1790,1790,1790,1790,1790,1,0.0622,1.074,1.074,0.7513,0.8279,0.0622,0.8279
+population,population q=80 isotropic,,,,,end gap,ODI,10-60m,1787,1787,1787,1787,1787,1,0.05031,0.8124,0.8124,0.869,0.8733,0.05031,0.8733
+population,population q=80 isotropic,,,,,end gap,ODI,4-9m,1750,1750,1750,1750,1750,1,0.04253,0.7405,0.7405,0.7784,0.7912,0.04253,0.7912
+population,population q=80 isotropic,,,,,end gap,ad,0-3m,1790,1790,1790,1790,1790,1,0.0001457,0.8918,0.8918,0.4996,0.702,0.0001457,0.702
+population,population q=80 isotropic,,,,,end gap,ad,10-60m,1787,1787,1787,1787,1787,1,0.0001025,0.698,0.698,0.8716,0.8788,0.0001025,0.8788
+population,population q=80 isotropic,,,,,end gap,ad,4-9m,1750,1750,1750,1750,1750,1,9.287e-05,0.7056,0.7056,0.8058,0.8466,9.287e-05,0.8466
+population,population q=80 isotropic,,,,,end gap,fa,0-3m,1790,1790,1790,1790,1790,1,0.04215,0.7118,0.7118,0.4594,0.8536,0.04215,0.8536
+population,population q=80 isotropic,,,,,end gap,fa,10-60m,1787,1787,1787,1787,1787,1,0.04428,0.7589,0.7589,0.808,0.8179,0.04428,0.8179
+population,population q=80 isotropic,,,,,end gap,fa,4-9m,1750,1750,1750,1750,1750,1,0.03856,0.6319,0.6319,0.7251,0.854,0.03856,0.854
+population,population q=80 isotropic,,,,,end gap,md,0-3m,1790,1790,1790,1790,1790,1,9.646e-05,0.6554,0.6554,0.3025,0.5436,9.646e-05,0.5436
+population,population q=80 isotropic,,,,,end gap,md,10-60m,1787,1787,1787,1787,1787,1,7.661e-05,0.4863,0.4863,0.709,0.7185,7.661e-05,0.7185
+population,population q=80 isotropic,,,,,end gap,md,4-9m,1750,1750,1750,1750,1750,1,6.473e-05,0.5057,0.5057,0.6665,0.7597,6.473e-05,0.7597
+population,population q=80 isotropic,,,,,end gap,rd,0-3m,1790,1790,1790,1790,1790,1,8.603e-05,0.6101,0.6101,0.2835,0.5326,8.603e-05,0.5326
+population,population q=80 isotropic,,,,,end gap,rd,10-60m,1787,1787,1787,1787,1787,1,7.674e-05,0.5119,0.5119,0.7136,0.7182,7.674e-05,0.7182
+population,population q=80 isotropic,,,,,end gap,rd,4-9m,1750,1750,1750,1750,1750,1,6.495e-05,0.5065,0.5065,0.6683,0.7784,6.495e-05,0.7784
+population,population q=80 isotropic,,,,,gap,FWAD,0-3m,3234,3234,3234,3234,3234,1,9.688e-05,0.6676,0.6676,0.3203,0.5987,9.688e-05,0.5987
+population,population q=80 isotropic,,,,,gap,FWAD,10-60m,3127,3127,3127,3127,3127,1,7.605e-05,0.5527,0.5527,0.7296,0.7096,7.605e-05,0.7096
+population,population q=80 isotropic,,,,,gap,FWAD,4-9m,3232,3232,3232,3232,3232,1,4.829e-05,0.4997,0.4997,0.5586,0.6237,4.829e-05,0.6237
+population,population q=80 isotropic,,,,,gap,FWF,0-3m,3234,3234,3234,3234,3234,1,0.04199,0.5614,0.5614,0.5594,0.7314,0.04199,0.7314
+population,population q=80 isotropic,,,,,gap,FWF,10-60m,3127,3127,3127,3127,3127,1,0.03149,0.5592,0.5592,0.7493,0.7018,0.03149,0.7018
+population,population q=80 isotropic,,,,,gap,FWF,4-9m,3232,3232,3232,3232,3232,1,0.03369,0.4348,0.4348,0.5906,0.7427,0.03369,0.7427
+population,population q=80 isotropic,,,,,gap,FWFA,0-3m,3234,3234,3234,3234,3234,1,0.03642,0.5214,0.5214,0.2381,0.5032,0.03642,0.5032
+population,population q=80 isotropic,,,,,gap,FWFA,10-60m,3127,3127,3127,3127,3127,1,0.03845,0.5008,0.5008,0.5903,0.5645,0.03845,0.5645
+population,population q=80 isotropic,,,,,gap,FWFA,4-9m,3232,3232,3232,3232,3232,1,0.03313,0.4376,0.4376,0.4576,0.5557,0.03313,0.5557
+population,population q=80 isotropic,,,,,gap,FWMD,0-3m,3234,3234,3234,3234,3234,1,4.966e-05,0.5485,0.5485,0.2029,0.4078,4.966e-05,0.4078
+population,population q=80 isotropic,,,,,gap,FWMD,10-60m,3127,3127,3127,3127,3127,1,2.847e-05,0.3061,0.3061,0.461,0.425,2.847e-05,0.425
+population,population q=80 isotropic,,,,,gap,FWMD,4-9m,3232,3232,3232,3232,3232,1,2.253e-05,0.3061,0.3061,0.3368,0.4025,2.253e-05,0.4025
+population,population q=80 isotropic,,,,,gap,FWRD,0-3m,3234,3234,3234,3234,3234,1,4.096e-05,0.5344,0.5344,0.1923,0.3829,4.096e-05,0.3829
+population,population q=80 isotropic,,,,,gap,FWRD,10-60m,3127,3127,3127,3127,3127,1,2.295e-05,0.3065,0.3065,0.4408,0.4105,2.295e-05,0.4105
+population,population q=80 isotropic,,,,,gap,FWRD,4-9m,3232,3232,3232,3232,3232,1,2.311e-05,0.2849,0.2849,0.3075,0.3736,2.311e-05,0.3736
+population,population q=80 isotropic,,,,,gap,NDI,0-3m,3234,3234,3234,3234,3234,1,0.03875,0.3541,0.3541,0.1817,0.548,0.03875,0.548
+population,population q=80 isotropic,,,,,gap,NDI,10-60m,3127,3127,3127,3127,3127,1,0.0292,0.3203,0.3203,0.4587,0.4354,0.0292,0.4354
+population,population q=80 isotropic,,,,,gap,NDI,4-9m,3232,3232,3232,3232,3232,1,0.02999,0.3163,0.3163,0.3792,0.5745,0.02999,0.5745
+population,population q=80 isotropic,,,,,gap,ODI,0-3m,3234,3234,3234,3234,3234,1,0.03765,0.9792,0.9792,0.6392,0.7024,0.03765,0.7024
+population,population q=80 isotropic,,,,,gap,ODI,10-60m,3127,3127,3127,3127,3127,1,0.03083,0.7445,0.7445,0.8278,0.8469,0.03083,0.8469
+population,population q=80 isotropic,,,,,gap,ODI,4-9m,3232,3232,3232,3232,3232,1,0.02426,0.5966,0.5966,0.6944,0.7409,0.02426,0.7409
+population,population q=80 isotropic,,,,,gap,ad,0-3m,3234,3234,3234,3234,3234,1,9.587e-05,0.7018,0.7018,0.3882,0.6381,9.587e-05,0.6381
+population,population q=80 isotropic,,,,,gap,ad,10-60m,3127,3127,3127,3127,3127,1,7.081e-05,0.6236,0.6236,0.8034,0.7947,7.081e-05,0.7947
+population,population q=80 isotropic,,,,,gap,ad,4-9m,3232,3232,3232,3232,3232,1,6.98e-05,0.5355,0.5355,0.5917,0.6253,6.98e-05,0.6253
+population,population q=80 isotropic,,,,,gap,fa,0-3m,3234,3234,3234,3234,3234,1,0.02887,0.5041,0.5041,0.3022,0.6357,0.02887,0.6357
+population,population q=80 isotropic,,,,,gap,fa,10-60m,3127,3127,3127,3127,3127,1,0.03338,0.5648,0.5648,0.6676,0.6498,0.03338,0.6498
+population,population q=80 isotropic,,,,,gap,fa,4-9m,3232,3232,3232,3232,3232,1,0.02784,0.4691,0.4691,0.5571,0.741,0.02784,0.741
+population,population q=80 isotropic,,,,,gap,md,0-3m,3234,3234,3234,3234,3234,1,6.847e-05,0.5033,0.5033,0.2221,0.4521,6.847e-05,0.4521
+population,population q=80 isotropic,,,,,gap,md,10-60m,3127,3127,3127,3127,3127,1,4.428e-05,0.3783,0.3783,0.568,0.5514,4.428e-05,0.5514
+population,population q=80 isotropic,,,,,gap,md,4-9m,3232,3232,3232,3232,3232,1,4.651e-05,0.3387,0.3387,0.414,0.4787,4.651e-05,0.4787
+population,population q=80 isotropic,,,,,gap,rd,0-3m,3234,3234,3234,3234,3234,1,6.428e-05,0.476,0.476,0.2149,0.4528,6.428e-05,0.4528
+population,population q=80 isotropic,,,,,gap,rd,10-60m,3127,3127,3127,3127,3127,1,4.535e-05,0.385,0.385,0.5473,0.5331,4.535e-05,0.5331
+population,population q=80 isotropic,,,,,gap,rd,4-9m,3232,3232,3232,3232,3232,1,4.532e-05,0.3447,0.3447,0.4179,0.5133,4.532e-05,0.5133
+population,population q=80 isotropic,,,,,region,FWAD,0-3m,38584,38584,38584,38584,38584,1,9.48e-05,0.7554,0.7554,0.4043,0.7126,9.48e-05,0.7126
+population,population q=80 isotropic,,,,,region,FWAD,10-60m,38366,38366,38366,38366,38366,1,9.785e-05,0.6248,0.6248,0.7978,0.7671,9.785e-05,0.7671
+population,population q=80 isotropic,,,,,region,FWAD,4-9m,35286,35286,35286,35286,35286,1,6.532e-05,0.5891,0.5891,0.6732,0.7205,6.532e-05,0.7205
+population,population q=80 isotropic,,,,,region,FWF,0-3m,38584,38584,38584,38584,38584,1,0.05464,0.8063,0.8063,0.695,0.8686,0.05464,0.8686
+population,population q=80 isotropic,,,,,region,FWF,10-60m,38366,38366,38366,38366,38366,1,0.04972,0.6329,0.6329,0.8337,0.802,0.04972,0.802
+population,population q=80 isotropic,,,,,region,FWF,4-9m,35286,35286,35286,35286,35286,1,0.03833,0.5224,0.5224,0.6622,0.7676,0.03833,0.7676
+population,population q=80 isotropic,,,,,region,FWFA,0-3m,38584,38584,38584,38584,38584,1,0.04351,0.5995,0.5995,0.2981,0.6425,0.04351,0.6425
+population,population q=80 isotropic,,,,,region,FWFA,10-60m,38366,38366,38366,38366,38366,1,0.04486,0.5863,0.5863,0.692,0.6703,0.04486,0.6703
+population,population q=80 isotropic,,,,,region,FWFA,4-9m,35286,35286,35286,35286,35286,1,0.03686,0.4829,0.4829,0.5056,0.5765,0.03686,0.5765
+population,population q=80 isotropic,,,,,region,FWMD,0-3m,38584,38584,38584,38584,38584,1,5.285e-05,0.6663,0.6663,0.2773,0.5607,5.285e-05,0.5607
+population,population q=80 isotropic,,,,,region,FWMD,10-60m,38366,38366,38366,38366,38366,1,4.368e-05,0.4042,0.4042,0.6001,0.555,4.368e-05,0.555
+population,population q=80 isotropic,,,,,region,FWMD,4-9m,35286,35286,35286,35286,35286,1,3.119e-05,0.3703,0.3703,0.4291,0.4903,3.119e-05,0.4903
+population,population q=80 isotropic,,,,,region,FWRD,0-3m,38584,38584,38584,38584,38584,1,4.729e-05,0.6439,0.6439,0.2609,0.5354,4.729e-05,0.5354
+population,population q=80 isotropic,,,,,region,FWRD,10-60m,38366,38366,38366,38366,38366,1,3.29e-05,0.4071,0.4071,0.5765,0.5429,3.29e-05,0.5429
+population,population q=80 isotropic,,,,,region,FWRD,4-9m,35286,35286,35286,35286,35286,1,2.809e-05,0.3429,0.3429,0.3814,0.4404,2.809e-05,0.4404
+population,population q=80 isotropic,,,,,region,NDI,0-3m,38584,38584,38584,38584,38584,1,0.04847,0.4724,0.4724,0.254,0.73,0.04847,0.73
+population,population q=80 isotropic,,,,,region,NDI,10-60m,38366,38366,38366,38366,38366,1,0.04361,0.4062,0.4062,0.5767,0.5624,0.04361,0.5624
+population,population q=80 isotropic,,,,,region,NDI,4-9m,35286,35286,35286,35286,35286,1,0.03621,0.3632,0.3632,0.4492,0.5943,0.03621,0.5943
+population,population q=80 isotropic,,,,,region,ODI,0-3m,38584,38584,38584,38584,38584,1,0.04417,0.9818,0.9818,0.66,0.7913,0.04417,0.7913
+population,population q=80 isotropic,,,,,region,ODI,10-60m,38366,38366,38366,38366,38366,1,0.03588,0.7755,0.7755,0.8616,0.8858,0.03588,0.8858
+population,population q=80 isotropic,,,,,region,ODI,4-9m,35286,35286,35286,35286,35286,1,0.03209,0.6943,0.6943,0.7486,0.8032,0.03209,0.8032
+population,population q=80 isotropic,,,,,region,ad,0-3m,38584,38584,38584,38584,38584,1,0.0001046,0.7968,0.7968,0.4716,0.7455,0.0001046,0.7455
+population,population q=80 isotropic,,,,,region,ad,10-60m,38366,38366,38366,38366,38366,1,9.939e-05,0.6984,0.6984,0.8677,0.8649,9.939e-05,0.8649
+population,population q=80 isotropic,,,,,region,ad,4-9m,35286,35286,35286,35286,35286,1,7.837e-05,0.6196,0.6196,0.6799,0.6973,7.837e-05,0.6973
+population,population q=80 isotropic,,,,,region,fa,0-3m,38584,38584,38584,38584,38584,1,0.03284,0.5817,0.5817,0.3487,0.7633,0.03284,0.7633
+population,population q=80 isotropic,,,,,region,fa,10-60m,38366,38366,38366,38366,38366,1,0.03739,0.6392,0.6392,0.7129,0.7156,0.03739,0.7156
+population,population q=80 isotropic,,,,,region,fa,4-9m,35286,35286,35286,35286,35286,1,0.03133,0.5246,0.5246,0.619,0.7764,0.03133,0.7764
+population,population q=80 isotropic,,,,,region,md,0-3m,38584,38584,38584,38584,38584,1,7.566e-05,0.6005,0.6005,0.2827,0.5796,7.566e-05,0.5796
+population,population q=80 isotropic,,,,,region,md,10-60m,38366,38366,38366,38366,38366,1,6.972e-05,0.4776,0.4776,0.6828,0.6817,6.972e-05,0.6817
+population,population q=80 isotropic,,,,,region,md,4-9m,35286,35286,35286,35286,35286,1,5.305e-05,0.4061,0.4061,0.4869,0.5439,5.305e-05,0.5439
+population,population q=80 isotropic,,,,,region,rd,0-3m,38584,38584,38584,38584,38584,1,7.336e-05,0.5612,0.5612,0.2652,0.565,7.336e-05,0.565
+population,population q=80 isotropic,,,,,region,rd,10-60m,38366,38366,38366,38366,38366,1,6.768e-05,0.476,0.476,0.647,0.6501,6.768e-05,0.6501
+population,population q=80 isotropic,,,,,region,rd,4-9m,35286,35286,35286,35286,35286,1,5.257e-05,0.3938,0.3938,0.4701,0.5532,5.257e-05,0.5532
+population,population q=80 isotropic,,,,,whole measure,FWAD,0-3m,89843,89843,89843,89843,89843,1,8.832e-05,0.789,0.789,0.3839,0.692,8.832e-05,0.692
+population,population q=80 isotropic,,,,,whole measure,FWAD,10-60m,68501,68501,68501,68501,68501,1,7.68e-05,0.5729,0.5729,0.7412,0.6968,7.68e-05,0.6968
+population,population q=80 isotropic,,,,,whole measure,FWAD,4-9m,68827,68827,68827,68827,68827,1,5.405e-05,0.5288,0.5288,0.6701,0.663,5.405e-05,0.663
+population,population q=80 isotropic,,,,,whole measure,FWFA,0-3m,89843,89843,89843,89843,89843,1,0.04094,0.5569,0.5569,0.2514,0.5336,0.04094,0.5336
+population,population q=80 isotropic,,,,,whole measure,FWFA,10-60m,68501,68501,68501,68501,68501,1,0.04108,0.5295,0.5295,0.6246,0.5842,0.04108,0.5842
+population,population q=80 isotropic,,,,,whole measure,FWFA,4-9m,68827,68827,68827,68827,68827,1,0.0326,0.4435,0.4435,0.5261,0.5766,0.0326,0.5766
+population,population q=80 isotropic,,,,,whole measure,FWMD,0-3m,89843,89843,89843,89843,89843,1,5.154e-05,0.6866,0.6866,0.2528,0.5037,5.154e-05,0.5037
+population,population q=80 isotropic,,,,,whole measure,FWMD,10-60m,68501,68501,68501,68501,68501,1,3.477e-05,0.3801,0.3801,0.5807,0.501,3.477e-05,0.501
+population,population q=80 isotropic,,,,,whole measure,FWMD,4-9m,68827,68827,68827,68827,68827,1,2.642e-05,0.3331,0.3331,0.4582,0.4637,2.642e-05,0.4637
+population,population q=80 isotropic,,,,,whole measure,FWRD,0-3m,89843,89843,89843,89843,89843,1,4.624e-05,0.6235,0.6235,0.2231,0.4454,4.624e-05,0.4454
+population,population q=80 isotropic,,,,,whole measure,FWRD,10-60m,68501,68501,68501,68501,68501,1,2.916e-05,0.373,0.373,0.5433,0.4802,2.916e-05,0.4802
+population,population q=80 isotropic,,,,,whole measure,FWRD,4-9m,68827,68827,68827,68827,68827,1,2.472e-05,0.3126,0.3126,0.4122,0.4335,2.472e-05,0.4335
+population,population q=80 isotropic,,,,,whole measure,NDI,0-3m,69568,69568,69568,69568,69568,1,0.04097,0.4176,0.4176,0.2451,0.6927,0.04097,0.6927
+population,population q=80 isotropic,,,,,whole measure,NDI,10-60m,90139,90139,90139,90139,90139,1,0.03609,0.3537,0.3537,0.565,0.4714,0.03609,0.4714
+population,population q=80 isotropic,,,,,whole measure,NDI,4-9m,89366,89366,89366,89366,89366,1,0.03496,0.3677,0.3677,0.4145,0.6016,0.03496,0.6016
+population,population q=80 isotropic,,,,,whole measure,ODI,0-3m,69568,69568,69568,69568,69568,1,0.04209,1.012,1.012,0.7106,0.825,0.04209,0.825
+population,population q=80 isotropic,,,,,whole measure,ODI,10-60m,90139,90139,90139,90139,90139,1,0.03135,0.6903,0.6903,0.8051,0.82,0.03135,0.82
+population,population q=80 isotropic,,,,,whole measure,ODI,4-9m,89366,89366,89366,89366,89366,1,0.03001,0.6646,0.6646,0.6889,0.7401,0.03001,0.7401
+population,population q=80 isotropic,,,,,whole profile,FWAD,0-3m,16193,16193,16193,16193,16193,1,8.886e-05,0.76,0.76,0.3856,0.6992,8.886e-05,0.6992
+population,population q=80 isotropic,,,,,whole profile,FWAD,10-60m,16130,16130,16130,16130,16130,1,9.513e-05,0.5962,0.5962,0.7719,0.7383,9.513e-05,0.7383
+population,population q=80 isotropic,,,,,whole profile,FWAD,4-9m,16398,16398,16398,16398,16398,1,5.813e-05,0.5474,0.5474,0.6234,0.6712,5.813e-05,0.6712
+population,population q=80 isotropic,,,,,whole profile,FWF,0-3m,16193,16193,16193,16193,16193,1,0.04847,0.6825,0.6825,0.6419,0.7873,0.04847,0.7873
+population,population q=80 isotropic,,,,,whole profile,FWF,10-60m,16130,16130,16130,16130,16130,1,0.04529,0.6067,0.6067,0.845,0.7913,0.04529,0.7913
+population,population q=80 isotropic,,,,,whole profile,FWF,4-9m,16398,16398,16398,16398,16398,1,0.03976,0.4799,0.4799,0.6523,0.7648,0.03976,0.7648
+population,population q=80 isotropic,,,,,whole profile,FWFA,0-3m,16193,16193,16193,16193,16193,1,0.04267,0.5611,0.5611,0.2675,0.5823,0.04267,0.5823
+population,population q=80 isotropic,,,,,whole profile,FWFA,10-60m,16130,16130,16130,16130,16130,1,0.04507,0.5574,0.5574,0.6812,0.6448,0.04507,0.6448
+population,population q=80 isotropic,,,,,whole profile,FWFA,4-9m,16398,16398,16398,16398,16398,1,0.03378,0.4639,0.4639,0.4891,0.5628,0.03378,0.5628
+population,population q=80 isotropic,,,,,whole profile,FWMD,0-3m,16193,16193,16193,16193,16193,1,5.259e-05,0.6706,0.6706,0.2634,0.5381,5.259e-05,0.5381
+population,population q=80 isotropic,,,,,whole profile,FWMD,10-60m,16130,16130,16130,16130,16130,1,4.132e-05,0.3602,0.3602,0.555,0.4959,4.132e-05,0.4959
+population,population q=80 isotropic,,,,,whole profile,FWMD,4-9m,16398,16398,16398,16398,16398,1,2.966e-05,0.3594,0.3594,0.4166,0.4726,2.966e-05,0.4726
+population,population q=80 isotropic,,,,,whole profile,FWRD,0-3m,16193,16193,16193,16193,16193,1,4.855e-05,0.6353,0.6353,0.2443,0.5044,4.855e-05,0.5044
+population,population q=80 isotropic,,,,,whole profile,FWRD,10-60m,16130,16130,16130,16130,16130,1,2.96e-05,0.3579,0.3579,0.5365,0.4872,2.96e-05,0.4872
+population,population q=80 isotropic,,,,,whole profile,FWRD,4-9m,16398,16398,16398,16398,16398,1,2.68e-05,0.3364,0.3364,0.3754,0.4317,2.68e-05,0.4317
+population,population q=80 isotropic,,,,,whole profile,NDI,0-3m,16193,16193,16193,16193,16193,1,0.04496,0.4386,0.4386,0.24,0.707,0.04496,0.707
+population,population q=80 isotropic,,,,,whole profile,NDI,10-60m,16130,16130,16130,16130,16130,1,0.04024,0.3753,0.3753,0.5561,0.5099,0.04024,0.5099
+population,population q=80 isotropic,,,,,whole profile,NDI,4-9m,16398,16398,16398,16398,16398,1,0.03358,0.3555,0.3555,0.4411,0.6198,0.03358,0.6198
+population,population q=80 isotropic,,,,,whole profile,ODI,0-3m,16193,16193,16193,16193,16193,1,0.04566,1.04,1.04,0.6348,0.7529,0.04566,0.7529
+population,population q=80 isotropic,,,,,whole profile,ODI,10-60m,16130,16130,16130,16130,16130,1,0.03835,0.7778,0.7778,0.8566,0.8687,0.03835,0.8687
+population,population q=80 isotropic,,,,,whole profile,ODI,4-9m,16398,16398,16398,16398,16398,1,0.03172,0.6593,0.6593,0.7346,0.7806,0.03172,0.7806
+population,population q=80 isotropic,,,,,whole profile,ad,0-3m,16193,16193,16193,16193,16193,1,9.833e-05,0.7706,0.7706,0.4379,0.6927,9.833e-05,0.6927
+population,population q=80 isotropic,,,,,whole profile,ad,10-60m,16130,16130,16130,16130,16130,1,9.406e-05,0.675,0.675,0.8365,0.8336,9.406e-05,0.8336
+population,population q=80 isotropic,,,,,whole profile,ad,4-9m,16398,16398,16398,16398,16398,1,7.934e-05,0.588,0.588,0.6653,0.682,7.934e-05,0.682
+population,population q=80 isotropic,,,,,whole profile,fa,0-3m,16193,16193,16193,16193,16193,1,0.03258,0.5372,0.5372,0.3259,0.7249,0.03258,0.7249
+population,population q=80 isotropic,,,,,whole profile,fa,10-60m,16130,16130,16130,16130,16130,1,0.03851,0.6227,0.6227,0.7236,0.7054,0.03851,0.7054
+population,population q=80 isotropic,,,,,whole profile,fa,4-9m,16398,16398,16398,16398,16398,1,0.02748,0.4948,0.4948,0.6001,0.7751,0.02748,0.7751
+population,population q=80 isotropic,,,,,whole profile,md,0-3m,16193,16193,16193,16193,16193,1,7.227e-05,0.5698,0.5698,0.2616,0.5342,7.227e-05,0.5342
+population,population q=80 isotropic,,,,,whole profile,md,10-60m,16130,16130,16130,16130,16130,1,6.412e-05,0.4373,0.4373,0.6471,0.6261,6.412e-05,0.6261
+population,population q=80 isotropic,,,,,whole profile,md,4-9m,16398,16398,16398,16398,16398,1,5.66e-05,0.4067,0.4067,0.5025,0.5611,5.66e-05,0.5611
+population,population q=80 isotropic,,,,,whole profile,rd,0-3m,16193,16193,16193,16193,16193,1,7.17e-05,0.5427,0.5427,0.2522,0.5353,7.17e-05,0.5353
+population,population q=80 isotropic,,,,,whole profile,rd,10-60m,16130,16130,16130,16130,16130,1,6.294e-05,0.4389,0.4389,0.6239,0.6043,6.294e-05,0.6043
+population,population q=80 isotropic,,,,,whole profile,rd,4-9m,16398,16398,16398,16398,16398,1,5.411e-05,0.3876,0.3876,0.479,0.5688,5.411e-05,0.5688
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWAD,0-3m,1790,1790,1790,1790,1790,1,7.815e-05,0.7432,0.7432,0.3973,0.6104,7.815e-05,0.6104
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWAD,10-60m,1787,1787,1787,1787,1787,1,6.07e-05,0.5409,0.5409,0.637,0.609,6.07e-05,0.609
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWAD,4-9m,1750,1750,1750,1750,1750,1,5.796e-05,0.5341,0.5341,0.5425,0.634,5.796e-05,0.634
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWF,0-3m,1790,1790,1790,1790,1790,1,0.04423,0.7026,0.7026,0.7343,0.7536,0.04423,0.7536
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWF,10-60m,1787,1787,1787,1787,1787,1,0.04388,0.6434,0.6434,0.8333,0.7967,0.04388,0.7967
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWF,4-9m,1750,1750,1750,1750,1750,1,0.04066,0.4996,0.4996,0.6468,0.6868,0.04066,0.6868
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWFA,0-3m,1790,1790,1790,1790,1790,1,0.04931,0.5645,0.5645,0.3035,0.5917,0.04931,0.5917
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWFA,10-60m,1787,1787,1787,1787,1787,1,0.04861,0.5852,0.5852,0.6229,0.6074,0.04861,0.6074
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWFA,4-9m,1750,1750,1750,1750,1750,1,0.0352,0.473,0.473,0.4974,0.5611,0.0352,0.5611
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWMD,0-3m,1790,1790,1790,1790,1790,1,4.516e-05,0.564,0.564,0.2324,0.4185,4.516e-05,0.4185
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWMD,10-60m,1787,1787,1787,1787,1787,1,2.986e-05,0.3654,0.3654,0.4678,0.4376,2.986e-05,0.4376
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWMD,4-9m,1750,1750,1750,1750,1750,1,2.955e-05,0.3671,0.3671,0.3784,0.4559,2.955e-05,0.4559
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWRD,0-3m,1790,1790,1790,1790,1790,1,3.982e-05,0.5369,0.5369,0.2169,0.4019,3.982e-05,0.4019
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWRD,10-60m,1787,1787,1787,1787,1787,1,2.734e-05,0.3753,0.3753,0.4714,0.4439,2.734e-05,0.4439
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,FWRD,4-9m,1750,1750,1750,1750,1750,1,2.772e-05,0.3604,0.3604,0.3697,0.4361,2.772e-05,0.4361
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,NDI,0-3m,1790,1790,1790,1790,1790,1,0.0482,0.4733,0.4733,0.2831,0.6161,0.0482,0.6161
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,NDI,10-60m,1787,1787,1787,1787,1787,1,0.04322,0.3878,0.3878,0.4966,0.4879,0.04322,0.4879
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,NDI,4-9m,1750,1750,1750,1750,1750,1,0.03126,0.376,0.376,0.4594,0.6336,0.03126,0.6336
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,ODI,0-3m,1790,1790,1790,1790,1790,1,0.0606,1.009,1.009,0.7056,0.7776,0.0606,0.7776
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,ODI,10-60m,1787,1787,1787,1787,1787,1,0.04258,0.6973,0.6973,0.7458,0.7495,0.04258,0.7495
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,ODI,4-9m,1750,1750,1750,1750,1750,1,0.03775,0.6088,0.6088,0.64,0.6505,0.03775,0.6505
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,ad,0-3m,1790,1790,1790,1790,1790,1,0.0001352,0.8233,0.8233,0.4613,0.6481,0.0001352,0.6481
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,ad,10-60m,1787,1787,1787,1787,1787,1,9.206e-05,0.6233,0.6233,0.7783,0.7847,9.206e-05,0.7847
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,ad,4-9m,1750,1750,1750,1750,1750,1,7.584e-05,0.5697,0.5697,0.6506,0.6835,7.584e-05,0.6835
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,fa,0-3m,1790,1790,1790,1790,1790,1,0.03707,0.6271,0.6271,0.4047,0.752,0.03707,0.752
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,fa,10-60m,1787,1787,1787,1787,1787,1,0.03672,0.6362,0.6362,0.6774,0.6856,0.03672,0.6856
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,fa,4-9m,1750,1750,1750,1750,1750,1,0.03135,0.5192,0.5192,0.5958,0.7017,0.03135,0.7017
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,md,0-3m,1790,1790,1790,1790,1790,1,9.023e-05,0.5597,0.5597,0.2583,0.4642,9.023e-05,0.4642
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,md,10-60m,1787,1787,1787,1787,1787,1,6.972e-05,0.4461,0.4461,0.6503,0.659,6.972e-05,0.659
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,md,4-9m,1750,1750,1750,1750,1750,1,5.326e-05,0.3677,0.3677,0.4846,0.5524,5.326e-05,0.5524
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,rd,0-3m,1790,1790,1790,1790,1790,1,8.2e-05,0.5219,0.5219,0.2425,0.4556,8.2e-05,0.4556
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,rd,10-60m,1787,1787,1787,1787,1787,1,6.613e-05,0.4517,0.4517,0.6296,0.6337,6.613e-05,0.6337
+population+knn,population q=80 isotropic + knn k=20,,,,,end gap,rd,4-9m,1750,1750,1750,1750,1750,1,5.361e-05,0.3717,0.3717,0.4904,0.5712,5.361e-05,0.5712
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWAD,0-3m,3234,3234,3234,3234,3234,1,7.68e-05,0.5379,0.5379,0.2581,0.4824,7.68e-05,0.4824
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWAD,10-60m,3127,3127,3127,3127,3127,1,6.38e-05,0.4228,0.4228,0.5582,0.5429,6.38e-05,0.5429
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWAD,4-9m,3232,3232,3232,3232,3232,1,4.019e-05,0.4142,0.4142,0.463,0.517,4.019e-05,0.517
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWF,0-3m,3234,3234,3234,3234,3234,1,0.03568,0.4245,0.4245,0.4229,0.5529,0.03568,0.5529
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWF,10-60m,3127,3127,3127,3127,3127,1,0.02355,0.4514,0.4514,0.6049,0.5665,0.02355,0.5665
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWF,4-9m,3232,3232,3232,3232,3232,1,0.02809,0.349,0.349,0.474,0.5961,0.02809,0.5961
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWFA,0-3m,3234,3234,3234,3234,3234,1,0.03024,0.4245,0.4245,0.1938,0.4097,0.03024,0.4097
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWFA,10-60m,3127,3127,3127,3127,3127,1,0.03056,0.3971,0.3971,0.4681,0.4476,0.03056,0.4476
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWFA,4-9m,3232,3232,3232,3232,3232,1,0.02705,0.3612,0.3612,0.3777,0.4586,0.02705,0.4586
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWMD,0-3m,3234,3234,3234,3234,3234,1,4.32e-05,0.4805,0.4805,0.1777,0.3573,4.32e-05,0.3573
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWMD,10-60m,3127,3127,3127,3127,3127,1,2.706e-05,0.2537,0.2537,0.3821,0.3523,2.706e-05,0.3523
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWMD,4-9m,3232,3232,3232,3232,3232,1,1.99e-05,0.259,0.259,0.285,0.3406,1.99e-05,0.3406
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWRD,0-3m,3234,3234,3234,3234,3234,1,3.481e-05,0.4619,0.4619,0.1662,0.3309,3.481e-05,0.3309
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWRD,10-60m,3127,3127,3127,3127,3127,1,1.831e-05,0.2433,0.2433,0.3499,0.3259,1.831e-05,0.3259
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,FWRD,4-9m,3232,3232,3232,3232,3232,1,1.97e-05,0.2457,0.2457,0.2652,0.3222,1.97e-05,0.3222
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,NDI,0-3m,3234,3234,3234,3234,3234,1,0.03552,0.2934,0.2934,0.1506,0.4541,0.03552,0.4541
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,NDI,10-60m,3127,3127,3127,3127,3127,1,0.02283,0.2617,0.2617,0.3749,0.3559,0.02283,0.3559
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,NDI,4-9m,3232,3232,3232,3232,3232,1,0.02671,0.2688,0.2688,0.3223,0.4882,0.02671,0.4882
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,ODI,0-3m,3234,3234,3234,3234,3234,1,0.03175,0.8409,0.8409,0.5489,0.6032,0.03175,0.6032
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,ODI,10-60m,3127,3127,3127,3127,3127,1,0.02545,0.6123,0.6123,0.6808,0.6965,0.02545,0.6965
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,ODI,4-9m,3232,3232,3232,3232,3232,1,0.02155,0.505,0.505,0.5878,0.6271,0.02155,0.6271
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,ad,0-3m,3234,3234,3234,3234,3234,1,8.421e-05,0.5832,0.5832,0.3225,0.5302,8.421e-05,0.5302
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,ad,10-60m,3127,3127,3127,3127,3127,1,5.073e-05,0.4776,0.4776,0.6152,0.6086,5.073e-05,0.6086
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,ad,4-9m,3232,3232,3232,3232,3232,1,5.922e-05,0.4437,0.4437,0.4903,0.5182,5.922e-05,0.5182
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,fa,0-3m,3234,3234,3234,3234,3234,1,0.02272,0.3957,0.3957,0.2372,0.499,0.02272,0.499
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,fa,10-60m,3127,3127,3127,3127,3127,1,0.02599,0.4437,0.4437,0.5245,0.5104,0.02599,0.5104
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,fa,4-9m,3232,3232,3232,3232,3232,1,0.0211,0.3596,0.3596,0.427,0.568,0.0211,0.568
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,md,0-3m,3234,3234,3234,3234,3234,1,5.949e-05,0.4176,0.4176,0.1843,0.3752,5.949e-05,0.3752
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,md,10-60m,3127,3127,3127,3127,3127,1,3.18e-05,0.2858,0.2858,0.429,0.4165,3.18e-05,0.4165
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,md,4-9m,3232,3232,3232,3232,3232,1,3.943e-05,0.2875,0.2875,0.3514,0.4063,3.943e-05,0.4063
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,rd,0-3m,3234,3234,3234,3234,3234,1,5.606e-05,0.3957,0.3957,0.1786,0.3764,5.606e-05,0.3764
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,rd,10-60m,3127,3127,3127,3127,3127,1,3.358e-05,0.2895,0.2895,0.4115,0.4008,3.358e-05,0.4008
+population+knn,population q=80 isotropic + knn k=20,,,,,gap,rd,4-9m,3232,3232,3232,3232,3232,1,3.804e-05,0.2848,0.2848,0.3453,0.4241,3.804e-05,0.4241
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWAD,0-3m,38584,38584,38584,38584,38584,1,0.0001069,0.7603,0.7603,0.4069,0.7172,0.0001069,0.7172
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWAD,10-60m,38366,38366,38366,38366,38366,1,0.0001031,0.6132,0.6132,0.7829,0.7527,0.0001031,0.7527
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWAD,4-9m,35286,35286,35286,35286,35286,1,6.331e-05,0.5755,0.5755,0.6576,0.7038,6.331e-05,0.7038
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWF,0-3m,38584,38584,38584,38584,38584,1,0.05395,0.8257,0.8257,0.7118,0.8896,0.05395,0.8896
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWF,10-60m,38366,38366,38366,38366,38366,1,0.04946,0.6214,0.6214,0.8186,0.7874,0.04946,0.7874
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWF,4-9m,35286,35286,35286,35286,35286,1,0.03915,0.5201,0.5201,0.6593,0.7642,0.03915,0.7642
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWFA,0-3m,38584,38584,38584,38584,38584,1,0.04313,0.5915,0.5915,0.2942,0.634,0.04313,0.634
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWFA,10-60m,38366,38366,38366,38366,38366,1,0.04466,0.5798,0.5798,0.6844,0.6629,0.04466,0.6629
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWFA,4-9m,35286,35286,35286,35286,35286,1,0.03686,0.4808,0.4808,0.5034,0.574,0.03686,0.574
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWMD,0-3m,38584,38584,38584,38584,38584,1,5.181e-05,0.6525,0.6525,0.2716,0.5491,5.181e-05,0.5491
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWMD,10-60m,38366,38366,38366,38366,38366,1,4.543e-05,0.3952,0.3952,0.5866,0.5426,4.543e-05,0.5426
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWMD,4-9m,35286,35286,35286,35286,35286,1,3.038e-05,0.363,0.363,0.4206,0.4806,3.038e-05,0.4806
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWRD,0-3m,38584,38584,38584,38584,38584,1,4.641e-05,0.6279,0.6279,0.2543,0.522,4.641e-05,0.522
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWRD,10-60m,38366,38366,38366,38366,38366,1,3.244e-05,0.3996,0.3996,0.5659,0.5329,3.244e-05,0.5329
+population+knn,population q=80 isotropic + knn k=20,,,,,region,FWRD,4-9m,35286,35286,35286,35286,35286,1,2.799e-05,0.3416,0.3416,0.38,0.4387,2.799e-05,0.4387
+population+knn,population q=80 isotropic + knn k=20,,,,,region,NDI,0-3m,38584,38584,38584,38584,38584,1,0.04735,0.459,0.459,0.2468,0.7093,0.04735,0.7093
+population+knn,population q=80 isotropic + knn k=20,,,,,region,NDI,10-60m,38366,38366,38366,38366,38366,1,0.04291,0.3986,0.3986,0.5659,0.5519,0.04291,0.5519
+population+knn,population q=80 isotropic + knn k=20,,,,,region,NDI,4-9m,35286,35286,35286,35286,35286,1,0.03551,0.3533,0.3533,0.437,0.5782,0.03551,0.5782
+population+knn,population q=80 isotropic + knn k=20,,,,,region,ODI,0-3m,38584,38584,38584,38584,38584,1,0.04458,0.9809,0.9809,0.6594,0.7905,0.04458,0.7905
+population+knn,population q=80 isotropic + knn k=20,,,,,region,ODI,10-60m,38366,38366,38366,38366,38366,1,0.03565,0.7699,0.7699,0.8554,0.8794,0.03565,0.8794
+population+knn,population q=80 isotropic + knn k=20,,,,,region,ODI,4-9m,35286,35286,35286,35286,35286,1,0.03221,0.6945,0.6945,0.7488,0.8034,0.03221,0.8034
+population+knn,population q=80 isotropic + knn k=20,,,,,region,ad,0-3m,38584,38584,38584,38584,38584,1,0.0001026,0.781,0.781,0.4623,0.7307,0.0001026,0.7307
+population+knn,population q=80 isotropic + knn k=20,,,,,region,ad,10-60m,38366,38366,38366,38366,38366,1,0.0001004,0.699,0.699,0.8685,0.8656,0.0001004,0.8656
+population+knn,population q=80 isotropic + knn k=20,,,,,region,ad,4-9m,35286,35286,35286,35286,35286,1,7.902e-05,0.6113,0.6113,0.6708,0.688,7.902e-05,0.688
+population+knn,population q=80 isotropic + knn k=20,,,,,region,fa,0-3m,38584,38584,38584,38584,38584,1,0.03209,0.5656,0.5656,0.3391,0.7421,0.03209,0.7421
+population+knn,population q=80 isotropic + knn k=20,,,,,region,fa,10-60m,38366,38366,38366,38366,38366,1,0.03677,0.626,0.626,0.6982,0.7008,0.03677,0.7008
+population+knn,population q=80 isotropic + knn k=20,,,,,region,fa,4-9m,35286,35286,35286,35286,35286,1,0.03087,0.5125,0.5125,0.6047,0.7584,0.03087,0.7584
+population+knn,population q=80 isotropic + knn k=20,,,,,region,md,0-3m,38584,38584,38584,38584,38584,1,7.303e-05,0.5754,0.5754,0.2709,0.5553,7.303e-05,0.5553
+population+knn,population q=80 isotropic + knn k=20,,,,,region,md,10-60m,38366,38366,38366,38366,38366,1,6.959e-05,0.47,0.47,0.672,0.6709,6.959e-05,0.6709
+population+knn,population q=80 isotropic + knn k=20,,,,,region,md,4-9m,35286,35286,35286,35286,35286,1,5.29e-05,0.3944,0.3944,0.4728,0.5282,5.29e-05,0.5282
+population+knn,population q=80 isotropic + knn k=20,,,,,region,rd,0-3m,38584,38584,38584,38584,38584,1,7.108e-05,0.5395,0.5395,0.255,0.5432,7.108e-05,0.5432
+population+knn,population q=80 isotropic + knn k=20,,,,,region,rd,10-60m,38366,38366,38366,38366,38366,1,6.71e-05,0.4657,0.4657,0.633,0.636,6.71e-05,0.636
+population+knn,population q=80 isotropic + knn k=20,,,,,region,rd,4-9m,35286,35286,35286,35286,35286,1,5.236e-05,0.3843,0.3843,0.4588,0.5399,5.236e-05,0.5399
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWAD,0-3m,89843,89843,89843,89843,89843,1,8.832e-05,0.789,0.789,0.3839,0.692,8.832e-05,0.692
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWAD,10-60m,68501,68501,68501,68501,68501,1,7.68e-05,0.5729,0.5729,0.7412,0.6968,7.68e-05,0.6968
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWAD,4-9m,68827,68827,68827,68827,68827,1,5.405e-05,0.5288,0.5288,0.6701,0.663,5.405e-05,0.663
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWFA,0-3m,89843,89843,89843,89843,89843,1,0.04094,0.5569,0.5569,0.2514,0.5336,0.04094,0.5336
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWFA,10-60m,68501,68501,68501,68501,68501,1,0.04108,0.5295,0.5295,0.6246,0.5842,0.04108,0.5842
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWFA,4-9m,68827,68827,68827,68827,68827,1,0.0326,0.4435,0.4435,0.5261,0.5766,0.0326,0.5766
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWMD,0-3m,89843,89843,89843,89843,89843,1,5.154e-05,0.6866,0.6866,0.2528,0.5037,5.154e-05,0.5037
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWMD,10-60m,68501,68501,68501,68501,68501,1,3.477e-05,0.3801,0.3801,0.5807,0.501,3.477e-05,0.501
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWMD,4-9m,68827,68827,68827,68827,68827,1,2.642e-05,0.3331,0.3331,0.4582,0.4637,2.642e-05,0.4637
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWRD,0-3m,89843,89843,89843,89843,89843,1,4.624e-05,0.6235,0.6235,0.2231,0.4454,4.624e-05,0.4454
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWRD,10-60m,68501,68501,68501,68501,68501,1,2.916e-05,0.373,0.373,0.5433,0.4802,2.916e-05,0.4802
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,FWRD,4-9m,68827,68827,68827,68827,68827,1,2.472e-05,0.3126,0.3126,0.4122,0.4335,2.472e-05,0.4335
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,NDI,0-3m,69568,69568,69568,69568,69568,1,0.04097,0.4176,0.4176,0.2451,0.6927,0.04097,0.6927
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,NDI,10-60m,90139,90139,90139,90139,90139,1,0.03609,0.3537,0.3537,0.565,0.4714,0.03609,0.4714
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,NDI,4-9m,89366,89366,89366,89366,89366,1,0.03496,0.3677,0.3677,0.4145,0.6016,0.03496,0.6016
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,ODI,0-3m,69568,69568,69568,69568,69568,1,0.04209,1.012,1.012,0.7106,0.825,0.04209,0.825
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,ODI,10-60m,90139,90139,90139,90139,90139,1,0.03135,0.6903,0.6903,0.8051,0.82,0.03135,0.82
+population+knn,population q=80 isotropic + knn k=20,,,,,whole measure,ODI,4-9m,89366,89366,89366,89366,89366,1,0.03001,0.6646,0.6646,0.6889,0.7401,0.03001,0.7401
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWAD,0-3m,16193,16193,16193,16193,16193,1,9.728e-05,0.7403,0.7403,0.3756,0.681,9.728e-05,0.681
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWAD,10-60m,16130,16130,16130,16130,16130,1,8.548e-05,0.5655,0.5655,0.7321,0.7002,8.548e-05,0.7002
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWAD,4-9m,16398,16398,16398,16398,16398,1,5.575e-05,0.5164,0.5164,0.5881,0.6333,5.575e-05,0.6333
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWF,0-3m,16193,16193,16193,16193,16193,1,0.04612,0.6647,0.6647,0.6251,0.7667,0.04612,0.7667
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWF,10-60m,16130,16130,16130,16130,16130,1,0.04202,0.5624,0.5624,0.7833,0.7335,0.04202,0.7335
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWF,4-9m,16398,16398,16398,16398,16398,1,0.04123,0.4954,0.4954,0.6732,0.7894,0.04123,0.7894
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWFA,0-3m,16193,16193,16193,16193,16193,1,0.04201,0.5425,0.5425,0.2587,0.563,0.04201,0.563
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWFA,10-60m,16130,16130,16130,16130,16130,1,0.04486,0.5438,0.5438,0.6646,0.6291,0.04486,0.6291
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWFA,4-9m,16398,16398,16398,16398,16398,1,0.03319,0.4486,0.4486,0.473,0.5444,0.03319,0.5444
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWMD,0-3m,16193,16193,16193,16193,16193,1,5.075e-05,0.6578,0.6578,0.2584,0.5279,5.075e-05,0.5279
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWMD,10-60m,16130,16130,16130,16130,16130,1,4.28e-05,0.3471,0.3471,0.5347,0.4777,4.28e-05,0.4777
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWMD,4-9m,16398,16398,16398,16398,16398,1,2.77e-05,0.3339,0.3339,0.387,0.4389,2.77e-05,0.4389
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWRD,0-3m,16193,16193,16193,16193,16193,1,4.707e-05,0.6189,0.6189,0.2381,0.4914,4.707e-05,0.4914
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWRD,10-60m,16130,16130,16130,16130,16130,1,2.898e-05,0.3517,0.3517,0.5273,0.4788,2.898e-05,0.4788
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,FWRD,4-9m,16398,16398,16398,16398,16398,1,2.537e-05,0.3182,0.3182,0.3551,0.4084,2.537e-05,0.4084
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,NDI,0-3m,16193,16193,16193,16193,16193,1,0.04663,0.4358,0.4358,0.2385,0.7024,0.04663,0.7024
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,NDI,10-60m,16130,16130,16130,16130,16130,1,0.0381,0.3511,0.3511,0.5201,0.4769,0.0381,0.4769
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,NDI,4-9m,16398,16398,16398,16398,16398,1,0.03201,0.3277,0.3277,0.4066,0.5713,0.03201,0.5713
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,ODI,0-3m,16193,16193,16193,16193,16193,1,0.04478,1.029,1.029,0.6285,0.7454,0.04478,0.7454
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,ODI,10-60m,16130,16130,16130,16130,16130,1,0.03822,0.748,0.748,0.8239,0.8355,0.03822,0.8355
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,ODI,4-9m,16398,16398,16398,16398,16398,1,0.03201,0.6366,0.6366,0.7093,0.7537,0.03201,0.7537
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,ad,0-3m,16193,16193,16193,16193,16193,1,9.233e-05,0.7302,0.7302,0.4149,0.6564,9.233e-05,0.6564
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,ad,10-60m,16130,16130,16130,16130,16130,1,9.402e-05,0.6563,0.6563,0.8134,0.8107,9.402e-05,0.8107
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,ad,4-9m,16398,16398,16398,16398,16398,1,8.295e-05,0.5758,0.5758,0.6514,0.6678,8.295e-05,0.6678
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,fa,0-3m,16193,16193,16193,16193,16193,1,0.03044,0.5003,0.5003,0.3035,0.6751,0.03044,0.6751
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,fa,10-60m,16130,16130,16130,16130,16130,1,0.0369,0.5965,0.5965,0.6932,0.6758,0.0369,0.6758
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,fa,4-9m,16398,16398,16398,16398,16398,1,0.02613,0.4678,0.4678,0.5674,0.7327,0.02613,0.7327
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,md,0-3m,16193,16193,16193,16193,16193,1,6.534e-05,0.5209,0.5209,0.2391,0.4883,6.534e-05,0.4883
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,md,10-60m,16130,16130,16130,16130,16130,1,6.15e-05,0.4078,0.4078,0.6034,0.5838,6.15e-05,0.5838
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,md,4-9m,16398,16398,16398,16398,16398,1,5.933e-05,0.3919,0.3919,0.4843,0.5408,5.933e-05,0.5408
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,rd,0-3m,16193,16193,16193,16193,16193,1,6.477e-05,0.492,0.492,0.2286,0.4852,6.477e-05,0.4852
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,rd,10-60m,16130,16130,16130,16130,16130,1,5.944e-05,0.4076,0.4076,0.5794,0.5612,5.944e-05,0.5612
+population+knn,population q=80 isotropic + knn k=20,,,,,whole profile,rd,4-9m,16398,16398,16398,16398,16398,1,5.552e-05,0.3705,0.3705,0.4579,0.5437,5.552e-05,0.5437
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWAD,0-3m,1790,1790,1790,1790,1790,1,6.404e-05,0.6292,0.6292,0.3363,0.5168,6.404e-05,0.5168
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWAD,10-60m,1787,1787,1787,1787,1787,1,4.629e-05,0.4336,0.4336,0.5107,0.4883,4.629e-05,0.4883
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWAD,4-9m,1750,1750,1750,1750,1750,1,5.022e-05,0.455,0.455,0.4621,0.5401,5.022e-05,0.5401
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWF,0-3m,1790,1790,1790,1790,1790,1,0.03149,0.6125,0.6125,0.6401,0.6569,0.03149,0.6569
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWF,10-60m,1787,1787,1787,1787,1787,1,0.03662,0.5659,0.5659,0.733,0.7008,0.03662,0.7008
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWF,4-9m,1750,1750,1750,1750,1750,1,0.02938,0.468,0.468,0.6059,0.6434,0.02938,0.6434
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWFA,0-3m,1790,1790,1790,1790,1790,1,0.04281,0.4957,0.4957,0.2665,0.5197,0.04281,0.5197
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWFA,10-60m,1787,1787,1787,1787,1787,1,0.0427,0.5003,0.5003,0.5325,0.5193,0.0427,0.5193
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWFA,4-9m,1750,1750,1750,1750,1750,1,0.0331,0.4312,0.4312,0.4534,0.5115,0.0331,0.5115
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWMD,0-3m,1790,1790,1790,1790,1790,1,3.46e-05,0.461,0.461,0.19,0.3421,3.46e-05,0.3421
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWMD,10-60m,1787,1787,1787,1787,1787,1,2.36e-05,0.2972,0.2972,0.3805,0.3559,2.36e-05,0.3559
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWMD,4-9m,1750,1750,1750,1750,1750,1,2.309e-05,0.2941,0.2941,0.3032,0.3653,2.309e-05,0.3653
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWRD,0-3m,1790,1790,1790,1790,1790,1,3.132e-05,0.4325,0.4325,0.1747,0.3237,3.132e-05,0.3237
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWRD,10-60m,1787,1787,1787,1787,1787,1,2.46e-05,0.3271,0.3271,0.4109,0.3869,2.46e-05,0.3869
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,FWRD,4-9m,1750,1750,1750,1750,1750,1,2.332e-05,0.2998,0.2998,0.3075,0.3628,2.332e-05,0.3628
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,NDI,0-3m,1790,1790,1790,1790,1790,1,0.03875,0.3869,0.3869,0.2315,0.5037,0.03875,0.5037
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,NDI,10-60m,1787,1787,1787,1787,1787,1,0.03617,0.3337,0.3337,0.4273,0.4198,0.03617,0.4198
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,NDI,4-9m,1750,1750,1750,1750,1750,1,0.0235,0.2768,0.2768,0.3381,0.4664,0.0235,0.4664
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,ODI,0-3m,1790,1790,1790,1790,1790,1,0.05186,0.8802,0.8802,0.6157,0.6785,0.05186,0.6785
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,ODI,10-60m,1787,1787,1787,1787,1787,1,0.03451,0.5604,0.5604,0.5994,0.6024,0.03451,0.6024
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,ODI,4-9m,1750,1750,1750,1750,1750,1,0.03336,0.542,0.542,0.5698,0.5791,0.03336,0.5791
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,ad,0-3m,1790,1790,1790,1790,1790,1,0.000113,0.6914,0.6914,0.3874,0.5443,0.000113,0.5443
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,ad,10-60m,1787,1787,1787,1787,1787,1,8.019e-05,0.5273,0.5273,0.6586,0.6639,8.019e-05,0.6639
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,ad,4-9m,1750,1750,1750,1750,1750,1,7.131e-05,0.5134,0.5134,0.5863,0.6159,7.131e-05,0.6159
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,fa,0-3m,1790,1790,1790,1790,1790,1,0.03369,0.5651,0.5651,0.3647,0.6776,0.03369,0.6776
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,fa,10-60m,1787,1787,1787,1787,1787,1,0.03124,0.5251,0.5251,0.5591,0.5659,0.03124,0.5659
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,fa,4-9m,1750,1750,1750,1750,1750,1,0.03033,0.4829,0.4829,0.5542,0.6527,0.03033,0.6527
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,md,0-3m,1790,1790,1790,1790,1790,1,6.953e-05,0.4564,0.4564,0.2106,0.3785,6.953e-05,0.3785
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,md,10-60m,1787,1787,1787,1787,1787,1,5.57e-05,0.3759,0.3759,0.5481,0.5553,5.57e-05,0.5553
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,md,4-9m,1750,1750,1750,1750,1750,1,4.455e-05,0.3261,0.3261,0.4298,0.4899,4.455e-05,0.4899
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,rd,0-3m,1790,1790,1790,1790,1790,1,6.288e-05,0.4247,0.4247,0.1973,0.3708,6.288e-05,0.3708
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,rd,10-60m,1787,1787,1787,1787,1787,1,5.432e-05,0.3717,0.3717,0.5181,0.5214,5.432e-05,0.5214
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,end gap,rd,4-9m,1750,1750,1750,1750,1750,1,4.491e-05,0.3434,0.3434,0.453,0.5277,4.491e-05,0.5277
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWAD,0-3m,3234,3234,3234,3234,3234,1,6.916e-05,0.4334,0.4334,0.2079,0.3887,6.916e-05,0.3887
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWAD,10-60m,3127,3127,3127,3127,3127,1,3.33e-05,0.3393,0.3393,0.4479,0.4357,3.33e-05,0.4357
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWAD,4-9m,3232,3232,3232,3232,3232,1,3.032e-05,0.3165,0.3165,0.3539,0.3951,3.032e-05,0.3951
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWF,0-3m,3234,3234,3234,3234,3234,1,0.02883,0.3733,0.3733,0.3719,0.4862,0.02883,0.4862
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWF,10-60m,3127,3127,3127,3127,3127,1,0.0171,0.3521,0.3521,0.4717,0.4418,0.0171,0.4418
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWF,4-9m,3232,3232,3232,3232,3232,1,0.02105,0.2993,0.2993,0.4066,0.5112,0.02105,0.5112
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWFA,0-3m,3234,3234,3234,3234,3234,1,0.02437,0.3421,0.3421,0.1562,0.3302,0.02437,0.3302
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWFA,10-60m,3127,3127,3127,3127,3127,1,0.02326,0.3073,0.3073,0.3622,0.3463,0.02326,0.3463
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWFA,4-9m,3232,3232,3232,3232,3232,1,0.02069,0.2741,0.2741,0.2866,0.3481,0.02069,0.3481
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWMD,0-3m,3234,3234,3234,3234,3234,1,3.516e-05,0.3925,0.3925,0.1452,0.2918,3.516e-05,0.2918
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWMD,10-60m,3127,3127,3127,3127,3127,1,1.557e-05,0.1912,0.1912,0.2879,0.2654,1.557e-05,0.2654
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWMD,4-9m,3232,3232,3232,3232,3232,1,1.479e-05,0.1947,0.1947,0.2143,0.2561,1.479e-05,0.2561
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWRD,0-3m,3234,3234,3234,3234,3234,1,2.779e-05,0.3721,0.3721,0.1339,0.2666,2.779e-05,0.2666
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWRD,10-60m,3127,3127,3127,3127,3127,1,1.309e-05,0.1795,0.1795,0.258,0.2403,1.309e-05,0.2403
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,FWRD,4-9m,3232,3232,3232,3232,3232,1,1.498e-05,0.1868,0.1868,0.2017,0.245,1.498e-05,0.245
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,NDI,0-3m,3234,3234,3234,3234,3234,1,0.03009,0.2466,0.2466,0.1266,0.3817,0.03009,0.3817
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,NDI,10-60m,3127,3127,3127,3127,3127,1,0.01651,0.1933,0.1933,0.2769,0.2629,0.01651,0.2629
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,NDI,4-9m,3232,3232,3232,3232,3232,1,0.02065,0.205,0.205,0.2458,0.3724,0.02065,0.3724
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,ODI,0-3m,3234,3234,3234,3234,3234,1,0.0251,0.6645,0.6645,0.4337,0.4766,0.0251,0.4766
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,ODI,10-60m,3127,3127,3127,3127,3127,1,0.0187,0.4844,0.4844,0.5386,0.551,0.0187,0.551
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,ODI,4-9m,3232,3232,3232,3232,3232,1,0.01708,0.4093,0.4093,0.4764,0.5083,0.01708,0.5083
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,ad,0-3m,3234,3234,3234,3234,3234,1,6.778e-05,0.4659,0.4659,0.2577,0.4236,6.778e-05,0.4236
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,ad,10-60m,3127,3127,3127,3127,3127,1,3.847e-05,0.378,0.378,0.487,0.4817,3.847e-05,0.4817
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,ad,4-9m,3232,3232,3232,3232,3232,1,4.515e-05,0.353,0.353,0.3901,0.4123,4.515e-05,0.4123
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,fa,0-3m,3234,3234,3234,3234,3234,1,0.01707,0.2984,0.2984,0.1789,0.3764,0.01707,0.3764
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,fa,10-60m,3127,3127,3127,3127,3127,1,0.02027,0.3542,0.3542,0.4187,0.4075,0.02027,0.4075
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,fa,4-9m,3232,3232,3232,3232,3232,1,0.01659,0.2858,0.2858,0.3394,0.4514,0.01659,0.4514
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,md,0-3m,3234,3234,3234,3234,3234,1,4.7e-05,0.3251,0.3251,0.1434,0.292,4.7e-05,0.292
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,md,10-60m,3127,3127,3127,3127,3127,1,2.252e-05,0.2268,0.2268,0.3404,0.3305,2.252e-05,0.3305
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,md,4-9m,3232,3232,3232,3232,3232,1,2.953e-05,0.2242,0.2242,0.2741,0.3169,2.953e-05,0.3169
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,rd,0-3m,3234,3234,3234,3234,3234,1,4.339e-05,0.3027,0.3027,0.1367,0.2879,4.339e-05,0.2879
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,rd,10-60m,3127,3127,3127,3127,3127,1,2.516e-05,0.234,0.234,0.3326,0.3239,2.516e-05,0.3239
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,gap,rd,4-9m,3232,3232,3232,3232,3232,1,2.886e-05,0.2219,0.2219,0.2691,0.3304,2.886e-05,0.3304
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWAD,0-3m,38584,38584,38584,38584,38584,1,0.0001127,0.7773,0.7773,0.416,0.7332,0.0001127,0.7332
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWAD,10-60m,38366,38366,38366,38366,38366,1,0.0001091,0.6247,0.6247,0.7976,0.7669,0.0001091,0.7669
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWAD,4-9m,35286,35286,35286,35286,35286,1,6.387e-05,0.5823,0.5823,0.6655,0.7122,6.387e-05,0.7122
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWF,0-3m,38584,38584,38584,38584,38584,1,0.05411,0.8207,0.8207,0.7075,0.8842,0.05411,0.8842
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWF,10-60m,38366,38366,38366,38366,38366,1,0.05049,0.6386,0.6386,0.8413,0.8093,0.05049,0.8093
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWF,4-9m,35286,35286,35286,35286,35286,1,0.03998,0.5366,0.5366,0.6802,0.7884,0.03998,0.7884
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWFA,0-3m,38584,38584,38584,38584,38584,1,0.04372,0.6048,0.6048,0.3008,0.6482,0.04372,0.6482
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWFA,10-60m,38366,38366,38366,38366,38366,1,0.04528,0.5893,0.5893,0.6956,0.6738,0.04528,0.6738
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWFA,4-9m,35286,35286,35286,35286,35286,1,0.03771,0.4916,0.4916,0.5147,0.5869,0.03771,0.5869
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWMD,0-3m,38584,38584,38584,38584,38584,1,5.263e-05,0.6606,0.6606,0.2749,0.5559,5.263e-05,0.5559
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWMD,10-60m,38366,38366,38366,38366,38366,1,4.712e-05,0.4007,0.4007,0.5948,0.5501,4.712e-05,0.5501
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWMD,4-9m,35286,35286,35286,35286,35286,1,3.057e-05,0.366,0.366,0.4241,0.4846,3.057e-05,0.4846
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWRD,0-3m,38584,38584,38584,38584,38584,1,4.692e-05,0.6375,0.6375,0.2582,0.53,4.692e-05,0.53
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWRD,10-60m,38366,38366,38366,38366,38366,1,3.287e-05,0.4054,0.4054,0.5741,0.5407,3.287e-05,0.5407
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,FWRD,4-9m,35286,35286,35286,35286,35286,1,2.835e-05,0.3477,0.3477,0.3867,0.4465,2.835e-05,0.4465
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,NDI,0-3m,38584,38584,38584,38584,38584,1,0.04765,0.4651,0.4651,0.25,0.7187,0.04765,0.7187
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,NDI,10-60m,38366,38366,38366,38366,38366,1,0.04334,0.4036,0.4036,0.573,0.5588,0.04334,0.5588
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,NDI,4-9m,35286,35286,35286,35286,35286,1,0.03627,0.3616,0.3616,0.4473,0.5918,0.03627,0.5918
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,ODI,0-3m,38584,38584,38584,38584,38584,1,0.0454,1.004,1.004,0.6746,0.8087,0.0454,0.8087
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,ODI,10-60m,38366,38366,38366,38366,38366,1,0.03646,0.7889,0.7889,0.8765,0.9011,0.03646,0.9011
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,ODI,4-9m,35286,35286,35286,35286,35286,1,0.03302,0.7071,0.7071,0.7624,0.818,0.03302,0.818
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,ad,0-3m,38584,38584,38584,38584,38584,1,0.0001042,0.8,0.8,0.4735,0.7485,0.0001042,0.7485
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,ad,10-60m,38366,38366,38366,38366,38366,1,0.0001023,0.7088,0.7088,0.8805,0.8777,0.0001023,0.8777
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,ad,4-9m,35286,35286,35286,35286,35286,1,8.149e-05,0.6268,0.6268,0.6879,0.7055,8.149e-05,0.7055
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,fa,0-3m,38584,38584,38584,38584,38584,1,0.03291,0.5829,0.5829,0.3494,0.7648,0.03291,0.7648
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,fa,10-60m,38366,38366,38366,38366,38366,1,0.03739,0.6381,0.6381,0.7117,0.7144,0.03739,0.7144
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,fa,4-9m,35286,35286,35286,35286,35286,1,0.03145,0.5231,0.5231,0.6172,0.7741,0.03145,0.7741
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,md,0-3m,38584,38584,38584,38584,38584,1,7.395e-05,0.5877,0.5877,0.2767,0.5672,7.395e-05,0.5672
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,md,10-60m,38366,38366,38366,38366,38366,1,7.056e-05,0.4768,0.4768,0.6818,0.6807,7.056e-05,0.6807
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,md,4-9m,35286,35286,35286,35286,35286,1,5.414e-05,0.4036,0.4036,0.4838,0.5405,5.414e-05,0.5405
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,rd,0-3m,38584,38584,38584,38584,38584,1,7.199e-05,0.5519,0.5519,0.2608,0.5557,7.199e-05,0.5557
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,rd,10-60m,38366,38366,38366,38366,38366,1,6.812e-05,0.4727,0.4727,0.6425,0.6455,6.812e-05,0.6455
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,region,rd,4-9m,35286,35286,35286,35286,35286,1,5.316e-05,0.3912,0.3912,0.467,0.5496,5.316e-05,0.5496
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWAD,0-3m,89843,89843,89843,89843,89843,1,8.832e-05,0.789,0.789,0.3839,0.692,8.832e-05,0.692
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWAD,10-60m,68501,68501,68501,68501,68501,1,7.68e-05,0.5729,0.5729,0.7412,0.6968,7.68e-05,0.6968
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWAD,4-9m,68827,68827,68827,68827,68827,1,5.405e-05,0.5288,0.5288,0.6701,0.663,5.405e-05,0.663
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWFA,0-3m,89843,89843,89843,89843,89843,1,0.04094,0.5569,0.5569,0.2514,0.5336,0.04094,0.5336
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWFA,10-60m,68501,68501,68501,68501,68501,1,0.04108,0.5295,0.5295,0.6246,0.5842,0.04108,0.5842
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWFA,4-9m,68827,68827,68827,68827,68827,1,0.0326,0.4435,0.4435,0.5261,0.5766,0.0326,0.5766
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWMD,0-3m,89843,89843,89843,89843,89843,1,5.154e-05,0.6866,0.6866,0.2528,0.5037,5.154e-05,0.5037
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWMD,10-60m,68501,68501,68501,68501,68501,1,3.477e-05,0.3801,0.3801,0.5807,0.501,3.477e-05,0.501
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWMD,4-9m,68827,68827,68827,68827,68827,1,2.642e-05,0.3331,0.3331,0.4582,0.4637,2.642e-05,0.4637
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWRD,0-3m,89843,89843,89843,89843,89843,1,4.624e-05,0.6235,0.6235,0.2231,0.4454,4.624e-05,0.4454
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWRD,10-60m,68501,68501,68501,68501,68501,1,2.916e-05,0.373,0.373,0.5433,0.4802,2.916e-05,0.4802
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,FWRD,4-9m,68827,68827,68827,68827,68827,1,2.472e-05,0.3126,0.3126,0.4122,0.4335,2.472e-05,0.4335
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,NDI,0-3m,69568,69568,69568,69568,69568,1,0.04097,0.4176,0.4176,0.2451,0.6927,0.04097,0.6927
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,NDI,10-60m,90139,90139,90139,90139,90139,1,0.03609,0.3537,0.3537,0.565,0.4714,0.03609,0.4714
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,NDI,4-9m,89366,89366,89366,89366,89366,1,0.03496,0.3677,0.3677,0.4145,0.6016,0.03496,0.6016
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,ODI,0-3m,69568,69568,69568,69568,69568,1,0.04209,1.012,1.012,0.7106,0.825,0.04209,0.825
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,ODI,10-60m,90139,90139,90139,90139,90139,1,0.03135,0.6903,0.6903,0.8051,0.82,0.03135,0.82
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole measure,ODI,4-9m,89366,89366,89366,89366,89366,1,0.03001,0.6646,0.6646,0.6889,0.7401,0.03001,0.7401
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWAD,0-3m,16193,16193,16193,16193,16193,1,9.498e-05,0.7599,0.7599,0.3856,0.6991,9.498e-05,0.6991
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWAD,10-60m,16130,16130,16130,16130,16130,1,8.981e-05,0.5794,0.5794,0.7502,0.7175,8.981e-05,0.7175
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWAD,4-9m,16398,16398,16398,16398,16398,1,5.73e-05,0.5412,0.5412,0.6163,0.6637,5.73e-05,0.6637
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWF,0-3m,16193,16193,16193,16193,16193,1,0.04528,0.6896,0.6896,0.6485,0.7954,0.04528,0.7954
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWF,10-60m,16130,16130,16130,16130,16130,1,0.04303,0.5943,0.5943,0.8277,0.775,0.04303,0.775
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWF,4-9m,16398,16398,16398,16398,16398,1,0.04271,0.5127,0.5127,0.6968,0.8171,0.04271,0.8171
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWFA,0-3m,16193,16193,16193,16193,16193,1,0.0431,0.5595,0.5595,0.2668,0.5807,0.0431,0.5807
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWFA,10-60m,16130,16130,16130,16130,16130,1,0.04601,0.5636,0.5636,0.6888,0.652,0.04601,0.652
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWFA,4-9m,16398,16398,16398,16398,16398,1,0.03488,0.4743,0.4743,0.5,0.5755,0.03488,0.5755
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWMD,0-3m,16193,16193,16193,16193,16193,1,5.139e-05,0.6609,0.6609,0.2596,0.5303,5.139e-05,0.5303
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWMD,10-60m,16130,16130,16130,16130,16130,1,4.035e-05,0.3533,0.3533,0.5443,0.4863,4.035e-05,0.4863
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWMD,4-9m,16398,16398,16398,16398,16398,1,2.815e-05,0.3424,0.3424,0.3969,0.4502,2.815e-05,0.4502
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWRD,0-3m,16193,16193,16193,16193,16193,1,4.739e-05,0.6193,0.6193,0.2382,0.4917,4.739e-05,0.4917
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWRD,10-60m,16130,16130,16130,16130,16130,1,2.996e-05,0.3624,0.3624,0.5433,0.4933,2.996e-05,0.4933
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,FWRD,4-9m,16398,16398,16398,16398,16398,1,2.625e-05,0.3295,0.3295,0.3677,0.4228,2.625e-05,0.4228
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,NDI,0-3m,16193,16193,16193,16193,16193,1,0.04682,0.4446,0.4446,0.2433,0.7167,0.04682,0.7167
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,NDI,10-60m,16130,16130,16130,16130,16130,1,0.03835,0.3572,0.3572,0.5292,0.4852,0.03835,0.4852
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,NDI,4-9m,16398,16398,16398,16398,16398,1,0.0325,0.3347,0.3347,0.4153,0.5835,0.0325,0.5835
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,ODI,0-3m,16193,16193,16193,16193,16193,1,0.04552,1.058,1.058,0.6461,0.7663,0.04552,0.7663
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,ODI,10-60m,16130,16130,16130,16130,16130,1,0.0394,0.776,0.776,0.8547,0.8668,0.0394,0.8668
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,ODI,4-9m,16398,16398,16398,16398,16398,1,0.03341,0.6643,0.6643,0.7402,0.7866,0.03341,0.7866
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,ad,0-3m,16193,16193,16193,16193,16193,1,9.536e-05,0.7667,0.7667,0.4356,0.6892,9.536e-05,0.6892
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,ad,10-60m,16130,16130,16130,16130,16130,1,9.629e-05,0.6799,0.6799,0.8426,0.8398,9.629e-05,0.8398
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,ad,4-9m,16398,16398,16398,16398,16398,1,8.615e-05,0.6097,0.6097,0.6898,0.7072,8.615e-05,0.7072
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,fa,0-3m,16193,16193,16193,16193,16193,1,0.0318,0.5223,0.5223,0.3169,0.7048,0.0318,0.7048
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,fa,10-60m,16130,16130,16130,16130,16130,1,0.03844,0.6264,0.6264,0.7279,0.7096,0.03844,0.7096
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,fa,4-9m,16398,16398,16398,16398,16398,1,0.02762,0.4893,0.4893,0.5934,0.7664,0.02762,0.7664
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,md,0-3m,16193,16193,16193,16193,16193,1,6.746e-05,0.5385,0.5385,0.2472,0.5048,6.746e-05,0.5048
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,md,10-60m,16130,16130,16130,16130,16130,1,6.204e-05,0.4169,0.4169,0.617,0.5969,6.204e-05,0.5969
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,md,4-9m,16398,16398,16398,16398,16398,1,5.931e-05,0.3981,0.3981,0.492,0.5494,5.931e-05,0.5494
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,rd,0-3m,16193,16193,16193,16193,16193,1,6.617e-05,0.5028,0.5028,0.2337,0.4959,6.617e-05,0.4959
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,rd,10-60m,16130,16130,16130,16130,16130,1,5.984e-05,0.4174,0.4174,0.5934,0.5747,5.984e-05,0.5747
+population+siren,population q=80 isotropic + siren xyz omega0=10,,,,,whole profile,rd,4-9m,16398,16398,16398,16398,16398,1,5.519e-05,0.3725,0.3725,0.4605,0.5467,5.519e-05,0.5467
+prior-mean,prior-mean,,,,,end gap,FWAD,0-3m,1790,1790,1790,1790,1790,1,0.0001258,1.218,1.218,0.6508,1,0.0001258,1
+prior-mean,prior-mean,,,,,end gap,FWAD,10-60m,1787,1787,1787,1787,1787,1,9.83e-05,0.8881,0.8881,1.046,1,9.83e-05,1
+prior-mean,prior-mean,,,,,end gap,FWAD,4-9m,1750,1750,1750,1750,1750,1,9.259e-05,0.8423,0.8423,0.8556,1,9.259e-05,1
+prior-mean,prior-mean,,,,,end gap,FWF,0-3m,1790,1790,1790,1790,1790,1,0.05822,0.9323,0.9323,0.9744,1,0.05822,1
+prior-mean,prior-mean,,,,,end gap,FWF,10-60m,1787,1787,1787,1787,1787,1,0.06219,0.8076,0.8076,1.046,1,0.06219,1
+prior-mean,prior-mean,,,,,end gap,FWF,4-9m,1750,1750,1750,1750,1750,1,0.05902,0.7274,0.7274,0.9417,1,0.05902,1
+prior-mean,prior-mean,,,,,end gap,FWFA,0-3m,1790,1790,1790,1790,1790,1,0.08143,0.9539,0.9539,0.5128,1,0.08143,1
+prior-mean,prior-mean,,,,,end gap,FWFA,10-60m,1787,1787,1787,1787,1787,1,0.07688,0.9634,0.9634,1.025,1,0.07688,1
+prior-mean,prior-mean,,,,,end gap,FWFA,4-9m,1750,1750,1750,1750,1750,1,0.06361,0.843,0.843,0.8864,1,0.06361,1
+prior-mean,prior-mean,,,,,end gap,FWMD,0-3m,1790,1790,1790,1790,1790,1,0.0001036,1.348,1.348,0.5552,1,0.0001036,1
+prior-mean,prior-mean,,,,,end gap,FWMD,10-60m,1787,1787,1787,1787,1787,1,6.902e-05,0.8351,0.8351,1.069,1,6.902e-05,1
+prior-mean,prior-mean,,,,,end gap,FWMD,4-9m,1750,1750,1750,1750,1750,1,6.834e-05,0.8052,0.8052,0.83,1,6.834e-05,1
+prior-mean,prior-mean,,,,,end gap,FWRD,0-3m,1790,1790,1790,1790,1790,1,0.0001039,1.336,1.336,0.5397,1,0.0001039,1
+prior-mean,prior-mean,,,,,end gap,FWRD,10-60m,1787,1787,1787,1787,1787,1,6.787e-05,0.8455,0.8455,1.062,1,6.787e-05,1
+prior-mean,prior-mean,,,,,end gap,FWRD,4-9m,1750,1750,1750,1750,1750,1,7.017e-05,0.8264,0.8264,0.8477,1,7.017e-05,1
+prior-mean,prior-mean,,,,,end gap,NDI,0-3m,1790,1790,1790,1790,1790,1,0.07373,0.7681,0.7681,0.4595,1,0.07373,1
+prior-mean,prior-mean,,,,,end gap,NDI,10-60m,1787,1787,1787,1787,1787,1,0.07798,0.7948,0.7948,1.018,1,0.07798,1
+prior-mean,prior-mean,,,,,end gap,NDI,4-9m,1750,1750,1750,1750,1750,1,0.05201,0.5934,0.5934,0.725,1,0.05201,1
+prior-mean,prior-mean,,,,,end gap,ODI,0-3m,1790,1790,1790,1790,1790,1,0.07316,1.297,1.297,0.9074,1,0.07316,1
+prior-mean,prior-mean,,,,,end gap,ODI,10-60m,1787,1787,1787,1787,1787,1,0.05854,0.9303,0.9303,0.9951,1,0.05854,1
+prior-mean,prior-mean,,,,,end gap,ODI,4-9m,1750,1750,1750,1750,1750,1,0.05341,0.9359,0.9359,0.9839,1,0.05341,1
+prior-mean,prior-mean,,,,,end gap,ad,0-3m,1790,1790,1790,1790,1790,1,0.0001879,1.27,1.27,0.7117,1,0.0001879,1
+prior-mean,prior-mean,,,,,end gap,ad,10-60m,1787,1787,1787,1787,1787,1,0.000119,0.7943,0.7943,0.9919,1,0.000119,1
+prior-mean,prior-mean,,,,,end gap,ad,4-9m,1750,1750,1750,1750,1750,1,0.0001135,0.8335,0.8335,0.9519,1,0.0001135,1
+prior-mean,prior-mean,,,,,end gap,fa,0-3m,1790,1790,1790,1790,1790,1,0.04877,0.8339,0.8339,0.5382,1,0.04877,1
+prior-mean,prior-mean,,,,,end gap,fa,10-60m,1787,1787,1787,1787,1787,1,0.05266,0.9279,0.9279,0.9879,1,0.05266,1
+prior-mean,prior-mean,,,,,end gap,fa,4-9m,1750,1750,1750,1750,1750,1,0.0451,0.7399,0.7399,0.8491,1,0.0451,1
+prior-mean,prior-mean,,,,,end gap,md,0-3m,1790,1790,1790,1790,1790,1,0.000145,1.206,1.206,0.5565,1,0.000145,1
+prior-mean,prior-mean,,,,,end gap,md,10-60m,1787,1787,1787,1787,1787,1,9.536e-05,0.6769,0.6769,0.9869,1,9.536e-05,1
+prior-mean,prior-mean,,,,,end gap,md,4-9m,1750,1750,1750,1750,1750,1,8.286e-05,0.6657,0.6657,0.8774,1,8.286e-05,1
+prior-mean,prior-mean,,,,,end gap,rd,0-3m,1790,1790,1790,1790,1790,1,0.0001371,1.145,1.145,0.5322,1,0.0001371,1
+prior-mean,prior-mean,,,,,end gap,rd,10-60m,1787,1787,1787,1787,1787,1,9.663e-05,0.7128,0.7128,0.9936,1,9.663e-05,1
+prior-mean,prior-mean,,,,,end gap,rd,4-9m,1750,1750,1750,1750,1750,1,8.2e-05,0.6507,0.6507,0.8585,1,8.2e-05,1
+prior-mean,prior-mean,,,,,gap,FWAD,0-3m,3234,3234,3234,3234,3234,1,0.0001012,1.115,1.115,0.5349,1,0.0001012,1
+prior-mean,prior-mean,,,,,gap,FWAD,10-60m,3127,3127,3127,3127,3127,1,7.533e-05,0.7788,0.7788,1.028,1,7.533e-05,1
+prior-mean,prior-mean,,,,,gap,FWAD,4-9m,3232,3232,3232,3232,3232,1,8.061e-05,0.8011,0.8011,0.8957,1,8.061e-05,1
+prior-mean,prior-mean,,,,,gap,FWF,0-3m,3234,3234,3234,3234,3234,1,0.05469,0.7676,0.7676,0.7648,1,0.05469,1
+prior-mean,prior-mean,,,,,gap,FWF,10-60m,3127,3127,3127,3127,3127,1,0.05055,0.7969,0.7969,1.068,1,0.05055,1
+prior-mean,prior-mean,,,,,gap,FWF,4-9m,3232,3232,3232,3232,3232,1,0.05047,0.5854,0.5854,0.7953,1,0.05047,1
+prior-mean,prior-mean,,,,,gap,FWFA,0-3m,3234,3234,3234,3234,3234,1,0.06767,1.036,1.036,0.4731,1,0.06767,1
+prior-mean,prior-mean,,,,,gap,FWFA,10-60m,3127,3127,3127,3127,3127,1,0.06428,0.8872,0.8872,1.046,1,0.06428,1
+prior-mean,prior-mean,,,,,gap,FWFA,4-9m,3232,3232,3232,3232,3232,1,0.05791,0.7875,0.7875,0.8234,1,0.05791,1
+prior-mean,prior-mean,,,,,gap,FWMD,0-3m,3234,3234,3234,3234,3234,1,9.433e-05,1.345,1.345,0.4975,1,9.433e-05,1
+prior-mean,prior-mean,,,,,gap,FWMD,10-60m,3127,3127,3127,3127,3127,1,5.442e-05,0.7202,0.7202,1.085,1,5.442e-05,1
+prior-mean,prior-mean,,,,,gap,FWMD,4-9m,3232,3232,3232,3232,3232,1,6.425e-05,0.7605,0.7605,0.8367,1,6.425e-05,1
+prior-mean,prior-mean,,,,,gap,FWRD,0-3m,3234,3234,3234,3234,3234,1,0.0001021,1.396,1.396,0.5022,1,0.0001021,1
+prior-mean,prior-mean,,,,,gap,FWRD,10-60m,3127,3127,3127,3127,3127,1,5.858e-05,0.7467,0.7467,1.074,1,5.858e-05,1
+prior-mean,prior-mean,,,,,gap,FWRD,4-9m,3232,3232,3232,3232,3232,1,6.691e-05,0.7626,0.7626,0.8232,1,6.691e-05,1
+prior-mean,prior-mean,,,,,gap,NDI,0-3m,3234,3234,3234,3234,3234,1,0.05779,0.6462,0.6462,0.3316,1,0.05779,1
+prior-mean,prior-mean,,,,,gap,NDI,10-60m,3127,3127,3127,3127,3127,1,0.0647,0.7355,0.7355,1.053,1,0.0647,1
+prior-mean,prior-mean,,,,,gap,NDI,4-9m,3232,3232,3232,3232,3232,1,0.05606,0.5506,0.5506,0.6601,1,0.05606,1
+prior-mean,prior-mean,,,,,gap,ODI,0-3m,3234,3234,3234,3234,3234,1,0.05337,1.394,1.394,0.91,1,0.05337,1
+prior-mean,prior-mean,,,,,gap,ODI,10-60m,3127,3127,3127,3127,3127,1,0.03713,0.8791,0.8791,0.9774,1,0.03713,1
+prior-mean,prior-mean,,,,,gap,ODI,4-9m,3232,3232,3232,3232,3232,1,0.03253,0.8052,0.8052,0.9373,1,0.03253,1
+prior-mean,prior-mean,,,,,gap,ad,0-3m,3234,3234,3234,3234,3234,1,0.0001341,1.1,1.1,0.6083,1,0.0001341,1
+prior-mean,prior-mean,,,,,gap,ad,10-60m,3127,3127,3127,3127,3127,1,9.896e-05,0.7847,0.7847,1.011,1,9.896e-05,1
+prior-mean,prior-mean,,,,,gap,ad,4-9m,3232,3232,3232,3232,3232,1,0.0001277,0.8563,0.8563,0.9463,1,0.0001277,1
+prior-mean,prior-mean,,,,,gap,fa,0-3m,3234,3234,3234,3234,3234,1,0.04427,0.7929,0.7929,0.4754,1,0.04427,1
+prior-mean,prior-mean,,,,,gap,fa,10-60m,3127,3127,3127,3127,3127,1,0.0493,0.8693,0.8693,1.027,1,0.0493,1
+prior-mean,prior-mean,,,,,gap,fa,4-9m,3232,3232,3232,3232,3232,1,0.03705,0.6331,0.6331,0.7519,1,0.03705,1
+prior-mean,prior-mean,,,,,gap,md,0-3m,3234,3234,3234,3234,3234,1,0.0001114,1.113,1.113,0.4911,1,0.0001114,1
+prior-mean,prior-mean,,,,,gap,md,10-60m,3127,3127,3127,3127,3127,1,8.025e-05,0.6861,0.6861,1.03,1,8.025e-05,1
+prior-mean,prior-mean,,,,,gap,md,4-9m,3232,3232,3232,3232,3232,1,9.992e-05,0.7076,0.7076,0.8649,1,9.992e-05,1
+prior-mean,prior-mean,,,,,gap,rd,0-3m,3234,3234,3234,3234,3234,1,0.0001104,1.051,1.051,0.4746,1,0.0001104,1
+prior-mean,prior-mean,,,,,gap,rd,10-60m,3127,3127,3127,3127,3127,1,8.456e-05,0.7222,0.7222,1.027,1,8.456e-05,1
+prior-mean,prior-mean,,,,,gap,rd,4-9m,3232,3232,3232,3232,3232,1,9.388e-05,0.6716,0.6716,0.8143,1,9.388e-05,1
+prior-mean,prior-mean,,,,,region,FWAD,0-3m,38584,38584,38584,38584,38584,1,0.0001022,1.06,1.06,0.5674,1,0.0001022,1
+prior-mean,prior-mean,,,,,region,FWAD,10-60m,38366,38366,38366,38366,38366,1,8.431e-05,0.8146,0.8146,1.04,1,8.431e-05,1
+prior-mean,prior-mean,,,,,region,FWAD,4-9m,35286,35286,35286,35286,35286,1,8.693e-05,0.8176,0.8176,0.9344,1,8.693e-05,1
+prior-mean,prior-mean,,,,,region,FWF,0-3m,38584,38584,38584,38584,38584,1,0.06029,0.9282,0.9282,0.8001,1,0.06029,1
+prior-mean,prior-mean,,,,,region,FWF,10-60m,38366,38366,38366,38366,38366,1,0.06007,0.7891,0.7891,1.04,1,0.06007,1
+prior-mean,prior-mean,,,,,region,FWF,4-9m,35286,35286,35286,35286,35286,1,0.05823,0.6806,0.6806,0.8627,1,0.05823,1
+prior-mean,prior-mean,,,,,region,FWFA,0-3m,38584,38584,38584,38584,38584,1,0.06517,0.933,0.933,0.464,1,0.06517,1
+prior-mean,prior-mean,,,,,region,FWFA,10-60m,38366,38366,38366,38366,38366,1,0.06472,0.8746,0.8746,1.032,1,0.06472,1
+prior-mean,prior-mean,,,,,region,FWFA,4-9m,35286,35286,35286,35286,35286,1,0.0628,0.8377,0.8377,0.877,1,0.0628,1
+prior-mean,prior-mean,,,,,region,FWMD,0-3m,38584,38584,38584,38584,38584,1,8.759e-05,1.188,1.188,0.4946,1,8.759e-05,1
+prior-mean,prior-mean,,,,,region,FWMD,10-60m,38366,38366,38366,38366,38366,1,6e-05,0.7283,0.7283,1.081,1,6e-05,1
+prior-mean,prior-mean,,,,,region,FWMD,4-9m,35286,35286,35286,35286,35286,1,6.493e-05,0.7553,0.7553,0.8752,1,6.493e-05,1
+prior-mean,prior-mean,,,,,region,FWRD,0-3m,38584,38584,38584,38584,38584,1,9.133e-05,1.203,1.203,0.4872,1,9.133e-05,1
+prior-mean,prior-mean,,,,,region,FWRD,10-60m,38366,38366,38366,38366,38366,1,6.233e-05,0.7499,0.7499,1.062,1,6.233e-05,1
+prior-mean,prior-mean,,,,,region,FWRD,4-9m,35286,35286,35286,35286,35286,1,6.68e-05,0.7787,0.7787,0.866,1,6.68e-05,1
+prior-mean,prior-mean,,,,,region,NDI,0-3m,38584,38584,38584,38584,38584,1,0.06292,0.6471,0.6471,0.3479,1,0.06292,1
+prior-mean,prior-mean,,,,,region,NDI,10-60m,38366,38366,38366,38366,38366,1,0.0692,0.7223,0.7223,1.025,1,0.0692,1
+prior-mean,prior-mean,,,,,region,NDI,4-9m,35286,35286,35286,35286,35286,1,0.06211,0.6111,0.6111,0.7559,1,0.06211,1
+prior-mean,prior-mean,,,,,region,ODI,0-3m,38584,38584,38584,38584,38584,1,0.05444,1.241,1.241,0.8342,1,0.05444,1
+prior-mean,prior-mean,,,,,region,ODI,10-60m,38366,38366,38366,38366,38366,1,0.04352,0.8755,0.8755,0.9727,1,0.04352,1
+prior-mean,prior-mean,,,,,region,ODI,4-9m,35286,35286,35286,35286,35286,1,0.04073,0.8644,0.8644,0.932,1,0.04073,1
+prior-mean,prior-mean,,,,,region,ad,0-3m,38584,38584,38584,38584,38584,1,0.0001369,1.069,1.069,0.6326,1,0.0001369,1
+prior-mean,prior-mean,,,,,region,ad,10-60m,38366,38366,38366,38366,38366,1,0.0001161,0.8075,0.8075,1.003,1,0.0001161,1
+prior-mean,prior-mean,,,,,region,ad,4-9m,35286,35286,35286,35286,35286,1,0.0001436,0.8885,0.8885,0.975,1,0.0001436,1
+prior-mean,prior-mean,,,,,region,fa,0-3m,38584,38584,38584,38584,38584,1,0.04234,0.7621,0.7621,0.4569,1,0.04234,1
+prior-mean,prior-mean,,,,,region,fa,10-60m,38366,38366,38366,38366,38366,1,0.0521,0.8932,0.8932,0.9962,1,0.0521,1
+prior-mean,prior-mean,,,,,region,fa,4-9m,35286,35286,35286,35286,35286,1,0.03953,0.6758,0.6758,0.7974,1,0.03953,1
+prior-mean,prior-mean,,,,,region,md,0-3m,38584,38584,38584,38584,38584,1,0.0001161,1.036,1.036,0.4877,1,0.0001161,1
+prior-mean,prior-mean,,,,,region,md,10-60m,38366,38366,38366,38366,38366,1,9.344e-05,0.7006,0.7006,1.002,1,9.344e-05,1
+prior-mean,prior-mean,,,,,region,md,4-9m,35286,35286,35286,35286,35286,1,0.0001155,0.7466,0.7466,0.8951,1,0.0001155,1
+prior-mean,prior-mean,,,,,region,rd,0-3m,38584,38584,38584,38584,38584,1,0.0001157,0.9932,0.9932,0.4693,1,0.0001157,1
+prior-mean,prior-mean,,,,,region,rd,10-60m,38366,38366,38366,38366,38366,1,9.646e-05,0.7322,0.7322,0.9952,1,9.646e-05,1
+prior-mean,prior-mean,,,,,region,rd,4-9m,35286,35286,35286,35286,35286,1,0.0001095,0.7118,0.7118,0.8498,1,0.0001095,1
+prior-mean,prior-mean,,,,,whole measure,FWAD,0-3m,89843,89843,89843,89843,89843,1,0.0001068,1.14,1.14,0.5548,1,0.0001068,1
+prior-mean,prior-mean,,,,,whole measure,FWAD,10-60m,68501,68501,68501,68501,68501,1,8.227e-05,0.8222,0.8222,1.064,1,8.227e-05,1
+prior-mean,prior-mean,,,,,whole measure,FWAD,4-9m,68827,68827,68827,68827,68827,1,8.092e-05,0.7977,0.7977,1.011,1,8.092e-05,1
+prior-mean,prior-mean,,,,,whole measure,FWFA,0-3m,89843,89843,89843,89843,89843,1,0.07318,1.044,1.044,0.4712,1,0.07318,1
+prior-mean,prior-mean,,,,,whole measure,FWFA,10-60m,68501,68501,68501,68501,68501,1,0.06799,0.9064,0.9064,1.069,1,0.06799,1
+prior-mean,prior-mean,,,,,whole measure,FWFA,4-9m,68827,68827,68827,68827,68827,1,0.05684,0.7693,0.7693,0.9125,1,0.05684,1
+prior-mean,prior-mean,,,,,whole measure,FWMD,0-3m,89843,89843,89843,89843,89843,1,9.714e-05,1.363,1.363,0.5019,1,9.714e-05,1
+prior-mean,prior-mean,,,,,whole measure,FWMD,10-60m,68501,68501,68501,68501,68501,1,6.023e-05,0.7587,0.7587,1.159,1,6.023e-05,1
+prior-mean,prior-mean,,,,,whole measure,FWMD,4-9m,68827,68827,68827,68827,68827,1,6.007e-05,0.7184,0.7184,0.9881,1,6.007e-05,1
+prior-mean,prior-mean,,,,,whole measure,FWRD,0-3m,89843,89843,89843,89843,89843,1,0.0001041,1.4,1.4,0.5008,1,0.0001041,1
+prior-mean,prior-mean,,,,,whole measure,FWRD,10-60m,68501,68501,68501,68501,68501,1,6.405e-05,0.7766,0.7766,1.131,1,6.405e-05,1
+prior-mean,prior-mean,,,,,whole measure,FWRD,4-9m,68827,68827,68827,68827,68827,1,6.151e-05,0.7211,0.7211,0.9509,1,6.151e-05,1
+prior-mean,prior-mean,,,,,whole measure,NDI,0-3m,69568,69568,69568,69568,69568,1,0.06031,0.6029,0.6029,0.3539,1,0.06031,1
+prior-mean,prior-mean,,,,,whole measure,NDI,10-60m,90139,90139,90139,90139,90139,1,0.06997,0.7504,0.7504,1.199,1,0.06997,1
+prior-mean,prior-mean,,,,,whole measure,NDI,4-9m,89366,89366,89366,89366,89366,1,0.05904,0.6112,0.6112,0.689,1,0.05904,1
+prior-mean,prior-mean,,,,,whole measure,ODI,0-3m,69568,69568,69568,69568,69568,1,0.0516,1.227,1.227,0.8613,1,0.0516,1
+prior-mean,prior-mean,,,,,whole measure,ODI,10-60m,90139,90139,90139,90139,90139,1,0.04014,0.8418,0.8418,0.9818,1,0.04014,1
+prior-mean,prior-mean,,,,,whole measure,ODI,4-9m,89366,89366,89366,89366,89366,1,0.04051,0.8979,0.8979,0.9308,1,0.04051,1
+prior-mean,prior-mean,,,,,whole profile,FWAD,0-3m,16193,16193,16193,16193,16193,1,0.0001079,1.087,1.087,0.5515,1,0.0001079,1
+prior-mean,prior-mean,,,,,whole profile,FWAD,10-60m,16130,16130,16130,16130,16130,1,8.45e-05,0.8075,0.8075,1.045,1,8.45e-05,1
+prior-mean,prior-mean,,,,,whole profile,FWAD,4-9m,16398,16398,16398,16398,16398,1,8.295e-05,0.8155,0.8155,0.9287,1,8.295e-05,1
+prior-mean,prior-mean,,,,,whole profile,FWF,0-3m,16193,16193,16193,16193,16193,1,0.05767,0.8669,0.8669,0.8153,1,0.05767,1
+prior-mean,prior-mean,,,,,whole profile,FWF,10-60m,16130,16130,16130,16130,16130,1,0.05539,0.7668,0.7668,1.068,1,0.05539,1
+prior-mean,prior-mean,,,,,whole profile,FWF,4-9m,16398,16398,16398,16398,16398,1,0.05606,0.6275,0.6275,0.8529,1,0.05606,1
+prior-mean,prior-mean,,,,,whole profile,FWFA,0-3m,16193,16193,16193,16193,16193,1,0.07002,0.9636,0.9636,0.4594,1,0.07002,1
+prior-mean,prior-mean,,,,,whole profile,FWFA,10-60m,16130,16130,16130,16130,16130,1,0.06719,0.8644,0.8644,1.056,1,0.06719,1
+prior-mean,prior-mean,,,,,whole profile,FWFA,4-9m,16398,16398,16398,16398,16398,1,0.06047,0.8241,0.8241,0.8689,1,0.06047,1
+prior-mean,prior-mean,,,,,whole profile,FWMD,0-3m,16193,16193,16193,16193,16193,1,9.398e-05,1.246,1.246,0.4896,1,9.398e-05,1
+prior-mean,prior-mean,,,,,whole profile,FWMD,10-60m,16130,16130,16130,16130,16130,1,5.941e-05,0.7265,0.7265,1.119,1,5.941e-05,1
+prior-mean,prior-mean,,,,,whole profile,FWMD,4-9m,16398,16398,16398,16398,16398,1,6.309e-05,0.7606,0.7606,0.8816,1,6.309e-05,1
+prior-mean,prior-mean,,,,,whole profile,FWRD,0-3m,16193,16193,16193,16193,16193,1,9.936e-05,1.26,1.26,0.4844,1,9.936e-05,1
+prior-mean,prior-mean,,,,,whole profile,FWRD,10-60m,16130,16130,16130,16130,16130,1,6.189e-05,0.7346,0.7346,1.101,1,6.189e-05,1
+prior-mean,prior-mean,,,,,whole profile,FWRD,4-9m,16398,16398,16398,16398,16398,1,6.477e-05,0.7792,0.7792,0.8695,1,6.477e-05,1
+prior-mean,prior-mean,,,,,whole profile,NDI,0-3m,16193,16193,16193,16193,16193,1,0.06016,0.6204,0.6204,0.3395,1,0.06016,1
+prior-mean,prior-mean,,,,,whole profile,NDI,10-60m,16130,16130,16130,16130,16130,1,0.0718,0.7362,0.7362,1.091,1,0.0718,1
+prior-mean,prior-mean,,,,,whole profile,NDI,4-9m,16398,16398,16398,16398,16398,1,0.05442,0.5736,0.5736,0.7117,1,0.05442,1
+prior-mean,prior-mean,,,,,whole profile,ODI,0-3m,16193,16193,16193,16193,16193,1,0.0587,1.381,1.381,0.8431,1,0.0587,1
+prior-mean,prior-mean,,,,,whole profile,ODI,10-60m,16130,16130,16130,16130,16130,1,0.04474,0.8953,0.8953,0.9861,1,0.04474,1
+prior-mean,prior-mean,,,,,whole profile,ODI,4-9m,16398,16398,16398,16398,16398,1,0.03874,0.8446,0.8446,0.9411,1,0.03874,1
+prior-mean,prior-mean,,,,,whole profile,ad,0-3m,16193,16193,16193,16193,16193,1,0.0001362,1.112,1.112,0.6321,1,0.0001362,1
+prior-mean,prior-mean,,,,,whole profile,ad,10-60m,16130,16130,16130,16130,16130,1,0.0001125,0.8096,0.8096,1.003,1,0.0001125,1
+prior-mean,prior-mean,,,,,whole profile,ad,4-9m,16398,16398,16398,16398,16398,1,0.0001389,0.8622,0.8622,0.9754,1,0.0001389,1
+prior-mean,prior-mean,,,,,whole profile,fa,0-3m,16193,16193,16193,16193,16193,1,0.04403,0.741,0.741,0.4496,1,0.04403,1
+prior-mean,prior-mean,,,,,whole profile,fa,10-60m,16130,16130,16130,16130,16130,1,0.05257,0.8828,0.8828,1.026,1,0.05257,1
+prior-mean,prior-mean,,,,,whole profile,fa,4-9m,16398,16398,16398,16398,16398,1,0.03649,0.6384,0.6384,0.7743,1,0.03649,1
+prior-mean,prior-mean,,,,,whole profile,md,0-3m,16193,16193,16193,16193,16193,1,0.0001188,1.067,1.067,0.4897,1,0.0001188,1
+prior-mean,prior-mean,,,,,whole profile,md,10-60m,16130,16130,16130,16130,16130,1,8.916e-05,0.6985,0.6985,1.034,1,8.916e-05,1
+prior-mean,prior-mean,,,,,whole profile,md,4-9m,16398,16398,16398,16398,16398,1,0.0001092,0.7247,0.7247,0.8955,1,0.0001092,1
+prior-mean,prior-mean,,,,,whole profile,rd,0-3m,16193,16193,16193,16193,16193,1,0.0001204,1.014,1.014,0.4712,1,0.0001204,1
+prior-mean,prior-mean,,,,,whole profile,rd,10-60m,16130,16130,16130,16130,16130,1,9.264e-05,0.7263,0.7263,1.032,1,9.264e-05,1
+prior-mean,prior-mean,,,,,whole profile,rd,4-9m,16398,16398,16398,16398,16398,1,0.0001019,0.6814,0.6814,0.8422,1,0.0001019,1
+knn (z),knn k=20 distance (z),,,,,end gap,FWAD,0-3m,1790,1790,1790,1790,1790,1,7.438e-05,0.7089,0.7089,0.3789,0.5822,7.438e-05,0.5822
+knn (z),knn k=20 distance (z),,,,,end gap,FWAD,10-60m,1787,1787,1787,1787,1787,1,6.599e-05,0.5557,0.5557,0.6545,0.6257,6.599e-05,0.6257
+knn (z),knn k=20 distance (z),,,,,end gap,FWAD,4-9m,1750,1750,1750,1750,1750,1,6.06e-05,0.5686,0.5686,0.5775,0.675,6.06e-05,0.675
+knn (z),knn k=20 distance (z),,,,,end gap,FWF,0-3m,1790,1790,1790,1790,1790,1,0.04221,0.5966,0.5966,0.6235,0.6399,0.04221,0.6399
+knn (z),knn k=20 distance (z),,,,,end gap,FWF,10-60m,1787,1787,1787,1787,1787,1,0.04708,0.6434,0.6434,0.8333,0.7967,0.04708,0.7967
+knn (z),knn k=20 distance (z),,,,,end gap,FWF,4-9m,1750,1750,1750,1750,1750,1,0.04239,0.5319,0.5319,0.6885,0.7312,0.04239,0.7312
+knn (z),knn k=20 distance (z),,,,,end gap,FWFA,0-3m,1790,1790,1790,1790,1790,1,0.04915,0.5364,0.5364,0.2884,0.5623,0.04915,0.5623
+knn (z),knn k=20 distance (z),,,,,end gap,FWFA,10-60m,1787,1787,1787,1787,1787,1,0.05009,0.5907,0.5907,0.6288,0.6131,0.05009,0.6131
+knn (z),knn k=20 distance (z),,,,,end gap,FWFA,4-9m,1750,1750,1750,1750,1750,1,0.03966,0.5172,0.5172,0.5438,0.6135,0.03966,0.6135
+knn (z),knn k=20 distance (z),,,,,end gap,FWMD,0-3m,1790,1790,1790,1790,1790,1,4.198e-05,0.5393,0.5393,0.2222,0.4002,4.198e-05,0.4002
+knn (z),knn k=20 distance (z),,,,,end gap,FWMD,10-60m,1787,1787,1787,1787,1787,1,3.628e-05,0.4042,0.4042,0.5175,0.4841,3.628e-05,0.4841
+knn (z),knn k=20 distance (z),,,,,end gap,FWMD,4-9m,1750,1750,1750,1750,1750,1,3.236e-05,0.4205,0.4205,0.4334,0.5222,3.236e-05,0.5222
+knn (z),knn k=20 distance (z),,,,,end gap,FWRD,0-3m,1790,1790,1790,1790,1790,1,3.502e-05,0.5151,0.5151,0.2081,0.3856,3.502e-05,0.3856
+knn (z),knn k=20 distance (z),,,,,end gap,FWRD,10-60m,1787,1787,1787,1787,1787,1,3.214e-05,0.4157,0.4157,0.5221,0.4917,3.214e-05,0.4917
+knn (z),knn k=20 distance (z),,,,,end gap,FWRD,4-9m,1750,1750,1750,1750,1750,1,3.135e-05,0.4269,0.4269,0.438,0.5166,3.135e-05,0.5166
+knn (z),knn k=20 distance (z),,,,,end gap,NDI,0-3m,1790,1790,1790,1790,1790,1,0.04678,0.4336,0.4336,0.2594,0.5645,0.04678,0.5645
+knn (z),knn k=20 distance (z),,,,,end gap,NDI,10-60m,1787,1787,1787,1787,1787,1,0.04404,0.4281,0.4281,0.5482,0.5386,0.04404,0.5386
+knn (z),knn k=20 distance (z),,,,,end gap,NDI,4-9m,1750,1750,1750,1750,1750,1,0.03642,0.4431,0.4431,0.5414,0.7467,0.03642,0.7467
+knn (z),knn k=20 distance (z),,,,,end gap,ODI,0-3m,1790,1790,1790,1790,1790,1,0.05749,0.9877,0.9877,0.6909,0.7613,0.05749,0.7613
+knn (z),knn k=20 distance (z),,,,,end gap,ODI,10-60m,1787,1787,1787,1787,1787,1,0.04316,0.7085,0.7085,0.7578,0.7616,0.04316,0.7616
+knn (z),knn k=20 distance (z),,,,,end gap,ODI,4-9m,1750,1750,1750,1750,1750,1,0.04262,0.681,0.681,0.7159,0.7276,0.04262,0.7276
+knn (z),knn k=20 distance (z),,,,,end gap,ad,0-3m,1790,1790,1790,1790,1790,1,0.0001356,0.8431,0.8431,0.4723,0.6636,0.0001356,0.6636
+knn (z),knn k=20 distance (z),,,,,end gap,ad,10-60m,1787,1787,1787,1787,1787,1,9.234e-05,0.6304,0.6304,0.7872,0.7936,9.234e-05,0.7936
+knn (z),knn k=20 distance (z),,,,,end gap,ad,4-9m,1750,1750,1750,1750,1750,1,8.708e-05,0.6155,0.6155,0.7029,0.7384,8.708e-05,0.7384
+knn (z),knn k=20 distance (z),,,,,end gap,fa,0-3m,1790,1790,1790,1790,1790,1,0.03457,0.5729,0.5729,0.3697,0.687,0.03457,0.687
+knn (z),knn k=20 distance (z),,,,,end gap,fa,10-60m,1787,1787,1787,1787,1787,1,0.03694,0.6404,0.6404,0.6818,0.6901,0.03694,0.6901
+knn (z),knn k=20 distance (z),,,,,end gap,fa,4-9m,1750,1750,1750,1750,1750,1,0.03541,0.5721,0.5721,0.6565,0.7732,0.03541,0.7732
+knn (z),knn k=20 distance (z),,,,,end gap,md,0-3m,1790,1790,1790,1790,1790,1,9.19e-05,0.562,0.562,0.2594,0.4661,9.19e-05,0.4661
+knn (z),knn k=20 distance (z),,,,,end gap,md,10-60m,1787,1787,1787,1787,1787,1,7.229e-05,0.4581,0.4581,0.6678,0.6767,7.229e-05,0.6767
+knn (z),knn k=20 distance (z),,,,,end gap,md,4-9m,1750,1750,1750,1750,1750,1,6.575e-05,0.4115,0.4115,0.5423,0.6181,6.575e-05,0.6181
+knn (z),knn k=20 distance (z),,,,,end gap,rd,0-3m,1790,1790,1790,1790,1790,1,8.303e-05,0.5018,0.5018,0.2332,0.4381,8.303e-05,0.4381
+knn (z),knn k=20 distance (z),,,,,end gap,rd,10-60m,1787,1787,1787,1787,1787,1,7.285e-05,0.4701,0.4701,0.6553,0.6595,7.285e-05,0.6595
+knn (z),knn k=20 distance (z),,,,,end gap,rd,4-9m,1750,1750,1750,1750,1750,1,6.466e-05,0.4058,0.4058,0.5354,0.6236,6.466e-05,0.6236
+knn (z),knn k=20 distance (z),,,,,gap,FWAD,0-3m,3234,3234,3234,3234,3234,1,0.0001096,0.6351,0.6351,0.3047,0.5695,0.0001096,0.5695
+knn (z),knn k=20 distance (z),,,,,gap,FWAD,10-60m,3127,3127,3127,3127,3127,1,4.645e-05,0.4716,0.4716,0.6226,0.6055,4.645e-05,0.6055
+knn (z),knn k=20 distance (z),,,,,gap,FWAD,4-9m,3232,3232,3232,3232,3232,1,5.562e-05,0.4999,0.4999,0.5589,0.624,5.562e-05,0.624
+knn (z),knn k=20 distance (z),,,,,gap,FWF,0-3m,3234,3234,3234,3234,3234,1,0.04149,0.4592,0.4592,0.4575,0.5982,0.04149,0.5982
+knn (z),knn k=20 distance (z),,,,,gap,FWF,10-60m,3127,3127,3127,3127,3127,1,0.02726,0.4823,0.4823,0.6463,0.6053,0.02726,0.6053
+knn (z),knn k=20 distance (z),,,,,gap,FWF,4-9m,3232,3232,3232,3232,3232,1,0.033,0.4197,0.4197,0.5701,0.7168,0.033,0.7168
+knn (z),knn k=20 distance (z),,,,,gap,FWFA,0-3m,3234,3234,3234,3234,3234,1,0.03091,0.4401,0.4401,0.2009,0.4247,0.03091,0.4247
+knn (z),knn k=20 distance (z),,,,,gap,FWFA,10-60m,3127,3127,3127,3127,3127,1,0.0342,0.4532,0.4532,0.5342,0.5108,0.0342,0.5108
+knn (z),knn k=20 distance (z),,,,,gap,FWFA,4-9m,3232,3232,3232,3232,3232,1,0.03035,0.4173,0.4173,0.4363,0.5299,0.03035,0.5299
+knn (z),knn k=20 distance (z),,,,,gap,FWMD,0-3m,3234,3234,3234,3234,3234,1,6.338e-05,0.6135,0.6135,0.2269,0.4562,6.338e-05,0.4562
+knn (z),knn k=20 distance (z),,,,,gap,FWMD,10-60m,3127,3127,3127,3127,3127,1,2.355e-05,0.2979,0.2979,0.4486,0.4136,2.355e-05,0.4136
+knn (z),knn k=20 distance (z),,,,,gap,FWMD,4-9m,3232,3232,3232,3232,3232,1,3.525e-05,0.4102,0.4102,0.4514,0.5395,3.525e-05,0.5395
+knn (z),knn k=20 distance (z),,,,,gap,FWRD,0-3m,3234,3234,3234,3234,3234,1,4.027e-05,0.5582,0.5582,0.2008,0.3999,4.027e-05,0.3999
+knn (z),knn k=20 distance (z),,,,,gap,FWRD,10-60m,3127,3127,3127,3127,3127,1,2.124e-05,0.2822,0.2822,0.4057,0.3779,2.124e-05,0.3779
+knn (z),knn k=20 distance (z),,,,,gap,FWRD,4-9m,3232,3232,3232,3232,3232,1,3.143e-05,0.389,0.389,0.4199,0.51,3.143e-05,0.51
+knn (z),knn k=20 distance (z),,,,,gap,NDI,0-3m,3234,3234,3234,3234,3234,1,0.03494,0.3303,0.3303,0.1695,0.5112,0.03494,0.5112
+knn (z),knn k=20 distance (z),,,,,gap,NDI,10-60m,3127,3127,3127,3127,3127,1,0.02545,0.295,0.295,0.4224,0.401,0.02545,0.401
+knn (z),knn k=20 distance (z),,,,,gap,NDI,4-9m,3232,3232,3232,3232,3232,1,0.03733,0.3597,0.3597,0.4313,0.6534,0.03733,0.6534
+knn (z),knn k=20 distance (z),,,,,gap,ODI,0-3m,3234,3234,3234,3234,3234,1,0.03402,0.8796,0.8796,0.5742,0.6309,0.03402,0.6309
+knn (z),knn k=20 distance (z),,,,,gap,ODI,10-60m,3127,3127,3127,3127,3127,1,0.02713,0.6597,0.6597,0.7335,0.7504,0.02713,0.7504
+knn (z),knn k=20 distance (z),,,,,gap,ODI,4-9m,3232,3232,3232,3232,3232,1,0.02449,0.5957,0.5957,0.6934,0.7398,0.02449,0.7398
+knn (z),knn k=20 distance (z),,,,,gap,ad,0-3m,3234,3234,3234,3234,3234,1,0.0001002,0.6551,0.6551,0.3623,0.5957,0.0001002,0.5957
+knn (z),knn k=20 distance (z),,,,,gap,ad,10-60m,3127,3127,3127,3127,3127,1,6.655e-05,0.5439,0.5439,0.7007,0.6931,6.655e-05,0.6931
+knn (z),knn k=20 distance (z),,,,,gap,ad,4-9m,3232,3232,3232,3232,3232,1,7.924e-05,0.5205,0.5205,0.5752,0.6079,7.924e-05,0.6079
+knn (z),knn k=20 distance (z),,,,,gap,fa,0-3m,3234,3234,3234,3234,3234,1,0.02269,0.3962,0.3962,0.2375,0.4997,0.02269,0.4997
+knn (z),knn k=20 distance (z),,,,,gap,fa,10-60m,3127,3127,3127,3127,3127,1,0.02696,0.4718,0.4718,0.5577,0.5428,0.02696,0.5428
+knn (z),knn k=20 distance (z),,,,,gap,fa,4-9m,3232,3232,3232,3232,3232,1,0.02291,0.3918,0.3918,0.4653,0.6189,0.02291,0.6189
+knn (z),knn k=20 distance (z),,,,,gap,md,0-3m,3234,3234,3234,3234,3234,1,7.539e-05,0.493,0.493,0.2175,0.4429,7.539e-05,0.4429
+knn (z),knn k=20 distance (z),,,,,gap,md,10-60m,3127,3127,3127,3127,3127,1,4.442e-05,0.3478,0.3478,0.5221,0.5069,4.442e-05,0.5069
+knn (z),knn k=20 distance (z),,,,,gap,md,4-9m,3232,3232,3232,3232,3232,1,5.937e-05,0.3461,0.3461,0.423,0.4891,5.937e-05,0.4891
+knn (z),knn k=20 distance (z),,,,,gap,rd,0-3m,3234,3234,3234,3234,3234,1,6.962e-05,0.463,0.463,0.209,0.4404,6.962e-05,0.4404
+knn (z),knn k=20 distance (z),,,,,gap,rd,10-60m,3127,3127,3127,3127,3127,1,4.239e-05,0.327,0.327,0.4649,0.4528,4.239e-05,0.4528
+knn (z),knn k=20 distance (z),,,,,gap,rd,4-9m,3232,3232,3232,3232,3232,1,5.686e-05,0.3386,0.3386,0.4105,0.5042,5.686e-05,0.5042
+knn (z),knn k=20 distance (z),,,,,region,FWAD,0-3m,38584,36821,36821,36821,38584,0.9543,0.0001472,0.9306,0.9306,0.4944,0.8768,0.0001451,0.8825
+knn (z),knn k=20 distance (z),,,,,region,FWAD,10-60m,38366,36305,36305,36305,38366,0.9463,0.0001315,0.749,0.749,0.9479,0.914,0.0001293,0.9178
+knn (z),knn k=20 distance (z),,,,,region,FWAD,4-9m,35286,32727,32727,32727,35286,0.9275,9.488e-05,0.7553,0.7553,0.8705,0.9315,9.497e-05,0.9378
+knn (z),knn k=20 distance (z),,,,,region,FWF,0-3m,38584,36821,36821,36821,38584,0.9543,0.05695,0.8078,0.8078,0.7071,0.8928,0.0564,0.9034
+knn (z),knn k=20 distance (z),,,,,region,FWF,10-60m,38366,36305,36305,36305,38366,0.9463,0.06197,0.7257,0.7257,0.9506,0.9146,0.06076,0.9185
+knn (z),knn k=20 distance (z),,,,,region,FWF,4-9m,35286,32727,32727,32727,35286,0.9275,0.05133,0.6156,0.6156,0.78,0.9017,0.05005,0.9086
+knn (z),knn k=20 distance (z),,,,,region,FWFA,0-3m,38584,36821,36821,36821,38584,0.9543,0.04731,0.6766,0.6766,0.3345,0.7231,0.0484,0.7363
+knn (z),knn k=20 distance (z),,,,,region,FWFA,10-60m,38366,36305,36305,36305,38366,0.9463,0.05477,0.7117,0.7117,0.838,0.8125,0.05539,0.8231
+knn (z),knn k=20 distance (z),,,,,region,FWFA,4-9m,35286,32727,32727,32727,35286,0.9275,0.04362,0.583,0.583,0.6082,0.6907,0.04475,0.7124
+knn (z),knn k=20 distance (z),,,,,region,FWMD,0-3m,38584,36821,36821,36821,38584,0.9543,6.575e-05,0.7848,0.7848,0.3241,0.6568,6.642e-05,0.6717
+knn (z),knn k=20 distance (z),,,,,region,FWMD,10-60m,38366,36305,36305,36305,38366,0.9463,7.252e-05,0.5198,0.5198,0.7646,0.7087,7.194e-05,0.7227
+knn (z),knn k=20 distance (z),,,,,region,FWMD,4-9m,35286,32727,32727,32727,35286,0.9275,5.646e-05,0.5763,0.5763,0.669,0.7632,5.755e-05,0.7828
+knn (z),knn k=20 distance (z),,,,,region,FWRD,0-3m,38584,36821,36821,36821,38584,0.9543,5.29e-05,0.7129,0.7129,0.2866,0.5892,5.492e-05,0.6078
+knn (z),knn k=20 distance (z),,,,,region,FWRD,10-60m,38366,36305,36305,36305,38366,0.9463,4.053e-05,0.5056,0.5056,0.7134,0.673,4.244e-05,0.6931
+knn (z),knn k=20 distance (z),,,,,region,FWRD,4-9m,35286,32727,32727,32727,35286,0.9275,4.623e-05,0.5422,0.5422,0.602,0.6926,4.844e-05,0.7156
+knn (z),knn k=20 distance (z),,,,,region,NDI,0-3m,38584,36821,36821,36821,38584,0.9543,0.05286,0.5007,0.5007,0.269,0.7765,0.05307,0.7898
+knn (z),knn k=20 distance (z),,,,,region,NDI,10-60m,38366,36305,36305,36305,38366,0.9463,0.05367,0.5021,0.5021,0.7126,0.6944,0.05417,0.7134
+knn (z),knn k=20 distance (z),,,,,region,NDI,4-9m,35286,32727,32727,32727,35286,0.9275,0.05888,0.5479,0.5479,0.6752,0.8835,0.05799,0.889
+knn (z),knn k=20 distance (z),,,,,region,ODI,0-3m,38584,36821,36821,36821,38584,0.9543,0.05243,1.172,1.172,0.7915,0.9506,0.05318,0.9536
+knn (z),knn k=20 distance (z),,,,,region,ODI,10-60m,38366,36305,36305,36305,38366,0.9463,0.04545,0.9184,0.9184,1.019,1.047,0.04501,1.045
+knn (z),knn k=20 distance (z),,,,,region,ODI,4-9m,35286,32727,32727,32727,35286,0.9275,0.04366,0.8716,0.8716,0.949,1.019,0.04365,1.017
+knn (z),knn k=20 distance (z),,,,,region,ad,0-3m,38584,36821,36821,36821,38584,0.9543,0.0001187,0.8668,0.8668,0.5122,0.8063,0.0001177,0.8137
+knn (z),knn k=20 distance (z),,,,,region,ad,10-60m,38366,36305,36305,36305,38366,0.9463,0.0001252,0.8254,0.8254,1.019,1.017,0.0001232,1.016
+knn (z),knn k=20 distance (z),,,,,region,ad,4-9m,35286,32727,32727,32727,35286,0.9275,0.0001131,0.7749,0.7749,0.844,0.8685,0.0001117,0.8777
+knn (z),knn k=20 distance (z),,,,,region,fa,0-3m,38584,36821,36821,36821,38584,0.9543,0.0346,0.6121,0.6121,0.3666,0.8023,0.03503,0.8119
+knn (z),knn k=20 distance (z),,,,,region,fa,10-60m,38366,36305,36305,36305,38366,0.9463,0.04267,0.7393,0.7393,0.8282,0.8319,0.0438,0.8435
+knn (z),knn k=20 distance (z),,,,,region,fa,4-9m,35286,32727,32727,32727,35286,0.9275,0.036,0.6167,0.6167,0.7296,0.9117,0.03644,0.9183
+knn (z),knn k=20 distance (z),,,,,region,md,0-3m,38584,36821,36821,36821,38584,0.9543,9.058e-05,0.6508,0.6508,0.3062,0.6271,9.077e-05,0.6473
+knn (z),knn k=20 distance (z),,,,,region,md,10-60m,38366,36305,36305,36305,38366,0.9463,9.637e-05,0.5822,0.5822,0.8294,0.8284,9.485e-05,0.8374
+knn (z),knn k=20 distance (z),,,,,region,md,4-9m,35286,32727,32727,32727,35286,0.9275,7.982e-05,0.5293,0.5293,0.6262,0.6987,7.876e-05,0.715
+knn (z),knn k=20 distance (z),,,,,region,rd,0-3m,38584,36821,36821,36821,38584,0.9543,8.782e-05,0.6163,0.6163,0.2914,0.6209,8.864e-05,0.6436
+knn (z),knn k=20 distance (z),,,,,region,rd,10-60m,38366,36305,36305,36305,38366,0.9463,9.519e-05,0.5841,0.5841,0.7936,0.7979,9.419e-05,0.8101
+knn (z),knn k=20 distance (z),,,,,region,rd,4-9m,35286,32727,32727,32727,35286,0.9275,7.841e-05,0.5139,0.5139,0.6061,0.7098,7.751e-05,0.7239
+knn (z),knn k=20 distance (z),,,,,whole measure,FWAD,0-3m,89843,0,0,0,89843,0,,,,,,0.0001068,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWAD,10-60m,68501,0,0,0,68501,0,,,,,,8.227e-05,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWAD,4-9m,68827,0,0,0,68827,0,,,,,,8.092e-05,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWFA,0-3m,89843,0,0,0,89843,0,,,,,,0.07318,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWFA,10-60m,68501,0,0,0,68501,0,,,,,,0.06799,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWFA,4-9m,68827,0,0,0,68827,0,,,,,,0.05684,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWMD,0-3m,89843,0,0,0,89843,0,,,,,,9.714e-05,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWMD,10-60m,68501,0,0,0,68501,0,,,,,,6.023e-05,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWMD,4-9m,68827,0,0,0,68827,0,,,,,,6.007e-05,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWRD,0-3m,89843,0,0,0,89843,0,,,,,,0.0001041,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWRD,10-60m,68501,0,0,0,68501,0,,,,,,6.405e-05,1
+knn (z),knn k=20 distance (z),,,,,whole measure,FWRD,4-9m,68827,0,0,0,68827,0,,,,,,6.151e-05,1
+knn (z),knn k=20 distance (z),,,,,whole measure,NDI,0-3m,69568,0,0,0,69568,0,,,,,,0.06031,1
+knn (z),knn k=20 distance (z),,,,,whole measure,NDI,10-60m,90139,0,0,0,90139,0,,,,,,0.06997,1
+knn (z),knn k=20 distance (z),,,,,whole measure,NDI,4-9m,89366,0,0,0,89366,0,,,,,,0.05904,1
+knn (z),knn k=20 distance (z),,,,,whole measure,ODI,0-3m,69568,0,0,0,69568,0,,,,,,0.0516,1
+knn (z),knn k=20 distance (z),,,,,whole measure,ODI,10-60m,90139,0,0,0,90139,0,,,,,,0.04014,1
+knn (z),knn k=20 distance (z),,,,,whole measure,ODI,4-9m,89366,0,0,0,89366,0,,,,,,0.04051,1
+knn (z),knn k=20 distance (z),,,,,whole profile,FWAD,0-3m,16193,16191,16191,16191,16193,0.9999,0.0001252,0.8779,0.8779,0.4454,0.8076,0.0001252,0.8076
+knn (z),knn k=20 distance (z),,,,,whole profile,FWAD,10-60m,16130,16130,16130,16130,16130,1,7.869e-05,0.6362,0.6362,0.8236,0.7878,7.869e-05,0.7878
+knn (z),knn k=20 distance (z),,,,,whole profile,FWAD,4-9m,16398,16398,16398,16398,16398,1,7.643e-05,0.6576,0.6576,0.7488,0.8064,7.643e-05,0.8064
+knn (z),knn k=20 distance (z),,,,,whole profile,FWF,0-3m,16193,16191,16191,16191,16193,0.9999,0.04781,0.6757,0.6757,0.6354,0.7795,0.04781,0.7796
+knn (z),knn k=20 distance (z),,,,,whole profile,FWF,10-60m,16130,16130,16130,16130,16130,1,0.05092,0.6336,0.6336,0.8825,0.8264,0.05092,0.8264
+knn (z),knn k=20 distance (z),,,,,whole profile,FWF,4-9m,16398,16398,16398,16398,16398,1,0.05011,0.5624,0.5624,0.7644,0.8963,0.05011,0.8963
+knn (z),knn k=20 distance (z),,,,,whole profile,FWFA,0-3m,16193,16191,16191,16191,16193,0.9999,0.04453,0.584,0.584,0.2785,0.6061,0.04453,0.6061
+knn (z),knn k=20 distance (z),,,,,whole profile,FWFA,10-60m,16130,16130,16130,16130,16130,1,0.052,0.6252,0.6252,0.7641,0.7233,0.052,0.7233
+knn (z),knn k=20 distance (z),,,,,whole profile,FWFA,4-9m,16398,16398,16398,16398,16398,1,0.03969,0.5399,0.5399,0.5693,0.6551,0.03969,0.6551
+knn (z),knn k=20 distance (z),,,,,whole profile,FWMD,0-3m,16193,16191,16191,16191,16193,0.9999,5.797e-05,0.7973,0.7973,0.3132,0.6397,5.797e-05,0.6397
+knn (z),knn k=20 distance (z),,,,,whole profile,FWMD,10-60m,16130,16130,16130,16130,16130,1,4.033e-05,0.4312,0.4312,0.6644,0.5935,4.033e-05,0.5935
+knn (z),knn k=20 distance (z),,,,,whole profile,FWMD,4-9m,16398,16398,16398,16398,16398,1,4.543e-05,0.4999,0.4999,0.5794,0.6572,4.543e-05,0.6572
+knn (z),knn k=20 distance (z),,,,,whole profile,FWRD,0-3m,16193,16191,16191,16191,16193,0.9999,5.09e-05,0.7012,0.7012,0.2697,0.5567,5.09e-05,0.5567
+knn (z),knn k=20 distance (z),,,,,whole profile,FWRD,10-60m,16130,16130,16130,16130,16130,1,3.43e-05,0.4279,0.4279,0.6415,0.5825,3.43e-05,0.5825
+knn (z),knn k=20 distance (z),,,,,whole profile,FWRD,4-9m,16398,16398,16398,16398,16398,1,3.871e-05,0.4778,0.4778,0.5331,0.6131,3.871e-05,0.6131
+knn (z),knn k=20 distance (z),,,,,whole profile,NDI,0-3m,16193,16191,16191,16191,16193,0.9999,0.05143,0.4865,0.4865,0.2662,0.7842,0.05143,0.7842
+knn (z),knn k=20 distance (z),,,,,whole profile,NDI,10-60m,16130,16130,16130,16130,16130,1,0.04385,0.4244,0.4244,0.6287,0.5765,0.04385,0.5765
+knn (z),knn k=20 distance (z),,,,,whole profile,NDI,4-9m,16398,16398,16398,16398,16398,1,0.04612,0.4511,0.4511,0.5597,0.7864,0.04612,0.7864
+knn (z),knn k=20 distance (z),,,,,whole profile,ODI,0-3m,16193,16191,16191,16191,16193,0.9999,0.04997,1.124,1.124,0.6865,0.8142,0.04996,0.8142
+knn (z),knn k=20 distance (z),,,,,whole profile,ODI,10-60m,16130,16130,16130,16130,16130,1,0.04366,0.826,0.826,0.9098,0.9226,0.04366,0.9226
+knn (z),knn k=20 distance (z),,,,,whole profile,ODI,4-9m,16398,16398,16398,16398,16398,1,0.03729,0.7523,0.7523,0.8382,0.8907,0.03729,0.8907
+knn (z),knn k=20 distance (z),,,,,whole profile,ad,0-3m,16193,16191,16191,16191,16193,0.9999,0.0001103,0.8084,0.8084,0.4594,0.7267,0.0001103,0.7268
+knn (z),knn k=20 distance (z),,,,,whole profile,ad,10-60m,16130,16130,16130,16130,16130,1,0.0001079,0.7011,0.7011,0.8689,0.8659,0.0001079,0.8659
+knn (z),knn k=20 distance (z),,,,,whole profile,ad,4-9m,16398,16398,16398,16398,16398,1,0.0001158,0.6972,0.6972,0.7888,0.8087,0.0001158,0.8087
+knn (z),knn k=20 distance (z),,,,,whole profile,fa,0-3m,16193,16191,16191,16191,16193,0.9999,0.03207,0.5305,0.5305,0.3219,0.7159,0.03207,0.7159
+knn (z),knn k=20 distance (z),,,,,whole profile,fa,10-60m,16130,16130,16130,16130,16130,1,0.04013,0.6626,0.6626,0.77,0.7506,0.04013,0.7506
+knn (z),knn k=20 distance (z),,,,,whole profile,fa,4-9m,16398,16398,16398,16398,16398,1,0.02967,0.5289,0.5289,0.6415,0.8285,0.02967,0.8285
+knn (z),knn k=20 distance (z),,,,,whole profile,md,0-3m,16193,16191,16191,16191,16193,0.9999,8.035e-05,0.5993,0.5993,0.2751,0.5618,8.035e-05,0.5618
+knn (z),knn k=20 distance (z),,,,,whole profile,md,10-60m,16130,16130,16130,16130,16130,1,8.278e-05,0.4783,0.4783,0.7078,0.6848,8.278e-05,0.6848
+knn (z),knn k=20 distance (z),,,,,whole profile,md,4-9m,16398,16398,16398,16398,16398,1,8.772e-05,0.4909,0.4909,0.6066,0.6774,8.772e-05,0.6774
+knn (z),knn k=20 distance (z),,,,,whole profile,rd,0-3m,16193,16191,16191,16191,16193,0.9999,7.633e-05,0.5561,0.5561,0.2584,0.5484,7.632e-05,0.5484
+knn (z),knn k=20 distance (z),,,,,whole profile,rd,10-60m,16130,16130,16130,16130,16130,1,8.05e-05,0.4925,0.4925,0.7001,0.6781,8.05e-05,0.6781
+knn (z),knn k=20 distance (z),,,,,whole profile,rd,4-9m,16398,16398,16398,16398,16398,1,8.135e-05,0.4548,0.4548,0.5622,0.6675,8.135e-05,0.6675
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWAD,0-3m,1790,1790,1790,1790,1790,1,6.14e-05,0.5829,0.5829,0.3115,0.4787,6.14e-05,0.4787
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWAD,10-60m,1787,1787,1787,1787,1787,1,4.943e-05,0.443,0.443,0.5218,0.4988,4.943e-05,0.4988
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWAD,4-9m,1750,1750,1750,1750,1750,1,5.405e-05,0.4762,0.4762,0.4837,0.5654,5.405e-05,0.5654
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWF,0-3m,1790,1790,1790,1790,1790,1,0.03372,0.5036,0.5036,0.5263,0.5401,0.03372,0.5401
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWF,10-60m,1787,1787,1787,1787,1787,1,0.03891,0.5515,0.5515,0.7143,0.683,0.03891,0.683
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWF,4-9m,1750,1750,1750,1750,1750,1,0.03192,0.462,0.462,0.5981,0.6351,0.03192,0.6351
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWFA,0-3m,1790,1790,1790,1790,1790,1,0.04353,0.4803,0.4803,0.2582,0.5035,0.04353,0.5035
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWFA,10-60m,1787,1787,1787,1787,1787,1,0.04575,0.5131,0.5131,0.5461,0.5326,0.04575,0.5326
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWFA,4-9m,1750,1750,1750,1750,1750,1,0.03506,0.4423,0.4423,0.465,0.5246,0.03506,0.5246
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWMD,0-3m,1790,1790,1790,1790,1790,1,3.461e-05,0.4267,0.4267,0.1758,0.3166,3.461e-05,0.3166
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWMD,10-60m,1787,1787,1787,1787,1787,1,2.806e-05,0.3274,0.3274,0.4191,0.3921,2.806e-05,0.3921
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWMD,4-9m,1750,1750,1750,1750,1750,1,2.558e-05,0.3277,0.3277,0.3378,0.4069,2.558e-05,0.4069
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWRD,0-3m,1790,1790,1790,1790,1790,1,3.249e-05,0.431,0.431,0.1741,0.3226,3.249e-05,0.3226
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWRD,10-60m,1787,1787,1787,1787,1787,1,2.797e-05,0.3537,0.3537,0.4443,0.4184,2.797e-05,0.4184
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,FWRD,4-9m,1750,1750,1750,1750,1750,1,2.527e-05,0.3365,0.3365,0.3452,0.4072,2.527e-05,0.4072
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,NDI,0-3m,1790,1790,1790,1790,1790,1,0.04118,0.3693,0.3693,0.221,0.4808,0.04118,0.4808
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,NDI,10-60m,1787,1787,1787,1787,1787,1,0.0363,0.362,0.362,0.4635,0.4554,0.0363,0.4554
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,NDI,4-9m,1750,1750,1750,1750,1750,1,0.02503,0.3108,0.3108,0.3797,0.5238,0.02503,0.5238
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,ODI,0-3m,1790,1790,1790,1790,1790,1,0.05268,0.8438,0.8438,0.5902,0.6504,0.05268,0.6504
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,ODI,10-60m,1787,1787,1787,1787,1787,1,0.03542,0.5762,0.5762,0.6164,0.6194,0.03542,0.6194
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,ODI,4-9m,1750,1750,1750,1750,1750,1,0.03597,0.57,0.57,0.5992,0.609,0.03597,0.609
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,ad,0-3m,1790,1790,1790,1790,1790,1,0.0001402,0.7012,0.7012,0.3929,0.552,0.0001402,0.552
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,ad,10-60m,1787,1787,1787,1787,1787,1,7.764e-05,0.5321,0.5321,0.6645,0.6699,7.764e-05,0.6699
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,ad,4-9m,1750,1750,1750,1750,1750,1,7e-05,0.5175,0.5175,0.5909,0.6208,7e-05,0.6208
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,fa,0-3m,1790,1790,1790,1790,1790,1,0.03269,0.5236,0.5236,0.338,0.628,0.03269,0.628
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,fa,10-60m,1787,1787,1787,1787,1787,1,0.03148,0.5234,0.5234,0.5573,0.5641,0.03148,0.5641
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,fa,4-9m,1750,1750,1750,1750,1750,1,0.03061,0.4794,0.4794,0.5502,0.648,0.03061,0.648
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,md,0-3m,1790,1790,1790,1790,1790,1,8.185e-05,0.4527,0.4527,0.209,0.3755,8.185e-05,0.3755
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,md,10-60m,1787,1787,1787,1787,1787,1,5.458e-05,0.3838,0.3838,0.5596,0.567,5.458e-05,0.567
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,md,4-9m,1750,1750,1750,1750,1750,1,4.542e-05,0.331,0.331,0.4362,0.4972,4.542e-05,0.4972
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,rd,0-3m,1790,1790,1790,1790,1790,1,6.46e-05,0.3917,0.3917,0.182,0.342,6.46e-05,0.342
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,rd,10-60m,1787,1787,1787,1787,1787,1,5.489e-05,0.3826,0.3826,0.5333,0.5367,5.489e-05,0.5367
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,end gap,rd,4-9m,1750,1750,1750,1750,1750,1,4.567e-05,0.3404,0.3404,0.4491,0.5231,4.567e-05,0.5231
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWAD,0-3m,3234,3234,3234,3234,3234,1,7.231e-05,0.4656,0.4656,0.2234,0.4175,7.231e-05,0.4175
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWAD,10-60m,3127,3127,3127,3127,3127,1,3.65e-05,0.367,0.367,0.4845,0.4713,3.65e-05,0.4713
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWAD,4-9m,3232,3232,3232,3232,3232,1,3.371e-05,0.3499,0.3499,0.3912,0.4367,3.371e-05,0.4367
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWF,0-3m,3234,3234,3234,3234,3234,1,0.03335,0.3912,0.3912,0.3898,0.5096,0.03335,0.5096
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWF,10-60m,3127,3127,3127,3127,3127,1,0.01914,0.372,0.372,0.4985,0.4669,0.01914,0.4669
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWF,4-9m,3232,3232,3232,3232,3232,1,0.02014,0.3164,0.3164,0.4298,0.5404,0.02014,0.5404
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWFA,0-3m,3234,3234,3234,3234,3234,1,0.02244,0.3154,0.3154,0.144,0.3043,0.02244,0.3043
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWFA,10-60m,3127,3127,3127,3127,3127,1,0.02556,0.3378,0.3378,0.3982,0.3808,0.02556,0.3808
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWFA,4-9m,3232,3232,3232,3232,3232,1,0.02281,0.3,0.3,0.3137,0.381,0.02281,0.381
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWMD,0-3m,3234,3234,3234,3234,3234,1,4.39e-05,0.4387,0.4387,0.1623,0.3262,4.39e-05,0.3262
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWMD,10-60m,3127,3127,3127,3127,3127,1,1.516e-05,0.2099,0.2099,0.316,0.2914,1.516e-05,0.2914
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWMD,4-9m,3232,3232,3232,3232,3232,1,1.858e-05,0.242,0.242,0.2663,0.3182,1.858e-05,0.3182
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWRD,0-3m,3234,3234,3234,3234,3234,1,2.813e-05,0.3858,0.3858,0.1388,0.2764,2.813e-05,0.2764
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWRD,10-60m,3127,3127,3127,3127,3127,1,1.425e-05,0.1959,0.1959,0.2817,0.2623,1.425e-05,0.2623
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,FWRD,4-9m,3232,3232,3232,3232,3232,1,1.85e-05,0.2288,0.2288,0.247,0.3,1.85e-05,0.3
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,NDI,0-3m,3234,3234,3234,3234,3234,1,0.02597,0.2582,0.2582,0.1325,0.3997,0.02597,0.3997
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,NDI,10-60m,3127,3127,3127,3127,3127,1,0.01838,0.2079,0.2079,0.2978,0.2827,0.01838,0.2827
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,NDI,4-9m,3232,3232,3232,3232,3232,1,0.02199,0.2314,0.2314,0.2774,0.4202,0.02199,0.4202
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,ODI,0-3m,3234,3234,3234,3234,3234,1,0.02592,0.6631,0.6631,0.4329,0.4756,0.02592,0.4756
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,ODI,10-60m,3127,3127,3127,3127,3127,1,0.02009,0.5188,0.5188,0.5768,0.5901,0.02009,0.5901
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,ODI,4-9m,3232,3232,3232,3232,3232,1,0.02009,0.4547,0.4547,0.5293,0.5647,0.02009,0.5647
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,ad,0-3m,3234,3234,3234,3234,3234,1,7.467e-05,0.4755,0.4755,0.263,0.4324,7.467e-05,0.4324
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,ad,10-60m,3127,3127,3127,3127,3127,1,4.613e-05,0.4242,0.4242,0.5465,0.5406,4.613e-05,0.5406
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,ad,4-9m,3232,3232,3232,3232,3232,1,4.876e-05,0.4152,0.4152,0.4589,0.4849,4.876e-05,0.4849
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,fa,0-3m,3234,3234,3234,3234,3234,1,0.01721,0.3146,0.3146,0.1886,0.3968,0.01721,0.3968
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,fa,10-60m,3127,3127,3127,3127,3127,1,0.02,0.3553,0.3553,0.42,0.4088,0.02,0.4088
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,fa,4-9m,3232,3232,3232,3232,3232,1,0.01828,0.3145,0.3145,0.3735,0.4968,0.01828,0.4968
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,md,0-3m,3234,3234,3234,3234,3234,1,5.437e-05,0.3408,0.3408,0.1504,0.3062,5.437e-05,0.3062
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,md,10-60m,3127,3127,3127,3127,3127,1,2.265e-05,0.25,0.25,0.3753,0.3644,2.265e-05,0.3644
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,md,4-9m,3232,3232,3232,3232,3232,1,2.993e-05,0.229,0.229,0.2799,0.3236,2.993e-05,0.3236
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,rd,0-3m,3234,3234,3234,3234,3234,1,4.966e-05,0.3137,0.3137,0.1416,0.2984,4.966e-05,0.2984
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,rd,10-60m,3127,3127,3127,3127,3127,1,2.488e-05,0.2394,0.2394,0.3403,0.3314,2.488e-05,0.3314
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,gap,rd,4-9m,3232,3232,3232,3232,3232,1,2.915e-05,0.2264,0.2264,0.2745,0.3371,2.915e-05,0.3371
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWAD,0-3m,38584,36821,36821,36821,38584,0.9543,0.0001492,0.9378,0.9378,0.4982,0.8836,0.0001471,0.8889
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWAD,10-60m,38366,36305,36305,36305,38366,0.9463,0.0001777,0.7738,0.7738,0.9793,0.9443,0.0001739,0.9467
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWAD,4-9m,35286,32727,32727,32727,35286,0.9275,9.453e-05,0.7987,0.7987,0.9205,0.985,9.464e-05,0.9864
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWF,0-3m,38584,36821,36821,36821,38584,0.9543,0.06063,0.8566,0.8566,0.7497,0.9467,0.05995,0.9518
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWF,10-60m,38366,36305,36305,36305,38366,0.9463,0.06407,0.7539,0.7539,0.9875,0.9501,0.06278,0.9524
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWF,4-9m,35286,32727,32727,32727,35286,0.9275,0.0554,0.6748,0.6748,0.855,0.9885,0.05392,0.9893
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWFA,0-3m,38584,36821,36821,36821,38584,0.9543,0.04871,0.7022,0.7022,0.3472,0.7505,0.0497,0.7622
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWFA,10-60m,38366,36305,36305,36305,38366,0.9463,0.05678,0.7426,0.7426,0.8744,0.8478,0.05728,0.8562
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWFA,4-9m,35286,32727,32727,32727,35286,0.9275,0.04578,0.6131,0.6131,0.6396,0.7264,0.04671,0.7451
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWMD,0-3m,38584,36821,36821,36821,38584,0.9543,6.896e-05,0.7959,0.7959,0.3287,0.666,6.946e-05,0.6805
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWMD,10-60m,38366,36305,36305,36305,38366,0.9463,7.322e-05,0.5225,0.5225,0.7685,0.7123,7.261e-05,0.7261
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWMD,4-9m,35286,32727,32727,32727,35286,0.9275,5.707e-05,0.6045,0.6045,0.7017,0.8004,5.81e-05,0.8166
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWRD,0-3m,38584,36821,36821,36821,38584,0.9543,5.515e-05,0.7317,0.7317,0.2942,0.6047,5.699e-05,0.6223
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWRD,10-60m,38366,36305,36305,36305,38366,0.9463,4.137e-05,0.5156,0.5156,0.7275,0.6863,4.32e-05,0.7053
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,FWRD,4-9m,35286,32727,32727,32727,35286,0.9275,4.728e-05,0.5546,0.5546,0.6157,0.7084,4.937e-05,0.73
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,NDI,0-3m,38584,36821,36821,36821,38584,0.9543,0.05262,0.5043,0.5043,0.271,0.7821,0.05284,0.7951
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,NDI,10-60m,38366,36305,36305,36305,38366,0.9463,0.05376,0.5054,0.5054,0.7173,0.699,0.05425,0.7177
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,NDI,4-9m,35286,32727,32727,32727,35286,0.9275,0.05788,0.5513,0.5513,0.6793,0.8889,0.05705,0.8942
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,ODI,0-3m,38584,36821,36821,36821,38584,0.9543,0.05366,1.197,1.197,0.8086,0.9712,0.05434,0.9729
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,ODI,10-60m,38366,36305,36305,36305,38366,0.9463,0.04861,0.9645,0.9645,1.071,1.1,0.04803,1.095
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,ODI,4-9m,35286,32727,32727,32727,35286,0.9275,0.04506,0.9261,0.9261,1.008,1.083,0.04495,1.076
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,ad,0-3m,38584,36821,36821,36821,38584,0.9543,0.0001249,0.9018,0.9018,0.5329,0.8389,0.0001237,0.8449
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,ad,10-60m,38366,36305,36305,36305,38366,0.9463,0.0001265,0.8374,0.8374,1.034,1.031,0.0001245,1.03
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,ad,4-9m,35286,32727,32727,32727,35286,0.9275,0.0001233,0.8237,0.8237,0.8972,0.9232,0.0001214,0.9284
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,fa,0-3m,38584,36821,36821,36821,38584,0.9543,0.03622,0.6506,0.6506,0.3896,0.8527,0.03656,0.8596
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,fa,10-60m,38366,36305,36305,36305,38366,0.9463,0.04428,0.7761,0.7761,0.8694,0.8733,0.04529,0.8819
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,fa,4-9m,35286,32727,32727,32727,35286,0.9275,0.03751,0.6439,0.6439,0.7618,0.952,0.03783,0.9555
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,md,0-3m,38584,36821,36821,36821,38584,0.9543,9.2e-05,0.6641,0.6641,0.3125,0.6398,9.212e-05,0.6591
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,md,10-60m,38366,36305,36305,36305,38366,0.9463,9.489e-05,0.5732,0.5732,0.8166,0.8157,9.342e-05,0.8254
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,md,4-9m,35286,32727,32727,32727,35286,0.9275,8.645e-05,0.5654,0.5654,0.6689,0.7463,8.501e-05,0.7596
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,rd,0-3m,38584,36821,36821,36821,38584,0.9543,8.974e-05,0.631,0.631,0.2983,0.6357,9.046e-05,0.6573
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,rd,10-60m,38366,36305,36305,36305,38366,0.9463,9.521e-05,0.5938,0.5938,0.8067,0.811,9.42e-05,0.8224
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,region,rd,4-9m,35286,32727,32727,32727,35286,0.9275,8.411e-05,0.5427,0.5427,0.6401,0.7496,8.286e-05,0.7614
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWAD,0-3m,89843,0,0,0,89843,0,,,,,,0.0001068,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWAD,10-60m,68501,0,0,0,68501,0,,,,,,8.227e-05,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWAD,4-9m,68827,0,0,0,68827,0,,,,,,8.092e-05,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWFA,0-3m,89843,0,0,0,89843,0,,,,,,0.07318,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWFA,10-60m,68501,0,0,0,68501,0,,,,,,0.06799,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWFA,4-9m,68827,0,0,0,68827,0,,,,,,0.05684,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWMD,0-3m,89843,0,0,0,89843,0,,,,,,9.714e-05,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWMD,10-60m,68501,0,0,0,68501,0,,,,,,6.023e-05,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWMD,4-9m,68827,0,0,0,68827,0,,,,,,6.007e-05,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWRD,0-3m,89843,0,0,0,89843,0,,,,,,0.0001041,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWRD,10-60m,68501,0,0,0,68501,0,,,,,,6.405e-05,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,FWRD,4-9m,68827,0,0,0,68827,0,,,,,,6.151e-05,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,NDI,0-3m,69568,0,0,0,69568,0,,,,,,0.06031,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,NDI,10-60m,90139,0,0,0,90139,0,,,,,,0.06997,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,NDI,4-9m,89366,0,0,0,89366,0,,,,,,0.05904,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,ODI,0-3m,69568,0,0,0,69568,0,,,,,,0.0516,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,ODI,10-60m,90139,0,0,0,90139,0,,,,,,0.04014,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole measure,ODI,4-9m,89366,0,0,0,89366,0,,,,,,0.04051,1
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWAD,0-3m,16193,16191,16191,16191,16193,0.9999,0.0001158,0.8604,0.8604,0.4365,0.7915,0.0001158,0.7915
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWAD,10-60m,16130,16130,16130,16130,16130,1,9.626e-05,0.6583,0.6583,0.8523,0.8152,9.626e-05,0.8152
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWAD,4-9m,16398,16398,16398,16398,16398,1,7.509e-05,0.6624,0.6624,0.7544,0.8123,7.509e-05,0.8123
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWF,0-3m,16193,16191,16191,16191,16193,0.9999,0.05032,0.7831,0.7831,0.7364,0.9035,0.05032,0.9035
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWF,10-60m,16130,16130,16130,16130,16130,1,0.05127,0.6571,0.6571,0.9151,0.857,0.05127,0.857
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWF,4-9m,16398,16398,16398,16398,16398,1,0.04993,0.5947,0.5947,0.8082,0.9477,0.04993,0.9477
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWFA,0-3m,16193,16191,16191,16191,16193,0.9999,0.04532,0.5899,0.5899,0.2812,0.6121,0.04532,0.6122
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWFA,10-60m,16130,16130,16130,16130,16130,1,0.05235,0.6422,0.6422,0.7848,0.743,0.05235,0.743
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWFA,4-9m,16398,16398,16398,16398,16398,1,0.04048,0.5603,0.5603,0.5908,0.6799,0.04048,0.6799
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWMD,0-3m,16193,16191,16191,16191,16193,0.9999,5.602e-05,0.7386,0.7386,0.2902,0.5926,5.602e-05,0.5926
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWMD,10-60m,16130,16130,16130,16130,16130,1,3.722e-05,0.4333,0.4333,0.6676,0.5964,3.722e-05,0.5964
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWMD,4-9m,16398,16398,16398,16398,16398,1,4.541e-05,0.5155,0.5155,0.5975,0.6778,4.541e-05,0.6778
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWRD,0-3m,16193,16191,16191,16191,16193,0.9999,4.91e-05,0.6562,0.6562,0.2524,0.521,4.91e-05,0.521
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWRD,10-60m,16130,16130,16130,16130,16130,1,3.545e-05,0.4364,0.4364,0.6541,0.594,3.545e-05,0.594
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,FWRD,4-9m,16398,16398,16398,16398,16398,1,3.97e-05,0.4981,0.4981,0.5558,0.6392,3.97e-05,0.6392
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,NDI,0-3m,16193,16191,16191,16191,16193,0.9999,0.04722,0.4626,0.4626,0.2532,0.7457,0.04722,0.7458
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,NDI,10-60m,16130,16130,16130,16130,16130,1,0.04432,0.423,0.423,0.6267,0.5747,0.04432,0.5747
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,NDI,4-9m,16398,16398,16398,16398,16398,1,0.04586,0.4531,0.4531,0.5623,0.79,0.04586,0.79
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,ODI,0-3m,16193,16191,16191,16191,16193,0.9999,0.04986,1.144,1.144,0.6987,0.8287,0.04985,0.8287
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,ODI,10-60m,16130,16130,16130,16130,16130,1,0.04616,0.8626,0.8626,0.9501,0.9634,0.04616,0.9634
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,ODI,4-9m,16398,16398,16398,16398,16398,1,0.03883,0.7897,0.7897,0.88,0.935,0.03883,0.935
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,ad,0-3m,16193,16191,16191,16191,16193,0.9999,0.0001079,0.8335,0.8335,0.4736,0.7492,0.0001079,0.7493
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,ad,10-60m,16130,16130,16130,16130,16130,1,0.0001118,0.7234,0.7234,0.8965,0.8935,0.0001118,0.8935
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,ad,4-9m,16398,16398,16398,16398,16398,1,0.0001233,0.746,0.746,0.8439,0.8652,0.0001233,0.8652
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,fa,0-3m,16193,16191,16191,16191,16193,0.9999,0.03261,0.5377,0.5377,0.3262,0.7255,0.03261,0.7256
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,fa,10-60m,16130,16130,16130,16130,16130,1,0.04164,0.6992,0.6992,0.8125,0.7921,0.04164,0.7921
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,fa,4-9m,16398,16398,16398,16398,16398,1,0.03106,0.5545,0.5545,0.6725,0.8685,0.03106,0.8685
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,md,0-3m,16193,16191,16191,16191,16193,0.9999,7.741e-05,0.6033,0.6033,0.2769,0.5655,7.741e-05,0.5656
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,md,10-60m,16130,16130,16130,16130,16130,1,8.382e-05,0.4874,0.4874,0.7212,0.6978,8.382e-05,0.6978
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,md,4-9m,16398,16398,16398,16398,16398,1,8.733e-05,0.501,0.501,0.6191,0.6914,8.733e-05,0.6914
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,rd,0-3m,16193,16191,16191,16191,16193,0.9999,7.569e-05,0.565,0.565,0.2625,0.5572,7.568e-05,0.5572
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,rd,10-60m,16130,16130,16130,16130,16130,1,8.256e-05,0.5029,0.5029,0.7149,0.6924,8.256e-05,0.6924
+siren (z),siren xyz omega0=10 (z),xyz,10,500,0,whole profile,rd,4-9m,16398,16398,16398,16398,16398,1,7.991e-05,0.4604,0.4604,0.569,0.6756,7.991e-05,0.6756

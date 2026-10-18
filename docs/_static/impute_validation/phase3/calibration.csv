@@ -1,0 +1,221 @@
+method,setting,pattern,metric,n,rms_z,within_1.96sd
+population,population q=80 isotropic,end gap,FWAD,5327,0.9962,0.9478
+population,population q=80 isotropic,end gap,FWF,5327,0.9818,0.9713
+population,population q=80 isotropic,end gap,FWFA,5327,1.041,0.9429
+population,population q=80 isotropic,end gap,FWMD,5327,1.035,0.9401
+population,population q=80 isotropic,end gap,FWRD,5327,1.039,0.9422
+population,population q=80 isotropic,end gap,NDI,5327,1.107,0.932
+population,population q=80 isotropic,end gap,ODI,5327,0.967,0.9572
+population,population q=80 isotropic,end gap,ad,5327,1.019,0.9471
+population,population q=80 isotropic,end gap,all,58597,1.034,0.9457
+population,population q=80 isotropic,end gap,fa,5327,1.091,0.9236
+population,population q=80 isotropic,end gap,md,5327,1.05,0.9525
+population,population q=80 isotropic,end gap,rd,5327,1.041,0.9465
+population+knn,population q=80 isotropic + knn k=20,end gap,FWAD,5327,0.8418,0.9662
+population+knn,population q=80 isotropic + knn k=20,end gap,FWF,5327,0.8507,0.9805
+population+knn,population q=80 isotropic + knn k=20,end gap,FWFA,5327,0.878,0.9664
+population+knn,population q=80 isotropic + knn k=20,end gap,FWMD,5327,0.8131,0.9698
+population+knn,population q=80 isotropic + knn k=20,end gap,FWRD,5327,0.8133,0.9735
+population+knn,population q=80 isotropic + knn k=20,end gap,NDI,5327,0.8675,0.9656
+population+knn,population q=80 isotropic + knn k=20,end gap,ODI,5327,0.832,0.9767
+population+knn,population q=80 isotropic + knn k=20,end gap,ad,5327,0.8817,0.961
+population+knn,population q=80 isotropic + knn k=20,end gap,all,58597,0.856,0.9691
+population+knn,population q=80 isotropic + knn k=20,end gap,fa,5327,0.9261,0.9559
+population+knn,population q=80 isotropic + knn k=20,end gap,md,5327,0.8645,0.9711
+population+knn,population q=80 isotropic + knn k=20,end gap,rd,5327,0.8471,0.9733
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,FWAD,5327,0.7117,0.9775
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,FWF,5327,0.7995,0.988
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,FWFA,5327,0.7753,0.9715
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,FWMD,5327,0.6704,0.9824
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,FWRD,5327,0.6926,0.9825
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,NDI,5327,0.7334,0.9777
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,ODI,5327,0.7189,0.9812
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,ad,5327,0.7625,0.9707
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,all,58597,0.7418,0.9776
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,fa,5327,0.8135,0.9649
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,md,5327,0.7463,0.978
+population+siren,population q=80 isotropic + siren xyz omega0=10,end gap,rd,5327,0.7354,0.9797
+prior-mean,prior-mean,end gap,FWAD,5327,1.068,0.9354
+prior-mean,prior-mean,end gap,FWF,5327,0.8702,0.9743
+prior-mean,prior-mean,end gap,FWFA,5327,1.101,0.9217
+prior-mean,prior-mean,end gap,FWMD,5327,1.148,0.9067
+prior-mean,prior-mean,end gap,FWRD,5327,1.172,0.8977
+prior-mean,prior-mean,end gap,NDI,5327,0.9933,0.9499
+prior-mean,prior-mean,end gap,ODI,5327,1.034,0.9412
+prior-mean,prior-mean,end gap,ad,5327,1.019,0.9463
+prior-mean,prior-mean,end gap,all,58597,1.037,0.9382
+prior-mean,prior-mean,end gap,fa,5327,1.037,0.9367
+prior-mean,prior-mean,end gap,md,5327,0.9731,0.9608
+prior-mean,prior-mean,end gap,rd,5327,0.9856,0.9497
+population,population q=80 isotropic,gap,FWAD,9593,0.8279,0.9786
+population,population q=80 isotropic,gap,FWF,9593,0.7428,0.9786
+population,population q=80 isotropic,gap,FWFA,9593,0.8016,0.98
+population,population q=80 isotropic,gap,FWMD,9593,0.7992,0.9722
+population,population q=80 isotropic,gap,FWRD,9593,0.7873,0.9788
+population,population q=80 isotropic,gap,NDI,9593,0.8606,0.9667
+population,population q=80 isotropic,gap,ODI,9593,0.8726,0.9721
+population,population q=80 isotropic,gap,ad,9593,0.8456,0.9733
+population,population q=80 isotropic,gap,all,105523,0.8175,0.9758
+population,population q=80 isotropic,gap,fa,9593,0.8537,0.9756
+population,population q=80 isotropic,gap,md,9593,0.8023,0.9764
+population,population q=80 isotropic,gap,rd,9593,0.7991,0.9809
+population+knn,population q=80 isotropic + knn k=20,gap,FWAD,9593,0.6572,0.9919
+population+knn,population q=80 isotropic + knn k=20,gap,FWF,9593,0.5842,0.989
+population+knn,population q=80 isotropic + knn k=20,gap,FWFA,9593,0.6423,0.9897
+population+knn,population q=80 isotropic + knn k=20,gap,FWMD,9593,0.6671,0.9863
+population+knn,population q=80 isotropic + knn k=20,gap,FWRD,9593,0.6515,0.9893
+population+knn,population q=80 isotropic + knn k=20,gap,NDI,9593,0.6615,0.9806
+population+knn,population q=80 isotropic + knn k=20,gap,ODI,9593,0.7182,0.9853
+population+knn,population q=80 isotropic + knn k=20,gap,ad,9593,0.6817,0.9899
+population+knn,population q=80 isotropic + knn k=20,gap,all,105523,0.6549,0.9882
+population+knn,population q=80 isotropic + knn k=20,gap,fa,9593,0.6637,0.9912
+population+knn,population q=80 isotropic + knn k=20,gap,md,9593,0.6408,0.9869
+population+knn,population q=80 isotropic + knn k=20,gap,rd,9593,0.6352,0.9899
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,FWAD,9593,0.5146,0.9943
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,FWF,9593,0.4925,0.9945
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,FWFA,9593,0.4964,0.9943
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,FWMD,9593,0.5192,0.9945
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,FWRD,9593,0.5027,0.9937
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,NDI,9593,0.5141,0.9922
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,ODI,9593,0.5749,0.9908
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,ad,9593,0.5351,0.9922
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,all,105523,0.5157,0.9938
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,fa,9593,0.5213,0.9966
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,md,9593,0.5028,0.9937
+population+siren,population q=80 isotropic + siren xyz omega0=10,gap,rd,9593,0.4989,0.9951
+prior-mean,prior-mean,gap,FWAD,9593,1.018,0.9424
+prior-mean,prior-mean,gap,FWF,9593,0.8073,0.9731
+prior-mean,prior-mean,gap,FWFA,9593,1.111,0.916
+prior-mean,prior-mean,gap,FWMD,9593,1.158,0.8984
+prior-mean,prior-mean,gap,FWRD,9593,1.21,0.8755
+prior-mean,prior-mean,gap,NDI,9593,0.9932,0.9615
+prior-mean,prior-mean,gap,ODI,9593,1.022,0.9461
+prior-mean,prior-mean,gap,ad,9593,1.042,0.9384
+prior-mean,prior-mean,gap,all,105523,1.039,0.9351
+prior-mean,prior-mean,gap,fa,9593,1.003,0.9478
+prior-mean,prior-mean,gap,md,9593,1.034,0.9426
+prior-mean,prior-mean,gap,rd,9593,1.031,0.9445
+population,population q=80 isotropic,region,FWAD,112236,0.9411,0.9558
+population,population q=80 isotropic,region,FWF,112236,0.9313,0.967
+population,population q=80 isotropic,region,FWFA,112236,0.8982,0.9654
+population,population q=80 isotropic,region,FWMD,112236,0.9641,0.9489
+population,population q=80 isotropic,region,FWRD,112236,0.9432,0.9552
+population,population q=80 isotropic,region,NDI,112236,0.9858,0.9519
+population,population q=80 isotropic,region,ODI,112236,0.9072,0.9639
+population,population q=80 isotropic,region,ad,112236,0.9402,0.9577
+population,population q=80 isotropic,region,all,1234596,0.9388,0.9583
+population,population q=80 isotropic,region,fa,112236,0.9481,0.9579
+population,population q=80 isotropic,region,md,112236,0.9429,0.9567
+population,population q=80 isotropic,region,rd,112236,0.9248,0.9613
+population+knn,population q=80 isotropic + knn k=20,region,FWAD,112236,0.9229,0.9582
+population+knn,population q=80 isotropic + knn k=20,region,FWF,112236,0.9204,0.9668
+population+knn,population q=80 isotropic + knn k=20,region,FWFA,112236,0.889,0.9655
+population+knn,population q=80 isotropic + knn k=20,region,FWMD,112236,0.9429,0.9523
+population+knn,population q=80 isotropic + knn k=20,region,FWRD,112236,0.9266,0.9564
+population+knn,population q=80 isotropic + knn k=20,region,NDI,112236,0.9613,0.9546
+population+knn,population q=80 isotropic + knn k=20,region,ODI,112236,0.8985,0.9652
+population+knn,population q=80 isotropic + knn k=20,region,ad,112236,0.9301,0.9582
+population+knn,population q=80 isotropic + knn k=20,region,all,1234596,0.9212,0.9601
+population+knn,population q=80 isotropic + knn k=20,region,fa,112236,0.9268,0.9605
+population+knn,population q=80 isotropic + knn k=20,region,md,112236,0.9157,0.9594
+population+knn,population q=80 isotropic + knn k=20,region,rd,112236,0.8995,0.9637
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,FWAD,112236,0.9382,0.9559
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,FWF,112236,0.938,0.964
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,FWFA,112236,0.9053,0.9633
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,FWMD,112236,0.9563,0.951
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,FWRD,112236,0.9425,0.9546
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,NDI,112236,0.9745,0.9523
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,ODI,112236,0.9179,0.9627
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,ad,112236,0.9496,0.9547
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,all,1234596,0.9378,0.9576
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,fa,112236,0.9464,0.9571
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,md,112236,0.9331,0.9567
+population+siren,population q=80 isotropic + siren xyz omega0=10,region,rd,112236,0.9146,0.9614
+prior-mean,prior-mean,region,FWAD,112236,1.013,0.9453
+prior-mean,prior-mean,region,FWF,112236,0.8995,0.9689
+prior-mean,prior-mean,region,FWFA,112236,1.086,0.9213
+prior-mean,prior-mean,region,FWMD,112236,1.099,0.9133
+prior-mean,prior-mean,region,FWRD,112236,1.145,0.8996
+prior-mean,prior-mean,region,NDI,112236,0.9893,0.962
+prior-mean,prior-mean,region,ODI,112236,0.9826,0.9538
+prior-mean,prior-mean,region,ad,112236,1.013,0.9433
+prior-mean,prior-mean,region,all,1234596,1.025,0.9407
+prior-mean,prior-mean,region,fa,112236,1.014,0.9499
+prior-mean,prior-mean,region,md,112236,1.011,0.9458
+prior-mean,prior-mean,region,rd,112236,1.021,0.9448
+population,population q=80 isotropic,whole measure,FWAD,227171,0.9105,0.9609
+population,population q=80 isotropic,whole measure,FWFA,227171,0.8307,0.974
+population,population q=80 isotropic,whole measure,FWMD,227171,0.9705,0.951
+population,population q=80 isotropic,whole measure,FWRD,227171,0.9074,0.9618
+population,population q=80 isotropic,whole measure,NDI,249073,0.9708,0.9545
+population,population q=80 isotropic,whole measure,ODI,249073,0.8734,0.9682
+population,population q=80 isotropic,whole measure,all,1406830,0.9105,0.9617
+population+knn,population q=80 isotropic + knn k=20,whole measure,FWAD,227171,0.9105,0.9609
+population+knn,population q=80 isotropic + knn k=20,whole measure,FWFA,227171,0.8307,0.974
+population+knn,population q=80 isotropic + knn k=20,whole measure,FWMD,227171,0.9705,0.951
+population+knn,population q=80 isotropic + knn k=20,whole measure,FWRD,227171,0.9074,0.9618
+population+knn,population q=80 isotropic + knn k=20,whole measure,NDI,249073,0.9708,0.9545
+population+knn,population q=80 isotropic + knn k=20,whole measure,ODI,249073,0.8734,0.9682
+population+knn,population q=80 isotropic + knn k=20,whole measure,all,1406830,0.9105,0.9617
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole measure,FWAD,227171,0.9105,0.9609
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole measure,FWFA,227171,0.8307,0.974
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole measure,FWMD,227171,0.9705,0.951
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole measure,FWRD,227171,0.9074,0.9618
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole measure,NDI,249073,0.9708,0.9545
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole measure,ODI,249073,0.8734,0.9682
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole measure,all,1406830,0.9105,0.9617
+prior-mean,prior-mean,whole measure,FWAD,227171,1.044,0.9371
+prior-mean,prior-mean,whole measure,FWFA,227171,1.11,0.9174
+prior-mean,prior-mean,whole measure,FWMD,227171,1.164,0.8997
+prior-mean,prior-mean,whole measure,FWRD,227171,1.198,0.8861
+prior-mean,prior-mean,whole measure,NDI,249073,1.012,0.9574
+prior-mean,prior-mean,whole measure,ODI,249073,1.002,0.9489
+prior-mean,prior-mean,whole measure,all,1406830,1.088,0.9244
+population,population q=80 isotropic,whole profile,FWAD,48721,0.8939,0.9636
+population,population q=80 isotropic,whole profile,FWF,48721,0.822,0.9739
+population,population q=80 isotropic,whole profile,FWFA,48721,0.8646,0.9685
+population,population q=80 isotropic,whole profile,FWMD,48721,0.9161,0.9591
+population,population q=80 isotropic,whole profile,FWRD,48721,0.8927,0.9647
+population,population q=80 isotropic,whole profile,NDI,48721,0.9603,0.9525
+population,population q=80 isotropic,whole profile,ODI,48721,0.9038,0.9637
+population,population q=80 isotropic,whole profile,ad,48721,0.9091,0.9639
+population,population q=80 isotropic,whole profile,all,535931,0.8958,0.9639
+population,population q=80 isotropic,whole profile,fa,48721,0.9048,0.9629
+population,population q=80 isotropic,whole profile,md,48721,0.9042,0.9628
+population,population q=80 isotropic,whole profile,rd,48721,0.8823,0.9672
+population+knn,population q=80 isotropic + knn k=20,whole profile,FWAD,48721,0.8421,0.9681
+population+knn,population q=80 isotropic + knn k=20,whole profile,FWF,48721,0.7843,0.9756
+population+knn,population q=80 isotropic + knn k=20,whole profile,FWFA,48721,0.8311,0.9697
+population+knn,population q=80 isotropic + knn k=20,whole profile,FWMD,48721,0.8674,0.964
+population+knn,population q=80 isotropic + knn k=20,whole profile,FWRD,48721,0.8578,0.9677
+population+knn,population q=80 isotropic + knn k=20,whole profile,NDI,48721,0.8936,0.9604
+population+knn,population q=80 isotropic + knn k=20,whole profile,ODI,48721,0.8699,0.9671
+population+knn,population q=80 isotropic + knn k=20,whole profile,ad,48721,0.8827,0.9633
+population+knn,population q=80 isotropic + knn k=20,whole profile,all,535931,0.8486,0.9678
+population+knn,population q=80 isotropic + knn k=20,whole profile,fa,48721,0.8494,0.9685
+population+knn,population q=80 isotropic + knn k=20,whole profile,md,48721,0.8404,0.9684
+population+knn,population q=80 isotropic + knn k=20,whole profile,rd,48721,0.8154,0.9729
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,FWAD,48721,0.871,0.9637
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,FWF,48721,0.8084,0.9722
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,FWFA,48721,0.8654,0.9654
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,FWMD,48721,0.8867,0.9625
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,FWRD,48721,0.8815,0.9641
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,NDI,48721,0.9141,0.9575
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,ODI,48721,0.9019,0.9625
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,ad,48721,0.9191,0.9575
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,all,535931,0.8753,0.9641
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,fa,48721,0.8876,0.9624
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,md,48721,0.8597,0.9667
+population+siren,population q=80 isotropic + siren xyz omega0=10,whole profile,rd,48721,0.8325,0.9711
+prior-mean,prior-mean,whole profile,FWAD,48721,1.018,0.9467
+prior-mean,prior-mean,whole profile,FWF,48721,0.8227,0.9726
+prior-mean,prior-mean,whole profile,FWFA,48721,1.104,0.9179
+prior-mean,prior-mean,whole profile,FWMD,48721,1.131,0.9074
+prior-mean,prior-mean,whole profile,FWRD,48721,1.168,0.8952
+prior-mean,prior-mean,whole profile,NDI,48721,1.004,0.956
+prior-mean,prior-mean,whole profile,ODI,48721,1.014,0.9471
+prior-mean,prior-mean,whole profile,ad,48721,1.014,0.9441
+prior-mean,prior-mean,whole profile,all,535931,1.025,0.9398
+prior-mean,prior-mean,whole profile,fa,48721,0.9902,0.9524
+prior-mean,prior-mean,whole profile,md,48721,1.003,0.9495
+prior-mean,prior-mean,whole profile,rd,48721,1.006,0.9487

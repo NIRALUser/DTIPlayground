@@ -3,8 +3,410 @@ Validation of impute-profiles
 
 This page documents the validation of ``dmrifiberprofile impute-profiles`` with ``--validate`` (see
 `Imputing the profiles <DMRIFiberProfile.html#imputing-the-profiles>`_ for the command and its outputs) on a normative
-infant cohort, in two phases: every method imputing a scan from its own observed values (phase 1, 2026-10-15), and
-from its deviations from the age-bin norm (phase 2, 2026-10-16). The results set the defaults of the command.
+infant cohort, in three phases: every method imputing a scan from its own observed values (phase 1, 2026-10-15),
+from its deviations from the age-bin norm (phase 2, 2026-10-16), and with a population model of the normative cohort
+(phase 3, 2026-10-16). The results set the defaults of the command.
+
+Phase 3: summary
+----------------
+
+- **A population model of the deviations** (``population``: a probabilistic PCA of the deviations of the normative
+  scans from their age-bin norm, over all 69 tracts and 11 measures jointly) predicts every missing value of a scan
+  from all its observed ones, with an SD. Alone, with 80 components, its error is 0.65 of the age-bin mean's
+  overall, 0.64 for whole profiles and 0.67 for regions, better than every method of phase 2 there, but worse for
+  gaps and ends (0.57, 0.71), where the neighbours along the same profile know more.
+- **The best single setting combines both**: the population prediction as the scan's own norm, and SIREN imputing
+  what it misses (the residuals) from the 3-D neighbours within 4 mm, the population prediction beyond
+  (``--norm population``). Its error is 0.37 of the age-bin mean's for gaps, 0.51 for missing ends, 0.64 for whole
+  profiles and 0.68 for regions: 0.546 overall, 11% less than the default of phase 2 (SIREN on the deviations from
+  the age-bin norm, 0.614). It is better for every measure and age bin in gaps, whole profiles and regions; missing
+  ends are about the same (0.508 against 0.504; up to 0.05 worse for FA, RD, FW-AD, FWF and ODI, and 0.03 in 0-3
+  months).
+  It is the new default with ``--prior-stats-dir`` or ``--model``.
+- **A whole missing measure** (the free water tensor metrics or NODDI of a scan without that fit) can now be
+  imputed: 0.59 of the age-bin mean's error (FW-RD 0.45 to ODI 0.80), where the methods of phase 2 have nothing to
+  impute it from. In the cohort, 2 scans lack the free water tensor metrics.
+- **The residuals are local**: within 4 mm of an observed value SIREN improves on the model, farther it makes the
+  prediction worse, unlike the deviations from the age-bin norm, which help up to 20 mm.
+- **Components**: the error falls up to 80 components and is flat beyond (120, 160). The three noise models are
+  within 0.01 of each other; ``isotropic`` is the default.
+- **SDs**: the posterior SDs of the model are too small with many components (with 80, only 80-86% of the errors
+  within 1.96 SD). Calibrated per metric on held-out scans when the model is fitted (``--sd-calibration-folds``,
+  default 5), 95-98% are, the SDs being right or slightly large. For values imputed from the residuals the SD is
+  that of the model alone, an upper bound (for gaps about twice the error).
+- ``knn`` (k = 20) on the residuals needs no GPU for the imputation: 0.584 overall, and the best for whole profiles
+  and regions (0.62, 0.66).
+
+Phase 3: setup
+--------------
+
+The scans, patterns and hidden values are those of phase 2 (30 scans, 10 per age bin, 3 rounds), with these changes:
+
+- **Whole measure**: a third pass per scan and round hides all values of one family of measures the scan has, the
+  free water tensor metrics (FW-FA, FW-MD, FW-RD, FW-AD) or NODDI (NDI, ODI), chosen at random, as for a scan
+  without that fit. Its draws don't change those of the other passes, so the gaps, ends, whole profiles and regions
+  are exactly those of phase 2. The overall score is the mean over the four patterns of phase 2, as before; the
+  whole measure is reported on its own.
+- **No look-ahead**: the population model must not have seen the scan it imputes. The 30 scans are split by subject
+  into 5 folds; the model of a fold is fitted on the other subjects of the cohort (about 400 scans), with the norm of
+  their own age bins.
+- **Settings**: 5, 10, 20, 40, 80, 120 and 160 components; noise ``isotropic``, ``metric`` and ``diagonal`` (up to
+  80 components); each alone and with the residuals imputed by ``knn`` (k = 20) and by SIREN (``xyz``, omega0 10,
+  500 epochs, the phase 2 setting).
+- **Distance limit**: as in phase 2, the grid ran without ``--max-distance`` and each cap was scored from the
+  errors by distance, the values beyond it counted with the population prediction of the setting (with the age-bin
+  mean for the settings on the age-bin norm). The tables below are from a run of the chosen settings at their caps
+  (4 mm on the population norm, 20 mm on the age-bin norm), with identical results.
+- **Score**: as in phase 2, the RMSE relative to that of the age-bin mean on the same hidden values, every hidden
+  value counted (completed: one a setting leaves is counted with the age-bin mean), the mean over the 11 measures.
+
+Phase 3: results
+----------------
+
+Overall
+~~~~~~~
+
+Relative to the age-bin mean (below 1: better), mean over the measures; overall: the mean over the four patterns
+of phase 2.
+
+.. table::
+   :class: longtable
+
+   ==========================================  =====  =======  =============  ======  =======  =============
+   setting                                     gap    end gap  whole profile  region  overall  whole measure
+   ==========================================  =====  =======  =============  ======  =======  =============
+   age-bin mean (prior-mean)                   1.000  1.000    1.000          1.000   1.000    1.00
+   knn k=20, age-bin norm, 20 mm               0.534  0.606    0.712          0.807   0.665    1.00
+   SIREN, age-bin norm, 20 mm (0.8.20)         0.391  0.504    0.727          0.833   0.614    1.00
+   population alone, 80 components             0.568  0.708    0.642          0.672   0.648    0.59
+   knn k=20, population norm, 4 mm             0.463  0.597    0.615          0.662   0.584    0.59
+   **SIREN, population norm, 4 mm (default)**  0.368  0.508    0.635          0.675   0.546    0.59
+   ==========================================  =====  =======  =============  ======  =======  =============
+
+Components and noise
+~~~~~~~~~~~~~~~~~~~~
+
+Overall score of the population model alone and with the residuals imputed by knn or SIREN (4 mm), isotropic noise,
+with the patterns of the SIREN combination:
+
+.. table::
+   :class: longtable
+
+   ==========  =====  =====  =======  ==========  =======  =====  ======  =======
+   components  alone  + knn  + SIREN  SIREN: gap  end gap  whole  region  measure
+   ==========  =====  =====  =======  ==========  =======  =====  ======  =======
+   5           0.729  0.621  0.578    0.393       0.520    0.683  0.717   0.73
+   10          0.705  0.609  0.566    0.383       0.511    0.668  0.702   0.69
+   20          0.688  0.601  0.561    0.385       0.511    0.657  0.691   0.67
+   40          0.667  0.592  0.553    0.375       0.510    0.644  0.683   0.63
+   80          0.648  0.584  0.546    0.368       0.508    0.635  0.675   0.59
+   120         0.643  0.586  0.549    0.368       0.512    0.636  0.679   0.58
+   160         0.642  0.588  0.550    0.365       0.519    0.633  0.681   0.57
+   ==========  =====  =====  =======  ==========  =======  =====  ======  =======
+
+The noise models, overall score alone and with SIREN:
+
+.. table::
+   :class: longtable
+
+   ==========  =========  =======  ======  =======  ========  =======
+   components  isotropic  + SIREN  metric  + SIREN  diagonal  + SIREN
+   ==========  =========  =======  ======  =======  ========  =======
+   5           0.729      0.578    0.730   0.579    0.735     0.584
+   10          0.705      0.566    0.707   0.568    0.710     0.572
+   20          0.688      0.561    0.689   0.561    0.692     0.563
+   40          0.667      0.553    0.668   0.554    0.675     0.558
+   80          0.648      0.546    0.647   0.546    0.653     0.552
+   ==========  =========  =======  ======  =======  ========  =======
+
+Distance limit
+~~~~~~~~~~~~~~
+
+SIREN on the residuals from the population prediction (80 components) with the population prediction beyond the
+cap, and, for comparison, SIREN on the deviations from the age-bin norm with the age-bin mean beyond:
+
+.. table::
+   :class: longtable
+
+   ==============  =====  =======  =============  ======  =======  =====================
+   --max-distance  gap    end gap  whole profile  region  overall  age-bin norm: overall
+   ==============  =====  =======  =============  ======  =======  =====================
+   2 mm            0.418  0.579    0.622          0.665   0.571    0.820
+   4 mm            0.368  0.508    0.635          0.675   0.546    0.693
+   6 mm            0.366  0.497    0.645          0.689   0.549    0.645
+   10 mm           0.366  0.496    0.651          0.707   0.555    0.622
+   15 mm           0.366  0.496    0.653          0.720   0.559    0.616
+   20 mm           0.366  0.496    0.653          0.727   0.560    0.614
+   25 mm           0.366  0.496    0.653          0.730   0.561    0.613
+   none            0.366  0.496    0.653          0.732   0.562    0.613
+   ==============  =====  =======  =============  ======  =======  =====================
+
+Per measure, relative to the age-bin mean
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Gaps inside profiles:
+
+.. table::
+   :class: longtable
+
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   setting                                     FA    MD    RD    AD    FW-FA  FW-MD  FW-RD  FW-AD  FWF   NDI   ODI   mean
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   age-bin mean (prior-mean)                   1.00  1.00  1.00  1.00  1.00   1.00   1.00   1.00   1.00  1.00  1.00  1.00
+   knn k=20, age-bin norm, 20 mm               0.55  0.47  0.46  0.62  0.48   0.47   0.42   0.59   0.63  0.51  0.68  0.53
+   SIREN, age-bin norm, 20 mm (0.8.20)         0.43  0.32  0.32  0.47  0.35   0.32   0.28   0.44   0.50  0.36  0.52  0.39
+   population alone, 80 components             0.67  0.48  0.49  0.67  0.54   0.41   0.39   0.63   0.72  0.51  0.74  0.57
+   knn k=20, population norm, 4 mm             0.52  0.39  0.39  0.55  0.43   0.35   0.33   0.51   0.57  0.42  0.63  0.46
+   **SIREN, population norm, 4 mm (default)**  0.41  0.31  0.31  0.43  0.34   0.28   0.26   0.40   0.47  0.33  0.50  0.37
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+
+Missing ends:
+
+.. table::
+   :class: longtable
+
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   setting                                     FA    MD    RD    AD    FW-FA  FW-MD  FW-RD  FW-AD  FWF   NDI   ODI   mean
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   age-bin mean (prior-mean)                   1.00  1.00  1.00  1.00  1.00   1.00   1.00   1.00   1.00  1.00  1.00  1.00
+   knn k=20, age-bin norm, 20 mm               0.71  0.54  0.53  0.71  0.60   0.45   0.44   0.62   0.72  0.60  0.75  0.61
+   SIREN, age-bin norm, 20 mm (0.8.20)         0.61  0.44  0.43  0.60  0.52   0.35   0.36   0.51   0.61  0.48  0.63  0.50
+   population alone, 80 components             0.84  0.62  0.63  0.78  0.70   0.54   0.54   0.72   0.88  0.71  0.83  0.71
+   knn k=20, population norm, 4 mm             0.71  0.52  0.52  0.69  0.59   0.43   0.42   0.62   0.75  0.57  0.74  0.60
+   **SIREN, population norm, 4 mm (default)**  0.63  0.44  0.44  0.59  0.52   0.35   0.35   0.51   0.67  0.46  0.64  0.51
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+
+Whole profiles:
+
+.. table::
+   :class: longtable
+
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   setting                                     FA    MD    RD    AD    FW-FA  FW-MD  FW-RD  FW-AD  FWF   NDI   ODI   mean
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   age-bin mean (prior-mean)                   1.00  1.00  1.00  1.00  1.00   1.00   1.00   1.00   1.00  1.00  1.00  1.00
+   knn k=20, age-bin norm, 20 mm               0.76  0.62  0.61  0.79  0.66   0.63   0.57   0.80   0.82  0.70  0.86  0.71
+   SIREN, age-bin norm, 20 mm (0.8.20)         0.79  0.63  0.62  0.82  0.68   0.61   0.56   0.80   0.90  0.69  0.88  0.73
+   population alone, 80 components             0.73  0.56  0.56  0.73  0.60   0.52   0.49   0.70   0.78  0.61  0.79  0.64
+   knn k=20, population norm, 4 mm             0.69  0.52  0.52  0.70  0.58   0.50   0.47   0.67   0.76  0.58  0.77  0.62
+   **SIREN, population norm, 4 mm (default)**  0.72  0.54  0.53  0.73  0.60   0.51   0.48   0.69   0.79  0.59  0.80  0.63
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+
+Regions:
+
+.. table::
+   :class: longtable
+
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   setting                                     FA    MD    RD    AD    FW-FA  FW-MD  FW-RD  FW-AD  FWF   NDI   ODI   mean
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+   age-bin mean (prior-mean)                   1.00  1.00  1.00  1.00  1.00   1.00   1.00   1.00   1.00  1.00  1.00  1.00
+   knn k=20, age-bin norm, 20 mm               0.85  0.71  0.71  0.89  0.76   0.71   0.65   0.91   0.91  0.79  0.99  0.81
+   SIREN, age-bin norm, 20 mm (0.8.20)         0.89  0.73  0.73  0.92  0.79   0.72   0.67   0.93   0.96  0.79  1.03  0.83
+   population alone, 80 components             0.75  0.60  0.59  0.77  0.63   0.55   0.52   0.73   0.83  0.63  0.82  0.67
+   knn k=20, population norm, 4 mm             0.73  0.58  0.57  0.76  0.63   0.53   0.51   0.72   0.83  0.61  0.82  0.66
+   **SIREN, population norm, 4 mm (default)**  0.75  0.59  0.58  0.77  0.64   0.54   0.52   0.74   0.84  0.62  0.84  0.67
+   ==========================================  ====  ====  ====  ====  =====  =====  =====  =====  ====  ====  ====  ====
+
+Whole measure (only the hidden families):
+
+.. table::
+   :class: longtable
+
+   ==========================================  =====  =====  =====  =====  ====  ====  ====
+   setting                                     FW-FA  FW-MD  FW-RD  FW-AD  NDI   ODI   mean
+   ==========================================  =====  =====  =====  =====  ====  ====  ====
+   age-bin mean (prior-mean)                   1.00   1.00   1.00   1.00   1.00  1.00  1.00
+   knn k=20, age-bin norm, 20 mm               1.00   1.00   1.00   1.00   1.00  1.00  1.00
+   SIREN, age-bin norm, 20 mm (0.8.20)         1.00   1.00   1.00   1.00   1.00  1.00  1.00
+   population alone, 80 components             0.56   0.50   0.45   0.69   0.57  0.80  0.59
+   knn k=20, population norm, 4 mm             0.56   0.50   0.45   0.69   0.57  0.80  0.59
+   **SIREN, population norm, 4 mm (default)**  0.56   0.50   0.45   0.69   0.57  0.80  0.59
+   ==========================================  =====  =====  =====  =====  ====  ====  ====
+
+Per measure, absolute RMSE
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the units of the measure: FA, FW-FA, FWF, NDI and ODI x 1e-3, the diffusivities x 1e-6 mm²/s.
+
+Gaps inside profiles:
+
+.. table::
+   :class: longtable
+
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   setting                                     FA (1e-3)  MD (1e-6 mm²/s)  RD (1e-6 mm²/s)  AD (1e-6 mm²/s)  FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  FWF (1e-3)  NDI (1e-3)  ODI (1e-3)
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   age-bin mean (prior-mean)                   43.8       98.2             97.0             121.5            63.4          73.2                78.4                86.5                52.0        59.6        42.0
+   knn k=20, age-bin norm, 20 mm               24.2       61.2             57.5             83.3             31.8          44.2                32.0                76.1                34.5        33.0        28.8
+   SIREN, age-bin norm, 20 mm (0.8.20)         18.5       38.3             36.3             58.1             23.6          29.0                21.2                50.8                25.1        22.4        22.2
+   population alone, 80 components             30.1       54.3             52.5             79.8             36.0          35.6                30.3                76.4                36.1        33.0        31.4
+   knn k=20, population norm, 4 mm             23.3       45.2             43.8             66.4             29.3          31.6                25.5                62.1                29.6        28.9        26.6
+   **SIREN, population norm, 4 mm (default)**  18.0       34.7             33.5             52.1             22.8          23.9                19.8                47.8                22.9        23.2        20.6
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+
+Missing ends:
+
+.. table::
+   :class: longtable
+
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   setting                                     FA (1e-3)  MD (1e-6 mm²/s)  RD (1e-6 mm²/s)  AD (1e-6 mm²/s)  FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  FWF (1e-3)  NDI (1e-3)  ODI (1e-3)
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   age-bin mean (prior-mean)                   49.0       111.2            108.0            144.4            74.4          82.1                82.4                106.7               59.8        69.0        62.3
+   knn k=20, age-bin norm, 20 mm               35.7       77.5             74.0             107.4            46.6          37.1                32.9                67.3                44.0        42.7        48.3
+   SIREN, age-bin norm, 20 mm (0.8.20)         31.6       62.7             55.7             101.2            41.7          29.7                28.8                55.2                35.0        34.9        42.2
+   population alone, 80 components             41.8       80.4             76.5             116.1            52.8          44.6                41.1                78.7                51.5        51.5        52.4
+   knn k=20, population norm, 4 mm             35.2       72.8             68.3             104.3            44.9          35.7                32.2                66.3                43.0        41.6        48.1
+   **SIREN, population norm, 4 mm (default)**  31.8       57.6             54.6             90.1             39.8          27.6                26.7                54.1                32.7        33.5        40.9
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+
+Whole profiles:
+
+.. table::
+   :class: longtable
+
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   setting                                     FA (1e-3)  MD (1e-6 mm²/s)  RD (1e-6 mm²/s)  AD (1e-6 mm²/s)  FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  FWF (1e-3)  NDI (1e-3)  ODI (1e-3)
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   age-bin mean (prior-mean)                   44.8       106.5            105.6            129.8            66.0          73.8                77.2                92.4                56.4        62.5        48.1
+   knn k=20, age-bin norm, 20 mm               34.2       83.7             79.4             111.4            45.7          48.5                41.9                96.1                49.6        47.2        43.9
+   SIREN, age-bin norm, 20 mm (0.8.20)         35.4       83.0             79.4             114.5            46.3          46.9                41.8                97.1                50.5        45.8        45.2
+   population alone, 80 components             33.1       64.6             63.3             90.9             40.8          42.2                36.3                82.2                44.6        39.8        39.0
+   knn k=20, population norm, 4 mm             31.4       62.1             60.0             89.9             40.3          41.5                35.1                81.3                43.2        39.3        38.7
+   **SIREN, population norm, 4 mm (default)**  32.9       63.0             60.5             92.7             41.6          41.0                35.7                82.3                43.7        39.6        39.7
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+
+Regions:
+
+.. table::
+   :class: longtable
+
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   setting                                     FA (1e-3)  MD (1e-6 mm²/s)  RD (1e-6 mm²/s)  AD (1e-6 mm²/s)  FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  FWF (1e-3)  NDI (1e-3)  ODI (1e-3)
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   age-bin mean (prior-mean)                   45.1       108.7            107.5            132.4            64.3          72.1                74.8                91.6                59.6        64.9        46.8
+   knn k=20, age-bin norm, 20 mm               38.7       88.6             87.3             117.8            49.8          65.8                48.9                125.6               56.1        55.0        47.6
+   SIREN, age-bin norm, 20 mm (0.8.20)         40.1       90.4             89.5             123.2            51.5          67.2                50.2                143.5               59.1        54.7        49.4
+   population alone, 80 components             34.0       67.2             65.5             95.2             42.0          43.8                37.2                87.8                48.3        43.2        37.9
+   knn k=20, population norm, 4 mm             33.4       66.1             64.3             95.0             41.8          43.8                36.7                93.9                48.2        42.4        38.0
+   **SIREN, population norm, 4 mm (default)**  34.1       67.1             65.2             96.9             42.5          44.8                37.1                98.6                48.8        42.8        38.8
+   ==========================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+
+Whole measure:
+
+.. table::
+   :class: longtable
+
+   ==========================================  ============  ==================  ==================  ==================  ==========  ==========
+   setting                                     FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  NDI (1e-3)  ODI (1e-3)
+   ==========================================  ============  ==================  ==================  ==================  ==========  ==========
+   age-bin mean (prior-mean)                   67.0          76.9                81.7                92.4                63.5        43.8
+   knn k=20, age-bin norm, 20 mm               67.0          76.9                81.7                92.4                63.5        43.8
+   SIREN, age-bin norm, 20 mm (0.8.20)         67.0          76.9                81.7                92.4                63.5        43.8
+   population alone, 80 components             38.6          40.3                35.9                75.8                37.1        34.3
+   knn k=20, population norm, 4 mm             38.6          40.3                35.9                75.8                37.1        34.3
+   **SIREN, population norm, 4 mm (default)**  38.6          40.3                35.9                75.8                37.1        34.3
+   ==========================================  ============  ==================  ==================  ==================  ==========  ==========
+
+Per age bin
+~~~~~~~~~~~
+
+Relative to the mean of the scan's own age bin, mean over the measures:
+
+.. table::
+   :class: longtable
+
+   ==========================================  ========  ========  ==========  ============  ============  ==============  ==========  ==========  ============  ===========  ===========  =============  ============  ============  ==============
+   setting                                     gap 0-3m  gap 4-9m  gap 10-60m  end gap 0-3m  end gap 4-9m  end gap 10-60m  whole 0-3m  whole 4-9m  whole 10-60m  region 0-3m  region 4-9m  region 10-60m  measure 0-3m  measure 4-9m  measure 10-60m
+   ==========================================  ========  ========  ==========  ============  ============  ==============  ==========  ==========  ============  ===========  ===========  =============  ============  ============  ==============
+   age-bin mean (prior-mean)                   1.00      1.00      1.00        1.00          1.00          1.00            1.00        1.00        1.00          1.00         1.00         1.00           1.00          1.00          1.00
+   knn k=20, age-bin norm, 20 mm               0.51      0.59      0.53        0.56          0.66          0.65            0.69        0.75        0.73          0.77         0.84         0.85           1.00          1.00          1.00
+   SIREN, age-bin norm, 20 mm (0.8.20)         0.38      0.42      0.40        0.47          0.54          0.54            0.69        0.78        0.75          0.79         0.88         0.87           1.00          1.00          1.00
+   population alone, 80 components             0.55      0.58      0.60        0.69          0.75          0.73            0.64        0.63        0.66          0.68         0.63         0.70           0.62          0.58          0.59
+   knn k=20, population norm, 4 mm             0.45      0.48      0.47        0.59          0.60          0.63            0.62        0.60        0.63          0.67         0.62         0.69           0.62          0.58          0.59
+   **SIREN, population norm, 4 mm (default)**  0.36      0.38      0.37        0.50          0.52          0.53            0.63        0.62        0.65          0.68         0.64         0.70           0.62          0.58          0.59
+   ==========================================  ========  ========  ==========  ============  ============  ==============  ==========  ==========  ============  ===========  ===========  =============  ============  ============  ==============
+
+Absolute RMSE per age bin of the default and the age-bin mean (units as above):
+
+.. table::
+   :class: longtable
+
+   =============  =======  ============  ====  =====  =====  =====  =====  =====  =====  =====  ====  ====  ====
+   pattern        age bin  setting       FA    MD     RD     AD     FW-FA  FW-MD  FW-RD  FW-AD  FWF   NDI   ODI
+   =============  =======  ============  ====  =====  =====  =====  =====  =====  =====  =====  ====  ====  ====
+   gap            0-3m     age-bin mean  44.3  111.4  110.4  134.1  67.7   94.3   102.1  101.2  54.7  57.8  53.4
+   gap            0-3m     default       17.1  47.0   43.4   67.8   24.4   35.2   27.8   69.2   28.8  30.1  25.1
+   gap            4-9m     age-bin mean  37.1  99.9   93.9   127.7  57.9   64.2   66.9   80.6   50.5  56.1  32.5
+   gap            4-9m     default       16.6  29.5   28.9   45.2   20.7   14.8   15.0   30.3   21.0  20.6  17.1
+   gap            10-60m   age-bin mean  49.3  80.3   84.6   99.0   64.3   54.4   58.6   75.3   50.6  64.7  37.1
+   gap            10-60m   default       20.3  22.5   25.2   38.5   23.3   15.6   13.1   33.3   17.1  16.5  18.7
+   end gap        0-3m     age-bin mean  48.8  145.0  137.1  187.9  81.4   103.6  103.9  125.8  58.2  73.7  73.2
+   end gap        0-3m     default       33.7  69.5   62.9   113.0  42.8   34.6   31.3   64.0   31.5  38.8  51.9
+   end gap        4-9m     age-bin mean  45.1  82.9   82.0   113.5  63.6   68.3   70.2   92.6   59.0  52.0  53.4
+   end gap        4-9m     default       30.3  44.5   44.9   71.3   33.1   23.1   23.3   50.2   29.4  23.5  33.4
+   end gap        10-60m   age-bin mean  52.7  95.4   96.6   119.0  76.9   69.0   67.9   98.3   62.2  78.0  58.5
+   end gap        10-60m   default       31.2  55.7   54.3   80.2   42.7   23.6   24.6   46.3   36.6  36.2  34.5
+   whole profile  0-3m     age-bin mean  44.0  118.8  120.4  136.2  70.0   94.0   99.4   107.9  57.7  60.2  58.7
+   whole profile  0-3m     default       31.8  67.5   66.2   95.4   43.1   51.4   47.4   95.0   45.3  46.8  45.5
+   whole profile  4-9m     age-bin mean  36.5  109.2  101.9  138.9  60.5   63.1   64.8   83.0   56.1  54.4  38.7
+   whole profile  4-9m     default       27.6  59.3   55.2   86.1   34.9   28.2   26.2   57.3   42.7  32.5  33.4
+   whole profile  10-60m   age-bin mean  52.6  89.2   92.6   112.5  67.2   59.4   61.9   84.5   55.4  71.8  44.7
+   whole profile  10-60m   default       38.4  62.0   59.8   96.3   46.0   40.4   30.0   89.8   43.0  38.4  39.4
+   region         0-3m     age-bin mean  42.3  116.1  115.7  136.9  65.2   87.6   91.3   102.2  60.3  62.9  54.4
+   region         0-3m     default       32.9  74.0   72.0   104.2  43.7   52.6   46.9   112.7  54.1  47.6  45.4
+   region         4-9m     age-bin mean  39.5  115.5  109.5  143.6  62.8   64.9   66.8   86.9   58.2  62.1  40.7
+   region         4-9m     default       31.5  54.1   53.2   81.5   37.7   30.6   28.3   63.9   40.0  36.3  33.0
+   region         10-60m   age-bin mean  52.1  93.4   96.5   116.1  64.7   60.0   62.3   84.3   60.1  69.2  43.5
+   region         10-60m   default       37.4  70.6   68.1   102.3  45.3   47.1   32.9   109.1  50.5  43.3  36.5
+   whole measure  0-3m     age-bin mean                             73.2   97.1   104.1  106.8        60.3  51.6
+   whole measure  0-3m     default                                  40.9   51.5   46.2   88.3         41.0  42.1
+   whole measure  4-9m     age-bin mean                             56.8   60.1   61.5   80.9         59.0  40.5
+   whole measure  4-9m     default                                  32.6   26.4   24.7   54.1         35.0  30.0
+   whole measure  10-60m   age-bin mean                             68.0   60.2   64.0   82.3         70.0  40.1
+   whole measure  10-60m   default                                  41.1   34.8   29.2   76.8         36.1  31.3
+   =============  =======  ============  ====  =====  =====  =====  =====  =====  =====  =====  ====  ====  ====
+
+SDs
+~~~
+
+RMS of error / SD (1: right; above 1: the SDs are too small) and the share of the errors within 1.96 SD (95%:
+right), mean over the measures. The age-bin mean with the SD of its bin, the population model with and without the
+calibration of its SDs, and the default, whose SDs are those of the model:
+
+.. table::
+   :class: longtable
+
+   ======================================  ==========  ==========  =============  ==========  =============
+   setting                                 gap         end gap     whole profile  region      whole measure
+   ======================================  ==========  ==========  =============  ==========  =============
+   age-bin mean (prior-mean)               1.04 / 94%  1.04 / 94%  1.03 / 94%     1.02 / 94%  1.09 / 92%
+   population alone, 80 components         0.82 / 98%  1.03 / 95%  0.90 / 96%     0.94 / 96%  0.91 / 96%
+   population alone, not calibrated        1.37 / 86%  1.73 / 80%  1.50 / 84%     1.57 / 83%  1.46 / 85%
+   SIREN, population norm, 4 mm (default)  0.52 / 99%  0.74 / 98%  0.88 / 96%     0.94 / 96%  0.91 / 96%
+   ======================================  ==========  ==========  =============  ==========  =============
+
+The complete tables (every setting, measure, pattern and age bin, also the grids) are in
+`docs/_static/impute_validation/phase3 <_static/impute_validation/phase3/>`_ (CSV).
+
+Phase 3: reproducing
+--------------------
+
+The grid (components, noise and residual methods, without a distance limit; the runs with 40 and more components
+on a second GPU)::
+
+    $ dmrifiberprofile impute-profiles --profiles-dir Profiles_Clean --axis-dir FiberAxis --out-dir P1 \
+        --validate --validate-scans-per-bin 10 --validate-rounds 3 --max-distance 0 \
+        --validate-methods knn,siren,prior-mean,population --validate-relative yes --validate-k 20 \
+        --validate-knn-weights distance --validate-siren-inputs xyz --validate-omega0 10 --validate-epochs 500 \
+        --validate-seeds 1 --validate-components 5,10,20 --validate-noise isotropic,metric,diagonal \
+        --sd-calibration-folds 0
+
+The chosen settings at their caps (``--max-distance 4 --validate-methods prior-mean,population
+--validate-components 80 --validate-noise isotropic``; ``--max-distance 20 --validate-methods knn,siren,prior-mean``).
+A model fit with 80 components takes 10 to 20 s on a GPU; with the calibration of its SDs (5 more fits and the
+predictions of the held-out scans, on the CPU) about 3 minutes in all.
 
 Phase 2: summary
 ----------------

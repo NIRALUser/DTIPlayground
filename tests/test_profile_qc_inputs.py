@@ -664,3 +664,49 @@ class TestScansMissingMostTracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(profile_qc.table_cases(_write(os.path.join(d, 'a.csv'), ARC_ROWS)), COLUMNS)
             self.assertEqual(profile_qc.table_cases(_write(os.path.join(d, 'b.csv'), CASE_ROWS)), COLUMNS)
+
+
+class TestDiffusivityRange(unittest.TestCase):
+    """A diffusivity above that of free water (failed fit) is read as missing: that value only, not the location on the
+    other metrics nor the whole profile."""
+
+    def setUp(self):
+        profile_qc.set_outside_brain({})
+        profile_qc.set_out_of_range({})
+        self.addCleanup(profile_qc.set_out_of_range, {})
+
+    def _tree(self, d, tables):
+        return {key: _table(os.path.join(d, key[0], '{}_{}.csv'.format(*key)), values) for key, values in tables.items()}
+
+    def test_only_the_values_above_the_limit_are_dropped(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = self._tree(d, {
+                ('CG_L', 'FWAD'): {'a_ses-012m': [1.2e-3] * 5, 'b_ses-012m': [1.2e-3, 7.0, 1.3e-3, 4e-3, 1.2e-3]},
+                ('CG_L', 'FWFA'): {'a_ses-012m': [0.4] * 5, 'b_ses-012m': [0.4] * 5},
+                ('CG_L', 'md'): {'a_ses-012m': [1.1e-3] * 5, 'b_ses-012m': [3.4e-3] * 5},  # high: a lesion
+            })
+            masks, rows = profile_qc.find_out_of_range(sorted(paths.values()))
+            self.assertEqual(list(masks), [('CG_L', 'FWAD')])
+            self.assertEqual(profile_qc.set_out_of_range(masks), 2)
+            fwad = profile_qc.load_profile_table(paths[('CG_L', 'FWAD')])
+            self.assertEqual(list(fwad.index[fwad['b_ses-012m'].isna()]), [-1, 1])
+            self.assertFalse(fwad['a_ses-012m'].isna().any())
+            self.assertFalse(profile_qc.load_profile_table(paths[('CG_L', 'FWFA')]).isna().any().any())
+            self.assertFalse(profile_qc.load_profile_table(paths[('CG_L', 'md')]).isna().any().any())
+            r = rows.iloc[0]
+            self.assertEqual((r['case'], r['metric'], r['n_out_of_range'], r['max_value']), ('b_ses-012m', 'FWAD', 2, 7.0))
+            self.assertEqual((r['arc_from'], r['arc_to']), (-1.0, 1.0))
+            target = os.path.join(d, 'clean', 'CG_L_FWAD.csv')
+            self.assertEqual(profile_qc.write_without_columns(paths[('CG_L', 'FWAD')], target, set()), 2)
+            self.assertEqual(int(profile_qc.read_profile_table(target)['b_ses-012m'].isna().sum()), 2)
+
+    def test_tables_in_micrometers_and_the_lower_limit(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = self._tree(d, {('CG_L', 'rd'): {'a_ses-012m': [0.5, 0.6, 3.8, 1e-6, 0.0]}})  # 10^-3 mm^2/s
+            masks, _ = profile_qc.find_out_of_range(sorted(paths.values()))
+            self.assertEqual(list(masks[('CG_L', 'rd')]['a_ses-012m']), [False, False, True, False, False])
+            masks, rows = profile_qc.find_out_of_range(sorted(paths.values()), min_value=5e-5)
+            self.assertEqual(list(masks[('CG_L', 'rd')]['a_ses-012m']), [False, False, True, True, False])
+            self.assertAlmostEqual(rows.iloc[0]['max_value'], 3.8e-3)
+            masks, _ = profile_qc.find_out_of_range(sorted(paths.values()), max_value=0)
+            self.assertEqual(masks, {})

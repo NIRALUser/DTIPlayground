@@ -21,11 +21,18 @@
 #   method imputes the deviations of the scan from the norm of its age bin instead of its values (--relative-to-prior):
 #   z = (value - mean) / SD at each location, imputed, then back to values with the norm of the missing location.
 #   prior-mean imputes the norm itself (the mean of the scan's age bin), also for a metric the scan lacks entirely.
+#   Instead of age bins, the norm can be continuous in the age (--age-norm spline or kernel, fitted on the profiles
+#   of a normative cohort): mean and SD of every location smooth functions of log(age + --age-offset).
 #
 #   population is a probabilistic PCA of the deviations of a normative cohort, over all tracts and metrics jointly: a
 #   scan's observed deviations give the mean and SD of each missing cell, also of a metric it lacks entirely. With
 #   --norm population (the default with a prior), the methods above impute the deviations from that prediction (the
 #   residuals) within --max-distance, and population fills the rest.
+#
+#   Several --profiles-dir (e.g. two studies) are pooled, one batch each. Their values differ by the acquisition, so
+#   each batch is shifted and scaled to a reference batch first (--batch-correction shift-scale), aware of the age: one
+#   age curve of every location for all batches and a shift per batch, fitted jointly, and the ratio of the SDs
+#   around it. The imputed values are turned back to the units of their own batch.
 #
 #   --validate hides observed values (gaps within profiles and whole profiles) of a sample of scans, imputes them with
 #   the methods and settings to compare, and reports the errors.
@@ -58,6 +65,19 @@ SHORT = {GAP: "gap", END: "end", WHOLE: "whole", REGION: "region", MEASURE: "mea
 NOISE = ("isotropic", "metric", "diagonal")  # population: noise model of the probabilistic PCA
 NORMS = ("population", "age-bin")  # what the deviations of --relative-to-prior are from
 POPULATION_DEFAULTS = {"components": 80, "noise": "isotropic"}
+AGE_NORMS = ("bins", "spline", "kernel")  # the norm over age: per age bin, or continuous (AgeNorm)
+AGE_NORM_DEFAULTS = {"age_norm": "bins", "spline_df": 3, "spline_sd_df": 2, "kernel_bandwidth": "cv", "age_offset": 1.0}
+AGE_GRID = 64  # ages a continuous norm is kept at (linear in between on the age scale)
+# kernel norm: the bandwidths (log months) --kernel-bandwidth cv chooses from
+KERNEL_BANDWIDTHS = (0.1, 0.15, 0.2, 0.3, 0.45, 0.7, 1.0)
+SPLINE_VAR_FLOOR = 0.25  # spline norm: the variance at an age is at least this share of the cell's overall variance
+BATCH_SHIFTS = ("constant", "linear")  # batch correction: the shift of a batch over the age
+BATCH_SCALE_LIMIT = "3,FWAD=10,FWMD=10"  # batch correction: the scale of a cell is within 1/limit and limit
+BATCH_LOG_METRICS = ("MD", "RD", "AD", "FWMD", "FWRD", "FWAD")  # batch correction --batch-robust: on the log scale
+BATCH_PLAIN_METRICS = ("FWF",)  # --batch-robust: least squares still (a fraction with many values of 0 or near it)
+BATCH_HUBER = 1.345  # batch correction --batch-robust: Huber weights of the residuals beyond this many robust SDs,
+BATCH_BISQUARE = 4.685  # then Tukey's bisquare weights, 0 beyond this many
+BATCH_BISQUARE_VAR = 0.828  # the bisquare-weighted variance of a normal distribution relative to its variance
 # validation: families of metrics a scan lacks together (no free water or NODDI fit), hidden as a whole measure
 FAMILIES = {"dti": ("FA", "MD", "RD", "AD"), "fw": ("FWFA", "FWMD", "FWRD", "FWAD"), "fwf": ("FWF",),
             "noddi": ("NDI", "ODI")}
@@ -87,6 +107,7 @@ class Table:
         from dtiplayground.dmri.fiberprofile.analysis.profile_qc import CASE_COLUMN, read_profile_table, tract_and_metric
         self.path = path
         self.rel = os.path.relpath(path, profiles_dir)
+        self.batch = ""  # name of its --profiles-dir when several are pooled (read_batches)
         self.tract, self.metric = tract_and_metric(path)
         self.raw = pd.read_csv(path, index_col=0, dtype=str, keep_default_na=False)
         self.rowwise = str(self.raw.index.name).strip() == CASE_COLUMN  # one row per scan
@@ -104,6 +125,39 @@ def read_tables(profiles_dir):
     tables = [Table(f, profiles_dir) for f in select_inputs(profiles_dir)]
     if not tables:
         raise ValueError("no profile tables (<tract>/<tract>_<metric>.csv or <metric>/<tract>_<metric>.csv) in {}".format(profiles_dir))
+    return tables
+
+
+def batch_names(dirs):
+    """A name per profiles folder: its own name, or that of the first parent that tells them apart (BCP/Profiles_Clean
+    and HBCD/Profiles_Clean: BCP and HBCD)."""
+    parts = [os.path.normpath(os.path.abspath(d)).split(os.sep) for d in dirs]
+    for depth in range(1, min(len(x) for x in parts)):
+        names = [x[-depth] for x in parts]
+        if len(set(names)) == len(names):
+            return names
+    return ["batch{}".format(i + 1) for i in range(len(dirs))]
+
+
+def read_batches(dirs, names=None):
+    """The tables of every profiles folder in *dirs*, each folder a batch (Table.batch: its name in *names*, by default
+    batch_names; '' for a single folder). A scan may be in one batch only."""
+    if isinstance(dirs, str):
+        dirs = [dirs]
+    if len(dirs) == 1:
+        return read_tables(dirs[0])
+    names = names or batch_names(dirs)
+    if len(names) != len(dirs) or len(set(names)) != len(names) or not all(names):
+        raise ValueError("--batch-names: one distinct name per --profiles-dir ({} folders)".format(len(dirs)))
+    tables, seen = [], {}
+    for d, name in zip(dirs, names):
+        batch = read_tables(d)
+        for t in batch:
+            t.batch = name
+        for scan in {x for t in batch for x in t.scans}:
+            if seen.setdefault(scan, name) != name:
+                raise ValueError("the scan {} is in two batches, {} and {}".format(scan, seen[scan], name))
+        tables += batch
     return tables
 
 
@@ -149,7 +203,8 @@ class Cohort:
     """The profiles of all scans on one set of locations: positions (tract, arc length, 3-D point) x metrics.
 
     values[s, p, m] is the value of scan s at position p for metric m (NaN: missing), valid[p, m] whether a table of
-    that tract and metric has the position (only those cells are imputed)."""
+    that tract and metric has the position (only those cells are imputed). scan_batch[s]: the batch (index in
+    batches, the names of the profiles folders) of scan s."""
 
     def __init__(self, tables, axes=None):
         self.tables = tables
@@ -157,6 +212,9 @@ class Cohort:
         self.metrics = [m for m in METRIC_ORDER if m in metrics] + sorted(metrics - set(METRIC_ORDER))
         self.tracts = sorted({t.tract for t in tables})
         self.scans = sorted({s for t in tables for s in t.scans})
+        self.batches = list(dict.fromkeys(t.batch for t in tables))  # [''] for a single profiles folder
+        batch_of = {s: self.batches.index(t.batch) for t in tables for s in t.scans}
+        self.scan_batch = np.asarray([batch_of[s] for s in self.scans], dtype=np.int64)
         mi = {m: i for i, m in enumerate(self.metrics)}
         si = {s: i for i, s in enumerate(self.scans)}
 
@@ -418,12 +476,15 @@ def bins_from_labels(labels):
 
 
 def scan_ages(cohort, age_csv=None, age_units="months", age_regex=None, age_column=None):
-    """Age in months (or None) of every scan: its row in *age_csv*, else the pattern on its name (as qc-profiles)."""
+    """Age in months (or None) of every scan: its row in *age_csv* (one table or several, e.g. one per batch), else the
+    pattern on its name (as qc-profiles)."""
     from dtiplayground.dmri.fiberprofile.analysis.profile_qc import age_of, set_age_source
     table = None
     if age_csv:
         from dtiplayground.dmri.common.age_table import load_age_table
-        table = load_age_table(age_csv, age_units, age_column)
+        table = {}
+        for path in [age_csv] if isinstance(age_csv, str) else age_csv:
+            table.update(load_age_table(path, age_units, age_column))
     set_age_source(table, age_regex)
     return [age_of(scan, record=False) for scan in cohort.scans]
 
@@ -540,6 +601,553 @@ class Prior:
     def bin_norm(self, b):
         """(mean, SD) of age bin *b* over every scan of the prior (the SD with its floor)."""
         return self.mean[b], np.where(np.isfinite(self.sd[b]), np.fmax(self.sd[b], self.floor[None, :]), np.nan)
+
+    def table(self):
+        """(mean, SD) of every bin (bins x positions x metrics, the SD with its floor), as a model keeps the norm."""
+        return self.mean, np.where(np.isfinite(self.sd), np.fmax(self.sd, self.floor[None, None, :]), np.nan)
+
+
+def age_scale(ages, offset):
+    """The age scale of the continuous norms: log(age in months + offset); ages before birth (preterm) count as 0."""
+    return np.log(np.maximum(np.asarray(ages, dtype=float), 0) + offset)
+
+
+def ns_basis(t, knots):
+    """Natural cubic spline basis of *t* without the intercept (Hastie et al., Elements of Statistical Learning,
+    5.2.1): t and len(knots) - 2 cubic terms, linear beyond the boundary knots. Two knots: t alone."""
+    k = np.asarray(knots, dtype=float)
+    span = k[-1] - k[0]
+    u, k = (np.asarray(t, dtype=float) - k[0]) / span, (k - k[0]) / span  # on [0, 1] between the boundary knots
+
+    def d(j):
+        return (np.clip(u - k[j], 0, None) ** 3 - np.clip(u - k[-1], 0, None) ** 3) / (k[-1] - k[j])
+
+    last = d(len(k) - 2)
+    return np.column_stack([u] + [d(j) - last for j in range(len(k) - 2)])
+
+
+def spline_knots(t, df):
+    """df + 1 knots at the quantiles of *t* (the boundary knots at its ends); fewer when *t* has few distinct values."""
+    knots = np.unique(np.quantile(t, np.linspace(0.0, 1.0, df + 1)))
+    if len(knots) < df + 1:
+        log.warning("spline norm: %d degrees of freedom instead of %d (too few distinct ages)", len(knots) - 1, df)
+    return knots
+
+
+def spline_design(t, knots):
+    """Design matrix (intercept and natural spline) of *t*; no knots: the intercept alone."""
+    one = np.ones((len(np.atleast_1d(t)), 1))
+    return one if knots is None or len(knots) < 2 else np.hstack([one, ns_basis(t, knots)])
+
+
+def cell_lstsq(X, Y, O, min_n, Xe=None):
+    """Least squares of every column of *Y* (rows x cells, 0 where missing) on the design *X* (rows x p) over its
+    observed rows (*O*, 0/1); NaN for the cells with fewer than *min_n* observed rows. Returns (coefficients cells x
+    p, observed rows per cell, and with the design *Xe* of points (points x p): x' (X'X)^-1 x of each point and cell,
+    points x cells, the variance of the fitted mean there relative to the noise)."""
+    p = X.shape[1]
+    A = (O.T @ (X[:, :, None] * X[:, None, :]).reshape(len(X), -1)).reshape(-1, p, p) + 1e-9 * np.eye(p)
+    b = (Y * O).T @ X
+    n = O.sum(axis=0)
+    beta = np.full((Y.shape[1], p), np.nan)
+    lev = None if Xe is None else np.full((len(Xe), Y.shape[1]), np.nan)
+    ok = np.flatnonzero(n >= min_n)
+    for a in range(0, len(ok), 20000):
+        c = ok[a:a + 20000]
+        beta[c] = np.linalg.solve(A[c], b[c][:, :, None])[:, :, 0]
+        if Xe is not None:
+            sol = np.linalg.solve(A[c], np.broadcast_to(Xe.T, (len(c),) + Xe.T.shape))
+            lev[:, c] = np.einsum("gp,cpg->gc", Xe, sol)
+    return (beta, n) if Xe is None else (beta, n, lev)
+
+
+def fit_spline_norm(t, Y, O, grid, df, sd_df):
+    """Mean and SD (grid x cells) of every cell (column of *Y*, rows: scans at ages *t* on the age scale) on the
+    *grid*: the mean a natural cubic spline of *df* degrees of freedom, the variance one of *sd_df* (0: constant)
+    fitted to the squared residuals, scaled by n / (n - p) for the degrees of freedom of the mean. The SD is that of
+    a new scan: with the uncertainty of the fitted mean, larger where the ages of the fit are sparse."""
+    knots = spline_knots(t, df)
+    X = spline_design(t, knots)
+    p = X.shape[1]
+    beta, n, lev = cell_lstsq(X, Y, O, max(5, 2 * p), spline_design(grid, knots))
+    R = np.where(O > 0, Y - X @ np.nan_to_num(beta).T, 0.0)
+    sd_knots = spline_knots(t, sd_df) if sd_df > 0 else None
+    Xs = spline_design(t, sd_knots)
+    gamma, _ = cell_lstsq(Xs, R ** 2, O, max(5, 2 * p))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        var = (spline_design(grid, sd_knots) @ gamma.T) * (n / np.maximum(n - p, 1.0))[None, :]
+        # floor: a quarter of the cell's variance over all ages (the variance spline can reach 0 where the squared
+        # residuals of a few scans dominate it, and a z of such a cell would be huge)
+        var = np.fmax(var, SPLINE_VAR_FLOOR * (R ** 2).sum(axis=0) / np.maximum(n - p, 1.0))
+    mean = spline_design(grid, knots) @ beta.T
+    info = {"df": len(knots) - 1, "sd_df": 0 if sd_knots is None else len(sd_knots) - 1}
+    return mean, np.sqrt(np.clip(var, 0.0, None) * (1.0 + lev)), info
+
+
+def local_linear(te, t, Y, O, h, torch, dev):
+    """Local-linear regression (Gaussian kernel, bandwidth *h*) of the columns of *Y* (rows x cells, 0 where missing;
+    *O* 0/1) at the points *te*: (mean te x cells, weight of each point's own row in its fit (te x cells; the
+    leverage when *te* are the rows' own points), sum of the squared weights of the rows in the fit at each point
+    (the variance of the fitted mean relative to the noise), te x cells)."""
+    tt = torch.as_tensor(t, dtype=torch.float64, device=dev)
+    e = torch.as_tensor(te, dtype=torch.float64, device=dev)[:, None]
+    W = torch.exp(-0.5 * ((e - tt[None, :]) / h) ** 2)
+    s0, s1, s2 = W @ O, W @ (O * tt[:, None]), W @ (O * tt[:, None] ** 2)
+    sy, sty = W @ (Y * O), W @ (Y * O * tt[:, None])
+    s1c, s2c = s1 - e * s0, s2 - 2 * e * s1 + e ** 2 * s0  # centered on the point of the fit
+    styc = sty - e * sy
+    det = s0 * s2c - s1c ** 2
+    good = det > 1e-9 * s0 * s2c.clamp_min(1e-300)
+    local = torch.where(good, (s2c * sy - s1c * styc) / torch.where(good, det, 1.0), sy / s0.clamp_min(1e-300))
+    lev = torch.where(good, s2c / torch.where(good, det, 1.0), 1.0 / s0.clamp_min(1e-300))
+    # the weight of row i: w_i (s2c - u_i s1c) / det, u_i = t_i - te (local constant: w_i / s0)
+    W2 = W ** 2
+    q0, q1, q2 = W2 @ O, W2 @ (O * tt[:, None]), W2 @ (O * tt[:, None] ** 2)
+    q1c, q2c = q1 - e * q0, q2 - 2 * e * q1 + e ** 2 * q0
+    ssq = torch.where(good, (s2c ** 2 * q0 - 2 * s2c * s1c * q1c + s1c ** 2 * q2c) / torch.where(good, det, 1.0) ** 2,
+                      q0 / s0.clamp_min(1e-300) ** 2)
+    return local, lev, ssq
+
+
+def fit_kernel_norm(t, Y, O, grid, h, device="auto", min_n=5):
+    """Mean and SD (grid x cells) of every cell on the *grid* (age scale): local-linear regression of the values in
+    the ages, Gaussian kernel of bandwidth *h* (age scale units; 'cv': the one of KERNEL_BANDWIDTHS with the smallest
+    leave-one-scan-out error over the cells), and for the variance the kernel-weighted mean of the squared
+    leave-one-out residuals."""
+    import torch
+    dev = pick_device(device)
+    if dev == "mps":
+        dev = "cpu"
+    n = O.sum(axis=0)
+    ok = n >= min_n
+    cols = np.flatnonzero(ok)
+    chunk = max(1, int(2e8 // (8 * (len(t) + len(grid)) * 6)))
+    scores = {}
+
+    def run(hh, out=None):
+        sse = 0.0
+        for a in range(0, len(cols), chunk):
+            c = cols[a:a + chunk]
+            Yc = torch.as_tensor(np.nan_to_num(Y[:, c]), dtype=torch.float64, device=dev)
+            Oc = torch.as_tensor(O[:, c], dtype=torch.float64, device=dev)
+            fit, lev, _ = local_linear(t, t, Yc, Oc, hh, torch, dev)
+            loo = (Yc - fit) / (1.0 - lev * Oc).clamp_min(1e-3) * Oc  # leave-one-out residuals of the observed rows
+            if out is None:
+                var = ((Yc - (Yc * Oc).sum(0) / Oc.sum(0)) ** 2 * Oc).sum(0) / Oc.sum(0)
+                sse += float(((loo ** 2).sum(0) / Oc.sum(0) / var.clamp_min(1e-300)).sum())
+                continue
+            mean, _, ssq = local_linear(grid, t, Yc, Oc, hh, torch, dev)
+            out[0][:, c] = mean.cpu().numpy()
+            # the local-constant (kernel-weighted) mean of the squared residuals, and the uncertainty of the mean
+            Wg = torch.exp(-0.5 * ((torch.as_tensor(grid, dtype=torch.float64, device=dev)[:, None]
+                                    - torch.as_tensor(t, dtype=torch.float64, device=dev)[None, :]) / hh) ** 2)
+            var = (Wg @ (loo ** 2)) / (Wg @ Oc).clamp_min(1e-300)
+            out[1][:, c] = np.sqrt((var * (1.0 + ssq)).cpu().numpy())
+        return sse / max(len(cols), 1)
+
+    if h == "cv":
+        scores = {hh: run(hh) for hh in KERNEL_BANDWIDTHS}
+        h = min(scores, key=scores.get)
+    mean, sd = np.full((len(grid), Y.shape[1]), np.nan), np.full((len(grid), Y.shape[1]), np.nan)
+    run(float(h), (mean, sd))
+    return mean, sd, {"bandwidth": float(h), "cv": {"{:g}".format(k): round(v, 5) for k, v in scores.items()}}
+
+
+def grid_interp(grid, values, x):
+    """*values* (grid x ...) at the points *x* (age scale): linear between the grid points, constant beyond."""
+    x = np.clip(np.asarray(x, dtype=float), grid[0], grid[-1])
+    i = np.clip(np.searchsorted(grid, x) - 1, 0, len(grid) - 2)
+    w = ((x - grid[i]) / (grid[i + 1] - grid[i])).reshape((-1,) + (1,) * (values.ndim - 1))
+    return (1 - w) * values[i] + w * values[i + 1]
+
+
+def age_sd_scale(fit_cells, t, Y, O, grid, metric, subjects, bandwidth, folds=5, df=2, seed=0):
+    """Scale of the SDs of a continuous norm per metric and age (grid x metrics) that makes them right on held-out
+    scans: the norm is fitted again in *folds* folds by subject (*fit_cells*(rows, bandwidth) -> mean, SD, info on the
+    *grid*), the mean squared deviation z^2 of each held-out scan and metric over its observed cells is taken, and a
+    natural spline of *df* degrees of freedom in the age scale is fitted to it per metric. None when a fold has fewer
+    than 5 scans to fit on."""
+    rng = np.random.default_rng(seed)
+    subj = np.unique(subjects)
+    rng.shuffle(subj)
+    fold = {x: i % folds for i, x in enumerate(subj)}
+    of = np.asarray([fold[x] for x in subjects])
+    n_metrics = int(metric.max()) + 1
+    z2 = np.full((len(t), n_metrics), np.nan)
+    for f in range(folds):
+        train, held = np.flatnonzero(of != f), np.flatnonzero(of == f)
+        if len(train) < 5:
+            return None
+        if not len(held):
+            continue
+        mean, sd, _ = fit_cells(train, bandwidth)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            floor = SD_FLOOR * np.nanmedian(np.where(sd > 0, sd, np.nan).reshape(len(grid), -1, n_metrics)
+                                            .transpose(2, 0, 1).reshape(n_metrics, -1), axis=1)
+            sdf = np.fmax(grid_interp(grid, sd, t[held]), floor[metric][None, :])
+            z = (Y[held] - grid_interp(grid, mean, t[held])) / sdf
+        ok = (O[held] > 0) & np.isfinite(z)
+        num = np.stack([np.where(ok, z ** 2, 0.0)[:, metric == m].sum(1) for m in range(n_metrics)], 1)
+        den = np.stack([ok[:, metric == m].sum(1) for m in range(n_metrics)], 1)
+        z2[held] = np.where(den > 0, num / np.maximum(den, 1), np.nan)
+    knots = spline_knots(t, df)
+    beta, _ = cell_lstsq(spline_design(t, knots), np.nan_to_num(z2), np.isfinite(z2).astype(float), 5)
+    s2 = spline_design(grid, knots) @ beta.T
+    return np.sqrt(np.clip(np.where(np.isfinite(s2), s2, 1.0), 0.25, 9.0))  # at most halved or tripled
+
+
+class AgeNorm(Prior):
+    """The norm of every position and metric as a smooth function of age, instead of per age bin: mean and SD on a
+    grid of ages, linear in between on the age scale (log(age + offset)), constant beyond the ages of the fit. Fitted
+    on the profiles of a normative cohort (fit): 'spline' (natural cubic splines of the age scale for the mean and
+    the variance) or 'kernel' (local-linear regression in the age scale). The bins are only those the results are
+    reported by."""
+
+    def __init__(self, kind, grid_ages, mean, sd, offset, bins, ages, info=None):
+        super().__init__(bins, scan_bins(ages, bins), mean=mean, sd=sd)
+        self.kind, self.grid_ages, self.offset = kind, np.asarray(grid_ages, dtype=float), float(offset)
+        self.grid = age_scale(self.grid_ages, self.offset)
+        self.ages = list(ages)
+        self.info = dict(info or {}, kind=kind)
+        self.set_floor()
+
+    @classmethod
+    def fit(cls, cohort, ages, scans, kind, bins, df=3, sd_df=2, bandwidth="cv", offset=1.0, grid_size=AGE_GRID,
+            device="auto", sd_folds=5):
+        """Fit on the scans *scans* (indices, with an age) of *cohort*. *sd_folds*: folds (by subject) of the
+        calibration of the SDs (age_sd_scale; 0: none)."""
+        scans = [s for s in scans if ages[s] is not None]
+        if len(scans) < 5:
+            raise ValueError("a continuous age norm needs the ages of at least 5 scans ({} with an age)".format(
+                len(scans)))
+        if kind not in AGE_NORMS[1:]:
+            raise ValueError("unknown age norm {} ({})".format(kind, ", ".join(AGE_NORMS)))
+        t = age_scale([ages[s] for s in scans], offset)
+        grid = np.linspace(t.min(), t.max(), grid_size)
+        Y = cohort.values[scans].reshape(len(scans), -1).astype(np.float64)
+        O = (~np.isnan(Y) & cohort.valid.reshape(1, -1)).astype(np.float64)
+        Y = np.nan_to_num(Y)
+
+        def fit_cells(rows, h):
+            if kind == "spline":
+                return fit_spline_norm(t[rows], Y[rows], O[rows], grid, df, sd_df)
+            return fit_kernel_norm(t[rows], Y[rows], O[rows], grid, h, device)
+
+        everyone = np.arange(len(scans))
+        mean, sd, info = fit_cells(everyone, bandwidth)
+        metric = np.tile(np.arange(len(cohort.metrics)), cohort.n_positions)  # metric of every cell
+        if sd_folds and sd_folds > 1:
+            scale = age_sd_scale(fit_cells, t, Y, O, grid, metric, [subject_of(cohort.scans[s]) for s in scans],
+                                 info.get("bandwidth", bandwidth), sd_folds, max(1, sd_df))
+            if scale is not None:
+                sd = sd * scale[:, metric]
+                info["sd_scale"] = {m: [round(float(x), 3) for x in scale[[0, len(grid) // 2, -1], i]]
+                                    for i, m in enumerate(cohort.metrics)}  # youngest, middle, oldest age
+        shape = (grid_size, cohort.n_positions, len(cohort.metrics))
+        info["scans"] = len(scans)
+        return cls(kind, np.exp(grid) - offset, mean.reshape(shape), sd.reshape(shape), offset, bins, ages, info)
+
+    def at(self, age):
+        """(mean, SD) (positions x metrics) at *age* (months), the SD with its floor."""
+        mean, sd = (grid_interp(self.grid, a, age_scale([age], self.offset))[0] for a in (self.mean, self.sd))
+        return mean, np.where(np.isfinite(sd), np.fmax(sd, self.floor[None, :]), np.nan)
+
+    def norm(self, s, Y=None, others=()):
+        """(mean, SD) at the age of scan *s*, or None without an age. The scan is not left out (*Y*, *others*): the
+        validation fits the norm without the subjects of each fold instead."""
+        return None if self.ages[s] is None else self.at(self.ages[s])
+
+    def bin_norm(self, b):
+        raise TypeError("a continuous age norm has no age bins")
+
+    def describe(self):
+        if self.kind == "spline":
+            return "spline of log(age + {:g}), mean {} / SD {} degrees of freedom".format(
+                self.offset, self.info.get("df"), self.info.get("sd_df"))
+        return "kernel in log(age + {:g}), bandwidth {:g}".format(self.offset, self.info.get("bandwidth"))
+
+    def for_ages(self, ages):
+        """The same norm for scans of the ages *ages* (another cohort)."""
+        out = AgeNorm(self.kind, self.grid_ages, self.mean, self.sd, self.offset, self.bins, ages, self.info)
+        out.floor = self.floor
+        return out
+
+
+def age_norm_suffix(kind, df=None, sd_df=None, bandwidth=None):
+    """The label of an age norm in the names of the validated settings ('' for the age bins)."""
+    if kind == "bins":
+        return ""
+    if kind == "spline":
+        return " [spline {}/{}]".format(df, sd_df)
+    return " [kernel {}]".format(bandwidth if bandwidth == "cv" else "{:g}".format(float(bandwidth)))
+
+
+### batch correction: several profiles folders pooled, each shifted and scaled to a reference batch
+
+def batch_scale_limits(spec, metrics):
+    """The scale limit of every metric from *spec* (--batch-scale-limit: "3,FWAD=10", a default and per metric)."""
+    default, per = None, {}
+    for item in str(spec).split(","):
+        name, eq, value = item.strip().rpartition("=")
+        try:
+            limit = float(value)
+        except ValueError:
+            limit = 0.0
+        if limit < 1:
+            raise ValueError("--batch-scale-limit {}: a limit of at least 1 (and NAME=limit per metric)".format(spec))
+        if eq:
+            per[re.sub(r"[^A-Z]", "", name.upper())] = limit
+        else:
+            default = limit
+    default = default or float(BATCH_SCALE_LIMIT.split(",")[0])
+    return np.array([per.get(re.sub(r"[^A-Z]", "", m.upper()), default) for m in metrics])
+
+
+def batch_plain_metrics(metrics):
+    """Whether every metric keeps the least-squares fit with --batch-robust (BATCH_PLAIN_METRICS)."""
+    return np.array([re.sub(r"[^A-Z]", "", m.upper()) in BATCH_PLAIN_METRICS for m in metrics])
+
+
+def batch_log_metrics(metrics):
+    """Whether every metric is corrected on the log scale (the diffusivities, BATCH_LOG_METRICS)."""
+    return np.array([re.sub(r"[^A-Z]", "", m.upper()) in BATCH_LOG_METRICS for m in metrics])
+
+
+def robust_sd(R, M):
+    """Robust SD of every column of the residuals *R* over the rows where *M*: 1.4826 x their median absolute value,
+    at least the RMS of the 80% smallest (a metric with many equal values, e.g. free water fractions of 0, has a MAD
+    near 0)."""
+    A = np.abs(R)
+    med, q80 = masked_quantiles(A, M, (0.5, 0.8))
+    small = (M > 0) & (A <= q80[None, :])
+    rms = np.sqrt((np.where(small, A, 0.0) ** 2).sum(axis=0) / np.maximum(small.sum(axis=0), 1))
+    return np.fmax(1.4826 * np.nan_to_num(med), np.nan_to_num(rms))
+
+
+def masked_quantiles(A, M, q, chunk=4096):
+    """Quantiles *q* of every column of *A* over the rows where *M* (len(q) x columns, NaN without any)."""
+    out = np.full((len(q), A.shape[1]), np.nan)
+    for a in range(0, A.shape[1], chunk):
+        x = np.where(M[:, a:a + chunk] > 0, A[:, a:a + chunk], np.nan)
+        has = (M[:, a:a + chunk] > 0).any(axis=0)
+        if has.any():
+            out[:, a:a + chunk][:, has] = np.nanquantile(x[:, has], q, axis=0)
+    return out
+
+
+class BatchCorrection:
+    """Shift and scale of every batch to the *reference* batch at every cell (position and metric), aware of the age.
+    All batches follow one age curve (a natural cubic spline of log(age + offset)) plus a shift per batch, fitted
+    jointly by least squares, so the shift is that at the same age; *shift* "linear": linear in the age scale over the
+    ages all batches have, constant beyond. The scale is the ratio of the SDs of the residuals,
+    each squared residual relative to an age curve of the variance of all batches (a spline of sd_df degrees of
+    freedom), over the ages every batch has. A scan of batch b at age a becomes mu_ref(a) + (value - mu_b(a)) * scale_b
+    with mu_b = mu_ref + shift_b; scans without an age are left as they are. Cells where a batch has fewer than
+    min_n observed values in the common ages are left as they are too. The scale is clipped to 1/limit..limit
+    (*limits* per metric). *robust*: the diffusivities on the log scale (a shift there is a ratio), the fit with Huber
+    and then bisquare weights of the residuals of every batch, and the variance curve and the scale from the squared
+    residuals with those weights, so outlying scans of a batch move neither shift nor scale much (but the metrics
+    of BATCH_PLAIN_METRICS)."""
+
+    def __init__(self, batches, reference, knots, offset, beta, shift, scale, info, slope=None, common=None,
+                 log_cells=None):
+        self.batches, self.reference, self.knots, self.offset = batches, reference, knots, offset
+        self.beta, self.shift, self.scale, self.info = beta, shift, scale, info  # cells x p, batches x cells (2)
+        self.slope, self.common = slope, common  # linear shift: batches x cells per unit of the age scale; (lo, hi)
+        self.log_cells = log_cells  # cells corrected on the log scale (None: none)
+
+    @classmethod
+    def fit(cls, cohort, ages, reference=0, df=6, sd_df=2, offset=1.0, exclude=(), min_n=10, shift="constant",
+            limits=None, robust=False, iterations=(2, 4)):
+        """Fit on the scans of *cohort* with an age, but those in *exclude* (indices: the validated scans). *limits*:
+        the scale limit of every metric (default: those of BATCH_SCALE_LIMIT); *iterations*: of the robust fit, with
+        Huber and then bisquare weights."""
+        nb = len(cohort.batches)
+        drop = set(exclude)
+        scans = [s for s in range(len(cohort.scans)) if ages[s] is not None and s not in drop]
+        t = age_scale([ages[s] for s in scans], offset)
+        b = cohort.scan_batch[scans]
+        if len(set(b.tolist())) < nb:
+            raise ValueError("batch correction: no scan with an age in the batch(es) {}".format(", ".join(
+                cohort.batches[i] for i in range(nb) if not (b == i).any())))
+        lo = max(t[b == i].min() for i in range(nb))
+        hi = min(t[b == i].max() for i in range(nb))
+        if lo >= hi:
+            raise ValueError("batch correction: the batches have no ages in common, so their shift can't be told from "
+                             "the age")
+        common = (t >= lo) & (t <= hi)
+        knots = spline_knots(t, df)
+        others = [i for i in range(nb) if i != reference]
+        mid = 0.5 * (lo + hi)
+        dummy = (b[:, None] == np.asarray(others)[None, :]).astype(np.float64)
+        X = np.hstack([spline_design(t, knots), dummy] + ([dummy * (np.clip(t, lo, hi) - mid)[:, None]]
+                                                         if shift == "linear" else []))
+        p = spline_design(t[:1], knots).shape[1]
+        Y = cohort.values[scans].reshape(len(scans), -1).astype(np.float64)
+        O = (~np.isnan(Y) & cohort.valid.reshape(1, -1)).astype(np.float64)
+        n_metrics = len(cohort.metrics)
+        log_cells = np.tile(batch_log_metrics(cohort.metrics), cohort.n_positions) if robust else None
+        if log_cells is not None and log_cells.any():
+            O[:, log_cells] *= Y[:, log_cells] > 0  # no log of a value <= 0: left out of the fit
+            with np.errstate(invalid="ignore", divide="ignore"):
+                Y[:, log_cells] = np.log(Y[:, log_cells])
+        Y = np.where(O > 0, Y, 0.0)
+        plain = np.tile(batch_plain_metrics(cohort.metrics), cohort.n_positions) if robust else None
+        W = O  # weights of the fit: of the residuals relative to the robust SD of their batch
+        steps = sum(iterations) if robust else 0
+        for it in range(steps + 2):
+            if it <= steps:
+                coef, _ = cell_lstsq(X, Y, W, max(min_n, 2 * X.shape[1]))
+                R = np.where(O > 0, Y - X @ np.nan_to_num(coef).T, 0.0)  # residuals
+            if it == steps + (1 if robust else 0):
+                break  # robust: the bisquare weights of the last residuals too, for the variance
+            W = O.copy()
+            for i in range(nb):
+                rows = b == i
+                sd = robust_sd(R[rows], O[rows])
+                u = np.abs(R[rows]) / np.where(sd > 0, sd, np.inf)
+                W[rows] *= (np.minimum(1.0, BATCH_HUBER / np.maximum(u, 1e-12)) if it < iterations[0]
+                            else np.clip(1.0 - (u / BATCH_BISQUARE) ** 2, 0.0, None) ** 2)
+            W[:, plain] = O[:, plain]
+        del Y
+        R **= 2  # squared residuals
+        if robust:  # with the bisquare weights, consistent with the variance of a normal distribution
+            R[:, ~plain] /= BATCH_BISQUARE_VAR
+        sd_knots = spline_knots(t, sd_df) if sd_df > 0 else None
+        Xs = spline_design(t, sd_knots)
+        g, n = cell_lstsq(Xs, R, W, min_n)
+        mean_r = (R * W).sum(axis=0) / np.maximum(n, 1e-12)
+        v = np.fmax(Xs @ np.nan_to_num(g).T, 0.05 * mean_r[None, :])  # the variance at the age of every scan
+        own = b == reference
+        sd_ref = np.sqrt((R[own] * W[own]).sum(axis=0) / np.maximum(W[own].sum(axis=0), 1e-12))  # of the reference
+        R /= np.where(v > 0, v, 1.0)
+        var, count = np.zeros((nb, R.shape[1])), np.zeros((nb, R.shape[1]))
+        for i in range(nb):
+            rows = common & (b == i)
+            count[i] = O[rows].sum(axis=0)
+            var[i] = (R[rows] * W[rows]).sum(axis=0) / np.maximum(W[rows].sum(axis=0), 1e-12)
+        del R, W
+        ok = (count >= min_n).all(axis=0) & np.isfinite(coef).all(axis=1) & (var > 0).all(axis=0)
+        limit = np.tile(batch_scale_limits(BATCH_SCALE_LIMIT, cohort.metrics) if limits is None
+                        else np.broadcast_to(np.asarray(limits, dtype=float), (n_metrics,)), cohort.n_positions)
+        shifts, scale = np.zeros((nb, len(ok))), np.ones((nb, len(ok)))
+        slope = np.zeros((nb, len(ok))) if shift == "linear" else None
+        for j, i in enumerate(others):
+            shifts[i, ok] = coef[ok, p + j]
+            if slope is not None:
+                slope[i, ok] = coef[ok, p + len(others) + j]
+            scale[i, ok] = np.clip(np.sqrt(var[reference, ok] / var[i, ok]), 1.0 / limit[ok], limit[ok])
+        beta = np.where(ok[:, None], np.nan_to_num(coef[:, :p]), 0.0)
+        info = {"scans": len(scans), "cells": int(ok.sum()), "cells_left": int(len(ok) - ok.sum()),
+                "common_ages": [round(float(np.exp(x) - offset), 2) for x in (lo, hi)], "df": len(knots) - 1,
+                "sd_df": 0 if sd_knots is None else len(sd_knots) - 1, "shift": shift, "robust": bool(robust)}
+        corr = cls(list(cohort.batches), reference, knots, offset, beta, shifts, scale, info, slope, (lo, mid, hi),
+                   log_cells if log_cells is not None and log_cells.any() else None)
+        corr.sd_ref = np.where(sd_ref > 0, sd_ref, np.nan)
+        corr.limit = limit
+        return corr
+
+    def apply(self, values, ages, scan_batch, inverse=False, sd=False, at=None, chunk=256):
+        """*values* (scans x positions x metrics, the scans of *ages* and *scan_batch*) in the reference batch's units
+        (or back, *inverse*); *sd*: SDs (scaled only; of the cells on the log scale also by the ratio of the values,
+        *at*: (values in the reference units, values in the batch's units) of those SDs). Returns a new float
+        array."""
+        out = np.array(values, dtype=np.float64 if values.dtype == np.float64 else np.float32)
+        flat = out.reshape(len(out), -1)
+        lc = self.log_cells
+        rows = [s for s in range(len(out)) if ages[s] is not None and scan_batch[s] != self.reference]
+        for a in range(0, len(rows), chunk):
+            r = np.asarray(rows[a:a + chunk])
+            k, sh = self.scale[scan_batch[r]], self.shift[scan_batch[r]]
+            if sd:
+                x = flat[r] / k if inverse else flat[r] * k
+                if lc is not None and at is not None:  # d(value) = value * d(log value)
+                    h, o = (np.asarray(v).reshape(len(v), -1)[r][:, lc] for v in at)
+                    with np.errstate(invalid="ignore", divide="ignore"):
+                        ratio = o / h if inverse else h / o
+                    x[:, lc] *= np.where(np.isfinite(ratio) & (ratio > 0), ratio, 1.0)
+                flat[r] = x
+                continue
+            t = age_scale([ages[s] for s in r], self.offset)
+            if self.slope is not None:
+                lo, mid, hi = self.common
+                sh = sh + self.slope[scan_batch[r]] * (np.clip(t, lo, hi) - mid)[:, None]
+            mu = spline_design(t, self.knots) @ self.beta.T  # mu_ref
+            y = flat[r].astype(np.float64)
+            if lc is not None:
+                pos = y[:, lc] > 0  # values <= 0 of the cells on the log scale are left as they are
+                keep = y[:, lc].copy()
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    y[:, lc] = np.log(np.where(pos, y[:, lc], 1.0))
+            y = (y - mu) / k + mu + sh if inverse else mu + (y - mu - sh) * k
+            if lc is not None:
+                with np.errstate(over="ignore"):
+                    y[:, lc] = np.where(pos, np.exp(y[:, lc]), keep)
+            flat[r] = y
+        return out
+
+    def table(self, cohort):
+        """Per batch and metric: the cells corrected, the median shift (in units and in residual SDs of the reference;
+        a linear shift: at the middle of the common ages, and its change over them) and the median scale, with their
+        10th and 90th percentiles."""
+        rows = []
+        metric = np.tile(np.arange(len(cohort.metrics)), cohort.n_positions)
+        moved = (self.scale != 1) | (self.shift != 0)
+        for i, name in enumerate(self.batches):
+            if i == self.reference:
+                continue
+            for m, mname in enumerate(cohort.metrics):
+                c = (metric == m) & moved[i]
+                if not c.any():
+                    continue
+                d = self.shift[i, c] / self.sd_ref[c]
+                rows.append({"batch": name, "reference": self.batches[self.reference], "metric": mname,
+                             "log": bool(self.log_cells is not None and self.log_cells[c].all()),
+                             "cells": int(c.sum()), "shift": np.median(self.shift[i, c]),
+                             "shift_sd": np.nanmedian(d), "shift_sd_p10": np.nanpercentile(d, 10),
+                             "shift_sd_p90": np.nanpercentile(d, 90), "scale": np.median(self.scale[i, c]),
+                             "scale_p10": np.percentile(self.scale[i, c], 10),
+                             "scale_p90": np.percentile(self.scale[i, c], 90),
+                             "scale_limit": float(np.median(self.limit[c])),
+                             "scale_at_limit": np.mean((self.scale[i, c] <= 1.0 / self.limit[c] + 1e-9) |
+                                                       (self.scale[i, c] >= self.limit[c] - 1e-9))})
+                if self.slope is not None:  # the change of the shift from the youngest to the oldest common age
+                    rows[-1]["shift_change_sd"] = np.nanmedian(
+                        self.slope[i, c] * (self.common[2] - self.common[0]) / self.sd_ref[c])
+        return pd.DataFrame(rows)
+
+
+def correct_batches(cohort, args, ages, exclude=(), report_dir=None):
+    """Fit the batch correction of *cohort* (several batches, --batch-correction shift-scale), put its values in the
+    units of the reference batch and write batch_correction.csv to *report_dir*. Returns the BatchCorrection (None
+    for a single batch or --batch-correction none)."""
+    if len(cohort.batches) < 2 or args.batch_correction == "none":
+        return None
+    ref = args.batch_reference or cohort.batches[0]
+    if ref not in cohort.batches:
+        raise ValueError("--batch-reference {}: not a batch ({})".format(ref, ", ".join(cohort.batches)))
+    t0 = time.time()
+    corr = BatchCorrection.fit(cohort, ages, cohort.batches.index(ref), args.batch_df, args.batch_sd_df,
+                               args.age_offset, exclude, shift=args.batch_shift,
+                               limits=batch_scale_limits(args.batch_scale_limit, cohort.metrics),
+                               robust=args.batch_robust == "yes")
+    cohort.values = corr.apply(cohort.values, ages, cohort.scan_batch)
+    table = corr.table(cohort)
+    log.info("Batch correction to %s (%s%s shift and scale at the same age, spline of %d df on %d scans, common ages "
+             "%g-%g months, %.0f s): %d cells, %d left as they are (too few values of a batch); median shift %s; "
+             "median scale %s", ref, "robust, " if corr.info["robust"] else "", args.batch_shift, corr.info["df"],
+             corr.info["scans"], *corr.info["common_ages"], time.time() - t0,
+             corr.info["cells"], corr.info["cells_left"], ", ".join(
+                 "{} {} {:+.2f} SD".format(r.batch, r.metric, r.shift_sd) for r in table.itertuples()), ", ".join(
+                 "{} {} {:.2f}".format(r.batch, r.metric, r.scale) for r in table.itertuples()))
+    n_no_age = sum(ages[s] is None for s in range(len(cohort.scans)) if cohort.scan_batch[s] != corr.reference)
+    if n_no_age:
+        log.warning("%d scan(s) of the batches other than %s have no age and are not corrected", n_no_age, ref)
+    if report_dir:
+        os.makedirs(report_dir, exist_ok=True)
+        table.to_csv(os.path.join(report_dir, "batch_correction.csv"), index=False)
+    return corr
 
 
 ### population model: probabilistic PCA of the deviations from the norm
@@ -686,7 +1294,8 @@ class Population:
         self.tract, self.arc, self.metric = np.asarray(tract), np.asarray(arc, dtype=float), np.asarray(metric)
         self.mu, self.W, self.psi = mu, W, psi
         self.sd_scale = np.ones(len(mu)) if sd_scale is None else np.asarray(sd_scale, dtype=float)  # per cell
-        self.bins, self.norm_mean, self.norm_sd = bins, norm_mean, norm_sd  # bins x cells (the SD with its floor)
+        # bins (or the ages of a continuous norm, info["age_norm"]) x cells, the SD with its floor
+        self.bins, self.norm_mean, self.norm_sd = bins, norm_mean, norm_sd
         self.info = info
         self.p = self.m = None  # position and metric of each cell in the cohort it is bound to (-1: none)
 
@@ -718,9 +1327,12 @@ class Population:
             by_metric = ppca_sd_scale(data, m, subj, info["components"], noise, max_iter, tol, device, sd_folds)
             scale = by_metric[m]
             info["sd_scale"] = {cohort.metrics[i]: round(float(by_metric[i]), 4) for i in np.unique(m)}
-        bn = [prior.bin_norm(b) for b in range(len(prior.bins))]
+        nm, ns = prior.table()
+        if isinstance(prior, AgeNorm):
+            info["age_norm"] = {"kind": prior.kind, "offset": prior.offset, "ages": prior.grid_ages.tolist(),
+                                **{k: v for k, v in prior.info.items() if k in ("df", "sd_df", "bandwidth")}}
         model = cls(np.asarray(cohort.tracts)[cohort.tract_of[p]], cohort.arcs[p], np.asarray(cohort.metrics)[m], mu, W,
-                    psi, prior.bins, np.stack([a[p, m] for a, _ in bn]), np.stack([b[p, m] for _, b in bn]), info, scale)
+                    psi, prior.bins, nm[:, p, m], ns[:, p, m], info, scale)
         model.p, model.m = p, m
         return model
 
@@ -736,13 +1348,19 @@ class Population:
         return float(np.mean(self.p >= 0))
 
     def prior(self, cohort, ages):
-        """The norm kept with the model, as a Prior of *cohort* (bound first)."""
+        """The norm kept with the model (per age bin, or continuous: on a grid of ages), as a Prior or AgeNorm of
+        *cohort* (bound first)."""
         on = self.p >= 0
-        shape = (len(self.bins), cohort.n_positions, len(cohort.metrics))
+        shape = (len(self.norm_mean), cohort.n_positions, len(cohort.metrics))
         mean, sd = np.full(shape, np.nan), np.full(shape, np.nan)
         mean[:, self.p[on], self.m[on]] = self.norm_mean[:, on]
         sd[:, self.p[on], self.m[on]] = self.norm_sd[:, on]
-        prior = Prior(self.bins, scan_bins(ages, self.bins), mean=mean, sd=sd)
+        an = self.info.get("age_norm")
+        if an:
+            prior = AgeNorm(an["kind"], an["ages"], mean, sd, an["offset"], self.bins, ages,
+                            {k: an[k] for k in ("df", "sd_df", "bandwidth") if k in an})
+        else:
+            prior = Prior(self.bins, scan_bins(ages, self.bins), mean=mean, sd=sd)
         prior.floor = np.zeros(len(cohort.metrics))  # the kept SDs have their floor already
         return prior
 
@@ -935,6 +1553,7 @@ def write_tables(cohort, imputed, out_dir, mask_dir, value_format="%.6g"):
     for t in cohort.tables:
         rows = cohort.rows[id(t)]
         m = mi[t.metric]
+        b = cohort.batches.index(t.batch)
         raw = t.raw if t.rowwise else t.raw.T  # scans x arc lengths, as strings
         raw = raw.copy()
         raw.index = raw.index.astype(str)
@@ -942,7 +1561,7 @@ def write_tables(cohort, imputed, out_dir, mask_dir, value_format="%.6g"):
         mask = pd.DataFrame(np.where(blank, "", "0"), index=raw.index, columns=raw.columns)
         for scan in cohort.scans:
             vals = imputed[si[scan], rows, m]
-            if np.isnan(vals).all():
+            if cohort.scan_batch[si[scan]] != b or np.isnan(vals).all():  # only the scans of the table's batch
                 continue
             if scan not in raw.index:
                 raw.loc[scan] = ""
@@ -962,7 +1581,7 @@ def write_tables(cohort, imputed, out_dir, mask_dir, value_format="%.6g"):
             out.index.name = t.raw.index.name
             if not t.rowwise:
                 out.columns.name = None
-            path = os.path.join(root, t.rel)
+            path = os.path.join(root, t.batch, t.rel)
             os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
             out.to_csv(path)
     return n_filled
@@ -974,7 +1593,7 @@ def write_values(cohort, values, root, value_format="%.6g"):
     mi = {m: i for i, m in enumerate(cohort.metrics)}
     for t in cohort.tables:
         v = values[:, cohort.rows[id(t)], mi[t.metric]]
-        keep = ~np.isnan(v).all(axis=1)
+        keep = ~np.isnan(v).all(axis=1) & (cohort.scan_batch == cohort.batches.index(t.batch))
         if not keep.any():
             continue
         cells = np.where(np.isnan(v[keep]), "", np.char.mod(value_format, np.nan_to_num(v[keep])))
@@ -982,7 +1601,7 @@ def write_values(cohort, values, root, value_format="%.6g"):
                              else t.raw.index)
         out = frame if t.rowwise else frame.T
         out.index.name = t.raw.index.name
-        path = os.path.join(root, t.rel)
+        path = os.path.join(root, t.batch, t.rel)
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         out.to_csv(path)
 
@@ -1162,10 +1781,30 @@ def population_configs(args):
     return [("population q={} {}".format(q, x), q, x) for q in parse_list(args.validate_components, int) for x in noises]
 
 
-def population_folds(cohort, args, sample, prior, bins, scan_bin, pops, dev):
-    """Population models of the validation: the sampled scans split by subject into --validate-folds folds; for each
-    fold and setting a model fitted on the other subjects (their norm from them too, with --validate-prior cohort).
-    Returns {scan: [(setting, model, the scan's norm of the model)]}."""
+def age_norm_specs(args):
+    """(label suffix, kind, options) of the age norms to compare (--validate-age-norms), the age bins first."""
+    out = []
+    for kind in [x.strip() for x in args.validate_age_norms.split(",") if x.strip()]:
+        if kind not in AGE_NORMS:
+            raise ValueError("unknown --validate-age-norms {} ({})".format(kind, ", ".join(AGE_NORMS)))
+        if kind == "bins":
+            out.insert(0, ("", "bins", {}))
+        elif kind == "spline":
+            out += [(age_norm_suffix("spline", df, sd), "spline", {"df": df, "sd_df": sd})
+                    for df in parse_list(args.validate_spline_df, int)
+                    for sd in parse_list(args.validate_spline_sd_df, int)]
+        else:
+            out += [(age_norm_suffix("kernel", bandwidth=h), "kernel", {"bandwidth": h if h == "cv" else float(h)})
+                    for h in [x.strip() for x in args.validate_kernel_bandwidth.split(",") if x.strip()]]
+    return out
+
+
+def fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev):
+    """The norms and population models of the validation: the sampled scans split by subject into --validate-folds
+    folds; for each fold, age norm (*specs*) and population setting, a model fitted on the other subjects (their norm
+    from them too, with --validate-prior cohort). The age bins of a validated scan are the norm left out of the scan
+    and its subject (Prior.norm), a continuous norm is that of its fold. Returns {scan: [(label suffix, the scan's
+    norm (None: the age bins of Prior.norm), [(setting, model, the scan's norm of the model)])]}."""
     rng = np.random.default_rng(args.validate_seed + 1)  # own stream: the hidden values stay those of other runs
     subjects = sorted({subject_of(cohort.scans[s]) for s in sample})
     rng.shuffle(subjects)
@@ -1179,21 +1818,32 @@ def population_folds(cohort, args, sample, prior, bins, scan_bin, pops, dev):
     for f in range(n_folds):
         held = {subj for subj, i in fold_of.items() if i == f}
         train = [s for s in usable if subject_of(cohort.scans[s]) not in held]
-        fprior = prior if args.validate_prior == "files" else Prior.from_cohort(
-            cohort, bins, [a if subject_of(sc) not in held else None for a, sc in zip(ages, cohort.scans)])
-        for name, q, noise in pops:
-            model = Population.fit(cohort, fprior, train, q, noise, args.max_iter, device=dev, min_scans=args.min_scans,
-                                   sd_folds=args.sd_calibration_folds)
-            for s in sample:
-                if fold_of[subject_of(cohort.scans[s])] != f:
-                    continue
-                if args.validate_prior == "files":
-                    nrm = prior.norm(s)
-                else:
-                    nrm = fprior.bin_norm(scan_bin[s]) if scan_bin[s] >= 0 else None
-                out[s].append((name, model, nrm))
-        log.info("  population models of fold %d/%d: %d settings on %d scans (%.0f s)", f + 1, n_folds, len(pops),
-                 len(train), time.time() - t0)
+        mine = [s for s in sample if fold_of[subject_of(cohort.scans[s])] == f]
+        for suffix, kind, opts in specs:
+            if kind == "bins":
+                if not pops:
+                    continue  # the norm of the scans is Prior.norm
+                fprior = prior if args.validate_prior == "files" else Prior.from_cohort(
+                    cohort, bins, [a if subject_of(sc) not in held else None for a, sc in zip(ages, cohort.scans)])
+                norms = {s: prior.norm(s) if args.validate_prior == "files" else
+                         (fprior.bin_norm(scan_bin[s]) if scan_bin[s] >= 0 else None) for s in mine}
+            else:
+                fit_on = [s for s in range(len(cohort.scans)) if subject_of(cohort.scans[s]) not in held]
+                fprior = AgeNorm.fit(cohort, ages, fit_on, kind, bins, offset=args.age_offset, device=dev,
+                                     sd_folds=args.sd_calibration_folds, **opts)
+                norms = {s: fprior.norm(s) for s in mine}
+                log.info("  age norm of fold %d/%d: %s on %d scans", f + 1, n_folds, fprior.describe(),
+                         fprior.info["scans"])
+            models = []
+            for name, q, noise in pops:
+                models.append((name + suffix, Population.fit(cohort, fprior, train, q, noise, args.max_iter, device=dev,
+                                                             min_scans=args.min_scans,
+                                                             sd_folds=args.sd_calibration_folds)))
+            for s in mine:
+                out[s].append((suffix, None if kind == "bins" else norms[s],
+                               [(name, model, norms[s]) for name, model in models]))
+        log.info("  norms and population models of fold %d/%d: %d population settings on %d scans (%.0f s)", f + 1,
+                 n_folds, len(pops), len(train), time.time() - t0)
     return out
 
 
@@ -1263,7 +1913,7 @@ def validation_prior(cohort, args, configs, siren):
     the cohort itself, each scan left out of its own norm (--validate-prior cohort, for a normative cohort), or the
     age bin statistics of --prior-stats-dir (files: from another cohort)."""
     needed = any(o.get("relative") or m == "prior-mean" for _, m, o in configs) or any(x[3] for x in siren) \
-        or bool(population_configs(args))
+        or bool(population_configs(args)) or any(kind != "bins" for _, kind, _ in age_norm_specs(args))
     ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
     if not needed and (all(a is None for a in ages) or (args.validate_prior == "files" and not args.prior_stats_dir)):
         return None  # only for the age bin reference, which is then left out
@@ -1306,12 +1956,17 @@ def parse_list(text, kind):
 
 
 def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev, args, loc_sd, acc, by_loc, by_dist,
-                  totals=None, norm=None, age_bin="", metrics=None, models=(), calib=None, local=()):
+                  totals=None, norm=None, age_bin="", metrics=None, models=(), calib=None, local=(), variants=None,
+                  age=None, by_age=None, scan=None, by_scan=None):
     """Hide the positions *hidden* ({position: pattern}) of one scan (the metrics *metrics*, default all), impute
-    them with every setting and add the errors to the accumulators (per tract and the scan's *age_bin*). *models*:
-    (setting, population model, norm of the model) of the population settings; *calib*: accumulator of the errors
-    relative to the SDs of population and prior-mean; *local*: (name, method, opts) of the methods imputing the
-    residuals from the population prediction."""
+    them with every setting and add the errors to the accumulators (per tract and the scan's *age_bin*; *by_age*:
+    per its *age*; *by_scan*: per its name *scan*). *norm*: the age bin norm of the scan, the reference of the
+    errors. *variants*: (label suffix, norm, models) of each age norm the settings on a norm are run with (default:
+    the age bins, *norm* and *models*); models: (setting, population model, norm of the model) of the population
+    settings. *calib*: accumulator of the errors relative to the SDs of population and prior-mean; *local*: (name,
+    method, opts) of the methods imputing the residuals from the population prediction."""
+    if variants is None:
+        variants = [("", norm, models)]
     hp = np.zeros(cohort.n_positions, dtype=bool)
     hp[list(hidden)] = True
     hm = np.zeros(len(cohort.metrics), dtype=bool)
@@ -1331,17 +1986,20 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
     zcache = {}
     for name, method, opts in configs:
         rel = opts.get("relative", False)
-        if (rel or method == "prior-mean") and norm is None:
-            continue  # no norm for this scan: these settings are left out
-        key = (method + (" (z)" if rel else ""), name, "", np.nan, np.nan, np.nan)
-        if own_only and method not in BY_NORM:
-            preds[key] = none
-            continue
-        p = impute_scan(Ym, cohort, method, opts, zcache if rel else cache, norm=norm, relative=rel)
-        preds[key] = limit(p, Ym, cohort, dist, args.max_distance, spatial=method in SPATIAL)
-        if method == "prior-mean":
-            sds[key] = norm[1]
-    for name, model, mnorm in models:
+        on_norm = rel or method == "prior-mean"
+        for suffix, vnorm, _ in (variants if on_norm else [("", None, ())]):
+            if on_norm and vnorm is None:
+                continue  # no norm for this scan: these settings are left out
+            key = (method + (" (z)" if rel else ""), name + suffix, "", np.nan, np.nan, np.nan)
+            if own_only and method not in BY_NORM:
+                preds[key] = none
+                continue
+            p = impute_scan(Ym, cohort, method, opts, zcache.setdefault(suffix, {}) if rel else cache, norm=vnorm,
+                            relative=rel)
+            preds[key] = limit(p, Ym, cohort, dist, args.max_distance, spatial=method in SPATIAL)
+            if method == "prior-mean":
+                sds[key] = vnorm[1]
+    for name, model, mnorm in [m for _, _, vm in variants for m in vm]:
         if mnorm is None:
             continue
         p, sd = model.impute(Ym, mnorm)
@@ -1364,24 +2022,24 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
             preds[lkey] = np.where(np.isnan(pr), pop, pr)
             sds[lkey] = sd
     for inputs, omega0, seed, rel in siren:
-        if rel and norm is None:
-            continue
-        if own_only:
-            for e in epochs:
-                preds[("siren (z)" if rel else "siren", "siren {} omega0={:g}{}".format(inputs, omega0, " (z)" if rel
-                                                                                          else ""),
-                       inputs, omega0, e, seed)] = none
-            continue
-        Yp = np.where(cohort.has_point[:, None], Ym, np.nan)
-        if rel:
-            Yp = (Yp - norm[0]) / norm[1]
-        ck = fit_siren(features[inputs], Yp, dict(cfg, omega0=omega0, epochs=max(epochs)), dev,
-                       seed=args.seed + seed, checkpoints=epochs)
-        for e, p in ck.items():
+        for suffix, vnorm, _ in (variants if rel else [("", None, ())]):
+            if rel and vnorm is None:
+                continue
+            name = "siren {} omega0={:g}{}{}".format(inputs, omega0, " (z)" if rel else "", suffix)
+            if own_only:
+                for e in epochs:
+                    preds[("siren (z)" if rel else "siren", name, inputs, omega0, e, seed)] = none
+                continue
+            Yp = np.where(cohort.has_point[:, None], Ym, np.nan)
             if rel:
-                p = norm[0] + p * norm[1]
-            preds[("siren (z)" if rel else "siren", "siren {} omega0={:g}{}".format(inputs, omega0, " (z)" if rel else ""),
-                   inputs, omega0, e, seed)] = limit(p, Ym, cohort, dist, args.max_distance)
+                Yp = (Yp - vnorm[0]) / vnorm[1]
+            ck = fit_siren(features[inputs], Yp, dict(cfg, omega0=omega0, epochs=max(epochs)), dev,
+                           seed=args.seed + seed, checkpoints=epochs)
+            for e, p in ck.items():
+                if rel:
+                    p = vnorm[0] + p * vnorm[1]
+                preds[("siren (z)" if rel else "siren", name, inputs, omega0, e, seed)] = limit(p, Ym, cohort, dist,
+                                                                                                 args.max_distance)
     hidden_cells = ~np.isnan(truth)
     present = [pat for pat in PATTERNS if (pattern == pat).any()]
     # cells every setting filled, of the settings that fill some of the pattern (arc-linear fills no whole profile)
@@ -1413,7 +2071,7 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
                     z = ze[(pattern == pat), m]
                     z = z[~np.isnan(z)]
                     if z.size:
-                        calib[key[:2] + (pat, metric)] += [z.size, np.sum(z ** 2), np.sum(np.abs(z) <= 1.96)]
+                        calib[key[:2] + (pat, metric, age_bin)] += [z.size, np.sum(z ** 2), np.sum(np.abs(z) <= 1.96)]
     for key, p in preds.items():
         err = p - truth
         nerr = err / loc_sd
@@ -1449,6 +2107,14 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
                 oka = okn[hm, m] & ~np.isnan(nage[hm, m])  # paired with the age bin mean
                 d[:, 6] += np.bincount(b, weights=np.where(oka, nerr[hm, m], 0.0) ** 2, minlength=nb)
                 d[:, 7] += np.bincount(b, weights=np.where(oka, nage[hm, m], 0.0) ** 2, minlength=nb)
+                if by_age is not None and age is not None:
+                    by_age[key[:5] + (pat, metric, age)] += [oka.sum(), np.sum(nerr[hm, m][oka] ** 2),
+                                                             np.sum(nage[hm, m][oka] ** 2)]
+                if by_scan is not None and scan is not None:
+                    sd = loc_sd[hm, m][oka]
+                    by_scan[key[:5] + (pat, metric, scan)] += [
+                        oka.sum(), np.sum(err[hm, m][oka] ** 2), np.sum((nage[hm, m][oka] * sd) ** 2),
+                        np.sum(nerr[hm, m][oka] ** 2), np.sum(nage[hm, m][oka] ** 2)]
         for pat in present:
             rowsel = pattern == pat
             for m, metric in enumerate(cohort.metrics):
@@ -1479,18 +2145,52 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
 
 
 def calibration_table(calib):
-    """The errors relative to the predicted SDs (population: the posterior SD; prior-mean: the SD of the age bin), per
-    setting, pattern and metric and as their mean ('all'): RMS of error / SD (1 if the SDs are right) and the share of
-    the errors within 1.96 SD (0.95)."""
-    rows = [{"method": k[0], "setting": k[1], "pattern": k[2], "metric": k[3], "n": int(a[0]),
-             "rms_z": math.sqrt(a[1] / a[0]), "within_1.96sd": a[2] / a[0]} for k, a in calib.items() if a[0] > 0]
+    """The errors relative to the predicted SDs (population: the posterior SD; prior-mean: the SD of the norm), per
+    setting, pattern, metric and age bin, all ages pooled (age bin 'all') and the mean over the metrics (metric 'all'):
+    RMS of error / SD (1 if the SDs are right) and the share of the errors within 1.96 SD (0.95)."""
+    pooled = defaultdict(lambda: np.zeros(3))
+    for k, a in calib.items():
+        pooled[k[:4] + ("all",)] += a
+        if k[4]:
+            pooled[k] += a
+    rows = [{"method": k[0], "setting": k[1], "pattern": k[2], "metric": k[3], "age_bin": k[4], "n": int(a[0]),
+             "rms_z": math.sqrt(a[1] / a[0]), "within_1.96sd": a[2] / a[0]} for k, a in pooled.items() if a[0] > 0]
     t = pd.DataFrame(rows)
     if t.empty:
         return t
-    mean = t.groupby(["method", "setting", "pattern"], as_index=False).agg(
+    mean = t.groupby(["method", "setting", "pattern", "age_bin"], as_index=False).agg(
         n=("n", "sum"), rms_z=("rms_z", "mean"), **{"within_1.96sd": ("within_1.96sd", "mean")})
     mean["metric"] = "all"
-    return pd.concat([t, mean], ignore_index=True).sort_values(["pattern", "method", "setting", "metric"])
+    return pd.concat([t, mean], ignore_index=True).sort_values(["pattern", "method", "setting", "age_bin", "metric"])
+
+
+def age_table(by_age):
+    """Errors relative to the age bin mean per age (months) of the validated scans, per setting, pattern and metric
+    and as the mean over the metrics ('all'), with the sums to pool ages: n, the squared normalized errors of the
+    setting and of the age bin mean on the same values."""
+    rows = [{"method": k[0], "setting": k[1], "siren_inputs": k[2], "omega0": k[3], "epochs": k[4], "pattern": k[5],
+             "metric": k[6], "age_months": k[7], "n": int(a[0]), "nsse_paired_age": a[1], "nsse_age_mean": a[2],
+             "vs_age_mean": math.sqrt(a[1] / a[2]) if a[2] > 0 else np.nan} for k, a in by_age.items() if a[0] > 0]
+    t = pd.DataFrame(rows)
+    if t.empty:
+        return t
+    keys = ["method", "setting", "siren_inputs", "omega0", "epochs", "pattern", "age_months"]
+    mean = t.groupby(keys, as_index=False, dropna=False).agg(n=("n", "sum"), vs_age_mean=("vs_age_mean", "mean"))
+    mean["metric"] = "all"
+    return pd.concat([t, mean], ignore_index=True).sort_values(["pattern", "method", "setting", "metric", "age_months"])
+
+
+def scan_table(by_scan, label, index):
+    """Errors per validated scan (for paired comparisons of settings on the same scans and hidden values), per
+    setting, pattern and metric, on the values the age bin mean was scored on: n, the squared errors of the setting
+    and of the age bin mean (in the units of the metric and normalized), and the setting's RMSE relative to the age
+    bin mean. *label*(scan index): the scan's batch and age bin; *index*: scan name -> index."""
+    rows = [{"method": k[0], "setting": k[1], "siren_inputs": k[2], "omega0": k[3], "epochs": k[4], "pattern": k[5],
+             "metric": k[6], "scan": k[7], "group": label(index[k[7]]), "n": int(a[0]), "sse": a[1],
+             "sse_age_mean": a[2], "nsse": a[3], "nsse_age_mean": a[4],
+             "vs_age_mean": math.sqrt(a[3] / a[4]) if a[4] > 0 else np.nan} for k, a in by_scan.items() if a[0] > 0]
+    t = pd.DataFrame(rows)
+    return t if t.empty else t.sort_values(["pattern", "method", "setting", "metric", "scan"])
 
 
 def distance_table(by_dist, cohort):
@@ -1548,30 +2248,55 @@ def validate(cohort, args):
         log.warning("population is left out of the validation: it needs the ages of the scans (--age-csv or "
                     "--age-regex)")
         pops = []
+    specs = age_norm_specs(args)
+    if any(kind != "bins" for _, kind, _ in specs) and (bins is None or not (scan_bin >= 0).any()):
+        log.warning("the continuous age norms are left out of the validation: they need the ages of the scans")
+        specs = [x for x in specs if x[1] == "bins"]
+    if not specs:
+        raise ValueError("--validate-age-norms: no age norm")
     families = [x.strip() for x in args.validate_measure_families.split(",") if x.strip() and x.strip() != "none"]
     for x in families:
         if x not in FAMILIES:
             raise ValueError("unknown --validate-measure-families {} ({})".format(x, ", ".join(FAMILIES)))
-    if args.validate_scans_per_bin > 0:
+    batched = len(cohort.batches) > 1
+    if args.validate_scans_per_bin > 0:  # per age bin (and batch)
         if bins is None:
             raise ValueError("--validate-scans-per-bin needs ages")
         sample = []
-        for b in range(len(bins)):
-            pool = eligible[scan_bin[eligible] == b]
-            sample += rng.choice(pool, size=min(args.validate_scans_per_bin, len(pool)), replace=False).tolist()
+        for i in range(len(cohort.batches)):
+            for b in range(len(bins)):
+                pool = eligible[(scan_bin[eligible] == b) & (cohort.scan_batch[eligible] == i)]
+                draw = rng if i == 0 else np.random.default_rng([args.validate_seed, i])  # the first: as on its own
+                cap = max(1, int(args.validate_max_share * len(pool))) if len(pool) else 0
+                sample += draw.choice(pool, size=min(args.validate_scans_per_bin, cap), replace=False).tolist()
         sample = sorted(sample)
     else:
         sample = sorted(rng.choice(eligible, size=min(args.validate_scans, len(eligible)), replace=False).tolist())
-    label = (lambda s: "") if bins is None else (lambda s: bins[scan_bin[s]][2] if scan_bin[s] >= 0 else "none")
+    batch = (lambda s: cohort.batches[cohort.scan_batch[s]] + " ") if batched else (lambda s: "")
+    label = (lambda s: batch(s).strip()) if bins is None else (
+        lambda s: batch(s) + (bins[scan_bin[s]][2] if scan_bin[s] >= 0 else "none"))
+    groups = defaultdict(int)
+    for s in sample:
+        groups[label(s)] += 1
     log.info("Validation on %d of %d scans (%d eligible: each metric they have at least %g observed, at most %g of the "
              "tracts missing), %d round(s) of hidden values per scan%s", len(sample), len(cohort.scans), len(eligible),
-             args.min_observed, args.max_missing_tracts,
-             args.validate_rounds, "" if bins is None else "; per age bin: " + ", ".join(
-                 "{} {}".format(b[2], sum(scan_bin[s] == i for s in sample)) for i, b in enumerate(bins)))
+             args.min_observed, args.max_missing_tracts, args.validate_rounds,
+             "" if bins is None and not batched else "; per {}: ".format(
+                 "batch and age bin" if batched else "age bin") + ", ".join(
+                 "{} {}".format(k, v) for k, v in sorted(groups.items())))
     # the scans of the same subject (other sessions) are left out of the norm and the reference with the scan itself
     subject_scans = defaultdict(list)
     for i, scan in enumerate(cohort.scans):
         subject_scans[subject_of(scan)].append(i)
+    if batched and args.batch_correction != "none":  # fitted without the validated subjects, then the norm again
+        if args.validate_prior == "files":
+            raise ValueError("--validate-prior files: the age bin statistics are in the units of one batch; with "
+                             "several --profiles-dir the norm is that of the corrected cohort "
+                             "(--validate-prior cohort)")
+        held = sorted({o for s in sample for o in subject_scans[subject_of(cohort.scans[s])]})
+        correct_batches(cohort, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
+                                                args.age_column), held, out)
+        prior = validation_prior(cohort, args, configs, siren)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         loc_sd = np.nanstd(cohort.values, axis=0)  # between-scan SD per position and metric (normalizes the errors)
@@ -1583,7 +2308,7 @@ def validate(cohort, args):
     loc_sd = np.where(np.isfinite(loc_sd), np.fmax(loc_sd, floor[None, :]), np.nan)
     loc_sd = np.where(loc_sd > 0, loc_sd, np.nan)
     gap_mm = tuple(parse_list(args.validate_gap_mm, float))
-    dev = pick_device(args.device) if siren or pops else None
+    dev = pick_device(args.device) if siren or pops or len(specs) > 1 else None
     features = {inputs: siren_features(cohort, inputs) for inputs in {s[0] for s in siren}}
     cfg = {"hidden": args.hidden_width, "hidden_layers": args.hidden_layers, "lr": args.lr}
     if siren:
@@ -1609,10 +2334,15 @@ def validate(cohort, args):
     models, local = {}, population_local(args)
     for inputs in {o["siren_inputs"] for _, m, o in local if m == "siren"} - set(features):
         features[inputs] = siren_features(cohort, inputs)
-    if pops:
-        log.info("Population models on %s: %s, %d fold(s) by subject", dev, ", ".join(p[0] for p in pops),
+    if pops or any(kind != "bins" for _, kind, _ in specs):
+        log.info("Age norms (%s) and population models (%s) on %s, %d fold(s) by subject",
+                 ", ".join(x[0].strip(" []") or "bins" for x in specs), ", ".join(p[0] for p in pops) or "none", dev,
                  args.validate_folds)
-        models = population_folds(cohort, args, sample, prior, bins, scan_bin, pops, dev)
+        models = fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev)
+    ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
+    by_age = defaultdict(lambda: np.zeros(3))  # (setting keys, pattern, metric, age) -> n, nsse setting, nsse age mean
+    # (setting keys, pattern, metric, scan) -> n, sse setting, sse age mean, nsse setting, nsse age mean
+    by_scan = defaultdict(lambda: np.zeros(5))
     calib = defaultdict(lambda: np.zeros(3))  # (method, setting, pattern, metric) -> n, sum z^2, n |z| <= 1.96
     measure_rng = np.random.default_rng(args.validate_seed + 2)  # own stream: the other hidden values stay the same
     t0 = time.time()
@@ -1635,10 +2365,15 @@ def validate(cohort, args):
         passes = [(hidden, None) for hidden in passes]
         if families:  # pass 3: a whole measure (a family of metrics), the other metrics all observed
             passes.append(hide_measure(cohort, Y, measure_rng, families))
+        fitted = {e[0]: e for e in models.get(s, ())}
+        variants = [(sfx, norm if kind == "bins" else fitted[sfx][1], fitted[sfx][2] if sfx in fitted else [])
+                    for sfx, kind, _ in specs]
         for hidden, metrics in passes:
             if hidden:
                 validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev, args, loc_sd, acc,
-                              by_loc, by_dist, tot, norm, label(s), metrics, models.get(s, ()), calib, local)
+                              by_loc, by_dist, tot, norm, label(s), metrics, calib=calib, local=local,
+                              variants=variants, age=ages[s], by_age=by_age, scan=cohort.scans[s],
+                              by_scan=by_scan)
         log.info("  ... %d/%d scans%s validated (%.0f s)", n, len(rounds),
                  "" if args.validate_rounds == 1 else " x rounds", time.time() - t0)
 
@@ -1683,8 +2418,10 @@ def validate(cohort, args):
     summary.to_csv(os.path.join(out, "validation_summary.csv"), index=False)
     with open(os.path.join(out, "validation_settings.json"), "w") as fh:
         json.dump({"scans": [cohort.scans[s] for s in sample], "leave_out": args.validate_leave_out,
-                   "scans_per_bin": args.validate_scans_per_bin, "rounds": args.validate_rounds,
-                   "measure_families": families,
+                   "scans_per_bin": args.validate_scans_per_bin, "max_share": args.validate_max_share,
+                   "seed": args.validate_seed, "rounds": args.validate_rounds,
+                   "measure_families": families, "age_norms": [x[0].strip(" []") or "bins" for x in specs],
+                   "age_offset": args.age_offset,
                    "population": {"components": args.validate_components, "noise": args.validate_noise,
                                   "folds": args.validate_folds, "max_iter": args.max_iter,
                                   "min_scans": args.min_scans} if pops else None,
@@ -1703,6 +2440,11 @@ def validate(cohort, args):
     distance_table(by_dist, cohort).to_csv(os.path.join(out, "validation_by_distance.csv"), index=False)
     if calib:
         calibration_table(calib).to_csv(os.path.join(out, "validation_calibration.csv"), index=False)
+    if by_age:
+        age_table(by_age).to_csv(os.path.join(out, "validation_by_age.csv"), index=False)
+    if by_scan:
+        scan_table(by_scan, label, {sc: s for s, sc in ((s, cohort.scans[s]) for s in sample)}).to_csv(
+            os.path.join(out, "validation_by_scan.csv"), index=False)
     log.info("Wrote the validation to %s/ (validation_summary.csv: error per setting and pattern, normalized by the "
              "between-scan SD at each position; nrmse_common: on the cells every setting filled)", out)
     return summary
@@ -1941,7 +2683,10 @@ def add_parser(subparsers):
                     "values, using the 3-D positions of the tract axes (--axis-dir, compute-axis). The output mirrors "
                     "the input; observed cells are copied verbatim. --validate compares the methods and settings on "
                     "hidden observed values instead.")
-    p.add_argument("--profiles-dir", required=True, help="Profile tables, in any layout qc-profiles reads (e.g. Profiles_Clean)")
+    p.add_argument("--profiles-dir", required=True, nargs="+",
+                   help="Profile tables, in any layout qc-profiles reads (e.g. Profiles_Clean). Several folders (e.g. "
+                        "two studies) are pooled, one batch each (--batch-correction); the output then has a folder "
+                        "per batch")
     p.add_argument("--axis-dir", default=None, help="Tract axes <tract>_axis.vtk (compute-axis); needed by every method but arc-linear")
     p.add_argument("--out-dir", default="Profiles_Imputed", help="Imputed tables, same layout as the input (default: Profiles_Imputed)")
     p.add_argument("--report-dir", default=None,
@@ -2000,16 +2745,64 @@ def add_parser(subparsers):
                    help="With --relative-to-prior, the norm the deviations are from: the scan's own prediction by the "
                         "population model from all its observed values (population, default), or the mean and SD of "
                         "its age bin (age-bin, as before 0.8.21)")
-    n.add_argument("--age-csv", default=None,
-                   help="Ages of the scans (as qc-profiles --age-csv); else read from the column names (--age-regex)")
+    n.add_argument("--age-csv", default=None, nargs="+",
+                   help="Ages of the scans (as qc-profiles --age-csv; several tables, e.g. one per batch, are merged); "
+                        "else read from the column names (--age-regex)")
     n.add_argument("--age-column", default=None, metavar="NAME", help="--age-csv column of the age (default: auto-detect)")
     n.add_argument("--age-units", default="months", choices=sorted(__import__(
         "dtiplayground.dmri.common.age_table", fromlist=["x"]).AGE_UNIT_TO_MONTHS), help="Units of --age-csv (default: months)")
     n.add_argument("--age-regex", default=None,
                    help="Pattern of the age in months in a column name, group 1 (default: that of qc-profiles, ses-(\\d+)m)")
+    n.add_argument("--age-norm", default=None, choices=AGE_NORMS,
+                   help="The norm over age, fitted on the profiles themselves (a normative cohort) or kept with a "
+                        "--model: the mean and SD of each age bin (--bins), or continuous in the age, a natural cubic "
+                        "spline of log(age + --age-offset) (spline) or a local-linear kernel regression in it "
+                        "(kernel) (default: %s; bins with --prior-stats-dir)" % AGE_NORM_DEFAULTS["age_norm"])
+    n.add_argument("--spline-df", type=int, default=None,
+                   help="spline norm: degrees of freedom of the mean, 1: linear in log age (default: %d)"
+                        % AGE_NORM_DEFAULTS["spline_df"])
+    n.add_argument("--spline-sd-df", type=int, default=None,
+                   help="spline norm: degrees of freedom of the variance, 0: the same SD at every age (default: %d)"
+                        % AGE_NORM_DEFAULTS["spline_sd_df"])
+    n.add_argument("--kernel-bandwidth", default=None,
+                   help="kernel norm: bandwidth in log months, or cv: the one of %s with the smallest leave-one-out "
+                        "error (default: %s)" % (",".join("{:g}".format(h) for h in KERNEL_BANDWIDTHS),
+                                                 AGE_NORM_DEFAULTS["kernel_bandwidth"]))
+    n.add_argument("--age-offset", type=float, default=None,
+                   help="Continuous norms: the age scale is log(age in months + this) (default: %g)"
+                        % AGE_NORM_DEFAULTS["age_offset"])
     n.add_argument("--bins", default=DEFAULT_BINS,
                    help="Validation with --validate-prior cohort, and the errors per age bin: age bins in months, inclusive, the oldest open-ended "
                         "(default: %(default)s, as qc-profiles)")
+    b = p.add_argument_group("batches (several --profiles-dir)")
+    b.add_argument("--batch-names", default=None, metavar="A,B",
+                   help="Names of the batches, one per --profiles-dir (default: the folder names, or those of the "
+                        "first parents that tell them apart, e.g. BCP,HBCD for BCP/Profiles_Clean HBCD/Profiles_Clean)")
+    b.add_argument("--batch-correction", default="shift-scale", choices=("shift-scale", "none"),
+                   help="Put the batches in the units of the reference batch before imputing, at every location and "
+                        "metric: a shift at the same age (one age curve for all batches and a shift per batch, fitted "
+                        "jointly) and a scale (the ratio of the SDs around the age curve, over the ages all batches "
+                        "have); the imputed values are turned back to the units of their own batch. Needs the ages "
+                        "(default: shift-scale)")
+    b.add_argument("--batch-shift", default="constant", choices=BATCH_SHIFTS,
+                   help="The shift of a batch over the age: the same at every age, or linear in log(age + "
+                        "--age-offset) over the ages all batches have and constant beyond (default: constant)")
+    b.add_argument("--batch-robust", default="no", choices=("yes", "no"),
+                   help="Robust batch correction: the diffusivities (MD, RD, AD, FWMD, FWRD, FWAD) on the log scale, "
+                        "Huber and then bisquare weights of outlying residuals in the fit of the shift and in the "
+                        "SDs of the scale (but FWF, with many values of 0) (default: %(default)s)")
+    b.add_argument("--batch-scale-limit", default=BATCH_SCALE_LIMIT, metavar="L[,METRIC=L]",
+                   help="The scale of a batch at a location is kept within 1/L and L; per metric with METRIC=L "
+                        "(default: %(default)s)")
+    b.add_argument("--batch-reference", default=None, metavar="NAME",
+                   help="Batch the others are corrected to (default: the first --profiles-dir); a population model "
+                        "(--fit-model) is in its units")
+    b.add_argument("--batch-df", type=int, default=6,
+                   help="Degrees of freedom of the common age curve of the batch correction (natural cubic spline of "
+                        "log(age + --age-offset); default: 6)")
+    b.add_argument("--batch-sd-df", type=int, default=2,
+                   help="Degrees of freedom of the age curve of the variance the residuals are scaled by before their "
+                        "SDs are compared (0: constant; default: 2)")
     g = p.add_argument_group("population model (probabilistic PCA of the deviations from the norm)")
     g.add_argument("--model", default=None, metavar="FILE",
                    help="population: a model fitted on a normative cohort (--fit-model); it carries the norm it was "
@@ -2024,9 +2817,9 @@ def add_parser(subparsers):
                         "%s)" % POPULATION_DEFAULTS["noise"])
     g.add_argument("--max-iter", type=int, default=300, help="population: EM iterations at most (default: 300)")
     g.add_argument("--sd-calibration-folds", type=int, default=5,
-                   help="population: the SDs are calibrated per metric by fitting the model again in this many folds "
-                        "of the scans (by subject), each predicting hidden whole profiles of the others; 0: no "
-                        "calibration (default: 5)")
+                   help="population and the continuous age norms: the SDs are calibrated per metric (and age) by "
+                        "fitting again in this many folds of the scans (by subject), each predicting the others "
+                        "(hidden whole profiles; the whole scan); 0: no calibration (default: 5)")
     g.add_argument("--min-scans", type=int, default=10,
                    help="population: cells observed in fewer scans of the fit are left out of the model (default: 10)")
     p.add_argument("--value-format", default="%.6g", help="printf format of the imputed values (default: %%.6g, as EXTRACT_Profile)")
@@ -2037,6 +2830,9 @@ def add_parser(subparsers):
     v.add_argument("--validate-scans-per-bin", type=int, default=0,
                    help="Instead of --validate-scans: number of scans of each age bin (of the prior or --bins), so "
                         "every age is represented; 0: off (default: 0)")
+    v.add_argument("--validate-max-share", type=float, default=0.5,
+                   help="--validate-scans-per-bin: at most this share of the eligible scans of an age bin (and batch), "
+                        "so the norm and the models of a small bin keep enough scans (default: 0.5)")
     v.add_argument("--validate-leave-out", default="subject", choices=("subject", "scan"),
                    help="Left out of the norm (--validate-prior cohort) and of the reference with a validated scan: "
                         "every scan of its subject (subject, default: its other sessions are not independent of it) "
@@ -2071,6 +2867,16 @@ def add_parser(subparsers):
                    help="Families of metrics hidden as a whole measure, one per scan and round in a pass of its own, as "
                         "for a scan without that model fit: %s; none: no such pass (default: fw,noddi)" % ", ".join(
                        "{} ({})".format(k, "/".join(v)) for k, v in FAMILIES.items()))
+    v.add_argument("--validate-age-norms", default="bins",
+                   help="Age norms the settings on a norm (deviations, prior-mean, population) are compared with: "
+                        "bins, spline (each --validate-spline-df x --validate-spline-sd-df), kernel (each "
+                        "--validate-kernel-bandwidth); a continuous norm is fitted per fold (--validate-folds) without "
+                        "the fold's subjects; the errors stay relative to the age bin mean (default: bins)")
+    v.add_argument("--validate-spline-df", default="2,3,4,5",
+                   help="spline norm: degrees of freedom of the mean (default: 2,3,4,5)")
+    v.add_argument("--validate-spline-sd-df", default="1,2,3",
+                   help="spline norm: degrees of freedom of the variance (default: 1,2,3)")
+    v.add_argument("--validate-kernel-bandwidth", default="cv", help="kernel norm: bandwidths, or cv (default: cv)")
     v.add_argument("--validate-relative", default="no,yes",
                    help="Compare the methods on the values (no), on the deviations from the prior (yes) or both "
                         "(default: no,yes); the deviations and prior-mean need ages")
@@ -2114,6 +2920,11 @@ DEFAULTS = {"population": {"method": "siren", "fallback": "population", "k": 20,
                        "siren_inputs": "xyz+tract", "epochs": 1000, "omega0": 30.0, "max_distance": 10.0}}
 
 
+def kernel_bandwidth(text):
+    """--kernel-bandwidth: 'cv' or a number."""
+    return "cv" if str(text).strip() == "cv" else float(text)
+
+
 def resolve_defaults(args):
     """Fill the settings left unset: --relative-to-prior when --prior-stats-dir or --model is given, --norm
     population, then the best settings of that mode (DEFAULTS)."""
@@ -2121,8 +2932,11 @@ def resolve_defaults(args):
         args.relative_to_prior = bool(args.prior_stats_dir or getattr(args, "model", None))
     if getattr(args, "norm", None) is None:
         args.norm = "population"
+    if getattr(args, "age_norm", None) is None and getattr(args, "prior_stats_dir", None):
+        args.age_norm = "bins"  # the statistics of qc-profiles are per age bin
     mode = args.norm if args.relative_to_prior else "values"
-    for name, value in list(DEFAULTS[mode].items()) + list(POPULATION_DEFAULTS.items()):
+    defaults = list(DEFAULTS[mode].items()) + list(POPULATION_DEFAULTS.items()) + list(AGE_NORM_DEFAULTS.items())
+    for name, value in defaults:
         if getattr(args, name, None) is None:
             setattr(args, name, value)
     return args
@@ -2135,12 +2949,16 @@ def run(args):
     args.max_distance = args.max_distance or None
     args.max_gap = args.max_gap or None
     args.report_dir = args.report_dir or os.path.normpath(args.out_dir) + "_report"
-    tables = read_tables(args.profiles_dir)
+    tables = read_batches(args.profiles_dir, [x.strip() for x in args.batch_names.split(",")] if args.batch_names
+                          else None)
     cohort_tracts = sorted({t.tract for t in tables})
     axes = read_axes(args.axis_dir, cohort_tracts) if args.axis_dir else None
     cohort = Cohort(tables, axes)
     log.info("%d tables: %d tracts, %d metrics (%s), %d scans, %d positions", len(tables), len(cohort.tracts),
              len(cohort.metrics), ", ".join(cohort.metrics), len(cohort.scans), cohort.n_positions)
+    if len(cohort.batches) > 1:
+        log.info("%d batches: %s", len(cohort.batches), ", ".join("{} ({} scans)".format(
+            b, int((cohort.scan_batch == i).sum())) for i, b in enumerate(cohort.batches)))
     if axes is not None:
         no_axis = [t for t in cohort.tracts if t not in axes]
         if no_axis:
@@ -2149,6 +2967,15 @@ def run(args):
     if args.validate:
         validate(cohort, args)
         return 0
+    corr = None
+    if len(cohort.batches) > 1 and args.batch_correction != "none":
+        if args.prior_stats_dir:
+            log.error("--prior-stats-dir has the age bin statistics in the units of one batch; with several "
+                      "--profiles-dir the norm is fitted on the corrected profiles themselves "
+                      "(or --batch-correction none)")
+            return 1
+        corr = correct_batches(cohort, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
+                                                       args.age_column), report_dir=args.report_dir)
     spatial = [m for m in (args.method, args.fallback) if m in SPATIAL]
     if spatial and axes is None:
         log.error("--axis-dir is needed for %s", ", ".join(spatial))
@@ -2174,7 +3001,18 @@ def run(args):
                      "the profiles", args.model, model.info["components"], model.info["noise"], model.info["rows"],
                      100 * share)
         elif args.prior_stats_dir:
+            if args.age_norm != "bins":
+                log.error("--age-norm %s is fitted on the profiles themselves; --prior-stats-dir has the statistics of "
+                          "age bins only (--age-norm bins)", args.age_norm)
+                return 1
             prior, source = Prior.from_files(cohort, args.prior_stats_dir, ages), args.prior_stats_dir
+        elif args.age_norm != "bins":  # a continuous norm of the profiles themselves
+            t0 = time.time()
+            prior = AgeNorm.fit(cohort, ages, range(len(cohort.scans)), args.age_norm, bins_from_spec(args.bins),
+                                args.spline_df, args.spline_sd_df, kernel_bandwidth(args.kernel_bandwidth),
+                                args.age_offset, device=args.device, sd_folds=args.sd_calibration_folds)
+            source = "the profiles, {} ({} scans, {:.0f} s)".format(prior.describe(), prior.info["scans"],
+                                                                   time.time() - t0)
         elif population or args.fit_model:  # the norm of the cohort's own age bins
             prior, source = Prior.from_cohort(cohort, bins_from_spec(args.bins), ages), "the profiles' own age bins"
         else:
@@ -2182,8 +3020,12 @@ def run(args):
                       "cohort, from qc-profiles) or a population --model")
             return 1
         n = np.bincount(prior.scan_bin[prior.scan_bin >= 0], minlength=len(prior.bins))
-        log.info("Norm (%s): age bins %s with %s scan(s); %d scan(s) without an age bin are not imputed", source,
-                 ", ".join(b[2] for b in prior.bins), ", ".join(str(x) for x in n), int((prior.scan_bin < 0).sum()))
+        if isinstance(prior, AgeNorm):
+            log.info("Norm (%s): continuous in the age; %d scan(s) without an age are not imputed", source,
+                     sum(a is None for a in prior.ages))
+        else:
+            log.info("Norm (%s): age bins %s with %s scan(s); %d scan(s) without an age bin are not imputed", source,
+                     ", ".join(b[2] for b in prior.bins), ", ".join(str(x) for x in n), int((prior.scan_bin < 0).sum()))
     if model is None and (population or args.fit_model):
         scans = [s for s in range(len(cohort.scans)) if prior.scan_bin[s] >= 0]
         if args.max_missing_tracts is not None:
@@ -2212,6 +3054,11 @@ def run(args):
     imputed, used, dists, skipped, sds = impute_cohort(cohort, args.method, fallback, opts, args.min_observed,
                                                        args.device, prior=prior,
                                                        max_missing_tracts=args.max_missing_tracts, model=model)
+    if corr is not None:  # back to the units of each scan's own batch
+        ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
+        harmonized = imputed
+        imputed = corr.apply(imputed, ages, cohort.scan_batch, inverse=True)
+        sds = corr.apply(sds, ages, cohort.scan_batch, inverse=True, sd=True, at=(harmonized, imputed))
     n = write_tables(cohort, imputed, args.out_dir, os.path.join(args.report_dir, "masks"), args.value_format)
     if population:
         write_values(cohort, sds, os.path.join(args.report_dir, "sd"), args.value_format)

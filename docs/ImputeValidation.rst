@@ -4,8 +4,219 @@ Validation of impute-profiles
 This page documents the validation of ``dmrifiberprofile impute-profiles`` with ``--validate`` (see
 `Imputing the profiles <DMRIFiberProfile.html#imputing-the-profiles>`_ for the command and its outputs) on a normative
 infant cohort, in three phases: every method imputing a scan from its own observed values (phase 1, 2026-10-15),
-from its deviations from the age-bin norm (phase 2, 2026-10-16), and with a population model of the normative cohort
-(phase 3, 2026-10-16). The results set the defaults of the command.
+from its deviations from the age-bin norm (phase 2, 2026-10-16), with a population model of the normative cohort
+(phase 3, 2026-10-16), and with continuous age norms and a second cohort pooled with a batch correction (phase 3b,
+2026-10-22). The results set the defaults of the command.
+
+Phase 3b: summary
+-----------------
+
+Phase 3b (2026-10-22) adds continuous age norms, the pooling of two cohorts with a batch correction, and the range
+check of the diffusivities in ``qc-profiles``, and repeats the validation with 3 seeds and more scans (see `Phase 3b:
+setup`_). It changes no default.
+
+- **The default stays the best**: SIREN on the residuals from the population prediction, with the age-bin norm, on
+  the cohort alone, 0.573 of the age-bin mean's error overall (SD 0.007 between seeds; 0.563, 0.567 and 0.589 in the
+  three age bins).
+- **Continuous age norms** (``--age-norm spline`` or ``kernel``, a natural cubic spline or a local-linear kernel
+  regression of log(age + 1 month)) are better than the age bins as the only predictor: 0.93 of the age-bin mean's
+  error paired per scan (p < 1e-10), 0.88 in 0-3 months, where the norm changes fastest within a bin. The spline
+  and the kernel are the same (1.000). Under the population model and SIREN, the norm matters little: kernel and
+  bins are the same (1.005, p = 0.44), so ``bins`` stays the default.
+- **Pooling a second cohort** (HBCD, 2,293 scans, with a batch correction to BCP) does not improve the BCP scans.
+  With the tensor and NODDI measures of HBCD only, the error is the same as with BCP alone (1.010 paired, 95% CI
+  0.992-1.027, p = 0.37; FA, AD, MD, RD and ODI 2-6% better, NDI and the free water measures the same). With all
+  measures it is 5% worse (p = 2e-6), FW-MD 0.52 instead of 0.43: the free water fits of HBCD differ from BCP's by
+  more than a shift and a scale (a shift of 2.5 SD for FW-MD and FW-RD, against 0.8 SD for AD).
+- **Failed free water fits** must go first: HBCD has diffusivities far above that of free water (FW-AD in 2,227 of
+  its scans, up to 0.46 mm²/s). Pooled as they were, they made the errors of the free water diffusivities of BCP
+  hundreds to thousands of times larger. ``qc-profiles --max-diffusivity`` (default 3.6e-3 mm²/s) now drops them as
+  single values.
+- **A robust batch correction** (``--batch-robust yes``: the diffusivities on the log scale, Huber and bisquare
+  weights) was not better than the plain one once those values were dropped (0.947 against 0.935 with the age norm
+  alone, one seed), so it is not the default.
+- **Seeds**: between seeds the overall score of a setting varies by 0.01 (SD), within an age bin by up to 0.04, more
+  than most of the differences between settings in phase 3. Small differences are decided by a paired comparison
+  on the same scans (``validation_by_scan.csv``), not by the scores of one seed.
+
+Phase 3b: setup
+---------------
+
+- **Data**: the cleaned BCP profiles of phase 3 (423 scans of 208 subjects: 28 scans in 0-3 months, 117 in 4-9,
+  278 in 10-60) and, for pooling, those of HBCD (2,293 scans of 1,720 subjects: 1,501, 658 and 133), both checked
+  with ``qc-profiles --max-diffusivity 3.6e-3`` (BCP: 132 values dropped in 16 scans; HBCD: about 345,000, mostly
+  free water fits).
+- **Scans**: 20 per age bin and batch, at most half of the scans of a bin (``--validate-scans-per-bin 20
+  --validate-max-share 0.5``): 14, 20 and 20 BCP scans per seed (54), with pooling 20 per bin of HBCD as well;
+  seeds 0, 1 and 2 (``--validate-seed``), 131 distinct BCP scans, 162 scan x seed pairs; 3 rounds of hidden values
+  per scan, as before. The BCP scans are the same with and without pooling (their hidden values are drawn
+  again).
+- **Settings**: the age norm alone (``prior-mean``: age bins, spline with 6 or 8 df for the mean and 3 for the
+  variance, kernel with the bandwidth by cross-validation), and the default of phase 3 (population, 80 components,
+  isotropic, SIREN on the residuals within 4 mm), each with the age bins and the kernel norm; on BCP alone, on BCP
+  pooled with the tensor and NODDI measures of HBCD (its free water measures left out: they come from BCP alone),
+  and on BCP pooled with all measures of HBCD (plain batch correction, constant shift, ``--batch-scale-limit``
+  3,FWAD=10,FWMD=10). The population model, the continuous norms and the batch correction are fitted without the
+  subjects validated (5 folds by subject; the batch correction without all of them).
+- **Score**: on the BCP scans, in BCP units, the RMSE relative to that of the age-bin mean of BCP alone on the same
+  hidden values, the mean over the 11 measures and the four patterns (gap, end gap, whole profile, region). The
+  paired comparison averages, per scan, the ratio of the RMSE of each measure and pattern to that of the age-bin
+  mean, and compares two settings by the geometric mean of the ratio of those scores over the 162 scan x seed pairs
+  (95% CI and the Wilcoxon signed-rank test of the log ratios). Within a run the settings share the hidden values;
+  between runs (pooled or not) only the scans.
+
+Phase 3b: results
+-----------------
+
+Overall
+~~~~~~~
+
+Relative to the age-bin mean, mean over the three seeds (SD between seeds); the last column gives each seed:
+
+.. table::
+   :class: longtable
+
+   =================================  =============  =============  =============  =============  =================
+   setting                            0-3 months     4-9 months     10-60 months   overall        seeds 0, 1, 2
+   =================================  =============  =============  =============  =============  =================
+   age-bin mean (prior-mean)          1.000 (0.000)  1.000 (0.000)  1.000 (0.000)  1.000 (0.000)  1.000 1.000 1.000
+   kernel age mean                    0.868 (0.065)  0.935 (0.010)  0.933 (0.030)  0.912 (0.020)  0.925 0.889 0.921
+   spline 6/3 age mean                0.869 (0.066)  0.933 (0.009)  0.937 (0.030)  0.913 (0.022)  0.926 0.888 0.925
+   **BCP alone, age bins (default)**  0.563 (0.025)  0.567 (0.010)  0.589 (0.020)  0.573 (0.007)  0.572 0.566 0.581
+   BCP alone, kernel norm             0.598 (0.021)  0.562 (0.011)  0.593 (0.022)  0.584 (0.017)  0.567 0.584 0.602
+   pooled tensor+NODDI, age bins      0.546 (0.031)  0.571 (0.014)  0.577 (0.030)  0.564 (0.010)  0.559 0.559 0.576
+   pooled tensor+NODDI, kernel norm   0.709 (0.107)  0.567 (0.019)  0.584 (0.030)  0.620 (0.052)  0.561 0.647 0.653
+   pooled all measures, age bins      0.549 (0.038)  0.599 (0.006)  0.605 (0.039)  0.584 (0.010)  0.582 0.576 0.595
+   pooled all measures, kernel norm   0.561 (0.025)  0.596 (0.014)  0.611 (0.046)  0.589 (0.016)  0.575 0.585 0.607
+   =================================  =============  =============  =============  =============  =================
+
+With the kernel norm, pooling with the tensor and NODDI measures of HBCD failed in 0-3 months for seeds 1 and 2 (FWF
+0.097 against 0.046): the free water measures then come from 28 BCP scans under 3 months only, and the kernel norm
+fitted on the pooled ages is poor there.
+
+Paired per scan
+~~~~~~~~~~~~~~~
+
+Ratio of the scores of two settings on the same scans (below 1: the first is better), geometric mean over the scan x
+seed pairs (number in the header) with its 95% CI and the Wilcoxon p value:
+
+.. table::
+   :class: longtable
+
+   ================================  =============================  =============================  =============================  =============================
+   comparison                        all (162)                      0-3 months (42)                4-9 months (60)                10-60 months (60)
+   ================================  =============================  =============================  =============================  =============================
+   pooled tensor+NODDI / BCP alone   1.010 (0.992-1.027) p=0.37     0.999 (0.966-1.033) p=0.82     1.022 (0.993-1.052) p=0.32     1.004 (0.976-1.034) p=0.58
+   pooled all measures / BCP alone   1.051 (1.031-1.072) p=2e-06    1.019 (0.981-1.058) p=0.26     1.075 (1.042-1.109) p=0.00011  1.051 (1.017-1.085) p=0.0027
+   pooled all / pooled tensor+NODDI  1.041 (1.034-1.048) p=1.2e-19  1.020 (1.005-1.035) p=0.015    1.052 (1.040-1.063) p=2.9e-10  1.046 (1.037-1.055) p=3.1e-10
+   BCP alone: kernel / age bins      1.005 (0.996-1.015) p=0.44     1.025 (0.991-1.061) p=0.82     0.992 (0.986-0.997) p=0.0019   1.006 (1.001-1.011) p=0.041
+   age mean: kernel / age bins       0.930 (0.911-0.949) p=9.2e-11  0.880 (0.828-0.936) p=0.00043  0.944 (0.924-0.964) p=1.2e-05  0.952 (0.928-0.976) p=0.00016
+   age mean: spline / kernel         1.000 (0.996-1.003) p=0.84     1.002 (0.996-1.009) p=0.35     0.995 (0.990-1.001) p=0.16     1.002 (0.995-1.009) p=0.37
+   ================================  =============================  =============================  =============================  =============================
+
+Per measure, relative to the age-bin mean
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Mean over the age bins, patterns and seeds:
+
+.. table::
+   :class: longtable
+
+   =================================  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====
+   setting                            FA     MD     RD     AD     FW-FA  FW-MD  FW-RD  FW-AD  FWF    NDI    ODI
+   =================================  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====
+   age-bin mean (prior-mean)          1.000  1.000  1.000  1.000  1.000  1.000  1.000  1.000  1.000  1.000  1.000
+   kernel age mean                    0.884  0.891  0.866  0.955  0.902  0.881  0.856  0.958  0.985  0.874  0.978
+   spline 6/3 age mean                0.886  0.891  0.866  0.956  0.903  0.878  0.853  0.959  0.989  0.878  0.984
+   **BCP alone, age bins (default)**  0.661  0.536  0.534  0.637  0.576  0.429  0.419  0.596  0.685  0.525  0.704
+   BCP alone, kernel norm             0.659  0.535  0.530  0.643  0.579  0.445  0.433  0.608  0.724  0.550  0.721
+   pooled tensor+NODDI, age bins      0.619  0.522  0.517  0.613  0.583  0.437  0.424  0.601  0.688  0.529  0.675
+   pooled tensor+NODDI, kernel norm   0.623  0.525  0.521  0.614  0.641  0.530  0.510  0.691  0.964  0.527  0.675
+   pooled all measures, age bins      0.631  0.551  0.544  0.635  0.565  0.520  0.443  0.633  0.682  0.533  0.693
+   pooled all measures, kernel norm   0.638  0.547  0.541  0.638  0.574  0.523  0.450  0.638  0.700  0.535  0.698
+   =================================  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====
+
+Per measure and age bin, absolute RMSE
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In BCP units, mean over the four patterns and the three seeds: FA, FW-FA, FWF, NDI and ODI x 1e-3, the diffusivities
+x 1e-6 mm²/s.
+
+0-3 months:
+
+.. table::
+   :class: longtable
+
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   setting                            FA (1e-3)  MD (1e-6 mm²/s)  RD (1e-6 mm²/s)  AD (1e-6 mm²/s)  FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  FWF (1e-3)  NDI (1e-3)  ODI (1e-3)
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   age-bin mean (prior-mean)          46.0       121.9            122.5            138.6            74.1          96.3                101.5               111.5               63.0        68.1        66.1
+   kernel age mean                    36.4       96.1             90.2             127.3            61.0          83.8                83.7                107.6               61.3        61.3        62.4
+   **BCP alone, age bins (default)**  28.6       61.9             60.3             89.3             38.3          40.8                38.8                67.6                46.4        38.9        43.9
+   BCP alone, kernel norm             28.4       62.4             59.6             91.8             38.5          46.3                43.6                72.1                54.3        43.5        47.1
+   pooled tensor+NODDI, age bins      26.1       57.6             55.3             82.2             39.9          43.1                40.5                69.4                46.6        37.0        39.4
+   pooled tensor+NODDI, kernel norm   26.6       58.3             56.1             82.4             52.6          71.2                67.8                99.8                97.4        36.5        39.8
+   pooled all measures, age bins      26.3       59.0             56.9             83.2             35.1          50.4                40.6                72.9                42.7        36.5        40.9
+   pooled all measures, kernel norm   26.8       58.6             56.5             83.7             36.2          51.8                42.0                74.4                46.4        36.8        41.3
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+
+4-9 months:
+
+.. table::
+   :class: longtable
+
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   setting                            FA (1e-3)  MD (1e-6 mm²/s)  RD (1e-6 mm²/s)  AD (1e-6 mm²/s)  FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  FWF (1e-3)  NDI (1e-3)  ODI (1e-3)
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   age-bin mean (prior-mean)          40.5       91.3             87.5             117.7            58.0          61.2                60.5                87.5                51.1        58.8        42.0
+   kernel age mean                    39.1       86.9             83.0             114.3            53.8          52.1                50.6                82.1                51.0        53.5        41.9
+   **BCP alone, age bins (default)**  28.5       47.0             46.6             70.9             34.7          25.0                24.5                50.8                33.3        31.4        30.8
+   BCP alone, kernel norm             28.6       46.5             46.3             70.3             34.6          24.4                24.2                50.2                32.9        31.5        30.5
+   pooled tensor+NODDI, age bins      27.2       49.2             48.5             71.3             34.4          25.0                24.4                50.4                33.9        32.1        30.3
+   pooled tensor+NODDI, kernel norm   27.2       49.1             48.5             70.7             34.2          24.6                24.1                50.1                33.9        32.0        30.0
+   pooled all measures, age bins      27.8       52.3             51.2             74.3             34.6          31.0                26.1                54.1                34.8        32.5        31.0
+   pooled all measures, kernel norm   27.8       51.1             50.3             73.9             34.6          31.0                26.1                54.2                33.7        32.5        30.9
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+
+10-60 months:
+
+.. table::
+   :class: longtable
+
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   setting                            FA (1e-3)  MD (1e-6 mm²/s)  RD (1e-6 mm²/s)  AD (1e-6 mm²/s)  FW-FA (1e-3)  FW-MD (1e-6 mm²/s)  FW-RD (1e-6 mm²/s)  FW-AD (1e-6 mm²/s)  FWF (1e-3)  NDI (1e-3)  ODI (1e-3)
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+   age-bin mean (prior-mean)          52.4       94.5             94.8             121.1            63.9          54.8                52.7                88.3                54.5        69.7        47.3
+   kernel age mean                    46.6       88.2             86.0             118.8            60.8          50.6                47.7                86.1                53.8        57.0        46.9
+   **BCP alone, age bins (default)**  33.9       55.0             54.5             80.6             39.2          24.5                24.6                52.0                36.8        33.2        33.0
+   BCP alone, kernel norm             33.8       55.0             54.4             81.0             39.7          24.7                24.7                52.4                37.4        33.5        33.4
+   pooled tensor+NODDI, age bins      31.9       51.7             51.1             77.3             39.4          24.7                24.5                52.3                36.4        34.7        32.1
+   pooled tensor+NODDI, kernel norm   32.0       52.2             51.7             78.3             39.9          24.6                24.7                52.5                38.3        34.9        32.2
+   pooled all measures, age bins      32.6       55.7             54.6             81.4             39.6          28.4                25.9                53.8                38.1        35.5        32.7
+   pooled all measures, kernel norm   33.1       56.0             55.0             82.5             40.2          28.1                26.2                54.1                38.9        35.8        33.2
+   =================================  =========  ===============  ===============  ===============  ============  ==================  ==================  ==================  ==========  ==========  ==========
+
+Phase 3b: reproducing
+---------------------
+
+The range check, on each cohort::
+
+    $ dmrifiberprofile qc-profiles --profiles-dir BCP/Profiles --max-diffusivity 3.6e-3 --clean-dir Profiles_Clean ...
+
+The settings on BCP alone, for each seed (``prior-mean`` alone: ``--validate-methods prior-mean
+--validate-population-local none --validate-age-norms bins,spline,kernel --validate-spline-df 6,8
+--validate-spline-sd-df 3``)::
+
+    $ dmrifiberprofile impute-profiles --profiles-dir BCP/Profiles_Clean --axis-dir FiberAxis --out-dir B2 \
+        --validate --validate-scans-per-bin 20 --validate-max-share 0.5 --validate-rounds 3 --validate-seed 0 \
+        --validate-relative yes --validate-methods prior-mean,population --validate-components 80 \
+        --validate-noise isotropic --max-distance 4 --validate-arc-ends constant --validate-k 20 \
+        --validate-knn-weights distance --validate-siren-inputs xyz --validate-omega0 10 --validate-epochs 500 \
+        --validate-seeds 1 --validate-age-norms bins,kernel --validate-kernel-bandwidth cv
+
+Pooled, the same with both cohorts and their ages (``--profiles-dir BCP/Profiles_Clean HBCD/Profiles_Clean
+--age-csv hbcd_ages.csv``; for the tensor and NODDI measures only, an HBCD folder with only those tables). On two
+GPUs the 12 runs took 7 hours, about 1.9 hours for a pooled run with 114 scans.
 
 Phase 3: summary
 ----------------

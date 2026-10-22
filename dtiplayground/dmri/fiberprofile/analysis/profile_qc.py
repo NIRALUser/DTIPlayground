@@ -57,6 +57,16 @@ FWF, the free water fraction). ``--keep-outside-brain`` keeps the zeros. With
 ``--clean-dir`` those cells are written empty, so the cleaned tables hold what
 the QC used rather than the zeros it ignored.
 
+Diffusivities out of the range of tissue: in white and gray matter, no diffusivity (MD, RD, AD and their free water
+corrected FWMD, FWRD, FWAD) can exceed that of free water at body temperature, 3.0e-3 mm^2/s at 37 C (CSF; about
+3.2e-3 at the 38-39 C of a macaque). Tissue values are well below it: adult white matter MD 0.7e-3, AD up to 1.8e-3;
+neonatal white matter MD up to about 1.8e-3, AD 2.2e-3; lesions (edema, fluid) come close to free water. A value well
+above it is a failed fit (e.g. of the free water model) and is read as missing, that value only
+(``--max-diffusivity``, in mm^2/s, by default 3.6e-3: 20% above free water, so that lesions and noise are kept; a
+table in 10^-3 mm^2/s, a median above 0.05, is compared with it in those units). ``--min-diffusivity`` drops values
+below a lower limit the same way (off by default). The dropped values are listed in ``out_of_range.csv`` of
+``--stats-dir``, one row per profile, and with ``--clean-dir`` they are written empty.
+
 A profile with less than ``--min-valid-frac`` of its positions left (missing, or
 outside the brain) is flagged as an outlier: too little of it is there to judge.
 Without it a profile that is missing everywhere would pass, since every
@@ -145,6 +155,15 @@ CASE_COLUMN = "case_id" # EXTRACT_Profile with resultCaseColumnwise false: one r
 ZERO_VALID_METRICS = {"FWF"}
 # Locations sampled outside the brain, per tract (see find_outside_brain / set_outside_brain).
 _OUTSIDE_BRAIN = {}
+# Diffusivities (--max-diffusivity, --min-diffusivity): the metrics, by their letters in upper case
+DIFFUSIVITY_METRICS = ("MD", "RD", "AD", "FWMD", "FWRD", "FWAD")
+# Free water at 37 C is 3.0e-3 mm^2/s: no diffusivity in white or gray matter is larger; 20% above it, so that the
+# values of lesions (edema, fluid) and their noise are kept
+MAX_DIFFUSIVITY = 3.6e-3
+# A diffusivity table with a larger median is in 10^-3 mm^2/s (um^2/ms) rather than mm^2/s
+DIFFUSIVITY_UNIT_MEDIAN = 0.05
+# Values out of the range of their metric, per (tract, metric) (see find_out_of_range / set_out_of_range).
+_OUT_OF_RANGE = {}
 # {prior stats folder: {(tract, metric): path}}, see prior_stats_index
 _PRIOR_INDEX = {}
 # How the prior stats were put on the arc lengths of each profile table: {table path: (how, n positions outside the
@@ -487,6 +506,56 @@ def find_outside_brain(inputs, zero_valid_metrics=ZERO_VALID_METRICS):
     return outside
 
 
+def is_diffusivity(metric):
+    """Whether *metric* is a diffusivity (DIFFUSIVITY_METRICS)."""
+    return re.sub(r"[^A-Z]", "", str(metric).upper()) in DIFFUSIVITY_METRICS
+
+
+def find_out_of_range(inputs, max_value=MAX_DIFFUSIVITY, min_value=0.0):
+    """The diffusivities out of *min_value*..*max_value* (mm^2/s; a table with a median above
+    DIFFUSIVITY_UNIT_MEDIAN is in 10^-3 mm^2/s and compared in those units). Returns ({(tract, metric): (arc lengths x
+    cases) boolean table}, a DataFrame with one row per profile with such values: its count, share, extremes and
+    arc lengths)."""
+    masks, rows = {}, []
+    for path in inputs:
+        tract, metric = tract_and_metric(path)
+        if not is_diffusivity(metric):
+            continue
+        try:
+            df = read_profile_table(path)
+        except Exception as e:
+            log.warning("could not read %s: %s", path, e)
+            continue
+        values = df.apply(pd.to_numeric, errors="coerce")
+        positive = values.to_numpy()[values.to_numpy() > 0]
+        unit = 1e-3 if positive.size and np.median(positive) > DIFFUSIVITY_UNIT_MEDIAN else 1.0
+        hi = max_value / unit if max_value and max_value > 0 else np.inf
+        lo = min_value / unit if min_value and min_value > 0 else -np.inf
+        with np.errstate(invalid="ignore"):
+            bad = (values > hi) | ((values < lo) & (values > 0))  # values <= 0: outside the brain (find_outside_brain)
+        if not bad.to_numpy().any():
+            continue
+        masks[(tract, metric)] = bad
+        for case in bad.columns[bad.to_numpy().any(axis=0)]:
+            col, b = values[case], bad[case].to_numpy()
+            arcs = bad.index[b]
+            rows.append({"tract": tract, "metric": metric, "case": case, "subject_session": subject_session_of(case),
+                         "n_values": int(col.notna().sum()), "n_out_of_range": int(b.sum()),
+                         "share": round(float(b.sum() / max(col.notna().sum(), 1)), 4),
+                         "max_value": float(col.max()) * unit, "min_value": float(col[col > 0].min()) * unit,
+                         "arc_from": float(min(arcs)), "arc_to": float(max(arcs))})
+    columns = ["tract", "metric", "case", "subject_session", "n_values", "n_out_of_range", "share", "max_value",
+               "min_value", "arc_from", "arc_to"]
+    return masks, pd.DataFrame(rows, columns=columns)
+
+
+def set_out_of_range(masks):
+    """Register the values out of range; every table read afterwards has them as missing."""
+    global _OUT_OF_RANGE
+    _OUT_OF_RANGE = dict(masks or {})
+    return sum(int(m.to_numpy().sum()) for m in _OUT_OF_RANGE.values())
+
+
 def set_outside_brain(outside):
     """Register the locations sampled outside the brain; every table read afterwards has them as missing."""
     global _OUTSIDE_BRAIN
@@ -502,14 +571,15 @@ def load_profile_table(path, exclude_ids=None, exclude_full=None):
     (a specific scan; preprocessing QC).
 
     The locations registered by ``set_outside_brain`` (sampled outside the brain, found on the other metrics of the
-    same tract) are read as missing, so they take part in nothing that follows.
+    same tract) and the values registered by ``set_out_of_range`` are read as missing, so they take part in nothing
+    that follows.
     """
     df = read_profile_table(path)
-    tract = tract_and_metric(path)[0]
-    mask = _OUTSIDE_BRAIN.get(tract)
-    if mask is not None:
-        aligned = mask.reindex(index=df.index, columns=df.columns, fill_value=False).fillna(False)
-        df = df.mask(aligned.to_numpy(dtype=bool))
+    tract, metric = tract_and_metric(path)
+    for mask in (_OUTSIDE_BRAIN.get(tract), _OUT_OF_RANGE.get((tract, metric))):
+        if mask is not None:
+            aligned = mask.reindex(index=df.index, columns=df.columns, fill_value=False).fillna(False)
+            df = df.mask(aligned.to_numpy(dtype=bool))
     if exclude_ids or exclude_full:
         drop = [c for c in df.columns
                 if (exclude_ids and subject_session_of(c) in exclude_ids)
@@ -1028,13 +1098,17 @@ def write_without_columns(in_path, out_path, drop_names, drop_subject_sessions=(
     A table holding one row per case (first column ``case_id``, EXTRACT_Profile with ``resultCaseColumnwise`` false)
     has those rows dropped instead.
 
-    The cells at the locations sampled outside the brain (``set_outside_brain``) are written empty, so the cleaned
-    tables hold what the QC used rather than the zeros it ignored. Returns the number of cells blanked.
+    The cells at the locations sampled outside the brain (``set_outside_brain``) and of the values out of range
+    (``set_out_of_range``) are written empty, so the cleaned tables hold what the QC used rather than the values it
+    ignored. Returns the number of cells blanked.
     """
     dss = set(drop_subject_sessions)
     lines = open(in_path).read().splitlines()
     header = lines[0].split(",")
-    outside = _outside_lookup(_OUTSIDE_BRAIN.get(tract_and_metric(in_path)[0]))
+    tract, metric = tract_and_metric(in_path)
+    outside = _outside_lookup(_OUTSIDE_BRAIN.get(tract))
+    for case, arcs in _outside_lookup(_OUT_OF_RANGE.get((tract, metric))).items():
+        outside[case] = outside.get(case, set()) | arcs
     blanked = 0
 
     def dropped(name):
@@ -1242,6 +1316,15 @@ def configure_parser(p):
     p.add_argument("--zero-valid-metrics", default=",".join(sorted(ZERO_VALID_METRICS)),
                    help="Metrics in which 0 is a valid measurement, so it does not mark the location as outside "
                         "the brain (default: %(default)s)")
+    p.add_argument("--max-diffusivity", type=float, default=MAX_DIFFUSIVITY, metavar="MM2_S",
+                   help="Diffusivities (md, rd, ad, FWMD, FWRD, FWAD) above this are read as missing, that value only: "
+                        "no diffusivity of white or gray matter exceeds that of free water at body temperature, "
+                        "3.0e-3 at 37 C; the default is 20%% above it, so that lesions (edema, fluid) are kept "
+                        "(mm^2/s; a table in 10^-3 mm^2/s is compared in those units; 0 disables; default: "
+                        "%(default)g)")
+    p.add_argument("--min-diffusivity", type=float, default=0.0, metavar="MM2_S",
+                   help="Diffusivities below this (but above 0, which is outside the brain) are read as missing as "
+                        "well (mm^2/s; default: 0, off)")
     p.add_argument("--bins", default="0-3,4-9,10-60", help="Age bins in months, inclusive; oldest is open-ended")
     p.add_argument("--age-csv", default=None,
                    help="CSV/TSV with per-subject (and optionally per-session) ages, for cohorts whose session "
@@ -1392,6 +1475,21 @@ def run_args(args, p) -> int:
                                                                       if m not in zero_valid})) or "-",
                      n_cells, profiles, len(outside),
                      "; %d profile(s) keep no location at all" % emptied if emptied else "")
+
+    # diffusivities out of the range of tissue: failed fits, read as missing (that value only)
+    masks, out_of_range = find_out_of_range(inputs, args.max_diffusivity, args.min_diffusivity)
+    n_values = set_out_of_range(masks)
+    os.makedirs(args.stats_dir, exist_ok=True)
+    oor_csv = os.path.join(args.stats_dir, "out_of_range.csv")
+    if n_values:
+        out_of_range.sort_values(["n_out_of_range", "case"], ascending=[False, True]).to_csv(oor_csv, index=False)
+        by_metric = out_of_range.groupby("metric").agg(values=("n_out_of_range", "sum"), scans=("case", "nunique"))
+        log.info("Diffusivities out of range (%s mm^2/s): %d value(s) read as missing (%s); listed in %s",
+                 "{:g}-{:g}".format(args.min_diffusivity, args.max_diffusivity) if args.min_diffusivity > 0
+                 else "above {:g}".format(args.max_diffusivity), n_values, ", ".join(
+                     "{} {} in {} scan(s)".format(m, r.values, r.scans) for m, r in by_metric.iterrows()), oor_csv)
+    elif os.path.isfile(oor_csv):
+        os.remove(oor_csv)  # of an earlier run
 
     # Scans that failed upstream QC are removed up front.
     reg_failed = set()
@@ -1569,7 +1667,8 @@ def run_args(args, p) -> int:
                      args.clean_dir, len(reg_failed), len(prep_failed),
                      " + %d scan(s) without an age" % len(no_age) if no_age else "",
                      " + %d scan(s) missing most tracts" % len(most_missing) if most_missing else "", len(inputs),
-                     "; %d cell(s) sampled outside the brain written empty" % n_blanked if n_blanked else "")
+                     "; %d cell(s) sampled outside the brain or out of range written empty" % n_blanked
+                     if n_blanked else "")
 
             # recompute age-bin stats (+ plots) on the cleaned data
             clean_root = args.clean_plots_dir

@@ -248,7 +248,8 @@ lists all the options of each.
 ``impute-profiles``
     Impute the missing values of profile tables (e.g. the cleaned profiles of ``qc-profiles``) from the observed
     values of the same scan, using the 3-D positions of the tract axes: linear along the profile, linear or nearest
-    neighbours in 3-D, or a SIREN per scan; ``--validate`` compares them on hidden values. See
+    neighbours in 3-D, or a SIREN per scan, on the deviations from a norm and a population model of a normative
+    cohort; several cohorts can be pooled with a batch correction. ``--validate`` compares them on hidden values. See
     `Imputing the profiles`_.
 
 ``qc-registration``
@@ -259,7 +260,8 @@ lists all the options of each.
 ``qc-profiles``
     Age binned statistics of the profiles (``<tract>/<tract>_<metric>_agebinstats.csv``) and their plots, and the QC
     of the profiles against prior (normative) statistics, which flags the profiles whose values leave the normative
-    envelope or whose shape doesn't follow it.
+    envelope or whose shape doesn't follow it. Diffusivities above that of free water (failed fits) are dropped as
+    single values (`Diffusivities out of range`_).
 
 A typical sequence, from the parametrized atlas fibers to the cleaned profiles::
 
@@ -315,6 +317,26 @@ case, including those where 0 is a valid measurement (``--zero-valid-metrics``, 
 profile with less than ``--min-valid-frac`` (0.75) of its positions left is flagged as an outlier, since too little
 of it is there to judge.
 
+Diffusivities out of range
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The profiles measure white and gray matter, not fluid, so no diffusivity (MD, RD, AD and the free water corrected
+FWMD, FWRD, FWAD) can exceed that of free water at body temperature: 3.0e-3 mm^2/s at 37 C (CSF; about 3.2e-3 at the
+38-39 C of a macaque). Tissue is well below it (adult white matter MD about 0.7e-3, AD up to 1.8e-3; neonatal white
+matter MD up to about 1.8e-3, AD 2.2e-3), and lesions (edema, fluid) come close to it. A value well above it is a
+failed fit, typically of the free water model, and is read as missing, that value only, not the profile:
+``--max-diffusivity`` (mm^2/s, default 3.6e-3, 20% above free water so that lesions and noise are kept; 0: no check).
+A table in 10^-3 mm^2/s (median above 0.05) is compared in those units. ``--min-diffusivity`` drops values below a
+lower limit the same way (default 0: off; a value of 0 is left to the check of the locations outside the brain).
+
+The dropped values are listed in ``out_of_range.csv`` of ``--stats-dir``, one row per profile (``tract``,
+``metric``, ``case``, the number and share of the values dropped, the largest value of the profile and the arc length
+range of the dropped values; see below), so the scans whose fits failed can be found and refitted; with
+``--clean-dir`` those cells are written empty, and ``impute-profiles`` fills them. In an infant cohort (HBCD, 2,293
+scans) the free water fit had failed somewhere in most scans (FWAD in 2,227 of them, values up to 0.46 mm^2/s), about a
+third of those in the middle of a tract; the values of MD, RD and AD above the limit were mostly at the ends of the
+tracts, next to CSF. In another cohort (BCP, 423 scans), 16 scans had any.
+
 What qc-profiles writes
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -327,7 +349,8 @@ The output folders are in the ``-o`` folder (``--plots-dir``, ``--stats-dir``, `
   whole-tract mean and median of every metric per tract and dataset of the cleaned data (with ``--clean-dir``), and
   ``summary_mean_all.csv`` / ``summary_median_all.csv`` before the profile outliers are removed;
   ``excluded_cases.csv`` (one row per registration, preprocessing, no age (``--exclude-no-age``), profile or most
-  tracts missing (``--max-missing-tracts``) exclusion),
+  tracts missing (``--max-missing-tracts``) exclusion), ``out_of_range.csv`` (the diffusivities dropped,
+  ``--max-diffusivity``),
   ``profile_qc_mean.csv`` (every profile compared with the prior, with the outlier decision of its tract and scan) and
   ``profile_qc_mean_clean.csv`` (the comparison on the cleaned data); ``batch_shifts_mean.csv`` with ``--envelope-batch-correct``. ``mean`` is
   ``--corr-reference``.
@@ -373,6 +396,9 @@ floats in ``--age-units``, in a column named after them (``age_months`` by defau
    * - ``excluded_cases.csv``
      - when a scan is excluded
      - exclusion
+   * - ``out_of_range.csv``
+     - when a diffusivity is out of range (``--max-diffusivity``)
+     - tract, metric and scan
 
 **summary_mean_all.csv, summary_median_all.csv, summary_mean.csv, summary_median.csv** -- the whole-tract value of
 every metric: the mean (or median) of the profile along the arc length, ignoring missing positions and those sampled
@@ -442,6 +468,14 @@ has the header line when no shift can be estimated (the run then warns).
 - ``reason``: ``registration`` (flagged in ``--registration-qc``), ``preprocessing`` (``--prep-qc``), ``no age``
   (``--exclude-no-age``), ``profile`` (``is_outlier`` in ``profile_qc_<ref>.csv``) or ``<n> of <m> tracts missing``
   (``--max-missing-tracts``)
+
+**out_of_range.csv** -- one row per profile with diffusivities out of range (``--max-diffusivity``,
+``--min-diffusivity``), which are read as missing; the rest of the profile is kept.
+
+- ``tract``, ``metric``, ``case`` (the column name of the scan), ``subject_session``
+- ``n_values``: the values of the profile; ``n_out_of_range``: those dropped, ``share`` the ratio
+- ``max_value``, ``min_value``: the largest and the smallest positive value of the profile, in mm^2/s
+- ``arc_from``, ``arc_to``: the arc length range of the values dropped (whether at the ends of the tract or inside)
 
 Imputing the profiles
 ~~~~~~~~~~~~~~~~~~~~~
@@ -525,6 +559,17 @@ With a prior, ``--norm`` sets what the deviations of ``--relative-to-prior`` are
 ``--fallback`` runs a second method on the cells the first one left (e.g. ``--method arc-linear --fallback siren``:
 gaps along the profile, the rest from the network).
 
+The norm over age (``--age-norm``) is by default that of the age bins (``bins``: the mean and SD of each bin of
+``--prior-stats-dir``, or of ``--bins`` of the profiles themselves). Fitted on the profiles of a normative cohort (or
+kept in a ``--model``), it can instead be continuous in the age, so a scan at the edge of a bin is not compared with
+the mean of the whole bin: the mean and SD of every location are smooth functions of log(age in months +
+``--age-offset``, default 1), a natural cubic spline (``spline``; ``--spline-df``, default 3, for the mean and
+``--spline-sd-df``, default 2, for the variance) or a local-linear kernel regression (``kernel``;
+``--kernel-bandwidth`` in log months, default ``cv``: chosen by leave-one-out). Their SDs are calibrated per metric
+and age like those of the population model (``--sd-calibration-folds``). In the validation a continuous norm alone was
+7% better than the age bin mean (0.93 of its error, paired over 162 scans, p < 1e-10), but with ``--norm population``
+and SIREN it gave nothing more (1.005 of the error with age bins, p = 0.44), so ``bins`` stays the default.
+
 The defaults are the settings with the smallest error over all kinds of missing values (gaps, ends, whole profiles,
 regions) in the validation on a normative infant cohort (`Validation of impute-profiles <ImputeValidation.html>`_):
 
@@ -573,14 +618,51 @@ of analyses that handle missing values themselves (e.g. mixed models). With the 
 scan are drawn towards its age bin mean where its own neighbours say little, so a group analysis of normative and
 other scans should not rely on imputed values for group differences.
 
+Pooling several cohorts
+-----------------------
+
+Several ``--profiles-dir`` (e.g. ``BCP/Profiles_Clean HBCD/Profiles_Clean``) are imputed together, one batch each
+(``--batch-names``, default the folder names or those of the first parents that tell them apart); a scan may be in one
+batch only, and the output has a folder per batch (``<out-dir>/<batch>/...``). The ages are needed (``--age-csv``
+takes several tables, e.g. one per batch). The acquisitions differ, so the batches are put into the units of a
+reference batch first (``--batch-reference``, default the first folder), at every location and metric, and the
+imputed values (and SDs) are turned back into the units of their own batch (``--batch-correction shift-scale``,
+default; ``none``: pooled as they are):
+
+- the shift, at the same age: all batches follow one age curve (a natural cubic spline of log(age + ``--age-offset``),
+  ``--batch-df`` degrees of freedom, default 6) plus a shift per batch, fitted jointly, so batches with different
+  age ranges are compared at the same ages. ``--batch-shift linear``: the shift is linear in log age over the ages all
+  batches have, constant beyond (default ``constant``)
+- the scale: the ratio of the SDs of the residuals around that curve, over the ages all batches have, after the
+  residuals are scaled by an age curve of the variance (``--batch-sd-df``, default 2), kept within 1/L and L
+  (``--batch-scale-limit``, default ``3,FWAD=10,FWMD=10``)
+- ``--batch-robust yes``: the diffusivities on the log scale, and Huber then bisquare weights of outlying residuals in
+  the fit of the shift and in the SDs of the scale (not for FWF, which has many values of 0); default ``no``
+
+A location and metric with fewer than 10 values of a batch is left as it is. ``<report-dir>/batch_correction.csv``
+gives, per batch and metric, the median shift (also in SDs) and scale over the locations, and the share of the
+locations whose scale is at the limit. The norm (and a population model) is then that of the corrected cohort;
+``--prior-stats-dir`` (statistics in the units of one batch) can't be used with several batches.
+
+In the validation on BCP (423 scans) pooled with HBCD (2,293 scans, mostly 0-9 months; 3 seeds, the BCP scans in
+BCP units), pooling did not help the BCP scans: with the tensor and NODDI measures of HBCD only (its free water
+measures left out), the error was the same as with BCP alone (1.010 of it, 95% CI 0.99-1.03, p = 0.37), with all
+measures 5% larger (p = 2e-6), through the free water diffusivities, whose HBCD fits differ from BCP's by more than a
+shift and a scale. The robust correction was not better than the plain one once the failed fits were dropped
+(``qc-profiles --max-diffusivity``). Pooling is for imputing the scans of a cohort too small for its own norm and
+model; a cohort with enough scans of every age is best imputed on its own. Run ``qc-profiles`` with
+``--max-diffusivity`` on every cohort first: failed free water fits (values up to 0.46 mm^2/s) otherwise distort the
+correction of the whole location.
+
 Validation
 ----------
 
 ``--validate`` compares the methods and their settings on values that were measured: in a sample of scans
 (``--validate-scans``, default 30, chosen with ``--validate-seed``; ``--validate-scans-per-bin N``: N of each age
-bin, so every age is represented) it hides whole profiles of a share of the tracts
-(``--validate-whole-fraction``, default 0.1, all metrics of the tract), one gap inside the profile in a share of the
-other tracts (``--validate-gap-fraction``, default 0.2; ``--validate-gap-mm``, default 3 to 15 mm long) and the
+bin, and of each batch, so every age is represented, but at most ``--validate-max-share`` of the scans of a bin,
+default 0.5, so the norm and the models of a small bin keep enough scans) it hides whole profiles of a share of the
+tracts (``--validate-whole-fraction``, default 0.1, all metrics of the tract), one gap inside the profile in a share
+of the other tracts (``--validate-gap-fraction``, default 0.2; ``--validate-gap-mm``, default 3 to 15 mm long) and the
 start or end of the profile in another share (pattern ``end gap``; ``--validate-end-gap-fraction``, default 0.2;
 ``--validate-end-gap-mm``, default 1 to 8 mm, like the missing ends of real profiles), imputes them with every setting
 and compares with the hidden values. Those tracts are chosen at random, so their neighbours are usually
@@ -625,7 +707,14 @@ hidden values). Only scans whose metrics are at least
   ``--fallback prior-mean`` would. ``rmse_completed`` is that error in the units of the metric
 - ``validation_by_metric.csv``, ``validation_by_tract.csv``: the same per metric and per tract and metric, also in
   the units of the metric (``rmse``); the second one has the distance from the tract's axis to the nearest other tract
-- ``validation_by_age_bin.csv``: the same per metric and age bin of the scans validated
+- ``validation_by_age_bin.csv``: the same per metric and age bin of the scans validated (per batch and age bin with
+  several ``--profiles-dir``)
+- ``validation_by_age.csv``: the error relative to the age bin mean per age of the scans validated
+- ``validation_by_scan.csv``: per scan validated, setting, pattern and metric, the number of hidden values ``n``
+  scored against the age bin mean, the squared errors of the setting and of the age bin mean in the units of the
+  metric (``sse``, ``sse_age_mean``) and normalized (``nsse``, ``nsse_age_mean``), and ``vs_age_mean``; ``group`` is
+  the batch and age bin. Two settings, or two runs with the same ``--validate-seed``, can be compared scan by scan
+  (paired), which separates small differences from the sampling of the scans
 - ``validation_by_location.csv``: the error at every profile location (tract, arc length and its 3-D position
   ``x``, ``y``, ``z``) of the best setting of each method for each pattern (``--validate-location-settings all``:
   of every setting), per metric and as the mean over the metrics (``metric`` ``all``), with the number of hidden values
@@ -660,7 +749,14 @@ imputed by ``--validate-population-local`` (default ``knn,siren``: ``knn`` with 
 each input and omega_0 of the grid at its most epochs) within ``--max-distance``, as ``--norm population`` does. Its
 model must not have seen the scans validated: the scans are split by subject into ``--validate-folds`` folds
 (default 5), and the model of a fold is fitted on the other subjects of the cohort, with their own norm
-(``--validate-prior cohort``). ``arc-linear`` fills every hidden gap and end there, whatever its length. The other
+(``--validate-prior cohort``). ``--validate-age-norms`` (default ``bins``) compares the settings on a norm with each
+age norm, ``spline`` for each of ``--validate-spline-df`` x ``--validate-spline-sd-df`` and ``kernel`` for each
+``--validate-kernel-bandwidth``; a continuous norm is fitted per fold without the fold's subjects, and the errors stay
+relative to the age bin mean. With several ``--profiles-dir`` the batch correction is fitted without the subjects
+validated. The scans sampled depend on ``--validate-seed``: with 14 to 20 scans per age bin, the result of a setting
+changed by up to 0.04 between seeds in an age bin (0.01 overall), more than many of the differences between
+settings, so compare settings over several seeds and on the same scans (``validation_by_scan.csv``).
+``arc-linear`` fills every hidden gap and end there, whatever its length. The other
 limits (``--max-distance``, ``--min-observed``) apply as in an imputation. With the default grid a scan takes about a
 minute on a GPU.
 

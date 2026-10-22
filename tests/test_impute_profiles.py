@@ -399,9 +399,15 @@ class TestPrior(unittest.TestCase):
             out = Path(tmp) / 'Imp'
             ip.run(args_for(prof, axes, out, validate=True, validate_scans_per_bin=2, validate_whole_fraction=0.4,
                             validate_gap_fraction=0.5, validate_region_mm='2,3', validate_methods='linear,prior-mean',
-                            no_plots=True))
+                            validate_max_share=1.0, no_plots=True))
             v = Path(str(out) + '_report') / 'validation'
             self.assertEqual(len(json.load(open(v / 'validation_settings.json'))['scans']), 6)
+            # per scan: the errors of the age bin mean, the settings' relative to them
+            sc = pd.read_csv(v / 'validation_by_scan.csv')
+            self.assertEqual(sc['scan'].nunique(), 6)
+            self.assertTrue(np.allclose(sc.loc[sc.setting == 'prior-mean', 'vs_age_mean'].dropna(), 1.0))
+            self.assertTrue(np.allclose(sc.loc[sc.setting == 'prior-mean', 'sse'],
+                                        sc.loc[sc.setting == 'prior-mean', 'sse_age_mean']))
             a = pd.read_csv(v / 'validation_by_age_bin.csv')
             self.assertEqual(set(a['age_bin']), {'0-3m', '4-9m', '10-60m'})
             self.assertTrue({'linear', 'linear (z)', 'prior-mean'} <= set(a['setting']))
@@ -412,6 +418,13 @@ class TestPrior(unittest.TestCase):
             self.assertTrue(np.allclose(s.xs('prior-mean')['vs_age_mean_completed'], 1.0))
             m = pd.read_csv(v / 'validation_by_metric.csv')
             self.assertTrue((m.loc[m.method != 'reference', 'n_completed'] == m.loc[m.method != 'reference', 'n_hidden']).all())
+            # at most half of the eligible scans of a bin (--validate-max-share 0.5, default)
+            out = Path(tmp) / 'Cap'
+            ip.run(args_for(prof, axes, out, validate=True, validate_scans_per_bin=10, validate_methods='prior-mean',
+                            validate_measure_families='none', no_plots=True))
+            js = json.load(open(Path(str(out) + '_report') / 'validation' / 'validation_settings.json'))
+            self.assertEqual(js['max_share'], 0.5)
+            self.assertEqual(len(js['scans']), 5)  # bins of 3, 3 and 6 scans: 1, 1 and 3
 
     def test_defaults_follow_the_prior(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -601,3 +614,240 @@ class TestPopulation(unittest.TestCase):
             self.assertAlmostEqual(m.loc['knn k=1 distance (z)', 'vs_age_mean_completed'], 1.0)  # nothing to impute from
             cal = pd.read_csv(vdir / 'validation_calibration.csv')
             self.assertTrue({'population', 'prior-mean'} <= set(cal['method']))
+
+
+AGE_OF = [int(s.split('_ses-')[1][:3]) for s in AGED]
+
+
+def trending(metric, tract, s):
+    """A level per tract that grows with log age, and a scan offset."""
+    scale = 1.0 if metric == 'fa' else 0.002
+    return np.full(len(ARCS), scale * (LEVEL[tract] + 0.05 * np.log(AGE_OF[s] + 1.0) + 0.004 * (s % 3 - 1)))
+
+
+def trending_dataset(tmp, metrics=('fa', 'md')):
+    return make_dataset(tmp, scans=AGED, value=trending, metrics=metrics)
+
+
+class TestAgeNorm(unittest.TestCase):
+
+    def cohort(self, tmp):
+        prof, axes = trending_dataset(tmp)
+        return prof, axes, ip.Cohort(ip.read_tables(str(prof)), ip.read_axes(str(axes), list(LEVEL)))
+
+    def test_natural_spline_basis(self):
+        t = np.linspace(0.0, 4.0, 50)
+        knots = [0.0, 1.0, 2.5, 4.0]
+        X = ip.ns_basis(t, knots)
+        self.assertEqual(X.shape, (50, 3))
+        self.assertTrue(np.allclose(ip.ns_basis(t, [0.0, 4.0])[:, 0], t / 4.0))  # two knots: linear
+        beyond = ip.ns_basis(np.array([5.0, 6.0, 7.0]), knots)
+        self.assertTrue(np.allclose(np.diff(beyond, 2, axis=0), 0.0))  # linear beyond the boundary knots
+
+    def test_spline_and_kernel_follow_the_age(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, _, cohort = self.cohort(tmp)
+            ages = [float(a) for a in AGE_OF]
+            bins = ip.bins_from_spec(ip.DEFAULT_BINS)
+            scans = list(range(len(AGED)))
+            p, m = cohort.slices['T_a'].start, cohort.metrics.index('fa')
+            truth = np.array([LEVEL['T_a'] + 0.05 * np.log(a + 1.0) for a in ages])
+            binned = ip.Prior.from_cohort(cohort, bins, ages)
+            bin_err = np.array([binned.norm(s)[0][p, m] for s in scans]) - truth
+            for kind, opts in (('spline', {'df': 1, 'sd_df': 0}), ('kernel', {'bandwidth': 'cv'})):
+                norm = ip.AgeNorm.fit(cohort, ages, scans, kind, bins, device='cpu', **opts)
+                self.assertEqual(norm.mean.shape, (ip.AGE_GRID, cohort.n_positions, len(cohort.metrics)))
+                err = np.array([norm.norm(s)[0][p, m] for s in scans]) - truth
+                self.assertLess(np.sqrt(np.mean(err ** 2)), 0.5 * np.sqrt(np.mean(bin_err ** 2)), kind)
+                self.assertTrue(np.all(norm.norm(0)[1] > 0))
+                self.assertIsNone(ip.AgeNorm.for_ages(norm, [None] * len(scans)).norm(0))
+            spline = ip.AgeNorm.fit(cohort, ages, scans, 'spline', bins, df=1, sd_df=0)
+            self.assertAlmostEqual(spline.at(0.0)[0][p, m], spline.at(-0.5)[0][p, m])  # constant beyond the fit
+            self.assertIn(norm.info['bandwidth'], ip.KERNEL_BANDWIDTHS)
+
+    def test_model_keeps_the_continuous_norm(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = trending_dataset(tmp)
+            model = Path(tmp) / 'model.npz'
+            self.assertEqual(ip.run(args_for(prof, None, Path(tmp) / 'fit', method='population', components=1,
+                                             age_norm='spline', spline_df=1, spline_sd_df=0, fit_model=model)), 0)
+            loaded = ip.Population.load(model)
+            self.assertEqual(loaded.info['age_norm']['kind'], 'spline')
+            cohort = ip.Cohort(ip.read_tables(str(prof)))
+            loaded.bind(cohort)
+            ages = [float(a) for a in AGE_OF]
+            kept = loaded.prior(cohort, ages)
+            self.assertIsInstance(kept, ip.AgeNorm)
+            fitted = ip.AgeNorm.fit(cohort, ages, range(len(AGED)), 'spline', ip.bins_from_spec(ip.DEFAULT_BINS),
+                                    df=1, sd_df=0)
+            self.assertTrue(np.allclose(kept.norm(3)[0], fitted.norm(3)[0]))
+            for tract in LEVEL:
+                drop(prof / tract / '{}_md.csv'.format(tract), AGED[5])
+            out = Path(tmp) / 'out'
+            self.assertEqual(ip.run(args_for(prof, None, out, model=model, method='prior-mean', fallback='none')), 0)
+            df = pd.read_csv(out / 'T_b' / 'T_b_md.csv', index_col=0)
+            self.assertLess(np.max(np.abs(df[AGED[5]] - trending('md', 'T_b', 5))), 2e-5)
+
+    def test_age_norm_defaults(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            args = ip.resolve_defaults(args_for(prof, None, Path(tmp) / 'o', prior_stats_dir=prof))
+            self.assertEqual(args.age_norm, 'bins')
+            self.assertEqual(ip.run(args_for(prof, None, Path(tmp) / 'o', prior_stats_dir=prof,
+                                             age_norm='spline')), 1)  # the statistics files are per age bin
+
+    def test_validation_with_age_norms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = trending_dataset(tmp)
+            out = Path(tmp) / 'Imp'
+            ip.run(args_for(prof, axes, out, validate=True, validate_scans=12, validate_whole_fraction=0.4,
+                            validate_gap_fraction=0.5, validate_region_mm='2,3', validate_methods='prior-mean,population',
+                            validate_components='1', validate_noise='isotropic', validate_folds=3,
+                            validate_population_local='none', validate_measure_families='none',
+                            validate_age_norms='bins,spline,kernel', validate_spline_df='1', validate_spline_sd_df='0',
+                            validate_kernel_bandwidth='0.5', min_scans=3, sd_calibration_folds=0, device='cpu',
+                            no_plots=True))
+            vdir = Path(str(out) + '_report') / 'validation'
+            s = pd.read_csv(vdir / 'validation_summary.csv')
+            self.assertTrue({'prior-mean', 'prior-mean [spline 1/0]', 'prior-mean [kernel 0.5]',
+                             'population q=1 isotropic [spline 1/0]'} <= set(s['setting']))
+            w = s[s['pattern'] == ip.WHOLE].set_index('setting')
+            self.assertLess(w.loc['prior-mean [spline 1/0]', 'vs_age_mean'], w.loc['prior-mean', 'vs_age_mean'])
+            self.assertAlmostEqual(w.loc['prior-mean', 'vs_age_mean'], 1.0, places=6)
+            by_age = pd.read_csv(vdir / 'validation_by_age.csv')
+            self.assertTrue(set(by_age['age_months']) <= set(AGE_OF))
+            cal = pd.read_csv(vdir / 'validation_calibration.csv')
+            self.assertIn('all', set(cal['age_bin']))
+            self.assertGreater(len(set(cal['age_bin'])), 1)
+            settings = json.load(open(vdir / 'validation_settings.json'))
+            self.assertEqual(settings['age_norms'], ['bins', 'spline 1/0', 'kernel 0.5'])
+
+
+# two batches: the same age curve, batch B shifted (+0.1 fa, +0.0002 md) and its deviations twice as large
+AGES_A = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 40]
+AGES_B = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20]
+SHIFT = {'fa': 0.1, 'md': 0.0002}
+
+
+def batch_value(ages, shift, scale):
+    def value(metric, tract, s):
+        unit = 1.0 if metric == 'fa' else 0.002
+        dev = 0.01 * (1 if s % 2 else -1)  # +-0.01 alternating over the ages: the same SD in both batches
+        return np.full(len(ARCS), unit * (LEVEL[tract] + 0.05 * np.log(ages[s] + 1.0) + scale * dev)
+                       + shift * SHIFT[metric])
+    return value
+
+
+def batch_scans(prefix, ages):
+    return ['sub-{}{:02d}_ses-{:03d}m_dwi'.format(prefix, i, a) for i, a in enumerate(ages)]
+
+
+def batches_dataset(tmp):
+    """Two studies, A/Profiles and B/Profiles (the same tract axes)."""
+    a, axes = make_dataset(Path(tmp) / 'A', scans=batch_scans('a', AGES_A), value=batch_value(AGES_A, 0.0, 1.0))
+    b, _ = make_dataset(Path(tmp) / 'B', scans=batch_scans('b', AGES_B), value=batch_value(AGES_B, 1.0, 2.0))
+    return a, b, axes
+
+
+class TestBatches(unittest.TestCase):
+
+    def test_batch_names(self):
+        self.assertEqual(ip.batch_names(['/x/BCP/Profiles_Clean', '/x/HBCD/Profiles_Clean']), ['BCP', 'HBCD'])
+        self.assertEqual(ip.batch_names(['/x/one', '/x/two']), ['one', 'two'])
+
+    def test_correction_recovers_shift_and_scale(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a, b, _ = batches_dataset(tmp)
+            cohort = ip.Cohort(ip.read_batches([str(a), str(b)]))
+            self.assertEqual(cohort.batches, ['A', 'B'])
+            ages = ip.scan_ages(cohort)
+            raw = cohort.values.copy()
+            corr = ip.BatchCorrection.fit(cohort, ages, 0, df=2, sd_df=0)
+            p, m = cohort.slices['T_a'].start, cohort.metrics.index('fa')
+            self.assertAlmostEqual(corr.shift[1, p * len(cohort.metrics) + m], 0.1, places=3)
+            self.assertAlmostEqual(corr.scale[1, p * len(cohort.metrics) + m], 0.5, delta=0.02)
+            fixed = corr.apply(cohort.values, ages, cohort.scan_batch)
+            for s, scan in enumerate(cohort.scans):
+                if cohort.scan_batch[s] == 1:  # B in the units of A: its deviations halved, without the shift
+                    i = batch_scans('b', AGES_B).index(scan)
+                    want = batch_value(AGES_B, 0.0, 1.0)('fa', 'T_a', i)[0]
+                    self.assertAlmostEqual(float(fixed[s, p, m]), want, delta=0.004)  # shift 0.1, deviation 0.02
+                else:
+                    self.assertTrue(np.array_equal(fixed[s], raw[s], equal_nan=True))
+            back = corr.apply(fixed, ages, cohort.scan_batch, inverse=True)
+            self.assertTrue(np.allclose(back, raw, equal_nan=True, atol=1e-6))
+            linear = ip.BatchCorrection.fit(cohort, ages, 0, df=2, sd_df=0, shift='linear')
+            span = linear.common[2] - linear.common[0]
+            self.assertLess(np.abs(linear.slope[1]).max() * span, 0.01)  # the shift (0.1) is the same at every age
+            self.assertAlmostEqual(linear.shift[1, p * len(cohort.metrics) + m], 0.1, places=3)
+
+    def test_robust_correction(self):
+        self.assertEqual(list(ip.batch_scale_limits('3,FWAD=10', ['fa', 'FWAD', 'md'])), [3.0, 10.0, 3.0])
+        self.assertEqual(list(ip.batch_log_metrics(['fa', 'md', 'FWAD', 'FWF'])), [False, True, True, False])
+        self.assertEqual(list(ip.batch_plain_metrics(['fa', 'FWF'])), [False, True])
+        with self.assertRaises(ValueError):
+            ip.batch_scale_limits('0.5', ['fa'])
+        with tempfile.TemporaryDirectory() as tmp:
+            a, b, _ = batches_dataset(tmp)
+            cohort = ip.Cohort(ip.read_batches([str(a), str(b)]))
+            ages = ip.scan_ages(cohort)
+            p, nm = cohort.slices['T_a'].start, len(cohort.metrics)
+            fa, md = cohort.metrics.index('fa'), cohort.metrics.index('md')
+            out = [s for s in range(len(cohort.scans)) if cohort.scan_batch[s] == 1][:2]
+            cohort.values[out, p, fa] += 0.5  # two outlying scans of B (25 deviations)
+            raw = cohort.values.copy()
+            plain = ip.BatchCorrection.fit(cohort, ages, 0, df=2, sd_df=0)
+            robust = ip.BatchCorrection.fit(cohort, ages, 0, df=2, sd_df=0, robust=True)
+            c = p * nm + fa
+            self.assertGreater(abs(plain.shift[1, c] - 0.1), 0.03)
+            self.assertAlmostEqual(robust.shift[1, c], 0.1, delta=0.01)
+            self.assertGreater(abs(plain.scale[1, c] - 0.5), 0.1)
+            self.assertAlmostEqual(robust.scale[1, c], 0.5, delta=0.03)
+            self.assertTrue(robust.log_cells[p * nm + md] and not robust.log_cells[c])
+            fixed = robust.apply(cohort.values, ages, cohort.scan_batch)
+            back = robust.apply(fixed, ages, cohort.scan_batch, inverse=True)
+            self.assertTrue(np.allclose(back, raw, equal_nan=True, rtol=1e-5, atol=1e-7))
+            s = next(s for s in range(len(cohort.scans)) if cohort.scan_batch[s] == 1 and s not in out)
+            self.assertLess(abs(fixed[s, p, md] - raw[s, p, md] + 0.0002), 0.00005)  # md: the shift of 0.0002 gone
+            sd = robust.apply(np.ones_like(raw), ages, cohort.scan_batch, inverse=True, sd=True, at=(fixed, back))
+            self.assertAlmostEqual(float(sd[s, p, md]), raw[s, p, md] / fixed[s, p, md] / robust.scale[1, p * nm + md],
+                                   places=5)
+            limited = ip.BatchCorrection.fit(cohort, ages, 0, df=2, sd_df=0, limits=1.2, robust=True)
+            self.assertAlmostEqual(limited.scale[1, c], 1 / 1.2, places=6)
+
+    def test_imputed_in_the_units_of_their_batch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a, b, _ = batches_dataset(tmp)
+            scan = batch_scans('b', AGES_B)[4]
+            drop(b / 'T_b' / 'T_b_fa.csv', scan)
+            errors = {}
+            for correction in ('shift-scale', 'none'):
+                out = Path(tmp) / correction
+                args = args_for(a, None, out, method='prior-mean', fallback='none', age_norm='spline', spline_df=1,
+                                spline_sd_df=0, batch_correction=correction, batch_df=2, batch_sd_df=0)
+                args.profiles_dir = [str(a), str(b)]
+                self.assertEqual(ip.run(args), 0)
+                self.assertTrue((out / 'A' / 'T_b' / 'T_b_fa.csv').is_file())
+                df = pd.read_csv(out / 'B' / 'T_b' / 'T_b_fa.csv', index_col=0)
+                self.assertEqual(set(df.columns), set(batch_scans('b', AGES_B)))  # only the scans of the batch
+                truth = batch_value(AGES_B, 1.0, 2.0)('fa', 'T_b', 4)
+                errors[correction] = np.max(np.abs(df[scan].to_numpy() - truth))
+            self.assertLess(errors['shift-scale'], 0.022)  # the scan's own deviation (0.02), not the shift
+            self.assertGreater(errors['none'], errors['shift-scale'] + 0.008)  # the pooled norm, half way to B
+            self.assertTrue((Path(tmp) / 'shift-scale_report' / 'batch_correction.csv').is_file())
+
+    def test_validation_with_batches(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a, b, axes = batches_dataset(tmp)
+            out = Path(tmp) / 'Imp'
+            args = args_for(a, axes, out, validate=True, validate_scans_per_bin=2, validate_whole_fraction=0.4,
+                            validate_gap_fraction=0.5, validate_region_mm='2,3', validate_methods='prior-mean',
+                            validate_measure_families='none', validate_age_norms='bins,spline',
+                            validate_spline_df='1', validate_spline_sd_df='0', validate_folds=3,
+                            sd_calibration_folds=0, batch_df=2, batch_sd_df=0, device='cpu', no_plots=True)
+            args.profiles_dir = [str(a), str(b)]
+            ip.run(args)
+            vdir = Path(str(out) + '_report') / 'validation'
+            by_bin = pd.read_csv(vdir / 'validation_by_age_bin.csv')
+            self.assertTrue({'A 0-3m', 'B 0-3m', 'A 10-60m', 'B 10-60m'} <= set(by_bin['age_bin']))
+            self.assertTrue((vdir / 'batch_correction.csv').is_file())

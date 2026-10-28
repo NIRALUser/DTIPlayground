@@ -616,6 +616,65 @@ class TestPopulation(unittest.TestCase):
             self.assertTrue({'population', 'prior-mean'} <= set(cal['method']))
 
 
+class TestGraphUNet(unittest.TestCase):
+
+    GRAPH = dict(graph_levels=2, graph_hidden=8, graph_convs=1, graph_epochs=3, graph_hybrid=1, components=1,
+                 device='cpu')
+
+    def test_graph_levels_nest(self):
+        from dtiplayground.dmri.fiberprofile.analysis import graph_unet as gu
+        self.assertEqual(gu.subsample_indices(10, 4), [0, 4, 8, 9])
+        self.assertEqual(gu.subsample_indices(5, 8), [0, 2, 4])  # at least 3, the ends kept
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            cohort = ip.Cohort(ip.read_tables(str(prof)), ip.read_axes(str(axes), list(LEVEL)))
+            g = gu.FiberGraph(cohort, 3)
+            self.assertEqual(len(g.nodes[0]), int(cohort.has_point.sum()))
+            for L in (1, 2):
+                self.assertTrue(np.array_equal(g.nodes[L - 1][g.pool[L - 1]], g.nodes[L]))
+            # consecutive locations of a tract are linked at every level
+            e = {tuple(x) for x in g.edges[0]}
+            self.assertIn((0, 1), e)
+            a = gu.normalized_adjacency(len(g.nodes[0]), g.edges[0], g.weights[0], 'cpu').to_dense().numpy()
+            self.assertTrue(np.allclose(a, a.T))
+
+    def test_graph_unet_fills_a_missing_metric_and_is_saved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for tract in LEVEL:  # scan 4 has no md at all
+                drop(prof / tract / '{}_md.csv'.format(tract), AGED[4])
+            out, model = Path(tmp) / 'g', Path(tmp) / 'g.pt'
+            self.assertEqual(ip.run(args_for(prof, axes, out, method='graph-unet', prior_stats_dir=prof,
+                                             fallback='none', fit_graph_model=model, **self.GRAPH)), 0)
+            df = pd.read_csv(out / 'T_c' / 'T_c_md.csv', index_col=0)
+            self.assertTrue(np.isfinite(df[AGED[4]]).all())
+            report = Path(str(out) + '_report')
+            sd = pd.read_csv(report / 'sd' / 'T_c' / 'T_c_md.csv', index_col=0)
+            self.assertTrue((sd[AGED[4]] > 0).all())
+            summary = pd.read_csv(report / 'imputation_summary.csv')
+            self.assertTrue((summary['methods'] == 'graph-unet').all())
+            out2 = Path(tmp) / 'g2'
+            self.assertEqual(ip.run(args_for(prof, axes, out2, method='graph-unet', prior_stats_dir=prof,
+                                             fallback='none', graph_model=model, device='cpu')), 0)
+            df2 = pd.read_csv(out2 / 'T_c' / 'T_c_md.csv', index_col=0)
+            self.assertTrue(np.allclose(df[AGED[4]], df2[AGED[4]], rtol=1e-4))
+
+    def test_validation_with_graph_unet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp, metrics=('fa', 'md', 'NDI'))
+            out = Path(tmp) / 'Imp'
+            ip.run(args_for(prof, axes, out, validate=True, validate_scans=12, validate_whole_fraction=0.4,
+                            validate_gap_fraction=0.5, validate_region_mm='2,3',
+                            validate_methods='prior-mean,population,graph-unet', validate_components='1',
+                            validate_noise='isotropic', validate_folds=3, validate_population_local='knn',
+                            validate_k='1', validate_measure_families='noddi', validate_graph_levels='2',
+                            validate_graph_hidden='8', validate_graph_hybrid='0,1', graph_epochs=2, min_scans=5,
+                            device='cpu', no_plots=True))
+            s = pd.read_csv(Path(str(out) + '_report') / 'validation' / 'validation_summary.csv')
+            self.assertTrue({'graph-unet L2 h8 x1', 'graph-unet on population q=1 L2 h8 x1',
+                             'population q=1 isotropic + knn k=1, graph-unet L2 h8 x1 beyond'} <= set(s['setting']))
+
+
 AGE_OF = [int(s.split('_ses-')[1][:3]) for s in AGED]
 
 

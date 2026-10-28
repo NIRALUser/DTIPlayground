@@ -3,10 +3,166 @@ Validation of impute-profiles
 
 This page documents the validation of ``dmrifiberprofile impute-profiles`` with ``--validate`` (see
 `Imputing the profiles <DMRIFiberProfile.html#imputing-the-profiles>`_ for the command and its outputs) on a normative
-infant cohort, in three phases: every method imputing a scan from its own observed values (phase 1, 2026-10-15),
+infant cohort, in phases: every method imputing a scan from its own observed values (phase 1, 2026-10-15),
 from its deviations from the age-bin norm (phase 2, 2026-10-16), with a population model of the normative cohort
 (phase 3, 2026-10-16), and with continuous age norms and a second cohort pooled with a batch correction (phase 3b,
-2026-10-22). The results set the defaults of the command.
+2026-10-22), and with a graph U-Net after CONFETTI (phase 4, 2026-10-28). The results set the defaults of the
+command.
+
+Phase 4: summary
+----------------
+
+Phase 4 (2026-10-28) adds a graph U-Net after `CONFETTI <https://github.com/styner/CONFETTI>`_ (``graph-unet``):
+a multi-resolution neighbourhood graph over the profile locations and a hierarchical graph convolutional network,
+trained on the normative cohort to predict hidden deviations from the observed ones.
+
+- **As CONFETTI builds it, it imputes poorly**: with CONFETTI's graph (the edge threshold from the dense atlas fibers,
+  7.7 mm, about 9.5 edges per location) and network (64 features, one convolution per level, no global summary of
+  the scan), its error was 0.90 of the age-bin mean's overall, against 0.69 for the population model alone and 0.57
+  for the default. CONFETTI classifies whole scans; for values at single locations three changes mattered:
+- **a graph from the axes** (the threshold from the nearest axis of another tract, 3.6 mm, 3.9 edges per location):
+  the fiber graph links each location to too many other tracts (held-out gaps 0.74 against 0.62 of the age-bin
+  mean's error);
+- **a global context**: the mean and max of the coarsest level over the scan, added to each node there (as the global
+  pooling of the CONFETTI classifier); without it regions were 0.91 instead of 0.77, a whole measure 0.57 instead of
+  0.46;
+- **the population prediction as an input** (hybrid, ``--graph-hybrid 80``): the network corrects the prediction of
+  the population model, which a training scan gets from a model fitted without its subject. Alone it is then better
+  than the population model for every pattern (0.638 against 0.688 overall, 3 seeds) and for a whole missing measure
+  a third better (0.43 against 0.63), but it does not reach the default (SIREN on the population residuals within
+  4 mm), which is better for gaps and ends (0.41 against 0.56).
+- **The combination**: the default within 4 mm, the hybrid U-Net beyond instead of the population prediction
+  (``--fallback graph-unet``). Over 3 seeds its error is 0.995 of the default's on the four patterns (paired per scan,
+  p = 8e-6, better on 65% of the scans) and 0.65 of it for a whole missing measure (better on every scan). The gain is
+  small where the scan has its measures and large where it lacks one; ``--fallback population`` stays the default
+  (no training of a network, about 10 minutes on a GPU), ``--fallback graph-unet`` is recommended for cohorts with
+  missing free water or NODDI fits.
+- **SIREN on the residuals of the U-Net** needs residuals of a prediction: the network copies an observed value with
+  a small SD, so the observed values are predicted cross-fitted (each fifth of the tracts with its own values hidden).
+  Even so SIREN on its residuals (0.623) stays behind SIREN on those of the population model.
+- **SDs**: calibrated per metric on held-out subjects, 95% of the errors of the U-Net were within 1.96 SD (rms of
+  error / SD 1.00).
+
+Phase 4: setup
+--------------
+
+- **Data, scans, patterns and score**: those of phase 3b, BCP alone (423 scans, the diffusivities range checked):
+  20 scans per age bin, at most half of a bin (14, 20 and 20), 3 rounds, seeds 0, 1 and 2 (162 scan x seed pairs);
+  the RMSE relative to the age-bin mean on the same hidden values, the mean over the 11 measures and the four
+  patterns, and the paired comparison per scan.
+- **Graph**: level L keeps every 2^L-th location of each tract (the ends and at least 3 kept), 5,388 locations at
+  level 0 down to 767 (level 3) and 436 (level 4); edges along the tracts and to the closest location of each other
+  tract within 1.5 times the median nearest-neighbour distance; Gaussian edge weights; pooling by the kept locations.
+- **Network**: per level graph convolutions (normalized adjacency, BatchNorm, ReLU, dropout 0.1), encoder and decoder
+  with skip connections, a per-location head with the mean and log variance of each metric; inputs per location the
+  observed deviations (0 where missing), the observed mask, the 3-D position and the arc length, and with the hybrid
+  the population prediction and its SD. Trained (AdamW, cosine schedule, batches of 16 scans) with the validation
+  patterns hidden anew each epoch (gaps, ends, whole profiles; a region in half of the scans, a whole measure in a
+  quarter), the Gaussian likelihood of the hidden values (the visible ones with weight 0.1); 10% of the training
+  subjects pick the epoch and calibrate the SDs. In the validation it is fitted per fold, without the validated
+  subjects, like the population model.
+- **Settings tried** (seed 0): 3, 4 and 5 levels, 64, 128 and 256 features, 1 or 2 convolutions per level, 60 or 200
+  epochs. With the hybrid, 60 epochs were better than 200, the sizes within 0.015 of each other alone and the same
+  in the combination (0.570); the defaults are 4 levels, 128 features, 1 convolution, 60 epochs.
+
+Phase 4: results
+----------------
+
+Development (seed 0, 54 scans)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Relative to the age-bin mean, mean over the measures; overall: the mean of the four patterns:
+
+.. table::
+   :class: longtable
+
+   ==============================================  =====  =======  =============  ======  =======  =============
+   setting                                         gap    end gap  whole profile  region  overall  whole measure
+   ==============================================  =====  =======  =============  ======  =======  =============
+   age-bin mean (prior-mean)                       1.000  1.000    1.000          1.000   1.000    1.000
+   population alone, 80 components                 0.638  0.721    0.662          0.717   0.685    0.639
+   **population + SIREN (default)**                0.408  0.516    0.642          0.720   0.572    0.639
+   graph U-Net as CONFETTI (fiber graph, 64 x 1)   0.882  0.894    0.899          0.920   0.899    0.673
+   graph U-Net, fiber graph, 128 x 1               0.855  0.874    0.877          0.903   0.877    0.644
+   ... + SIREN (residuals not cross-fitted)        0.998  1.038    0.978          0.986   1.000    0.644
+   axis graph, global context, 256 x 1             0.625  0.748    0.738          0.806   0.729    0.464
+   hybrid (on the population prediction), 128 x 1  0.563  0.638    0.638          0.701   0.635    0.438
+   hybrid, 256 x 2                                 0.543  0.620    0.632          0.699   0.623    0.432
+   hybrid 128 x 1 + SIREN                          0.456  0.608    0.688          0.733   0.621    0.438
+   **population + SIREN, hybrid beyond**           0.404  0.516    0.647          0.715   0.570    0.438
+   ==============================================  =====  =======  =============  ======  =======  =============
+
+Three seeds
+~~~~~~~~~~~
+
+Mean over the seeds (SD between seeds), the hybrid with 4 levels, 128 features, 1 convolution:
+
+.. table::
+   :class: longtable
+
+   =====================================  =============  =============  =============  =============  =====  =======  =============  ======  =============
+   setting                                0-3 months     4-9 months     10-60 months   overall        gap    end gap  whole profile  region  whole measure
+   =====================================  =============  =============  =============  =============  =====  =======  =============  ======  =============
+   population alone                       0.678 (0.038)  0.677 (0.019)  0.711 (0.036)  0.688 (0.009)  0.640  0.730    0.669          0.715   0.633 (0.009)
+   hybrid U-Net alone                     0.620 (0.029)  0.635 (0.011)  0.661 (0.031)  0.638 (0.007)  0.563  0.652    0.640          0.698   0.428 (0.010)
+   hybrid U-Net + SIREN                   0.613 (0.018)  0.616 (0.018)  0.639 (0.012)  0.623 (0.009)  0.454  0.608    0.692          0.737   0.428 (0.010)
+   **population + SIREN (default)**       0.563 (0.025)  0.567 (0.010)  0.589 (0.020)  0.573 (0.007)  0.409  0.517    0.648          0.718   0.633 (0.009)
+   **population + SIREN, hybrid beyond**  0.557 (0.021)  0.568 (0.006)  0.586 (0.018)  0.571 (0.005)  0.405  0.513    0.651          0.714   0.428 (0.010)
+   =====================================  =============  =============  =============  =============  =====  =======  =============  ======  =============
+
+Paired per scan
+~~~~~~~~~~~~~~~
+
+Ratio to the default (below 1: better), geometric mean over the 162 scan x seed pairs (95% CI), Wilcoxon p and the
+share of the scans better:
+
+.. table::
+   :class: longtable
+
+   =================================  ========================================  =================================
+   comparison with the default        four patterns                             whole measure
+   =================================  ========================================  =================================
+   population + SIREN, hybrid beyond  0.995 (0.992-0.997) p=8e-6, 65% of scans  0.652 (0.640-0.665) p=3e-28, 100%
+   hybrid U-Net + SIREN               1.073 (1.065-1.082) p=3e-27
+   hybrid U-Net alone                 1.099 (1.090-1.108) p=7e-28
+   population alone                   1.201 (1.193-1.210) p=3e-28
+   =================================  ========================================  =================================
+
+Per measure
+~~~~~~~~~~~
+
+Relative to the age-bin mean, the four patterns, mean over the seeds:
+
+.. table::
+   :class: longtable
+
+   =================================  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====
+   setting                            FA     MD     RD     AD     FW-FA  FW-MD  FW-RD  FW-AD  FWF    NDI    ODI
+   =================================  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====
+   population alone                   0.784  0.660  0.656  0.756  0.682  0.536  0.514  0.725  0.804  0.642  0.814
+   hybrid U-Net alone                 0.716  0.629  0.613  0.717  0.623  0.487  0.469  0.651  0.768  0.591  0.758
+   population + SIREN (default)       0.661  0.536  0.534  0.637  0.576  0.429  0.419  0.596  0.685  0.525  0.704
+   population + SIREN, hybrid beyond  0.654  0.538  0.533  0.637  0.571  0.429  0.418  0.589  0.687  0.524  0.696
+   =================================  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====
+
+Phase 4: reproducing
+--------------------
+
+Each seed (``--validate-seed 0``, 1, 2) on BCP alone::
+
+    $ dmrifiberprofile impute-profiles --profiles-dir BCP/Profiles_Clean --axis-dir FiberAxis --out-dir G \
+        --validate --validate-scans-per-bin 20 --validate-max-share 0.5 --validate-rounds 3 --validate-seed 0 \
+        --validate-relative yes --validate-methods prior-mean,population,graph-unet --validate-components 80 \
+        --validate-noise isotropic --validate-population-local siren --validate-siren-inputs xyz \
+        --validate-omega0 10 --validate-epochs 500 --validate-seeds 1 --max-distance 4 \
+        --validate-graph-levels 4 --validate-graph-hidden 128 --validate-graph-convs 1 --validate-graph-hybrid 80 \
+        --graph-epochs 60
+
+A run took about 2 hours on one GPU, most of it the 5 fits per fold (5 population models for the training inputs and
+the network). Imputing with the combination::
+
+    $ dmrifiberprofile impute-profiles --profiles-dir Profiles_Clean --prior-stats-dir Profiles_Clean \
+        --axis-dir FiberAxis --out-dir Profiles_Imputed --fallback graph-unet --fit-graph-model graph.pt
 
 Phase 3b: summary
 -----------------

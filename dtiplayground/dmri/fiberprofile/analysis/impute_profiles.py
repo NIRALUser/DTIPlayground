@@ -29,6 +29,11 @@
 #   --norm population (the default with a prior), the methods above impute the deviations from that prediction (the
 #   residuals) within --max-distance, and population fills the rest.
 #
+#   graph-unet (graph_unet.py, after CONFETTI) is a graph convolutional U-Net over a multi-resolution graph of the
+#   profile locations, trained on a normative cohort to predict hidden deviations from the observed ones, by default
+#   as a correction of the population prediction (--graph-hybrid). As --fallback (instead of population) it fills
+#   what is beyond --max-distance, and a metric a scan lacks entirely with a third less error.
+#
 #   Several --profiles-dir (e.g. two studies) are pooled, one batch each. Their values differ by the acquisition, so
 #   each batch is shifted and scaled to a reference batch first (--batch-correction shift-scale), aware of the age: one
 #   age curve of every location for all batches and a shift per batch, fitted jointly, and the ratio of the SDs
@@ -53,9 +58,10 @@ import pandas as pd
 
 log = logging.getLogger("impute")
 
-METHODS = ("arc-linear", "linear", "knn", "siren", "prior-mean", "population")
+METHODS = ("arc-linear", "linear", "knn", "siren", "prior-mean", "population", "graph-unet")
 SPATIAL = ("linear", "knn", "siren")  # methods that need the 3-D positions (--axis-dir)
-BY_NORM = ("prior-mean", "population")  # methods on the norm, also for a metric a scan lacks entirely
+BY_NORM = ("prior-mean", "population", "graph-unet")  # methods on the norm, also for a metric a scan lacks entirely
+MODELS = ("population", "graph-unet")  # models of the deviations of a normative cohort
 DEFAULT_BINS = "0-3,4-9,10-60"  # as qc-profiles --bins
 SIREN_INPUTS = ("xyz", "xyz+arc", "xyz+tract")
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF", "FW_FA", "FW_MD", "FW_RD", "FW_AD"]
@@ -1462,9 +1468,10 @@ def too_many_missing(cohort, Y, max_share):
 ### imputation of a cohort
 
 def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0.5, device="auto", log_every=25,
-                  prior=None, max_missing_tracts=None, model=None):
+                  prior=None, max_missing_tracts=None, model=None, graph_model=None):
     """Impute every scan; a scan missing more than a share *max_missing_tracts* of its tracts is left as it is.
-    *model*: the Population of the method population (bound to *cohort*). Returns (imputed values scans x positions
+    *model*: the Population of the method population (bound to *cohort*); *graph_model*: the GraphUNetModel of the
+    method graph-unet. Returns (imputed values scans x positions
     x metrics (NaN: not imputed), method index per cell (-1: none), distances to the nearest observed position,
     reasons {(scan, metric): text} for skipped ones, SDs of the values population imputed (NaN elsewhere))."""
     opts = dict(opts or {})
@@ -1478,6 +1485,8 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
     by_population = relative and opts.get("norm") == "population" and not set(methods) <= set(BY_NORM)
     if ("population" in methods or by_population) and model is None:
         raise ValueError("population and --norm population need a population model")
+    if "graph-unet" in methods and graph_model is None:
+        raise ValueError("graph-unet needs a graph U-Net model")
     features = dev = None
     if "siren" in methods:
         dev = pick_device(device)
@@ -1516,12 +1525,15 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
         dists[s] = np.minimum(dist, np.finfo(np.float32).max)
         cache = {}
         pop = None if model is None or norm is None else model.impute(Y, norm)
+        gpop = None if graph_model is None or norm is None or "graph-unet" not in methods else \
+            graph_model.impute(Y, norm)
         # --norm population: the deviations are those from the population prediction of the scan, with its SD
         rnorm = pop if by_population else norm
         for mth in methods:  # a fallback imputes from the observed values too, not from those of the first method
             sd = None
-            if mth == "population":
-                pred, sd = (np.full(Y.shape, np.nan),) * 2 if pop is None else pop
+            if mth in MODELS:
+                p = pop if mth == "population" else gpop
+                pred, sd = (np.full(Y.shape, np.nan),) * 2 if p is None else p
             else:
                 rel = relative and mth not in BY_NORM
                 pred = impute_scan(Y, cohort, mth, opts, cache, features, dev, rnorm if rel else norm, rel)
@@ -1770,15 +1782,61 @@ def hide_measure(cohort, Y, rng, families):
     return {p: MEASURE for p in np.flatnonzero(observed)}, metrics
 
 
-def population_configs(args):
-    """(setting, components, noise) of the population settings to compare."""
-    if "population" not in [m.strip() for m in args.validate_methods.split(",")]:
-        return []
-    noises = [x.strip() for x in args.validate_noise.split(",") if x.strip()]
-    for x in noises:
-        if x not in NOISE:
-            raise ValueError("unknown --validate-noise {} ({})".format(x, ", ".join(NOISE)))
-    return [("population q={} {}".format(q, x), q, x) for q in parse_list(args.validate_components, int) for x in noises]
+def population_configs(args, cohort=None):
+    """(setting, fit) of the models of the deviations to compare, population and graph-unet; fit(cohort, prior,
+    scans, device) fits one on the scans (indices) and their norm."""
+    methods = [m.strip() for m in args.validate_methods.split(",")]
+    out = []
+    if "population" in methods:
+        noises = [x.strip() for x in args.validate_noise.split(",") if x.strip()]
+        for x in noises:
+            if x not in NOISE:
+                raise ValueError("unknown --validate-noise {} ({})".format(x, ", ".join(NOISE)))
+        for q in parse_list(args.validate_components, int):
+            for x in noises:
+                out.append(("population q={} {}".format(q, x),
+                            lambda c, pr, sc, dev, q=q, x=x: Population.fit(c, pr, sc, q, x, args.max_iter, device=dev,
+                                                                            min_scans=args.min_scans,
+                                                                            sd_folds=args.sd_calibration_folds)))
+    if "graph-unet" in methods and cohort is not None:
+        from dtiplayground.dmri.fiberprofile.analysis import graph_unet as gu
+        levels = parse_list(args.validate_graph_levels, int)
+        graph = gu.FiberGraph(cohort, max(levels), args.graph_fibers_dir, args.graph_threshold)
+        masker = training_masker(cohort, args)
+        for L in levels:
+            for h in parse_list(args.validate_graph_hidden, int):
+                for c in parse_list(args.validate_graph_convs, int):
+                    for q in parse_list(args.validate_graph_hybrid, int):
+                        out.append(("graph-unet{} L{} h{} x{}".format(" on population q={}".format(q) if q else "",
+                                                                       L, h, c),
+                                    lambda co, pr, sc, dev, L=L, h=h, c=c, q=q: gu.GraphUNetModel.fit(
+                                        co, pr, sc, graph, masker, L, h, c, args.graph_epochs, lr=args.graph_lr,
+                                        seed=args.seed, device=dev, hybrid=q, min_scans=args.min_scans)))
+    return out
+
+
+def training_masker(cohort, args):
+    """masker(z, rng) -> positions x metrics to hide in a scan for training a model of the deviations: the patterns of
+    the validation (whole profiles, gaps, ends; a region in half of the scans; a whole measure in a quarter)."""
+    gap_mm = tuple(parse_list(args.validate_gap_mm, float))
+    end_mm = tuple(parse_list(args.validate_end_gap_mm, float))
+    region_mm = tuple(parse_list(args.validate_region_mm, float))
+    families = [x.strip() for x in args.validate_measure_families.split(",")
+                if x.strip() and x.strip() != "none" and x.strip() in FAMILIES]
+
+    def masker(z, rng):
+        h = np.zeros(z.shape, dtype=bool)
+        pos = hide(cohort, z, rng, args.validate_gap_fraction, gap_mm, args.validate_whole_fraction,
+                   args.validate_end_gap_fraction, end_mm)
+        h[list(pos)] = True
+        if args.validate_region_count > 0 and rng.random() < 0.5:
+            h[list(hide_region(cohort, z, rng, region_mm, 1))] = True
+        if families and rng.random() < 0.25:
+            hp, ms = hide_measure(cohort, z, rng, families)
+            if hp:
+                h[np.ix_(list(hp), list(ms))] = True
+        return h
+    return masker
 
 
 def age_norm_specs(args):
@@ -1835,10 +1893,8 @@ def fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev)
                 log.info("  age norm of fold %d/%d: %s on %d scans", f + 1, n_folds, fprior.describe(),
                          fprior.info["scans"])
             models = []
-            for name, q, noise in pops:
-                models.append((name + suffix, Population.fit(cohort, fprior, train, q, noise, args.max_iter, device=dev,
-                                                             min_scans=args.min_scans,
-                                                             sd_folds=args.sd_calibration_folds)))
+            for name, fit in pops:
+                models.append((name + suffix, fit(cohort, fprior, train, dev)))
             for s in mine:
                 out[s].append((suffix, None if kind == "bins" else norms[s],
                                [(name, model, norms[s]) for name, model in models]))
@@ -1913,7 +1969,8 @@ def validation_prior(cohort, args, configs, siren):
     the cohort itself, each scan left out of its own norm (--validate-prior cohort, for a normative cohort), or the
     age bin statistics of --prior-stats-dir (files: from another cohort)."""
     needed = any(o.get("relative") or m == "prior-mean" for _, m, o in configs) or any(x[3] for x in siren) \
-        or bool(population_configs(args)) or any(kind != "bins" for _, kind, _ in age_norm_specs(args))
+        or bool(set(MODELS) & {m.strip() for m in args.validate_methods.split(",")}) \
+        or any(kind != "bins" for _, kind, _ in age_norm_specs(args))
     ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
     if not needed and (all(a is None for a in ages) or (args.validate_prior == "files" and not args.prior_stats_dir)):
         return None  # only for the age bin reference, which is then left out
@@ -1999,20 +2056,26 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
             preds[key] = limit(p, Ym, cohort, dist, args.max_distance, spatial=method in SPATIAL)
             if method == "prior-mean":
                 sds[key] = vnorm[1]
+    near, beyond = {}, {}  # population + local within --max-distance; the graph-unet models' predictions
     for name, model, mnorm in [m for _, _, vm in variants for m in vm]:
         if mnorm is None:
             continue
         p, sd = model.impute(Ym, mnorm)
-        key = ("population", name, "", np.nan, np.nan, np.nan)
+        kind = getattr(model, "method", "population")
+        if kind == "graph-unet":
+            beyond[name] = (limit(p, Ym, cohort, dist, None, spatial=False), sd)
+        key = (kind, name, "", np.nan, np.nan, np.nan)
         pop = limit(p, Ym, cohort, dist, None, spatial=False)
         preds[key] = pop
         sds[key] = sd
         # the residuals from the population prediction imputed by a method on the 3-D neighbours, within
         # --max-distance; the population prediction beyond
         for lname, lmethod, lopts in local:
-            lkey = ("population+" + lmethod, "{} + {}".format(name, lname), "", np.nan, np.nan, np.nan)
+            lkey = (kind + "+" + lmethod, "{} + {}".format(name, lname), "", np.nan, np.nan, np.nan)
             if own_only:
                 preds[lkey], sds[lkey] = pop, sd
+                if kind == "population":
+                    near[lkey[1]] = (None, sd, pop, True)
                 continue
             if lmethod == "siren":
                 pr = impute_scan(Ym, cohort, "siren", lopts, None, features[lopts["siren_inputs"]], dev, (p, sd), True)
@@ -2021,6 +2084,17 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
             pr = limit(pr, Ym, cohort, dist, args.max_distance, spatial=True)
             preds[lkey] = np.where(np.isnan(pr), pop, pr)
             sds[lkey] = sd
+            if kind == "population":
+                near[lkey[1]] = (pr, sd, pop, own_only)
+    # population + local within --max-distance, a graph-unet model beyond (as --fallback)
+    for lname, (pr, psd, pop, own) in near.items():
+        for gname, (gp, gsd) in beyond.items():
+            ckey = ("population+local+graph-unet", "{}, {} beyond".format(lname, gname), "", np.nan, np.nan, np.nan)
+            if own:
+                preds[ckey], sds[ckey] = gp, gsd
+                continue
+            preds[ckey] = np.where(np.isnan(pr), gp, pr)
+            sds[ckey] = np.where(np.isnan(pr), gsd, psd)
     for inputs, omega0, seed, rel in siren:
         for suffix, vnorm, _ in (variants if rel else [("", None, ())]):
             if rel and vnorm is None:
@@ -2243,7 +2317,7 @@ def validate(cohort, args):
     eligible = np.flatnonzero(eligible)
     prior = validation_prior(cohort, args, configs, siren)
     bins, scan_bin = report_bins(cohort, args, prior)
-    pops = population_configs(args)
+    pops = population_configs(args, cohort)
     if pops and (bins is None or not (scan_bin >= 0).any()):
         log.warning("population is left out of the validation: it needs the ages of the scans (--age-csv or "
                     "--age-regex)")
@@ -2823,6 +2897,39 @@ def add_parser(subparsers):
     g.add_argument("--min-scans", type=int, default=10,
                    help="population: cells observed in fewer scans of the fit are left out of the model (default: 10)")
     p.add_argument("--value-format", default="%.6g", help="printf format of the imputed values (default: %%.6g, as EXTRACT_Profile)")
+    gu = p.add_argument_group("graph U-Net (graph-unet; after CONFETTI)")
+    gu.add_argument("--graph-fibers-dir", default=None, metavar="DIR",
+                    help="graph-unet: atlas fibers <tract>.vtk with stored arc lengths (parametrize-fibers); the "
+                         "distance threshold of the graph is a multiple of the median distance from a location to the "
+                         "nearest fiber point of another tract at the same arc length (default: of another tract's "
+                         "axis)")
+    gu.add_argument("--graph-threshold", type=float, default=1.5,
+                    help="graph-unet: the multiple of that median distance (default: 1.5)")
+    gu.add_argument("--graph-levels", type=int, default=4,
+                    help="graph-unet: resolution levels, level L keeping every 2**L-th location of a tract "
+                         "(default: 4)")
+    gu.add_argument("--graph-hidden", type=int, default=128, help="graph-unet: node features (default: 128)")
+    gu.add_argument("--graph-convs", type=int, default=1,
+                    help="graph-unet: graph convolutions per level and pass (default: 1)")
+    gu.add_argument("--graph-hybrid", type=int, default=80,
+                    help="graph-unet: components of the population model (PPCA) whose prediction is an input the "
+                         "network corrects; 0: the deviations only (default: 80)")
+    gu.add_argument("--graph-epochs", type=int, default=60, help="graph-unet: training epochs at most (default: 60)")
+    gu.add_argument("--fit-graph-model", default=None, metavar="FILE",
+                    help="graph-unet: save the network fitted on the profiles (.pt), e.g. to impute another cohort")
+    gu.add_argument("--graph-model", default=None, metavar="FILE",
+                    help="graph-unet: a network fitted on a normative cohort (--fit-graph-model), on the same tracts "
+                         "and arc lengths (default: fit on the profiles themselves)")
+    gu.add_argument("--graph-lr", type=float, default=1e-3, help="graph-unet: AdamW learning rate (default: 1e-3)")
+    gu.add_argument("--validate-graph-levels", default="4",
+                    help="graph-unet: resolution levels of the U-Net, level L keeping every 2**L-th location "
+                         "(default: 4)")
+    gu.add_argument("--validate-graph-hidden", default="128", help="graph-unet: node features (default: 128)")
+    gu.add_argument("--validate-graph-hybrid", default="80",
+                    help="graph-unet: 0, or the components of a population model (PPCA) whose prediction is an input "
+                         "and which the network corrects (default: 80)")
+    gu.add_argument("--validate-graph-convs", default="1",
+                    help="graph-unet: graph convolutions per level and pass (default: 1)")
     v = p.add_argument_group("validation (--validate)")
     v.add_argument("--validate", action="store_true",
                    help="Compare methods and settings on hidden observed values of a sample of scans instead of imputing")
@@ -2986,7 +3093,8 @@ def run(args):
     prior = model = None
     population = "population" in (args.method, args.fallback) or (
         args.relative_to_prior and args.norm == "population" and not {args.method, args.fallback} <= set(BY_NORM + ("none",)))
-    if args.relative_to_prior or "prior-mean" in (args.method, args.fallback) or population or args.fit_model:
+    if args.relative_to_prior or {"prior-mean", "graph-unet"} & {args.method, args.fallback} or population or \
+            args.fit_model or args.fit_graph_model:
         ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
         if args.model:
             model = Population.load(args.model)
@@ -3043,6 +3151,31 @@ def run(args):
         if args.fit_model:
             model.save(args.fit_model)
             log.info("Saved the population model to %s", args.fit_model)
+    graph_model = None
+    if "graph-unet" in (args.method, args.fallback) or args.fit_graph_model:
+        from dtiplayground.dmri.fiberprofile.analysis import graph_unet as gu
+        if args.graph_model:
+            graph_model = gu.GraphUNetModel.load(args.graph_model, cohort, args.device)
+            log.info("Graph U-Net %s: %s", args.graph_model, gu.describe(graph_model.info))
+        else:
+            if prior is None:
+                log.error("graph-unet needs the norm of the profiles (ages) or --prior-stats-dir")
+                return 1
+            if axes is None:
+                log.error("--axis-dir is needed for graph-unet")
+                return 1
+            scans = [s for s in range(len(cohort.scans)) if prior.scan_bin[s] >= 0]
+            if args.max_missing_tracts is not None:
+                scans = [s for s in scans if not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts)]
+            graph = gu.FiberGraph(cohort, args.graph_levels, args.graph_fibers_dir, args.graph_threshold)
+            graph_model = gu.GraphUNetModel.fit(cohort, prior, scans, graph, training_masker(cohort, args),
+                                                args.graph_levels, args.graph_hidden, args.graph_convs,
+                                                args.graph_epochs, lr=args.graph_lr, seed=args.seed,
+                                                device=pick_device(args.device), hybrid=args.graph_hybrid,
+                                                min_scans=args.min_scans)
+            if args.fit_graph_model:
+                graph_model.save(args.fit_graph_model)
+                log.info("Saved the graph U-Net to %s", args.fit_graph_model)
     missing = int((np.isnan(cohort.values) & cohort.valid[None]).sum())
     log.info("%d missing cells (blank, or whole profiles of scans absent from a table)", missing)
     opts = {"k": args.k, "weights": args.knn_weights, "max_distance": args.max_distance, "max_gap": args.max_gap,
@@ -3053,16 +3186,18 @@ def run(args):
     fallback = None if args.fallback == "none" else args.fallback
     imputed, used, dists, skipped, sds = impute_cohort(cohort, args.method, fallback, opts, args.min_observed,
                                                        args.device, prior=prior,
-                                                       max_missing_tracts=args.max_missing_tracts, model=model)
+                                                       max_missing_tracts=args.max_missing_tracts, model=model,
+                                                       graph_model=graph_model)
     if corr is not None:  # back to the units of each scan's own batch
         ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
         harmonized = imputed
         imputed = corr.apply(imputed, ages, cohort.scan_batch, inverse=True)
         sds = corr.apply(sds, ages, cohort.scan_batch, inverse=True, sd=True, at=(harmonized, imputed))
     n = write_tables(cohort, imputed, args.out_dir, os.path.join(args.report_dir, "masks"), args.value_format)
-    if population:
+    if population or graph_model is not None:
         write_values(cohort, sds, os.path.join(args.report_dir, "sd"), args.value_format)
-        log.info("SDs of the values imputed by population in %s/", os.path.join(args.report_dir, "sd"))
+        log.info("SDs of the values imputed by %s in %s/", "population" if graph_model is None else "population and graph-unet",
+                 os.path.join(args.report_dir, "sd"))
     summary = summary_rows(cohort, imputed, used, dists, skipped, sds)
     os.makedirs(args.report_dir, exist_ok=True)
     summary.to_csv(os.path.join(args.report_dir, "imputation_summary.csv"), index=False)

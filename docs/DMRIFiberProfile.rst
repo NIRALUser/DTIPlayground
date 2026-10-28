@@ -249,7 +249,8 @@ lists all the options of each.
     Impute the missing values of profile tables (e.g. the cleaned profiles of ``qc-profiles``) from the observed
     values of the same scan, using the 3-D positions of the tract axes: linear along the profile, linear or nearest
     neighbours in 3-D, or a SIREN per scan, on the deviations from a norm and a population model of a normative
-    cohort; several cohorts can be pooled with a batch correction. ``--validate`` compares them on hidden values. See
+    cohort, or a graph U-Net (after CONFETTI); several cohorts can be pooled with a batch correction.
+    ``--validate`` compares them on hidden values. See
     `Imputing the profiles`_.
 
 ``qc-registration``
@@ -549,6 +550,27 @@ The methods (``--method``):
     3 minutes, most of it the calibration of the SDs. ``--fit-model model.npz`` saves it, with the norm it was fitted with, and ``--model model.npz`` imputes
     another cohort on the same tracts with it (the model replaces ``--prior-stats-dir``).
 
+``graph-unet``
+    A graph convolutional U-Net of the deviations (after `CONFETTI <https://github.com/styner/CONFETTI>`_), over a
+    multi-resolution graph of the profile locations: level L keeps every 2^L-th location of each tract
+    (``--graph-levels``, default 4), and each location is linked to its neighbours along the tract and to the closest
+    location of each other tract within 1.5 times (``--graph-threshold``) the median distance to the nearest axis of
+    another tract (``--graph-fibers-dir``: to the nearest atlas fiber at the same arc length, as CONFETTI; a larger
+    threshold that imputed worse). The network is trained on the profiles (a normative cohort, with the norm of
+    ``--prior-stats-dir`` or of their age bins) to predict values hidden as in the validation (whole profiles, gaps,
+    ends, regions, a whole measure) from the observed ones, with an SD, and corrects the prediction of a population
+    model (``--graph-hybrid``, default 80 components, fitted without each training scan's subject for its input;
+    0: the deviations only). ``--graph-hidden`` (128), ``--graph-convs`` (1), ``--graph-epochs`` (60, the epoch
+    with the smallest error on held-out subjects is kept), ``--graph-lr``. Training takes about 10 minutes on a GPU
+    (5 population fits for the inputs and the network); ``--fit-graph-model model.pt`` saves the network and
+    ``--graph-model model.pt`` imputes another cohort with the same tracts, arc lengths and metrics with it (the
+    norm is that of the run). Its SDs are calibrated per metric on the held-out subjects and written to ``sd/``.
+    Like ``population`` it imputes a whole profile and a metric the scan lacks entirely. As ``--fallback graph-unet``
+    with the default (SIREN on the residuals from the population prediction within 4 mm), it fills the rest instead
+    of the population model: in the validation 0.5% less error overall and a third less for a whole missing measure
+    (the free water or NODDI metrics of a scan without that fit). ``--fallback population`` stays the default, as it
+    needs no training; prefer ``graph-unet`` for cohorts where whole measures are missing.
+
 With a prior, ``--norm`` sets what the deviations of ``--relative-to-prior`` are from:
 
 - ``population`` (default): the scan's own prediction by the population model and its SD. The method (e.g.
@@ -608,9 +630,9 @@ Next to the tables, ``--report-dir`` (default ``<out-dir>_report``) holds:
   ``gap`` for missing values inside the profile), ``n_imputed``, ``n_left``, ``methods``,
   ``max_distance_mm`` (the largest distance from an imputed cell to an observed position), ``mean_sd`` (the mean SD
   of the values imputed with the population model) and ``left_reason``
-- ``sd/``: with the population model, the tables again with the SD of each value imputed with it (blank
-  elsewhere). For a value imputed from the residuals (``--norm population``), the SD is that of the model alone, an
-  upper bound where the neighbours were close
+- ``sd/``: with the population model (or ``graph-unet``), the tables again with the SD of each value imputed with
+  it (blank elsewhere). For a value imputed from the residuals (``--norm population``), the SD is that of the model
+  alone, an upper bound where the neighbours were close
 - ``imputation_settings.json``: the options of the run
 
 Imputed values are estimates, not measurements: report the share of imputed values, and consider leaving them out
@@ -740,25 +762,27 @@ hidden values). Only scans whose metrics are at least
 
 The settings compared: ``--validate-methods`` (default all), ``--validate-k`` (``knn``, default 1,3,5,10,20,50) with
 ``--validate-knn-weights`` (default both, ``distance`` and ``uniform``), ``--validate-arc-ends`` (``arc-linear``,
-default all three) and for
-``siren`` the grid of ``--validate-siren-inputs`` (default all three), ``--validate-omega0`` (default 5,10,20,30)
-and ``--validate-epochs`` (default 100,200,500,1000; one training per setting, read off at each value), each trained
-``--validate-seeds`` times (default 3). ``population`` is compared for each of ``--validate-components`` (default
-5,10,20,40,80) and ``--validate-noise`` (default all three), alone and with the residuals from its prediction
-imputed by ``--validate-population-local`` (default ``knn,siren``: ``knn`` with each ``--validate-k``, ``siren`` with
-each input and omega_0 of the grid at its most epochs) within ``--max-distance``, as ``--norm population`` does. Its
-model must not have seen the scans validated: the scans are split by subject into ``--validate-folds`` folds
-(default 5), and the model of a fold is fitted on the other subjects of the cohort, with their own norm
-(``--validate-prior cohort``). ``--validate-age-norms`` (default ``bins``) compares the settings on a norm with each
-age norm, ``spline`` for each of ``--validate-spline-df`` x ``--validate-spline-sd-df`` and ``kernel`` for each
-``--validate-kernel-bandwidth``; a continuous norm is fitted per fold without the fold's subjects, and the errors stay
-relative to the age bin mean. With several ``--profiles-dir`` the batch correction is fitted without the subjects
-validated. The scans sampled depend on ``--validate-seed``: with 14 to 20 scans per age bin, the result of a setting
-changed by up to 0.04 between seeds in an age bin (0.01 overall), more than many of the differences between
-settings, so compare settings over several seeds and on the same scans (``validation_by_scan.csv``).
-``arc-linear`` fills every hidden gap and end there, whatever its length. The other
-limits (``--max-distance``, ``--min-observed``) apply as in an imputation. With the default grid a scan takes about a
-minute on a GPU.
+default all three) and for ``siren`` the grid of ``--validate-siren-inputs`` (default all three),
+``--validate-omega0`` (default 5,10,20,30) and ``--validate-epochs`` (default 100,200,500,1000; one training per
+setting, read off at each value), each trained ``--validate-seeds`` times (default 3). ``population`` is compared for
+each of ``--validate-components`` (default 5,10,20,40,80) and ``--validate-noise`` (default all three), alone and with
+the residuals from its prediction imputed by ``--validate-population-local`` (default ``knn,siren``: ``knn`` with each
+``--validate-k``, ``siren`` with each input and omega_0 of the grid at its most epochs) within ``--max-distance``, as
+``--norm population`` does. Its model must not have seen the scans validated: the scans are split by subject into
+``--validate-folds`` folds (default 5), and the model of a fold is fitted on the other subjects of the cohort, with
+their own norm (``--validate-prior cohort``). ``graph-unet`` (in ``--validate-methods``) is fitted the same way, for
+each of ``--validate-graph-levels`` (4), ``--validate-graph-hidden`` (128), ``--validate-graph-convs`` (1) and
+``--validate-graph-hybrid`` (80; 0: on the deviations only), alone and with the local residual methods; the setting
+``<population> + <local>, <graph-unet> beyond`` is the default with ``--fallback graph-unet``.
+``--validate-age-norms`` (default ``bins``) compares the settings on a norm with each age norm, ``spline`` for each of
+``--validate-spline-df`` x ``--validate-spline-sd-df`` and ``kernel`` for each ``--validate-kernel-bandwidth``; a
+continuous norm is fitted per fold without the fold's subjects, and the errors stay relative to the age bin mean. With
+several ``--profiles-dir`` the batch correction is fitted without the subjects validated. The scans sampled depend on
+``--validate-seed``: with 14 to 20 scans per age bin, the result of a setting changed by up to 0.04 between seeds in
+an age bin (0.01 overall), more than many of the differences between settings, so compare settings over several seeds
+and on the same scans (``validation_by_scan.csv``). ``arc-linear`` fills every hidden gap and end there, whatever its
+length. The other limits (``--max-distance``, ``--min-observed``) apply as in an imputation. With the default grid a
+scan takes about a minute on a GPU.
 
 See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the remaining options.
 

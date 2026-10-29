@@ -547,8 +547,13 @@ The methods (``--method``):
     predicting hidden whole profiles of the others, and the SDs are scaled so they match those errors). The model is
     fitted (EM, ``--max-iter``; the cells observed in at least ``--min-scans`` scans) on the profiles being imputed,
     with ``--prior-stats-dir`` or, without it, the norm of their own age bins (``--bins``): with 80 components about
-    3 minutes, most of it the calibration of the SDs. ``--fit-model model.npz`` saves it, with the norm it was fitted with, and ``--model model.npz`` imputes
-    another cohort on the same tracts with it (the model replaces ``--prior-stats-dir``).
+    3 minutes, most of it the calibration of the SDs. ``--fit-model model.npz`` saves it, with the norm it was
+    fitted with, and ``--model model.npz`` imputes another cohort on the same tracts with it (the model replaces
+    ``--prior-stats-dir``). A cell outside the model (observed in fewer than ``--min-scans`` scans of the fit) is
+    imputed on the age bin norm instead, and the age bin mean fills what is left of it. A cohort too small for a
+    model of its own (no cell observed in ``--min-scans`` scans, e.g. a few clinical scans) is imputed on the age
+    bin norm (``--norm age-bin``, ``--fallback prior-mean``) with a warning; impute it with a ``--model`` fitted on
+    a normative cohort instead.
 
 ``graph-unet``
     A graph convolutional U-Net of the deviations (after `CONFETTI <https://github.com/styner/CONFETTI>`_), over a

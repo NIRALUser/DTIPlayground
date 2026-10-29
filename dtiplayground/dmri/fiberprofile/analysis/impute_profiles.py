@@ -79,7 +79,6 @@ KERNEL_BANDWIDTHS = (0.1, 0.15, 0.2, 0.3, 0.45, 0.7, 1.0)
 SPLINE_VAR_FLOOR = 0.25  # spline norm: the variance at an age is at least this share of the cell's overall variance
 BATCH_SHIFTS = ("constant", "linear")  # batch correction: the shift of a batch over the age
 BATCH_SCALE_LIMIT = "3,FWAD=10,FWMD=10"  # batch correction: the scale of a cell is within 1/limit and limit
-BATCH_LOG_METRICS = ("MD", "RD", "AD", "FWMD", "FWRD", "FWAD")  # batch correction --batch-robust: on the log scale
 BATCH_PLAIN_METRICS = ("FWF",)  # --batch-robust: least squares still (a fraction with many values of 0 or near it)
 BATCH_HUBER = 1.345  # batch correction --batch-robust: Huber weights of the residuals beyond this many robust SDs,
 BATCH_BISQUARE = 4.685  # then Tukey's bisquare weights, 0 beyond this many
@@ -241,6 +240,8 @@ class Cohort:
 
         self.values = np.full((len(self.scans), self.n_positions, len(self.metrics)), np.nan, dtype=np.float32)
         self.valid = np.zeros((self.n_positions, len(self.metrics)), dtype=bool)
+        # per batch: the cells its own tables have (a scan of a batch is missing only those; self.valid = any batch)
+        self.batch_valid = np.zeros((len(self.batches), self.n_positions, len(self.metrics)), dtype=bool)
         self.rows = {}  # table -> positions of its rows
         for t in tables:
             sl = self.slices[t.tract]
@@ -249,6 +250,7 @@ class Cohort:
             self.rows[id(t)] = rows
             m = mi[t.metric]
             self.valid[rows, m] = True
+            self.batch_valid[self.batches.index(t.batch), rows, m] = True
             cols = [si[s] for s in t.scans]
             self.values[np.ix_(cols, rows, [m])] = t.values.to_numpy(dtype=np.float32).T[:, :, None]
 
@@ -262,6 +264,10 @@ class Cohort:
             self.has_point = ~np.isnan(self.points).any(axis=1)
         else:
             self.has_point = np.zeros(self.n_positions, dtype=bool)
+
+    def valid_of(self, s):
+        """The cells (positions x metrics) the tables of scan *s*'s own batch have: the cells it can be missing."""
+        return self.batch_valid[self.scan_batch[s]]
 
     def scan(self, s):
         """(positions x metrics) values of scan index *s*, float64."""
@@ -904,21 +910,27 @@ def batch_scale_limits(spec, metrics):
         if limit < 1:
             raise ValueError("--batch-scale-limit {}: a limit of at least 1 (and NAME=limit per metric)".format(spec))
         if eq:
-            per[re.sub(r"[^A-Z]", "", name.upper())] = limit
+            per[metric_key(name)] = limit
         else:
             default = limit
     default = default or float(BATCH_SCALE_LIMIT.split(",")[0])
-    return np.array([per.get(re.sub(r"[^A-Z]", "", m.upper()), default) for m in metrics])
+    return np.array([per.get(metric_key(m), default) for m in metrics])
+
+
+def metric_key(name):
+    """The name of a metric as the tables of measures compare it: upper case, letters only (FW_MD -> FWMD)."""
+    return re.sub(r"[^A-Z]", "", str(name).upper())
 
 
 def batch_plain_metrics(metrics):
     """Whether every metric keeps the least-squares fit with --batch-robust (BATCH_PLAIN_METRICS)."""
-    return np.array([re.sub(r"[^A-Z]", "", m.upper()) in BATCH_PLAIN_METRICS for m in metrics])
+    return np.array([metric_key(m) in BATCH_PLAIN_METRICS for m in metrics])
 
 
 def batch_log_metrics(metrics):
-    """Whether every metric is corrected on the log scale (the diffusivities, BATCH_LOG_METRICS)."""
-    return np.array([re.sub(r"[^A-Z]", "", m.upper()) in BATCH_LOG_METRICS for m in metrics])
+    """Whether every metric is corrected on the log scale: the diffusivities (those of qc-profiles' range check)."""
+    from dtiplayground.dmri.fiberprofile.analysis.profile_qc import is_diffusivity
+    return np.array([is_diffusivity(m) for m in metrics])
 
 
 def robust_sd(R, M):
@@ -1291,6 +1303,10 @@ def ppca_sd_scale(Z, groups, rows_subject, q, noise, max_iter, tol, device, fold
     return np.where(n > 0, np.sqrt(ss / np.maximum(n, 1)), 1.0)
 
 
+class TooFewScans(ValueError):
+    """Too few scans to fit a model of the deviations on."""
+
+
 class Population:
     """A probabilistic PCA (fit_ppca) of the deviations z of a normative cohort from the norm of their age bins, over
     every cell (tract, arc length, metric): all tracts and metrics jointly, so a scan's observed deviations give the
@@ -1323,6 +1339,9 @@ class Population:
         keep = cohort.valid.reshape(-1) & ((~np.isnan(Z)).sum(axis=0) >= min_scans)
         cells = np.flatnonzero(keep)
         p, m = np.unravel_index(cells, cohort.valid.shape)
+        if not len(cells):
+            raise TooFewScans("no cell is observed in --min-scans {} of the {} scans with an age bin".format(
+                min_scans, len(scans)))
         Zk = Z[:, cells]
         rows = np.flatnonzero((~np.isnan(Zk)).any(axis=1))
         Zk = Zk[rows]
@@ -1390,15 +1409,23 @@ class Population:
         return norm[0] + zm * norm[1], zsd * norm[1]
 
     def save(self, path):
+        """Save to *path* (.npz added when missing, as numpy does); returns the path written."""
+        path = str(path)
+        if not path.endswith(".npz"):
+            path += ".npz"
         lo = np.array([b[0] for b in self.bins], dtype=float)
         hi = np.array([b[1] for b in self.bins], dtype=float)
         np.savez_compressed(path, tract=self.tract, arc=self.arc, metric=self.metric, mu=self.mu, W=self.W,
                             psi=self.psi, bin_lo=lo, bin_hi=hi, bin_label=np.asarray([b[2] for b in self.bins]),
                             norm_mean=self.norm_mean, norm_sd=self.norm_sd, sd_scale=self.sd_scale,
                             info=json.dumps(self.info))
+        return path
 
     @classmethod
     def load(cls, path):
+        path = str(path)
+        if not os.path.isfile(path) and os.path.isfile(path + ".npz"):  # the name as given to --fit-model
+            path += ".npz"
         d = np.load(path, allow_pickle=False)
         bins = [(float(lo), float(hi), str(label))
                 for lo, hi, label in zip(d["bin_lo"], d["bin_hi"], d["bin_label"])]
@@ -1443,26 +1470,30 @@ def limit(pred, Y, cohort, dist, max_distance, spatial=True):
     return np.where(keep, pred, np.nan)
 
 
-def scan_shares(cohort, Y):
-    """Share of the cells with a table that are observed, per metric."""
-    n = cohort.valid.sum(axis=0)
-    return np.where(n > 0, (~np.isnan(Y) & cohort.valid).sum(axis=0) / np.maximum(n, 1), 0.0)
+def scan_shares(cohort, Y, s=None):
+    """Share of the cells with a table that are observed, per metric (*s*: the scan index, for the tables of its own
+    batch)."""
+    valid = cohort.valid if s is None else cohort.valid_of(s)
+    n = valid.sum(axis=0)
+    return np.where(n > 0, (~np.isnan(Y) & valid).sum(axis=0) / np.maximum(n, 1), 0.0)
 
 
-def missing_tracts(cohort, Y):
-    """(number of tracts with a table and no observed value of any metric, number of tracts with a table) of a scan."""
-    observed = (~np.isnan(Y) & cohort.valid).any(axis=1)
+def missing_tracts(cohort, Y, s=None):
+    """(number of tracts with a table and no observed value of any metric, number of tracts with a table) of a scan
+    (*s*: its index, for the tables of its own batch)."""
+    valid = cohort.valid if s is None else cohort.valid_of(s)
+    observed = (~np.isnan(Y) & valid).any(axis=1)
     n = missing = 0
     for sl in cohort.slices.values():
-        if cohort.valid[sl].any():
+        if valid[sl].any():
             n += 1
             missing += not observed[sl].any()
     return missing, n
 
 
-def too_many_missing(cohort, Y, max_share):
+def too_many_missing(cohort, Y, max_share, s=None):
     """Whether a scan misses more than a share *max_share* of its tracts (--max-missing-tracts)."""
-    n_missing, n_tracts = missing_tracts(cohort, Y)
+    n_missing, n_tracts = missing_tracts(cohort, Y, s)
     return bool(n_tracts) and n_missing / n_tracts > max_share
 
 
@@ -1504,17 +1535,18 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
     t0 = time.time()
     for s, scan in enumerate(cohort.scans):
         Y = cohort.scan(s)
-        missing = np.isnan(Y) & cohort.valid
+        valid = cohort.valid_of(s)
+        missing = np.isnan(Y) & valid
         if not missing.any():
             continue
-        if max_missing_tracts is not None and too_many_missing(cohort, Y, max_missing_tracts):
-            n_missing, n_tracts = missing_tracts(cohort, Y)
+        if max_missing_tracts is not None and too_many_missing(cohort, Y, max_missing_tracts, s):
+            n_missing, n_tracts = missing_tracts(cohort, Y, s)
             for m, metric in enumerate(cohort.metrics):
                 if missing[:, m].any():
                     skipped[(scan, metric)] = "{} of {} tracts missing, above --max-missing-tracts {:g}".format(
                         n_missing, n_tracts, max_missing_tracts)
             continue
-        share = scan_shares(cohort, Y)
+        share = scan_shares(cohort, Y, s)
         norm = prior.norm(s) if prior is not None else None
         for m, metric in enumerate(cohort.metrics):
             if missing[:, m].any() and share[m] < min_observed and not set(methods) & set(BY_NORM):
@@ -1528,13 +1560,20 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
         pop = None if model is None or norm is None else model.impute(Y, norm)
         gpop = None if graph_model is None or norm is None or "graph-unet" not in methods else \
             graph_model.impute(Y, norm)
-        # --norm population: the deviations are those from the population prediction of the scan, with its SD
-        rnorm = pop if by_population else norm
+        # --norm population: the deviations are those from the population prediction of the scan, with its SD; the
+        # cells outside the model (observed in fewer than --min-scans scans of its fit) keep the age bin norm
+        rnorm = norm
+        if by_population and pop is not None:
+            out = np.isnan(pop[0])
+            rnorm = (np.where(out, norm[0], pop[0]), np.where(out, norm[1], pop[1]))
         for mth in methods:  # a fallback imputes from the observed values too, not from those of the first method
             sd = None
             if mth in MODELS:
                 p = pop if mth == "population" else gpop
                 pred, sd = (np.full(Y.shape, np.nan),) * 2 if p is None else p
+                if norm is not None:  # outside the model: the age bin mean, as prior-mean
+                    out = np.isnan(pred) & valid
+                    pred, sd = np.where(out, norm[0], pred), np.where(out, norm[1], sd)
             else:
                 rel = relative and mth not in BY_NORM
                 pred = impute_scan(Y, cohort, mth, opts, cache, features, dev, rnorm if rel else norm, rel)
@@ -1543,7 +1582,7 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
             pred = limit(pred, Y, cohort, dist, opts.get("max_distance"), spatial=mth in SPATIAL)
             if mth not in BY_NORM:  # the norm and the population model need no observed value of the metric
                 pred[:, share < min_observed] = np.nan
-            new = ~np.isnan(pred) & np.isnan(imputed[s])
+            new = ~np.isnan(pred) & np.isnan(imputed[s]) & valid
             imputed[s][new] = pred[new]
             used[s][new] = METHODS.index(mth)
             if sd is not None:
@@ -1639,9 +1678,10 @@ def summary_rows(cohort, imputed, used, dists, skipped, sds=None):
     rows = []
     for s, scan in enumerate(cohort.scans):
         Y = cohort.values[s]
+        own = cohort.valid_of(s)
         for tract, sl in cohort.slices.items():
             for m, metric in enumerate(cohort.metrics):
-                valid = cohort.valid[sl, m]
+                valid = own[sl, m]
                 if not valid.any():
                     continue
                 miss = np.isnan(Y[sl, m]) & valid
@@ -1766,7 +1806,7 @@ def hide_region(cohort, Y, rng, radius_mm, count=1):
 
 def family_of(metric):
     """The family (FAMILIES) of a metric name, or None."""
-    key = re.sub(r"[^A-Z]", "", metric.upper())
+    key = metric_key(metric)
     return next((f for f, names in FAMILIES.items() if key in names), None)
 
 
@@ -1873,7 +1913,7 @@ def fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev)
     fold_of = {subj: i % n_folds for i, subj in enumerate(subjects)}
     ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column)
     usable = [s for s in range(len(cohort.scans)) if scan_bin[s] >= 0
-              and not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts)]
+              and not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts, s)]
     out = defaultdict(list)
     t0 = time.time()
     for f in range(n_folds):
@@ -2312,11 +2352,11 @@ def validate(cohort, args):
     configs, siren = validation_configs(args)
     epochs = parse_list(args.validate_epochs, int)
     rng = np.random.default_rng(args.validate_seed)
-    shares = np.stack([scan_shares(cohort, cohort.scan(s)) for s in range(len(cohort.scans))])
+    shares = np.stack([scan_shares(cohort, cohort.scan(s), s) for s in range(len(cohort.scans))])
     has = shares > 0  # metrics a scan doesn't have at all (e.g. no NODDI) don't count against it
     eligible = has.any(axis=1) & ((shares >= args.min_observed) | ~has).all(axis=1)
     for s in np.flatnonzero(eligible):  # scans the imputation leaves (--max-missing-tracts) are not validated either
-        eligible[s] = not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts)
+        eligible[s] = not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts, s)
     eligible = np.flatnonzero(eligible)
     prior = validation_prior(cohort, args, configs, siren)
     bins, scan_bin = report_bins(cohort, args, prior)
@@ -3086,7 +3126,7 @@ def run(args):
             return 1
         corr = correct_batches(cohort, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
                                                        args.age_column), report_dir=args.report_dir)
-    spatial = [m for m in (args.method, args.fallback) if m in SPATIAL]
+    spatial = [m for m in (args.method, args.fallback) if m in SPATIAL + ("graph-unet",)]
     if spatial and axes is None:
         log.error("--axis-dir is needed for %s", ", ".join(spatial))
         return 1
@@ -3124,7 +3164,8 @@ def run(args):
                                 args.age_offset, device=args.device, sd_folds=args.sd_calibration_folds)
             source = "the profiles, {} ({} scans, {:.0f} s)".format(prior.describe(), prior.info["scans"],
                                                                    time.time() - t0)
-        elif population or args.fit_model:  # the norm of the cohort's own age bins
+        elif population or args.fit_model or "graph-unet" in (args.method, args.fallback) or args.fit_graph_model:
+            # the norm of the cohort's own age bins
             prior, source = Prior.from_cohort(cohort, bins_from_spec(args.bins), ages), "the profiles' own age bins"
         else:
             log.error("--relative-to-prior and prior-mean need --prior-stats-dir (the age bin statistics of a normative "
@@ -3137,13 +3178,29 @@ def run(args):
         else:
             log.info("Norm (%s): age bins %s with %s scan(s); %d scan(s) without an age bin are not imputed", source,
                      ", ".join(b[2] for b in prior.bins), ", ".join(str(x) for x in n), int((prior.scan_bin < 0).sum()))
+    fitted = False
     if model is None and (population or args.fit_model):
         scans = [s for s in range(len(cohort.scans)) if prior.scan_bin[s] >= 0]
         if args.max_missing_tracts is not None:
-            scans = [s for s in scans if not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts)]
+            scans = [s for s in scans if not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts, s)]
         t0 = time.time()
-        model = Population.fit(cohort, prior, scans, args.components, args.noise, args.max_iter, device=args.device,
-                               min_scans=args.min_scans, sd_folds=args.sd_calibration_folds)
+        try:
+            model = Population.fit(cohort, prior, scans, args.components, args.noise, args.max_iter,
+                                   device=args.device, min_scans=args.min_scans, sd_folds=args.sd_calibration_folds)
+            fitted = True
+        except TooFewScans as e:
+            if args.method == "population" or args.fit_model:
+                log.error("The population model can't be fitted on these profiles: %s", e)
+                return 1
+            # a small cohort (e.g. a clinical group) against a normative prior: the age bin norm, as before 0.8.21
+            log.warning("The population model can't be fitted on these profiles (%s): imputing on the age bin norm "
+                        "instead (--norm age-bin, --fallback prior-mean). For a small cohort, fit the model on a "
+                        "normative cohort (--fit-model) and impute with it (--model)", e)
+            args.norm = "age-bin"
+            if args.fallback == "population":
+                args.fallback = "prior-mean"
+            population = False
+    if fitted:
         log.info("Population model: %d components, %s noise, fitted on %d scans and %d cells in %d EM iterations "
                  "(%.0f s with the calibration); the components explain %.0f%% of the variance of the deviations",
                  model.info["components"], args.noise, model.info["rows"], model.info["cells"], model.info["iterations"],
@@ -3152,8 +3209,7 @@ def run(args):
             log.info("Population SDs scaled per metric by %s (%d-fold calibration)", ", ".join(
                 "{} {:.2f}".format(k, v) for k, v in model.info["sd_scale"].items()), args.sd_calibration_folds)
         if args.fit_model:
-            model.save(args.fit_model)
-            log.info("Saved the population model to %s", args.fit_model)
+            log.info("Saved the population model to %s", model.save(args.fit_model))
     graph_model = None
     if "graph-unet" in (args.method, args.fallback) or args.fit_graph_model:
         from dtiplayground.dmri.fiberprofile.analysis import graph_unet as gu
@@ -3169,7 +3225,8 @@ def run(args):
                 return 1
             scans = [s for s in range(len(cohort.scans)) if prior.scan_bin[s] >= 0]
             if args.max_missing_tracts is not None:
-                scans = [s for s in scans if not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts)]
+                scans = [s for s in scans
+                         if not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts, s)]
             graph = gu.FiberGraph(cohort, args.graph_levels, args.graph_fibers_dir, args.graph_threshold)
             graph_model = gu.GraphUNetModel.fit(cohort, prior, scans, graph, training_masker(cohort, args),
                                                 args.graph_levels, args.graph_hidden, args.graph_convs,
@@ -3179,7 +3236,7 @@ def run(args):
             if args.fit_graph_model:
                 graph_model.save(args.fit_graph_model)
                 log.info("Saved the graph U-Net to %s", args.fit_graph_model)
-    missing = int((np.isnan(cohort.values) & cohort.valid[None]).sum())
+    missing = int((np.isnan(cohort.values) & cohort.batch_valid[cohort.scan_batch]).sum())
     log.info("%d missing cells (blank, or whole profiles of scans absent from a table)", missing)
     opts = {"k": args.k, "weights": args.knn_weights, "max_distance": args.max_distance, "max_gap": args.max_gap,
             "ends": args.arc_ends, "relative": args.relative_to_prior, "norm": args.norm,

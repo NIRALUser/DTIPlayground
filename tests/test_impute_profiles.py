@@ -675,6 +675,77 @@ class TestGraphUNet(unittest.TestCase):
                              'population q=1 isotropic + knn k=1, graph-unet L2 h8 x1 beyond'} <= set(s['setting']))
 
 
+class TestReviewFixes(unittest.TestCase):
+    """Regressions found by the review of 0.8.21-0.8.24."""
+
+    def test_small_cohort_falls_back_to_the_age_bin_norm(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            drop(prof / 'T_a' / 'T_a_md.csv', AGED[3])
+            out = Path(tmp) / 'out'
+            # every cell is observed in fewer than --min-scans scans: no population model, the age bin norm instead
+            self.assertEqual(ip.run(args_for(prof, axes, out, prior_stats_dir=prof, method='knn', min_scans=50)), 0)
+            df = pd.read_csv(out / 'T_a' / 'T_a_md.csv', index_col=0)
+            self.assertTrue(np.isfinite(df[AGED[3]]).all())
+            # asked for explicitly, the population model is an error
+            self.assertEqual(ip.run(args_for(prof, axes, Path(tmp) / 'o2', prior_stats_dir=prof, method='population',
+                                             min_scans=50)), 1)
+
+    def test_cells_outside_the_population_model_keep_the_age_bin_norm(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for scan in AGED[:4]:  # md of T_c in 8 of 12 scans: outside a model of --min-scans 10
+                drop(prof / 'T_c' / 'T_c_md.csv', scan)
+            out = Path(tmp) / 'out'
+            self.assertEqual(ip.run(args_for(prof, axes, out, prior_stats_dir=prof, method='knn', components=1)), 0)
+            df = pd.read_csv(out / 'T_c' / 'T_c_md.csv', index_col=0)
+            for scan in AGED[:4]:  # the whole profile, by the age bin mean (prior-mean) where the model has nothing
+                self.assertTrue(np.isfinite(df[scan]).all())
+            summary = pd.read_csv(Path(str(out) + '_report') / 'imputation_summary.csv')
+            self.assertTrue((summary.loc[summary['tract'] == 'T_c', 'n_left'] == 0).all())
+
+    def test_graph_unet_on_the_profiles_own_age_bins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            drop(prof / 'T_b' / 'T_b_fa.csv', AGED[5])
+            out, model = Path(tmp) / 'g', Path(tmp) / 'g.pt'
+            self.assertEqual(ip.run(args_for(prof, axes, out, method='graph-unet', fit_graph_model=model,
+                                             **TestGraphUNet.GRAPH)), 0)
+            self.assertTrue(np.isfinite(pd.read_csv(out / 'T_b' / 'T_b_fa.csv', index_col=0)[AGED[5]]).all())
+            # a saved network needs the axes of its tracts
+            self.assertEqual(ip.run(args_for(prof, None, Path(tmp) / 'g2', method='graph-unet', graph_model=model,
+                                             prior_stats_dir=prof, device='cpu')), 1)
+            import torch
+            torch.load(model, weights_only=True)  # tensors and plain values only
+
+    def test_batches_are_missing_only_their_own_tables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a, b, axes = batches_dataset(tmp)
+            (b / 'T_x' / 'T_x_md.csv').unlink()  # B has no md table of T_x
+            drop(b / 'T_a' / 'T_a_fa.csv', batch_scans('b', AGES_B)[2])
+            out = Path(tmp) / 'out'
+            parser = argparse.ArgumentParser()
+            ip.add_parser(parser.add_subparsers())
+            args = parser.parse_args(['impute-profiles', '--profiles-dir', str(a), str(b), '--axis-dir', str(axes),
+                                      '--out-dir', str(out), '--method', 'knn', '--batch-correction', 'none'])
+            self.assertEqual(ip.run(args), 0)
+            summary = pd.read_csv(Path(str(out) + '_report') / 'imputation_summary.csv')
+            b_md = summary[summary['scan'].str.startswith('sub-b') & (summary['tract'] == 'T_x') &
+                           (summary['metric'] == 'md')]
+            self.assertEqual(len(b_md), 0)
+            self.assertTrue((summary['tract'] == 'T_a').any())  # B's own missing profile is imputed
+
+    def test_fit_model_name_without_suffix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            name = Path(tmp) / 'model'
+            self.assertEqual(ip.run(args_for(prof, None, Path(tmp) / 'fit', method='population', components=1,
+                                             fit_model=name)), 0)
+            self.assertTrue(Path(str(name) + '.npz').is_file())
+            self.assertEqual(ip.run(args_for(prof, None, Path(tmp) / 'use', model=name, method='population',
+                                             fallback='none')), 0)  # the same name works with --model
+
+
 AGE_OF = [int(s.split('_ses-')[1][:3]) for s in AGED]
 
 

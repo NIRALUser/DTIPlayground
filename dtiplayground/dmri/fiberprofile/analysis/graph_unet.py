@@ -20,6 +20,7 @@
 #   skip connections.
 #
 
+import json
 import logging
 import os
 import time
@@ -250,6 +251,14 @@ def build_network(in_dim, out_dim, levels, hidden=128, convs=2, dropout=0.1, glo
     return GraphUNet()
 
 
+def sparse_device(device):
+    """The device for the graph's sparse products: the CPU instead of mps (no sparse tensors there)."""
+    if str(device) == "mps":
+        log.info("graph-unet: the sparse graph products run on the CPU instead of mps")
+        return "cpu"
+    return device
+
+
 ### the population prediction as an input (hybrid)
 
 class BatchPPCA:
@@ -340,6 +349,7 @@ class GraphUNetModel:
         import torch
         from dtiplayground.dmri.fiberprofile.analysis.impute_profiles import subject_of
         t0 = time.time()
+        device = sparse_device(device)
         rng = np.random.default_rng(seed)
         torch.manual_seed(seed)
         Z = np.full((len(scans), cohort.n_positions, len(cohort.metrics)), np.nan, dtype=np.float32)
@@ -511,47 +521,59 @@ class GraphUNetModel:
 
     def save(self, path):
         """The network, its graph, the SD calibration and the population model of a hybrid, with the tracts, arc
-        lengths and metrics it was fitted on (torch .pt). The norm is not saved: it is that of the run using it."""
+        lengths and metrics it was fitted on (torch .pt, tensors, lists and plain numbers only, so that it loads with
+        weights_only). The norm is not saved: it is that of the run using it."""
         import torch
         c, g, ppca = self._cohort, self.graph, self._ppca
-        torch.save({"state": self.net.state_dict(), "info": self.info, "scale": self.scale,
-                    "config": {k: self.info[k] for k in ("levels", "hidden", "convs", "global", "hybrid")},
-                    "tracts": np.asarray(c.tracts)[c.tract_of], "arcs": c.arcs, "metrics": list(c.metrics),
-                    "graph": {"nodes": g.nodes, "edges": g.edges, "weights": g.weights, "pool": g.pool,
-                              "info": g.info, "levels": g.levels},
-                    "ppca": None if ppca is None else {"mu": ppca.mu.cpu().numpy(), "W": ppca.W.cpu().numpy(),
-                                                       "psi": ppca.psi.cpu().numpy(), "cells": ppca.cells,
-                                                       "shape": tuple(ppca.shape)}}, path)
+        t = lambda a: torch.as_tensor(np.ascontiguousarray(a))
+        plain = lambda d: json.loads(json.dumps(d, default=float))  # numpy numbers -> Python ones
+        torch.save({"state": {k: v.cpu() for k, v in self.net.state_dict().items()}, "info": plain(self.info),
+                    "scale": t(self.scale),
+                    "config": plain({k: self.info[k] for k in ("levels", "hidden", "convs", "global", "hybrid")}),
+                    "tracts": [str(x) for x in np.asarray(c.tracts)[c.tract_of]], "arcs": t(c.arcs),
+                    "metrics": list(c.metrics),
+                    "graph": {"nodes": [t(a) for a in g.nodes], "edges": [t(a) for a in g.edges],
+                              "weights": [t(a) for a in g.weights], "pool": [t(a) for a in g.pool],
+                              "info": plain(g.info), "levels": int(g.levels)},
+                    "ppca": None if ppca is None else {"mu": ppca.mu.cpu(), "W": ppca.W.cpu(), "psi": ppca.psi.cpu(),
+                                                       "cells": t(ppca.cells), "shape": [int(x) for x in ppca.shape]}},
+                   path)
 
     @classmethod
     def load(cls, path, cohort, device="auto"):
         """A saved network for *cohort*, which must have its tracts, arc lengths (positions) and metrics."""
         import torch
         from dtiplayground.dmri.fiberprofile.analysis.impute_profiles import pick_device
-        device = pick_device(device)
-        d = torch.load(path, map_location=device, weights_only=False)
+        device = sparse_device(pick_device(device))
+        d = torch.load(path, map_location="cpu", weights_only=True)  # tensors and plain values only, no code
+        arcs = d["arcs"].numpy()
         tracts = np.asarray(cohort.tracts)[cohort.tract_of]
-        if len(d["arcs"]) != cohort.n_positions or not (np.asarray(d["tracts"]) == tracts).all() or \
-                not np.allclose(d["arcs"], cohort.arcs) or list(d["metrics"]) != list(cohort.metrics):
+        if len(arcs) != cohort.n_positions or not (np.asarray(d["tracts"]) == tracts).all() or \
+                not np.allclose(arcs, cohort.arcs) or list(d["metrics"]) != list(cohort.metrics):
             raise ValueError("the graph U-Net {} was fitted on other tracts, arc lengths or metrics than the "
                              "profiles".format(path))
         graph = FiberGraph.__new__(FiberGraph)
-        for k, v in d["graph"].items():
-            setattr(graph, k, v)
+        gd = d["graph"]
+        graph.nodes, graph.edges = [a.numpy() for a in gd["nodes"]], [a.numpy() for a in gd["edges"]]
+        graph.weights, graph.pool = [a.numpy() for a in gd["weights"]], [a.numpy() for a in gd["pool"]]
+        graph.info, graph.levels = gd["info"], gd["levels"]
+        if cohort.points is None or not cohort.has_point[graph.nodes[0]].all():
+            raise ValueError("the graph U-Net {} needs the axes of all its tracts (--axis-dir)".format(path))
         cfg = d["config"]
         M = len(cohort.metrics)
         net = build_network((4 if cfg["hybrid"] else 2) * M + 4, M, cfg["levels"], cfg["hidden"], cfg["convs"],
                             global_context=cfg["global"]).to(device)
         net.load_state_dict(d["state"])
         net.eval()
-        model = cls(graph, net, M, d["scale"], d["info"], device)
+        model = cls(graph, net, M, d["scale"].numpy(), d["info"], device)
         L = cfg["levels"]
         model._adj = [normalized_adjacency(len(graph.nodes[i]), graph.edges[i], graph.weights[i], device)
                       for i in range(L)]
         model._pool = [torch.as_tensor(p, device=device) for p in graph.pool[:L - 1]]
         model._cohort = cohort
         pp = d["ppca"]
-        model._ppca = None if pp is None else BatchPPCA(pp["mu"], pp["W"], pp["psi"], pp["cells"], pp["shape"], device)
+        model._ppca = None if pp is None else BatchPPCA(pp["mu"].numpy(), pp["W"].numpy(), pp["psi"].numpy(),
+                                                        pp["cells"].numpy(), tuple(pp["shape"]), device)
         return model
 
 

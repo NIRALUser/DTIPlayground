@@ -36,7 +36,13 @@ trained on the normative cohort to predict hidden deviations from the observed o
   p = 8e-6, better on 65% of the scans) and 0.65 of it for a whole missing measure (better on every scan). The gain is
   small where the scan has its measures and large where it lacks one; ``--fallback population`` stays the default
   (no training of a network, about 10 minutes on a GPU), ``--fallback graph-unet`` is recommended for cohorts with
-  missing free water or NODDI fits.
+  missing tensor or NODDI fits.
+- **Seven measures**: the free water tensor fits failed in many scans (phase 3b), and FWF is the isotropic fraction
+  of the NODDI fit, not of the free water tensor. Run again on FA, MD, RD, AD, NDI, ODI and FWF alone (the free water
+  tensor metrics left out of the inputs too), with the whole measure hiding the four tensor metrics or the three
+  NODDI ones: the combination 0.610 overall against 0.614 (paired 0.993, p = 5e-9, better on 70% of the scans), a
+  quarter less error than the default when the tensor metrics are missing (0.530 against 0.696; FA 0.52 against
+  0.76) and 13% less when NODDI is (0.703 against 0.798). These are the baseline for a functa model (phase 5).
 - **SIREN on the residuals of the U-Net** needs residuals of a prediction: the network copies an observed value with
   a small SD, so the observed values are predicted cross-fitted (each fifth of the tracts with its own values hidden).
   Even so SIREN on its residuals (0.623) stays behind SIREN on those of the population model.
@@ -145,6 +151,41 @@ Relative to the age-bin mean, the four patterns, mean over the seeds:
    population + SIREN, hybrid beyond  0.654  0.538  0.533  0.637  0.571  0.429  0.418  0.589  0.687  0.524  0.696
    =================================  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====  =====
 
+Seven measures
+~~~~~~~~~~~~~~
+
+FA, MD, RD, AD, NDI, ODI and FWF only, the free water tensor metrics left out of the profiles (3 seeds, the same 54
+scans per seed; whole tensor: FA, MD, RD and AD hidden; whole NODDI: NDI, ODI and FWF hidden). Mean over the seeds
+(SD between seeds):
+
+.. table::
+   :class: longtable
+
+   =====================================  =====  =======  =============  ======  =============  ============  ===========
+   setting                                gap    end gap  whole profile  region  overall        whole tensor  whole NODDI
+   =====================================  =====  =======  =============  ======  =============  ============  ===========
+   age-bin mean (prior-mean)              1.000  1.000    1.000          1.000   1.000          1.000         1.000
+   population alone                       0.685  0.777    0.713          0.759   0.733 (0.008)  0.696         0.798
+   hybrid U-Net alone                     0.596  0.686    0.676          0.735   0.673 (0.008)  0.530         0.703
+   hybrid U-Net + SIREN                   0.485  0.629    0.741          0.780   0.659 (0.014)  0.530         0.703
+   **population + SIREN (default)**       0.440  0.552    0.697          0.766   0.614 (0.007)  0.696         0.798
+   **population + SIREN, hybrid beyond**  0.436  0.550    0.697          0.757   0.610 (0.007)  0.530         0.703
+   =====================================  =====  =======  =============  ======  =============  ============  ===========
+
+Paired per scan against the default: the combination 0.993 (0.990-0.995, p = 5e-9, better on 70% of the scans) on
+the four patterns, 0.739 (better on 99%) for the whole tensor and 0.870 (99%) for whole NODDI. The whole measure per
+metric, relative to the age-bin mean:
+
+.. table::
+   :class: longtable
+
+   =====================  =====  =====  =====  =====  =====  =====  =====
+   whole measure missing  FA     MD     RD     AD     NDI    ODI    FWF
+   =====================  =====  =====  =====  =====  =====  =====  =====
+   population (default)   0.757  0.648  0.639  0.741  0.758  0.832  0.803
+   hybrid U-Net           0.523  0.512  0.502  0.585  0.729  0.680  0.700
+   =====================  =====  =====  =====  =====  =====  =====  =====
+
 Phase 4: reproducing
 --------------------
 
@@ -158,8 +199,9 @@ Each seed (``--validate-seed 0``, 1, 2) on BCP alone::
         --validate-graph-levels 4 --validate-graph-hidden 128 --validate-graph-convs 1 --validate-graph-hybrid 80 \
         --graph-epochs 60
 
-A run took about 2 hours on one GPU, most of it the 5 fits per fold (5 population models for the training inputs and
-the network). Imputing with the combination::
+The seven measures: the same with a profiles folder of only those tables and
+``--validate-measure-families dti,noddi``. A run took about 2 hours on one GPU, most of it the 5 fits per fold (5
+population models for the training inputs and the network). Imputing with the combination::
 
     $ dmrifiberprofile impute-profiles --profiles-dir Profiles_Clean --prior-stats-dir Profiles_Clean \
         --axis-dir FiberAxis --out-dir Profiles_Imputed --fallback graph-unet --fit-graph-model graph.pt

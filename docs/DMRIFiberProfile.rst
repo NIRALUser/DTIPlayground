@@ -565,11 +565,12 @@ The methods (``--method``):
     (5 population fits for the inputs and the network); ``--fit-graph-model model.pt`` saves the network and
     ``--graph-model model.pt`` imputes another cohort with the same tracts, arc lengths and metrics with it (the
     norm is that of the run). Its SDs are calibrated per metric on the held-out subjects and written to ``sd/``.
-    Like ``population`` it imputes a whole profile and a metric the scan lacks entirely. As ``--fallback graph-unet``
-    with the default (SIREN on the residuals from the population prediction within 4 mm), it fills the rest instead
-    of the population model: in the validation 0.5% less error overall and a third less for a whole missing measure
-    (the free water or NODDI metrics of a scan without that fit). ``--fallback population`` stays the default, as it
-    needs no training; prefer ``graph-unet`` for cohorts where whole measures are missing.
+    Like ``population`` it imputes a whole profile and a metric the scan lacks entirely. As
+    ``--fallback graph-unet`` with the default (SIREN on the residuals from the population prediction within 4 mm),
+    it fills the rest instead of the population model: in the validation on FA, MD, RD, AD, NDI, ODI and FWF, 0.7%
+    less error overall, a quarter less when the four tensor metrics are missing and 13% less when the NODDI metrics
+    are. ``--fallback population`` stays the default, as it needs no training; prefer ``graph-unet`` for cohorts
+    where whole measures are missing.
 
 With a prior, ``--norm`` sets what the deviations of ``--relative-to-prior`` are from:
 
@@ -599,7 +600,7 @@ regions) in the validation on a normative infant cohort (`Validation of impute-p
   (``--norm population``; ``xyz``, ``--omega0 10``, ``--epochs 500``) within ``--max-distance`` 4 mm of an observed
   value, and ``--fallback population`` (80 components) beyond. Its error was 37% of that of the age bin mean for
   gaps inside profiles, 51% for missing ends, 64% for whole profiles, 68% for a region of rejected tracts and 59%
-  for a whole measure the scan lacks (the free water or NODDI metrics), 11% lower overall than ``siren`` on the
+  for a whole measure the scan lacks (the free water tensor or NODDI metrics), 11% lower overall than ``siren`` on the
   deviations from the age bin norm (``--norm age-bin``, the default of 0.8.20), which can't impute a missing
   measure. ``--method knn`` (k = 20) needs no GPU for the residuals and was about 7% worse overall.
 - without: ``arc-linear`` on the values (``--arc-ends none``, ``--fallback none``), which fills only the gaps inside
@@ -694,9 +695,11 @@ scan hides such a region (pattern ``region``): every tract with a position insid
 position loses its whole profile (``--validate-region-mm``, radius 10 to 25 mm by default; a sphere reaching more
 than half of the scan's tracts is drawn again; ``--validate-region-count``, default 1, 0: no region pass).
 A third pass hides a whole measure (pattern ``whole measure``): all values of one family of metrics the scan has,
-as for a scan without that model fit (``--validate-measure-families``, default ``fw``, the free water tensor
-metrics FW-FA, FW-MD, FW-RD, FW-AD, and ``noddi``, NDI and ODI; also ``fwf`` and ``dti``; ``none``: no such pass); only
-``prior-mean`` and ``population`` can impute it. The hidden values of the first two passes don't depend on the
+as for a scan without that model fit (``--validate-measure-families``, default ``dti,fw,noddi``: ``dti`` the tensor
+metrics FA, MD, RD, AD; ``fw`` the free water tensor metrics FW-FA, FW-MD, FW-RD, FW-AD; ``noddi`` NDI, ODI and
+FWF, the isotropic free water fraction of the NODDI fit; ``none``: no such pass). A family is hidden only while the
+scan keeps observed values of another one to impute it from. Only ``prior-mean``, ``population`` and ``graph-unet``
+can impute it. The hidden values of the first two passes don't depend on the
 third, so they are the same as in a validation without it.
 ``--validate-rounds`` (default 1) repeats the passes on every scan with other tracts, gaps and regions, for more
 hidden values per location. Each setting is compared on the values and on the deviations from

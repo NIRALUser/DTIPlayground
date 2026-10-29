@@ -85,8 +85,9 @@ BATCH_HUBER = 1.345  # batch correction --batch-robust: Huber weights of the res
 BATCH_BISQUARE = 4.685  # then Tukey's bisquare weights, 0 beyond this many
 BATCH_BISQUARE_VAR = 0.828  # the bisquare-weighted variance of a normal distribution relative to its variance
 # validation: families of metrics a scan lacks together (no free water or NODDI fit), hidden as a whole measure
-FAMILIES = {"dti": ("FA", "MD", "RD", "AD"), "fw": ("FWFA", "FWMD", "FWRD", "FWAD"), "fwf": ("FWF",),
-            "noddi": ("NDI", "ODI")}
+# the metrics of one model fit, missing together when a scan lacks that fit: the tensor, the free water tensor, NODDI
+# (with its isotropic free water fraction FWF)
+FAMILIES = {"dti": ("FA", "MD", "RD", "AD"), "fw": ("FWFA", "FWMD", "FWRD", "FWAD"), "noddi": ("NDI", "ODI", "FWF")}
 ARC_ENDS = ("none", "constant", "linear")
 REFERENCE = "reference"  # validation: the cohort mean at each location (other scans), as a scale for the errors
 # validation: distance (mm) from a hidden value to the nearest observed position of the same metric, bin edges
@@ -1771,9 +1772,11 @@ def family_of(metric):
 
 def hide_measure(cohort, Y, rng, families):
     """A family of metrics (one of *families* the scan has observed values of) to hide entirely, as for a scan without
-    that model fit. Returns ({position: 'whole measure'}, metric indices), or ({}, [])."""
-    have = sorted({family_of(m) for i, m in enumerate(cohort.metrics)
-                   if family_of(m) in families and (~np.isnan(Y[:, i]) & cohort.valid[:, i]).any()})
+    that model fit; only while the scan keeps observed values of other metrics to impute it from. Returns
+    ({position: 'whole measure'}, metric indices), or ({}, [])."""
+    seen = [(~np.isnan(Y[:, i]) & cohort.valid[:, i]).any() for i in range(len(cohort.metrics))]
+    have = sorted({family_of(m) for i, m in enumerate(cohort.metrics) if family_of(m) in families and seen[i]
+                   and any(seen[j] and family_of(o) != family_of(m) for j, o in enumerate(cohort.metrics))})
     if not have:
         return {}, []
     fam = have[rng.integers(len(have))]
@@ -2970,9 +2973,9 @@ def add_parser(subparsers):
                    help="population: methods imputing the residuals from the population prediction on the 3-D "
                         "neighbours (knn: each --validate-k; siren: each input and omega_0 of the grid, at its most "
                         "epochs), or none (default: knn,siren)")
-    v.add_argument("--validate-measure-families", default="fw,noddi",
+    v.add_argument("--validate-measure-families", default="dti,fw,noddi",
                    help="Families of metrics hidden as a whole measure, one per scan and round in a pass of its own, as "
-                        "for a scan without that model fit: %s; none: no such pass (default: fw,noddi)" % ", ".join(
+                        "for a scan without that model fit: %s; none: no such pass (default: dti,fw,noddi)" % ", ".join(
                        "{} ({})".format(k, "/".join(v)) for k, v in FAMILIES.items()))
     v.add_argument("--validate-age-norms", default="bins",
                    help="Age norms the settings on a norm (deviations, prior-mean, population) are compared with: "

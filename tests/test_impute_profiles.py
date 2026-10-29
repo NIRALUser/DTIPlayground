@@ -587,7 +587,7 @@ class TestPopulation(unittest.TestCase):
 
     def test_hide_measure(self):
         self.assertEqual([ip.family_of(m) for m in ('fa', 'FW_FA', 'FWMD', 'FWF', 'NDI', 'other')],
-                         ['dti', 'fw', 'fw', 'fwf', 'noddi', None])
+                         ['dti', 'fw', 'fw', 'noddi', 'noddi', None])
         with tempfile.TemporaryDirectory() as tmp:
             prof, axes = aged_dataset(tmp, metrics=('fa', 'md', 'NDI', 'ODI'))
             cohort = ip.Cohort(ip.read_tables(str(prof)), ip.read_axes(str(axes), list(LEVEL)))

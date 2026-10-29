@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-29 (v0.8.26)
+- Documentation, "Imputation validation": the methods of phases 1 to 3 validated again with the protocol of phase 4 (the 7 measures FA, MD, RD, AD, NDI, ODI and FWF, 20 scans per age bin and at most half of a bin, 3 seeds, the same scans and hidden values as phase 4), so that all phases compare directly. The conclusions and defaults hold: the default (population model with SIREN on its residuals) 0.614 of the age-bin mean's error, SIREN on the age-bin deviations 0.688, 80 components the best; no code changes
+
 ##### 2026-10-29 (v0.8.25)
 - dmrifiberprofile - impute-profiles: with the default `--norm population` (0.8.21-0.8.24), cells outside the population model were left blank: those observed in fewer than `--min-scans` (10) scans of the cohort the model is fitted on, e.g. a tract or a metric only a few scans have. They are now imputed on the age bin norm, as before 0.8.21, and the age bin mean fills what is left; rerunning such a cohort fills more cells
 - dmrifiberprofile - impute-profiles: a cohort too small for a population model of its own (no cell observed in `--min-scans` scans, e.g. a few clinical scans with `--prior-stats-dir`) stopped with a ZeroDivisionError; it is now imputed on the age bin norm (`--norm age-bin`, `--fallback prior-mean`) with a warning, and with `--method population` or `--fit-model` it is a clear error. For such cohorts, impute with a `--model` fitted on a normative cohort

@@ -7,7 +7,7 @@ infant cohort, in phases: every method imputing a scan from its own observed val
 from its deviations from the age-bin norm (phase 2, 2026-10-16), with a population model of the normative cohort
 (phase 3, 2026-10-16), and with continuous age norms and a second cohort pooled with a batch correction (phase 3b,
 2026-10-22), and with a graph U-Net after CONFETTI (phase 4, 2026-10-28). The results set the defaults of the
-command.
+command. `Phases 1-3 with the phase-4 protocol`_ compares all phases on the same scans.
 
 Phase 4: summary
 ----------------
@@ -205,6 +205,73 @@ population models for the training inputs and the network). Imputing with the co
 
     $ dmrifiberprofile impute-profiles --profiles-dir Profiles_Clean --prior-stats-dir Profiles_Clean \
         --axis-dir FiberAxis --out-dir Profiles_Imputed --fallback graph-unet --fit-graph-model graph.pt
+
+Phases 1-3 with the phase-4 protocol
+------------------------------------
+
+The phases 1 to 3 ran on 30 scans (10 per age bin) and one seed, on all 11 measures. Run again on 2026-10-29 with the
+protocol of phase 4, so that every phase is compared on the same scans and hidden values: the 7 measures FA, MD, RD,
+AD, NDI, ODI and FWF (the free water tensor metrics left out of the profiles), the diffusivities range checked,
+20 scans per age bin and at most half of a bin (14, 20 and 20), 3 rounds, seeds 0, 1 and 2 (162 scan x seed pairs),
+the whole measure hiding the four tensor metrics or the three NODDI ones. Phases 1 and 2 (on the values and on the
+deviations from the age-bin norm) ran with ``--max-distance 20``, phase 3 with 4 mm on the population residuals.
+Every hidden value is counted: a value a setting leaves (a whole profile for ``arc-linear``, beyond the distance
+limit, a whole measure for the methods of phases 1 and 2) counts with the age-bin mean, as ``--fallback
+prior-mean`` would fill it. Relative to the age-bin mean, mean over the measures and the seeds (overall: the four
+patterns; its SD between seeds); phase 1 on the values, phase 2 on the deviations:
+
+.. table::
+   :class: longtable
+
+   =====  ======================================  =====  =====  =======  =============  =====  =======  =============  ======  ============  ===========
+   phase  setting                                 0-3 m  4-9 m  10-60 m  overall (SD)   gap    end gap  whole profile  region  whole tensor  whole NODDI
+   =====  ======================================  =====  =====  =======  =============  =====  =======  =============  ======  ============  ===========
+          age-bin mean (prior-mean)               1.000  1.000  1.000    1.000          1.000  1.000    1.000          1.000   1.000         1.000
+   1      arc-linear, values                      0.916  0.959  0.945    0.940 (0.011)  0.759  1.000    1.000          1.000   1.000         1.000
+   1      arc-linear constant ends, values        0.848  0.938  0.915    0.900 (0.015)  0.759  0.842    1.000          1.000   1.000         1.000
+   1      linear, values                          1.303  1.658  1.527    1.496 (0.043)  1.074  0.968    1.818          2.123   1.000         1.000
+   1      knn k=20, values                        1.465  1.918  1.755    1.713 (0.048)  1.490  1.198    1.893          2.269   1.000         1.000
+   1      SIREN xyz ω0 10, values                 1.219  1.581  1.455    1.418 (0.045)  0.780  0.823    1.831          2.239   1.000         1.000
+   1      SIREN xyz+tract ω0 30, values           1.345  1.729  1.641    1.572 (0.057)  0.732  0.812    2.335          2.408   1.000         1.000
+   2      arc-linear                              0.853  0.863  0.857    0.858 (0.006)  0.431  1.000    1.000          1.000   1.000         1.000
+   2      arc-linear constant ends                0.730  0.764  0.757    0.750 (0.011)  0.431  0.570    1.000          1.000   1.000         1.000
+   2      linear                                  0.716  0.755  0.729    0.733 (0.006)  0.496  0.701    0.801          0.934   1.000         1.000
+   2      knn k=1                                 0.754  0.821  0.793    0.789 (0.012)  0.579  0.639    0.901          1.039   1.000         1.000
+   2      knn k=20                                0.715  0.787  0.763    0.755 (0.009)  0.631  0.683    0.782          0.923   1.000         1.000
+   2      knn k=50                                0.719  0.789  0.769    0.759 (0.010)  0.663  0.712    0.767          0.893   1.000         1.000
+   2      SIREN xyz ω0 30                         0.717  0.768  0.739    0.741 (0.006)  0.487  0.589    0.871          1.019   1.000         1.000
+   2      SIREN xyz+tract ω0 30                   0.687  0.742  0.732    0.720 (0.009)  0.432  0.528    0.940          0.981   1.000         1.000
+   2      SIREN xyz+arc ω0 10                     0.684  0.725  0.703    0.704 (0.005)  0.422  0.516    0.895          0.982   1.000         1.000
+   2      **SIREN xyz ω0 10 (phase 2 default)**   0.660  0.713  0.691    0.688 (0.004)  0.442  0.544    0.814          0.952   1.000         1.000
+   3      population alone, 10 components         0.764  0.797  0.806    0.789 (0.014)  0.758  0.840    0.773          0.785   0.767         0.856
+   3      population alone, 40                    0.736  0.752  0.768    0.752 (0.011)  0.716  0.798    0.730          0.764   0.720         0.808
+   3      population alone, 80                    0.727  0.727  0.747    0.733 (0.008)  0.685  0.777    0.713          0.759   0.696         0.798
+   3      population alone, 120                   0.729  0.720  0.748    0.732 (0.010)  0.675  0.767    0.720          0.768   0.684         0.787
+   3      population 80 + knn k=20                0.655  0.661  0.675    0.664 (0.008)  0.568  0.659    0.675          0.752   0.696         0.798
+   3      population 10 + SIREN                   0.604  0.642  0.632    0.626 (0.006)  0.444  0.555    0.723          0.782   0.767         0.856
+   3      population 40 + SIREN                   0.608  0.621  0.629    0.619 (0.004)  0.446  0.553    0.708          0.770   0.720         0.808
+   3      population 120 + SIREN                  0.622  0.613  0.630    0.622 (0.009)  0.443  0.559    0.710          0.776   0.684         0.787
+   3      **population 80 + SIREN (default)**     0.610  0.610  0.622    0.614 (0.007)  0.440  0.552    0.697          0.766   0.696         0.798
+   4      SIREN near + hybrid U-Net beyond (v12)  0.602  0.609  0.619    0.610 (0.007)  0.436  0.550    0.697          0.757   0.530         0.703
+   =====  ======================================  =====  =====  =======  =============  =====  =======  =============  ======  ============  ===========
+
+Every conclusion of the original phases holds with the larger sample; the levels are higher than in their tables
+because the free water tensor metrics, the easiest to impute (0.42-0.60 under the default), are left out.
+
+- **Phase 1**: on its own values a scan only imputes gaps better than the age-bin mean (``arc-linear`` 0.76); whole
+  profiles and regions are 1.8 to 2.4 times as far off.
+- **Phase 2**: SIREN ``xyz`` with omega0 10 is the best single setting on the deviations (0.688); ``xyz+arc`` and
+  ``xyz+tract`` are better for gaps and ends (0.42-0.43, 0.52-0.53) but worse for whole profiles and regions,
+  omega0 30 worse for every input; knn with k = 20 to 50 is the best phase-2 method for whole profiles (0.77-0.78).
+- **Phase 3**: 80 components stay the best; paired per scan against 80, 40 components are 1.008 (p = 0.02), 120
+  1.010 (p = 5e-6), 20 1.016 and 10 1.021. SIREN on the population residuals beats knn on them (knn 1.082,
+  p = 3e-28), though knn is better for whole profiles and regions (0.675 and 0.752 against 0.697 and 0.766). The
+  population model takes the error from 0.688 (phase 2) to 0.614 and imputes a missing measure (0.70 for the tensor
+  metrics, 0.80 for NODDI), which nothing before it can.
+- **Phase 4**: the hybrid graph U-Net beyond 4 mm, 0.610, and 0.53 and 0.70 for a missing measure.
+
+The paired tests are for the settings that fill every hidden value (the population settings); the others leave
+values that count with the age-bin mean.
 
 Phase 3b: summary
 -----------------

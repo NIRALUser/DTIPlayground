@@ -3,6 +3,14 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-30 (v0.8.27)
+- dmriprep - SUSCEPTIBILITY_Correct: option `stripBaselineOnlyImage` (default true). When one image is a full DWI and the other one was acquired for topup (baselines and at most one dummy volume that isn't a baseline), `EDDYMOTION_Correct` removes the latter at its end, after using it to refine the correction. The result has the full DWI only and starts with a baseline. A dataset reprocessed with an existing protocol is stripped too, while its results that are reused aren't: set the option to false to stay consistent with a cohort processed before
+- dmriprep - SUSCEPTIBILITY_Correct: when all the baselines of a series were excluded, its lowest shell was labeled b=0, losing its directions, and given to topup as b0s. The b0 threshold is now raised only up to b=100; a series without baselines stops with an error. Datasets with fewer than the expected shells in the CNR columns may be affected
+- dmriprep - SLICE_Check: when all the baselines of an image are abnormal, the one with the fewest abnormal slices is kept and becomes the first volume
+- dmriprep - EDDYMOTION_Correct: volumes before the first baseline of the second image had the phase encoding of the first image. Only images that lost their first baselines are affected; they need `--overwrite`
+- dmriprep - QC_Report: `--rerun` computes a missing image QC (before, only by deleting the result of the module); the raw image QC uses the input with the most volumes, not the first one, which can be a short scan for topup
+- dmriprep - cohort QC table: mask volume and mean FA also without `BRAIN_Mask` and without an FA output (topup mask, FA of the DTI); CNR columns named by the b-value to the nearest 10, so that small differences of the b-table don't split them; `stripped_volumes` column; `batch/status.tsv` is refreshed
+
 ##### 2026-10-29 (v0.8.26)
 - Documentation, "Imputation validation": the methods of phases 1 to 3 validated again with the protocol of phase 4 (the 7 measures FA, MD, RD, AD, NDI, ODI and FWF, 20 scans per age bin and at most half of a bin, 3 seeds, the same scans and hidden values as phase 4), so that all phases compare directly. The conclusions and defaults hold: the default (population model with SIREN on its residuals) 0.614 of the age-bin mean's error, SIREN on the age-bin deviations 0.688, 80 components the best; no code changes
 

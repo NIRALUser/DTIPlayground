@@ -796,6 +796,15 @@ class DWI:
             g['index']=idx 
         self.update_information()
 
+    def keepVolumes(self, positions: list): # only these volumes, in this order: they keep their original index
+        self.images=self.images[:,:,:,positions]
+        self.gradients=[self.gradients[i] for i in positions]
+        self.update_information()
+
+    def moveToFirstVolumeByOriginalIndex(self, original_index):
+        position=[int(g['original_index']) for g in self.getGradients()].index(int(original_index))
+        self.keepVolumes([position]+[i for i in range(len(self.gradients)) if i!=position])
+
     def insertGradient(self,gradient,image_volume,pos=-1):
         self.images=np.insert(self.images,pos,image_volume,axis=3)
         self.gradients.insert(pos,gradient)

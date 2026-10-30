@@ -13,6 +13,41 @@ import os
 import markdown
 from . import data 
 
+MAX_BASELINE_B = 100 # highest b-value that can be taken for a baseline (some acquisitions have b=5 or b=50 instead of b=0)
+
+
+def baseline_only_series(series):
+    """Indexes of the series to strip, from the (baselines, volumes) of each series: those acquired for topup, when another
+    one has the full DWI. They have at most one volume that isn't a baseline (a dummy: scanners have no sequence with
+    baselines only)."""
+    baseline_only=[i for i,(baselines,volumes) in enumerate(series) if volumes-baselines<=1]
+    return baseline_only if len(baseline_only)<len(series) else []
+
+
+def acqp_rows(series_sizes,b0_indices):
+    """Line of the acqp file (one per baseline, in order) of each volume of the merged image: the last baseline before
+    the volume in its series, its first baseline if there is none, so that it has the phase encoding of its series."""
+    rows=[]
+    start=0
+    for size in series_sizes:
+        baselines=[(row,i) for row,i in enumerate(b0_indices,1) if start<=i<start+size]
+        for volume in range(start,start+size):
+            rows.append(([row for row,i in baselines if i<=volume] or [baselines[0][0]])[-1])
+        start+=size
+    return rows
+
+
+def stripped_order(series_sizes,stripped,baselines):
+    """Volumes of the merged image left when the series are stripped, a baseline first."""
+    kept=[]
+    start=0
+    for i,size in enumerate(series_sizes):
+        if i not in stripped:
+            kept+=list(range(start,start+size))
+        start+=size
+    first=next((v for v in kept if v in baselines),None)
+    return [first]+[v for v in kept if v!=first] if first is not None else kept
+
 def find_fsl(lookup_dirs=[]):
     fsldir=os.environ.get('FSLDIR')
     candidates=[]
@@ -242,6 +277,8 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         b0_indexes=[]
         for img in pe_images:
             minb,maxb=img.getBValueBounds()
+            if minb > MAX_BASELINE_B : ## no baseline left (e.g. all excluded): the lowest shell must not be taken for b0s and lose its directions
+                raise ValueError("{} has no baseline (lowest b-value {:g}): topup needs b0s in both phase encoding directions".format(img.filename,minb))
             if b0_threshold < minb :   ## if given b0 threshold is less than the least b value of the gradients, substitute it to the minimal b value
                 img.setB0Threshold(minb)
                 b0_threshold=minb
@@ -396,6 +433,9 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         _index_path=Path(self.output_dir).joinpath(base+".b0index").__str__()
         indices=self.make_index(self.image,_index_path)
         logger("B0 indices : {}".format(indices),prep.Color.INFO)
+        series=[(len(img.getBaselines(b0_threshold)[0]),len(img.getGradients())) for img in pe_images]
+        series_sizes=[volumes for _,volumes in series]
+        volume_rows=acqp_rows(series_sizes,indices)
 
         logger("Running topup command...",prep.Color.PROCESS)
         _out_path=Path(self.output_dir).joinpath(base+"_topup_fieldcoef.nii.gz").__str__()
@@ -430,6 +470,11 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
         
         self.image.zerorizeBaselines(b0_threshold) ## fsl's baseline should have 0 b values
 
+        ## eddy still refines the correction with the volumes of all the series: it strips the baseline-only ones at its end
+        stripped=baseline_only_series(series) if self.protocol.get('stripBaselineOnlyImage',True) else []
+        _eddy_index_path=Path(self.output_dir).joinpath(base+".eddy_index").__str__()
+        Path(_eddy_index_path).write_text(" ".join(map(str,volume_rows)))
+
         susceptibility_parameters={
             "mask_path" : _mask_path,
             "acqp_path" : acqp_filename,
@@ -438,7 +483,9 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
             "image_bvecs_path" : merged_bvecs_filename,
             "b0_image_path" : merged_b0_filename,
             "topup_path" : _out_path_prep,
-            "index_path" : _index_path
+            "index_path" : _index_path,
+            "eddy_index_path" : _eddy_index_path,
+            "kept_volumes" : stripped_order(series_sizes,stripped,indices) if stripped else None
         }
         self.updateGlobalVariable(susceptibility_parameters)
 

@@ -24,3 +24,8 @@ protocol:
         caption: FSL topup configuration file path 
         default_value: $CONFIG_DIR/parameters/fsl/fsl_regb02b0.cnf 
         description: FSL topup configuration file path 
+      stripBaselineOnlyImage: 
+        type: boolean
+        caption: Strip the baseline-only image
+        default_value: true
+        description: When only one of the images is a full DWI and the other one was acquired for topup (baselines, and at most one dummy volume that isn't a baseline), remove the volumes of the latter at the end of EDDYMOTION_Correct, which uses them to refine the correction. The result has the full DWI only

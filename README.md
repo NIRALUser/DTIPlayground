@@ -241,8 +241,9 @@ interface (`bids_dir output_dir participant|group`):
   CPUs per task. The tasks run the dmriprep (Python environment and configuration directory) the script was written
   with, so write it on the cluster. Run the command again after the job to see which datasets failed and resubmit
   them.
-- **group**: `<output_dir>/batch/qc_table.tsv` and `qc_report.html` (state, run time, volumes in/out, excluded
-  volumes, mask volume, mean FA per dataset, and the noise, motion, SNR/CNR and tensor fit summaries of the modules
+- **group**: `<output_dir>/batch/qc_table.tsv` and `qc_report.html` (state, run time, volumes in/out, stripped
+  baseline-only and excluded volumes, mask volume, mean FA per dataset (from the DTI and the topup mask when the pipeline has no `BRAIN_Mask` or
+  no FA output; CNR columns named by the b-value to the nearest 10), and the noise, motion, SNR/CNR and tensor fit summaries of the modules
   that ran, see **QC outputs**; values far from the cohort median are marked: excluded volumes, and in the bad
   direction mean framewise displacement, outlier slices, poorly fitted slices and mean tensor fit R²), and
   `fiberprofile_datasheet.csv`, the datasheet for `dmrifiberprofile` (columns `id`, `DTI`, and `FW DTI`, `Deformation

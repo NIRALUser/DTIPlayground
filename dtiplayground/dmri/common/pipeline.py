@@ -496,6 +496,9 @@ class Pipeline:
                             forced_overwrite=True
                     else:
                         logger("The previous result has no stored settings (older version) and is reused; run with --overwrite to recompute it",common.Color.WARNING)
+                    if not forced_overwrite and not m.reusableResult():
+                        logger("The previous result of {} is incomplete: recomputing it and the following modules".format(p),common.Color.WARNING)
+                        forced_overwrite=True
                 if forced_overwrite:
                     m.getOptions()['overwrite']=True
                 if resultfile_path.exists() and not m.getOptions()['overwrite'] and not forced_overwrite:

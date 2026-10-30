@@ -162,6 +162,60 @@ class TestBatchReportColumns(unittest.TestCase):
         self.assertNotIn('max_rel_translation', row)
         self.assertNotIn('raw_volumes', row) # not among the columns of the cohort table
 
+    def _dataset(self, d):
+        folder = Path(d).joinpath('sub-1')
+        folder.joinpath('scan/02_SUSCEPTIBILITY_Correct').mkdir(parents=True)
+        return folder, {'id': 'sub-1', 'output_dir': 'sub-1', 'output_file_base': 'scan', 'images': []}
+
+    def test_shells_of_other_b_tables_share_the_column(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder, dataset = self._dataset(d)
+            qc_metrics.write_tsv(str(folder.joinpath('scan_EDDY_QC.tsv')),
+                                 [{'snr_b0': 21.5, 'cnr_b499': 1.1, 'cnr_b1000': 1.2, 'cnr_b1501': 1.3, 'cnr_b2999': 1.4}])
+            row, _ = batch_report.dataset_row(d, dataset, 'done', {})
+        self.assertEqual((row['cnr_b500'], row['cnr_b1000'], row['cnr_b1500'], row['cnr_b3000']), ('1.1', '1.2', '1.3', '1.4'))
+        self.assertNotIn('cnr_b499', row)
+
+    def test_mask_volume_and_mean_fa_from_the_topup_mask_and_the_tensor(self):
+        import nibabel as nib
+        import nrrd
+        with tempfile.TemporaryDirectory() as d:
+            folder, dataset = self._dataset(d)
+            mask = np.zeros((4, 5, 6), dtype=np.uint8)
+            mask[1:3, 1:3, 1:3] = 1 # 8 voxels of 2 mm: 64 mm3
+            nib.save(nib.Nifti1Image(mask, np.diag([2.0, 2.0, 2.0, 1.0])),
+                     str(folder.joinpath('scan/02_SUSCEPTIBILITY_Correct/merged_image_mask_mask.nii.gz')))
+            tensor = np.zeros((7,) + mask.shape, dtype=np.float32)
+            tensor[0] = 1
+            tensor[1], tensor[4], tensor[6] = 1.7e-3, 0.3e-3, 0.3e-3 # components xx, yy, zz
+            tensor[1:, 0, 0, 0] = 1e-3 # far outside of the mask: not counted
+            nrrd.write(str(folder.joinpath('scan_DTI.nrrd')), tensor,
+                       {'kinds': ['3D-masked-symmetric-matrix', 'space', 'space', 'space']})
+            row, _ = batch_report.dataset_row(d, dataset, 'done', {})
+        expected = np.sqrt(0.5 * 2 * 1.4 ** 2 / (1.7 ** 2 + 2 * 0.3 ** 2))
+        self.assertEqual(row['mask_ml'], 0.1)
+        self.assertAlmostEqual(row['mean_fa'], expected, places=3)
+
+    def test_stripped_volumes_are_not_excluded_volumes(self):
+        import nibabel as nib
+        with tempfile.TemporaryDirectory() as d:
+            folder, dataset = self._dataset(d)
+            folder.joinpath('scan/03_EDDYMOTION_Correct').mkdir()
+            folder.joinpath('scan/03_EDDYMOTION_Correct/stripped_volumes.txt').write_text('8\n')
+            images = []
+            for name, volumes in (('ap', 8), ('pa', 20)):
+                images.append(str(Path(d).joinpath(name + '.nii.gz')))
+                nib.save(nib.Nifti1Image(np.zeros((2, 2, 2, volumes), dtype=np.int16), np.eye(4)), images[-1])
+            nib.save(nib.Nifti1Image(np.zeros((2, 2, 2, 18), dtype=np.int16), np.eye(4)), str(folder.joinpath('scan_QCed.nii.gz')))
+            row, _ = batch_report.dataset_row(d, dict(dataset, images=images), 'done', {})
+        self.assertEqual((row['input_volumes'], row['stripped_volumes'], row['excluded_volumes'], row['output_volumes']), (28, 8, 2, 18))
+
+    def test_no_dti_leaves_the_columns_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder, dataset = self._dataset(d)
+            row, _ = batch_report.dataset_row(d, dataset, 'done', {})
+        self.assertEqual((row['mask_ml'], row['mean_fa']), ('', ''))
+
     def test_a_low_correlation_and_many_bad_slices_are_marked(self):
         rows = [{'qced_ndc': 0.86 + 0.002 * i, 'qced_bad_slices': 3} for i in range(9)]
         rows.append({'qced_ndc': 0.42, 'qced_bad_slices': 61}) # the outlier of the cohort
@@ -330,6 +384,163 @@ class TestImageQC(unittest.TestCase):
         data = rng.normal(100, 10, (8, 8, 6, 7))
         _, summary = qc_metrics.image_qc(data, bvals, bvecs, np.ones((8, 8, 6), dtype=bool), coherence=False)
         self.assertNotIn('coherence', summary)
+
+
+class TestBaselinesOfTopup(unittest.TestCase):
+    """A series that lost all its baselines must not get its lowest shell labeled b=0."""
+
+    def _create_b0s(self, d, *lowest_b_values):
+        from dtiplayground.dmri.preprocessing.modules.SUSCEPTIBILITY_Correct import SUSCEPTIBILITY_Correct as module
+        class Image:
+            def __init__(self, minb):
+                self.filename, self.minb, self.thresholds = 'series.nrrd', minb, []
+            def getBValueBounds(self):
+                return [self.minb, 3000.0]
+            def setB0Threshold(self, value):
+                self.thresholds.append(value)
+            def extractBaselines(self, threshold):
+                self.thresholds.append(threshold)
+                return self
+            def writeImage(self, *a, **k):
+                pass
+            def getGradients(self):
+                return [{'original_index': 0}]
+        obj = module.SUSCEPTIBILITY_Correct.__new__(module.SUSCEPTIBILITY_Correct)
+        obj.output_dir = d
+        return obj.create_b0s([Image(b) for b in lowest_b_values], 13.0)[3]
+
+    def test_a_series_without_baselines_stops_the_pipeline(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaisesRegex(ValueError, 'no baseline'):
+                self._create_b0s(d, 0.0, 500.0)
+
+    def test_baselines_of_b50_raise_the_threshold(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self._create_b0s(d, 0.0, 50.0), 50.0)
+
+    def test_the_threshold_stays_with_b0s(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self._create_b0s(d, 5.0, 0.0), 13.0)
+
+
+class TestSliceCheckKeepsOneBaseline(unittest.TestCase):
+    def _keep(self, arte, grads):
+        from dtiplayground.dmri.preprocessing.modules.SLICE_Check import SLICE_Check as module
+        module.logger = lambda *a, **k: None
+        obj = module.SLICE_Check.__new__(module.SLICE_Check)
+        kept, keep = obj.keepOneBaseline(arte, grads)
+        return [a[0] for a in kept], keep
+
+    def test_the_least_abnormal_baseline_is_kept(self):
+        grads = [{'baseline': True}, {'baseline': True}, {'baseline': False}]
+        arte = [(0, [1, 2, 3]), (1, [1]), (2, [1, 2])]
+        self.assertEqual(self._keep(arte, grads), ([0, 2], 1))
+
+    def test_other_baselines_left_nothing_changes(self):
+        grads = [{'baseline': True}, {'baseline': True}, {'baseline': False}]
+        self.assertEqual(self._keep([(0, [1])], grads), ([0], None))
+
+    def test_a_series_without_baselines_nothing_changes(self):
+        self.assertEqual(self._keep([(0, [1])], [{'baseline': False}]), ([0], None))
+
+
+class TestMoveToFirstVolume(unittest.TestCase):
+    def test_volume_and_gradient_move_together(self):
+        import nibabel as nib
+        from dtiplayground.dmri.common.dwi import DWI
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d).joinpath('dwi')
+            data = np.arange(1, 6, dtype=np.int16)[None, None, None, :] * np.ones((4, 4, 4, 5), dtype=np.int16)
+            nib.save(nib.Nifti1Image(data, np.eye(4)), str(base) + '.nii.gz')
+            base.with_suffix('.bval').write_text('1000 1000 0 1000 1000\n')
+            base.with_suffix('.bvec').write_text('1 0 0 0 1\n0 1 0 0 0\n0 0 0 1 0\n')
+            image = DWI(str(base) + '.nii.gz')
+            image.setB0Threshold(10)
+            image.deleteGradientsByOriginalIndex([0])
+            image.moveToFirstVolumeByOriginalIndex(2)
+            gradients = image.getGradients()
+            self.assertEqual([g['original_index'] for g in gradients], [2, 1, 3, 4])
+            self.assertEqual([g['index'] for g in gradients], [0, 1, 2, 3])
+            self.assertTrue(gradients[0]['baseline'])
+            self.assertEqual(image.images[0, 0, 0].tolist(), [3, 2, 4, 5])
+            image.deleteGradientsByOriginalIndex([3]) # later exclusions find the right volumes
+            self.assertEqual(image.images[0, 0, 0].tolist(), [3, 2, 5])
+
+
+class TestBaselineOnlySeries(unittest.TestCase):
+    def setUp(self):
+        from dtiplayground.dmri.preprocessing.modules.SUSCEPTIBILITY_Correct import SUSCEPTIBILITY_Correct as module
+        self.module = module
+
+    def test_which_series_is_stripped(self):
+        only = self.module.baseline_only_series
+        self.assertEqual(only([(7, 8), (7, 151)]), [0]) # the dummy volume of the short scan (BEE)
+        self.assertEqual(only([(1, 2), (7, 151)]), [0]) # most of its baselines were excluded
+        self.assertEqual(only([(5, 7), (7, 151)]), []) # two volumes that aren't baselines
+        self.assertEqual(only([(7, 151), (7, 7)]), [1])
+        self.assertEqual(only([(7, 151), (7, 151)]), []) # two full DWIs
+        self.assertEqual(only([(7, 7), (6, 6)]), []) # nothing would be left
+
+    def test_every_volume_has_the_phase_encoding_of_its_series(self):
+        rows = self.module.acqp_rows
+        self.assertEqual(rows([3, 4], [0, 1, 3, 5]), [1, 2, 2, 3, 3, 4, 4])
+        # sub-1266: the second series has no baseline before its volume 24
+        result = rows([8, 151], [0, 1, 2, 3, 4, 5, 6, 32, 103])
+        self.assertEqual(result[:8], [1, 2, 3, 4, 5, 6, 7, 7])
+        self.assertEqual(set(result[8:33]), {8})
+        self.assertEqual((result[102], result[103]), (8, 9))
+
+    def test_the_result_starts_with_a_baseline(self):
+        self.assertEqual(self.module.stripped_order([3, 4], [0], [0, 5]), [5, 3, 4, 6])
+
+    def test_eddy_strips_with_the_original_indexes(self):
+        from dtiplayground.dmri.preprocessing.modules.EDDYMOTION_Correct import EDDYMOTION_Correct as eddy
+        eddy.logger = lambda *a, **k: None
+        class Image:
+            def keepVolumes(self, positions):
+                self.positions = positions
+        with tempfile.TemporaryDirectory() as d:
+            obj = eddy.EDDYMOTION_Correct.__new__(eddy.EDDYMOTION_Correct)
+            obj.image, obj.output_dir, obj.result = Image(), d, {'output': {}}
+            obj.stripBaselineOnlyImage([5, 3, 6], [0, 1, 3, 5, 6]) # volume 2 was excluded before
+            count = Path(d).joinpath('stripped_volumes.txt').read_text()
+        self.assertEqual(obj.image.positions, [3, 2, 4])
+        self.assertEqual(obj.result['output']['stripped_gradients'], [0, 1])
+        self.assertEqual(obj.result['output']['eddy_volumes'], [0, 1, 3, 5, 6])
+        self.assertEqual(count, '2\n')
+
+
+class TestQCReportReuse(unittest.TestCase):
+    def _reusable(self, protocol, files):
+        from dtiplayground.dmri.preprocessing.modules.QC_Report import QC_Report as module
+        with tempfile.TemporaryDirectory() as d:
+            for name in files:
+                Path(d).joinpath(name).touch()
+            obj = module.QC_Report.__new__(module.QC_Report)
+            obj.protocol, obj.output_dir = protocol, d
+            return obj.reusableResult()
+
+    def test_a_result_without_image_qc_is_computed_again(self):
+        self.assertFalse(self._reusable({'imageQC': True}, []))
+        self.assertTrue(self._reusable({'imageQC': True}, ['image_qc.tsv']))
+        self.assertTrue(self._reusable({'imageQC': False}, []))
+
+
+class TestStatusOfTheReport(unittest.TestCase):
+    def test_the_report_refreshes_status_tsv(self):
+        from dtiplayground.dmri.preprocessing import batch
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d)
+            bdir = batch.batch_dir(out)
+            bdir.mkdir(parents=True, exist_ok=True)
+            calls = []
+            originals = batch.summarize, batch.load_manifest
+            batch.summarize, batch.load_manifest = lambda o: calls.append(o), lambda o: []
+            try:
+                batch_report.write_report(out, echo=lambda m: None)
+            finally:
+                batch.summarize, batch.load_manifest = originals
+        self.assertEqual(calls, [out])
 
 
 class TestManualExcludeIndexes(unittest.TestCase):

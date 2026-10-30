@@ -131,12 +131,16 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                 cnr = ['{} {}'.format(k.replace('_', ' '), v) for k, v in qc.items() if k.startswith(('snr_', 'cnr_'))]
                 if cnr:
                     f.write('* Mean in the mask: ' + ', '.join(cnr) + '\n')
+            stripped = self.result['output'].get('stripped_gradients') or []
+            if stripped:
+                f.write('* {} volumes of the baseline-only image were stripped after eddy\n'.format(len(stripped)))
             f.seek(0)
 
         self.result['report']['csv_data']['rms_gt_1'] = int(rmsLargerThan1)
         self.result['report']['csv_data']['rms_gt_2'] = int(rmsLargerThan2)
         self.result['report']['csv_data']['rms_gt_3'] = int(rmsLargerThan3)
         self.result['report']['csv_data']['eddy_qc'] = qc
+        self.result['report']['csv_data']['stripped_gradients'] = stripped
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
             yaml.dump(self.result,f)
 
@@ -150,7 +154,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         try:
             bvals = [float(b) for b in bval_path.read_text().split()]
             gradients = self.image.getGradients() if self.image is not None else []
-            original = [g.get('original_index', i) for i, g in enumerate(gradients)]
+            original = self.result['output'].get('eddy_volumes') or [g.get('original_index', i) for i, g in enumerate(gradients)]
             rows, qc = qc_metrics.eddy_motion(eddy_base, bvals, original if len(original) == len(bvals) else None)
             if rows is None:
                 return {}
@@ -201,6 +205,17 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         res_str=" ".join(list(map(str,res_index)))
         open(index_filename,'w').write(res_str)
         return index_filename
+
+    def stripBaselineOnlyImage(self, kept_volumes, original_indexes):
+        """Only these volumes (original indexes, in this order) of the corrected image; the others belong to the image
+        acquired for topup and aren't excluded volumes."""
+        positions={original:i for i,original in enumerate(original_indexes)}
+        stripped=[v for v in original_indexes if v not in kept_volumes]
+        logger("Stripping the baseline-only image: {} volumes".format(len(stripped)),prep.Color.INFO)
+        self.image.keepVolumes([positions[v] for v in kept_volumes if v in positions])
+        self.result['output']['stripped_gradients']=stripped
+        self.result['output']['eddy_volumes']=original_indexes
+        Path(self.output_dir).joinpath('stripped_volumes.txt').write_text('{}\n'.format(len(stripped)))
 
     ### scripts
 
@@ -255,7 +270,7 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         img=None
         if params is not None: ##susceptibility case
             acqp_filename=params['acqp_path']
-            index_filename=self.make_index_new(self.image,params['index_path'])
+            index_filename=params.get('eddy_index_path') or self.make_index_new(self.image,params['index_path']) # result of an older version
             topup_filename=params['topup_path']
         else: # single eddy
             self.writeImageWithOriginalSpace(str(input_nifti),dest_type='nifti')
@@ -330,6 +345,8 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
                         bvals=processed_bvals)
 
         self.image=self.loadEddiedImage(processed_nifti_nonneg,original_indexes)
+        if params is not None and params.get('kept_volumes'):
+            self.stripBaselineOnlyImage(params['kept_volumes'],original_indexes)
         self.image.image_type='nrrd'
         self.writeImageWithOriginalSpace(output_nrrd,'nrrd')
         return None

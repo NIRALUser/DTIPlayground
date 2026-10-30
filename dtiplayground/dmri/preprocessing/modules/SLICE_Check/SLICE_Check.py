@@ -52,6 +52,7 @@ class SLICE_Check(prep.modules.DTIPrepModule):
         logger("-------------------------------------------------------------",prep.Color.WARNING)
 
         grads=self.image.getGradients()
+        arte_sorted,kept_baseline=self.keepOneBaseline(arte_sorted,grads)
         for a in arte_sorted:
             grad_index=a[0]
             grad_original_index=grads[a[0]]['original_index']
@@ -69,6 +70,8 @@ class SLICE_Check(prep.modules.DTIPrepModule):
         ## Excluded original indexes will be automatically deleted in the postProcess
         #logger("Excluded gradient indexes : {}".format(gradient_indexes_to_remove),prep.Color.WARNING) #gradient indexes are not original one , so need to convert
         self.result['output']['excluded_gradients_original_indexes']=self.image.convertToOriginalGradientIndex(gradient_indexes_to_remove)
+        if kept_baseline is not None: ## tools outside of dtiplayground often expect a baseline in the first volume
+            self.result['output']['first_volume_original_index']=grads[kept_baseline]['original_index']
         #self.result['output']['image_path']=Path(self.output_dir).joinpath('output.nrrd').__str__()
         self.result['output']['success']=True
         self.image.setSpaceDirection(target_space=self.getSourceImageInformation()['space'])
@@ -76,6 +79,17 @@ class SLICE_Check(prep.modules.DTIPrepModule):
 
 
     @prep.measure_time
+    def keepOneBaseline(self,arte_sorted,grads):
+        """(abnormal gradients, gradient kept): when all the baselines are abnormal the one with the fewest abnormal slices
+        is kept, topup and the tensor fit need a baseline in each image. Gradient kept: None otherwise."""
+        baselines=[i for i,g in enumerate(grads) if g['baseline']]
+        flagged=dict(arte_sorted)
+        if not baselines or not all(i in flagged for i in baselines):
+            return arte_sorted,None
+        keep=min(baselines,key=lambda i: len(flagged[i]))
+        logger("All the baselines are abnormal: keeping gradient {}, the one with the fewest abnormal slices".format(keep),prep.Color.WARNING)
+        return [a for a in arte_sorted if a[0]!=keep],keep
+
     def slice_check(self,
                     image, computation_dir, # image object containing all the information
                     headskip=0.1, 

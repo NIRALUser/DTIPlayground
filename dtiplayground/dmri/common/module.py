@@ -264,6 +264,10 @@ class DTIPlaygroundModule: #base class
         #self.result['output']['image_path']=str(Path(filename).absolute().relative_to(self.output_root))
         self.result['output']['image_path']=str(Path(filename).absolute())
 
+    def reusableResult(self):
+        """False if the result of a previous run with the same settings must be computed again."""
+        return True
+
     @common.measure_time
     def writeImageWithOriginalSpace(self,filename,dest_type='nrrd',dtype='short'):
         target_space = self.getSourceImageInformation()['space']
@@ -352,6 +356,10 @@ class DTIPlaygroundModule: #base class
         if getattr(self, 'input_number_of_gradients', None) is None and hasattr(self.image, 'getGradients'):
             self.input_number_of_gradients = len(self.image.getGradients()) # reused result: before its exclusions
         self.image.deleteGradientsByOriginalIndex(self.result['output']['excluded_gradients_original_indexes'])
+        first_volume=self.result['output'].get('first_volume_original_index') # in the result: also when it is reused
+        if first_volume is not None:
+            self.image.moveToFirstVolumeByOriginalIndex(first_volume)
+            logger("Original gradient {} is now the first volume".format(first_volume),common.Color.WARNING)
         logger("Excluded gradient indexes (original index) : {}"
             .format(self.result['output']['excluded_gradients_original_indexes']),common.Color.WARNING)
 

@@ -1,6 +1,7 @@
 #   Cohort report of a dmriprep batch (dmriprep bids ... group / dmriprep batch-report)
 #
-#   <out>/batch/qc_table.tsv                  one row per dataset: state, run time, volumes in/out, mask volume, mean FA,
+#   <out>/batch/qc_table.tsv                  one row per dataset: state, run time, volumes in/out, mask volume, mean FA
+#                                             (from the DTI and the topup mask when the pipeline has no such outputs),
 #                                             motion, eddy outlier slices, SNR/CNR and tensor fit (when these modules ran)
 #   <out>/batch/qc_report.html                the same table, with values far from the cohort median marked
 #   <out>/batch/fiberprofile_datasheet.csv    datasheet for dmrifiberprofile (column names of
@@ -8,6 +9,7 @@
 
 import csv
 import html
+import re
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +40,25 @@ def _output(folder, base, name):
     return None
 
 
+def _mask_file(folder, base):
+    """Brain mask of a dataset: the BRAIN_Mask output, otherwise the mask of the topup step."""
+    return _output(folder, base, 'Mask') or next(iter(sorted(folder.joinpath(base).glob(
+        '*_SUSCEPTIBILITY_Correct/merged_image_mask_mask.nii.gz'))), None)
+
+
+def _stripped_volumes(folder, base):
+    """Volumes of the baseline-only image stripped at the end of eddy, 0 if none."""
+    path = next(iter(folder.joinpath(base).glob('*_EDDYMOTION_Correct/stripped_volumes.txt')), None)
+    return int(path.read_text()) if path is not None else 0
+
+
+def _shell_column(name):
+    """Column of a summary value: the b-value of cnr_b<shell> to the nearest 10, the shell means of a dataset differ by a
+    few units with the b-table (cnr_b499, cnr_b501)."""
+    match = re.fullmatch(r'cnr_b(\d+)', name)
+    return 'cnr_b{}'.format(int(round(int(match.group(1)), -1))) if match else name
+
+
 def _volumes(path):
     """Number of volumes of a DWI (NIfTI or NRRD), None if unreadable."""
     try:
@@ -63,12 +84,31 @@ def _load(path):
     return np.asanyarray(image.dataobj), float(np.prod(image.header.get_zooms()[:3]))
 
 
+def _tensor_fa(path, mask=None):
+    """FA of the voxels of a tensor NRRD inside the mask (the non-zero tensors if no mask fits the image)."""
+    import nrrd
+    from dipy.reconst.dti import fractional_anisotropy
+    from dtiplayground.dmri.fiberprofile.analysis import flip_tensor
+    data, header = nrrd.read(str(path))
+    axis, kind = flip_tensor.tensor_axis(data, header)
+    data = np.moveaxis(data, axis, -1).astype(float)
+    components = flip_tensor.COMPONENTS[kind]
+    inside = mask if mask is not None and mask.shape == data.shape[:3] else np.any(data != 0, axis=-1)
+    voxels = data[inside]
+    tensors = np.zeros((len(voxels), 3, 3))
+    for k, entry in enumerate(components):
+        if entry is not None:
+            tensors[:, entry[0], entry[1]] = tensors[:, entry[1], entry[0]] = voxels[:, k]
+    return fractional_anisotropy(np.clip(np.linalg.eigvalsh(tensors), 0, None))
+
+
 def dataset_row(out, dataset, state, status):
     folder = Path(out).joinpath(dataset['output_dir'])
     base = dataset.get('output_file_base') or Path(dataset['images'][0]).name.split('.')[0]
     row = {'id': dataset['id'], 'subject': dataset.get('subject', ''), 'session': dataset.get('session', ''),
            'state': state, 'minutes': round(float(status['seconds']) / 60, 1) if status.get('seconds') not in (None, '') else '',
-           'input_volumes': '', 'output_volumes': '', 'excluded_volumes': '', 'mask_ml': '', 'mean_fa': '',
+           'input_volumes': '', 'output_volumes': '', 'stripped_volumes': _stripped_volumes(folder, base),
+           'excluded_volumes': '', 'mask_ml': '', 'mean_fa': '',
            'output_dir': dataset['output_dir']}
     inputs = [_volumes(i) for i in dataset['images']]
     if all(v is not None for v in inputs):
@@ -77,8 +117,8 @@ def dataset_row(out, dataset, state, status):
     if qced is not None:
         row['output_volumes'] = _volumes(qced)
         if row['input_volumes'] != '' and row['output_volumes'] is not None:
-            row['excluded_volumes'] = row['input_volumes'] - row['output_volumes']
-    mask_path, fa_path = _output(folder, base, 'Mask'), _output(folder, base, 'DTI_FA')
+            row['excluded_volumes'] = row['input_volumes'] - row['stripped_volumes'] - row['output_volumes']
+    mask_path, fa_path, dti_path = _mask_file(folder, base), _output(folder, base, 'DTI_FA'), _output(folder, base, 'DTI')
     try:
         mask = None
         if mask_path is not None:
@@ -89,6 +129,8 @@ def dataset_row(out, dataset, state, status):
             fa = np.squeeze(_load(fa_path)[0]).astype(float)
             inside = mask if mask is not None and mask.shape == fa.shape else fa > 0
             row['mean_fa'] = round(float(np.nanmean(fa[inside])), 4)
+        elif dti_path is not None:
+            row['mean_fa'] = round(float(np.nanmean(_tensor_fa(dti_path, mask))), 4)
     except Exception:
         pass
     for name, columns in QC_SUMMARIES:
@@ -101,7 +143,7 @@ def dataset_row(out, dataset, state, status):
             except Exception:
                 summary = {}
         for c in columns + [k for k in summary if k.startswith(('snr_', 'cnr_'))]:
-            row[c] = summary.get(c, '')
+            row[_shell_column(c)] = summary.get(c, '')
     sheet = {'id': dataset['id']}
     for column, name in FIBERPROFILE_COLUMNS:
         p = _output(folder, base, name)
@@ -130,6 +172,7 @@ def mark_outliers(rows, columns=OUTLIER_COLUMNS, limit=3.0):
 
 def write_report(out, echo=print):
     out = Path(out)
+    batch.summarize(out) # status.tsv of the current states
     datasets = batch.load_manifest(out)
     rows, sheets = [], []
     for d in datasets:

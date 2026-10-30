@@ -26,6 +26,10 @@ class QC_Report(prep.modules.DTIPrepModule):
         ## todos
         return self.protocol
 
+    def reusableResult(self):
+        """A run without image QC (it failed, or an older version) is not reused."""
+        return not self.protocol.get('imageQC', True) or Path(self.output_dir).joinpath(IMAGE_QC_FILES[0]).exists()
+
     def process(self,*args,**kwargs): ## variables : self.config_dir, self.source_image, self.image (output) , self.result_history , self.result (output) , self.protocol, self.template
         super().process()
         inputParams=self.getPreviousResult()['output']
@@ -84,6 +88,12 @@ class QC_Report(prep.modules.DTIPrepModule):
         global_report += "* * * * \n"
         return(global_report)
 
+    def strippedGradients(self):
+        for module in self.result_history[1:]:
+            if module['module_name'] == 'EDDYMOTION_Correct':
+                return module['report']['csv_data'].get('stripped_gradients') or []
+        return []
+
     def AddGeneralInfo(self, global_report):
         single_input = True
         for module in self.result_history[1:]:
@@ -99,6 +109,7 @@ class QC_Report(prep.modules.DTIPrepModule):
 
         else: #SUSCEPTIBILITY_Correct in protocol
             number_input_gradients = sum(n for n in self.result_history[1]['report']['csv_data']['original_number_of_gradients'] if n)
+            number_input_gradients -= len(self.strippedGradients()) # not excluded: they were never part of the result
             excluded_gradients = [[], [], []]
             if self.result_history[1]['report']['csv_data']['excluded_gradients']:
                 if self.result_history[1]['report']['csv_data']['excluded_gradients'][0]:
@@ -134,15 +145,15 @@ class QC_Report(prep.modules.DTIPrepModule):
     ## Image QC: the same numbers on the raw input and on the preprocessed image
 
     def imageQCStages(self):
-        """[(label, prefix, image)] of the images that are compared: the input of the pipeline (its first image when
-        the pipeline has two) and the image of this report."""
+        """[(label, prefix, image)] of the images that are compared: the input of the pipeline (the one with the most
+        volumes when the pipeline has two, the other one can be a few baselines for topup) and the image of this report."""
         stages = []
         image_name = self.result_history[1]['report']['csv_data']['image_name']
-        raw = image_name
-        while isinstance(raw, list): ## SUSCEPTIBILITY_Correct: [[input images], output image]
-            raw = raw[0] if raw else None
-        if raw and Path(raw).exists():
-            stages.append(('raw', 'raw', DWI(str(raw))))
+        if isinstance(image_name, list) and image_name and isinstance(image_name[0], list): ## SUSCEPTIBILITY_Correct: [[input images], output image]
+            image_name = image_name[0]
+        inputs = [DWI(str(p)) for p in (image_name if isinstance(image_name, list) else [image_name]) if p and Path(p).exists()]
+        if inputs:
+            stages.append(('raw', 'raw', max(inputs, key=lambda image: len(image.getGradients()))))
         stages.append(('preprocessed', 'qced', self.image))
         return stages
 
@@ -285,8 +296,8 @@ class QC_Report(prep.modules.DTIPrepModule):
             columns = ["image_name_1", "image_name_2"]
             values = [self.result_history[1]['report']['csv_data']['image_name'][0], self.result_history[1]['report']['csv_data']['image_name'][1]]
         ## original: input of the first module; remaining: the image of this report (after all modules)
-        columns += ['original_number_of_gradients', 'remaining_number_of_gradients', 'number_of_excluded_gradients']
-        values += [number_input_gradients, len(self.image.getGradients()), number_of_excluded_gradients]
+        columns += ['original_number_of_gradients', 'remaining_number_of_gradients', 'number_of_excluded_gradients', 'number_of_stripped_gradients']
+        values += [number_input_gradients, len(self.image.getGradients()), number_of_excluded_gradients, len(self.strippedGradients())]
         for module in self.result_history[1:]:
             if module["module_name"] == "EDDYMOTION_Correct":
                 columns += ['rms_larger_than_1', 'rms_larger_than_2', 'rms_larger_than_3']

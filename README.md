@@ -158,7 +158,7 @@ To run with existing protocol file:
 
 **Age appropriate registration target:** with `referenceNormativeModel` (a folder written by `dmrifiberprofile qc-registration --build-normative`), DTI_Register registers to the mean tensor of the age bin of the subject instead of `referenceImage`. The age is the protocol `age` (or the global variable `age`), else the row of the scan in `ageCSV` (the table of `qc-registration --age-csv`: subject/session/age columns are detected, `ageColumn` and `ageUnits` override that; the subject and session are read from the path as `sub-<id>`/`ses-<id>`), else `ageRegex` on the path (default `ses-(\d+)m`). Without any of them the reference image is used, with a warning.
 
-**Rerunning into an existing output directory:** a module with a result from a previous run is not recomputed, unless its protocol or the global variables given with `-g` changed since that run (compared with the `settings.yml` stored in the module's folder; the module and the following ones are then recomputed). `--overwrite` recomputes all modules. Results of versions before 0.7.11 have no `settings.yml`: they are reused (with a warning) until the run uses `--overwrite`. Global variables given with `-g` take precedence over those stored by a previous run (`global_variables.yml`).
+**Rerunning into an existing output directory:** a module with a result from a previous run is not recomputed, unless its protocol or the global variables given with `-g` changed since that run (compared with the `settings.yml` stored in the module's folder; the module and the following ones are then recomputed). `--overwrite` recomputes all modules. An existing eddy output is kept even then: when `EDDYMOTION_Correct` is recomputed, because of `--overwrite`, its protocol or an earlier module, eddy doesn't run again as long as `output_eddied.nii.gz` is in its folder (`NN_EDDYMOTION_Correct`), and only the steps after eddy are repeated. Delete that folder to run eddy again, e.g. after changing the input of eddy or its options. Results of versions before 0.7.11 have no `settings.yml`: they are reused (with a warning) until the run uses `--overwrite`. Global variables given with `-g` take precedence over those stored by a previous run (`global_variables.yml`).
 
 **Denoising and Gibbs ringing removal:** DWI_Denoise (DIPY MP-PCA, the method of MRtrix `dwidenoise`, or Patch2Self)
 and GIBBS_Correct (DIPY, the method of MRtrix `mrdegibbs`, for full Fourier acquisitions) are not in the default
@@ -189,8 +189,12 @@ position in the image the module worked on; the two differ once a volume has bee
   direction; `coherence_best_flip` names the b-vector axis whose sign would raise it, `none` if the b-table as given is
   the most coherent). `IMAGE_ndc.tsv`: per volume; `IMAGE_QC_plot.png`: both stages by original volume index (in the
   QC report).
+- `stripped_volumes.txt` (folder of EDDYMOTION_Correct): the number of volumes of the baseline-only image removed at the
+  end of eddy, the `stripped_volumes` column of the batch QC table.
 
 **[NOTE]** when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
+
+**Baseline-only images:** With a full DWI and a scan acquired for topup (baselines, and at most one dummy volume that isn't a baseline), the short scan goes through the pipeline up to eddy, which uses it to refine the correction, and its volumes are removed at the end of EDDYMOTION_Correct: the result has the full DWI only and starts with a baseline. The order of the files doesn't change this. Set `stripBaselineOnlyImage` of SUSCEPTIBILITY_Correct to false to keep them.
 
 5. **run-dir** Run output directory having protocol file
 
@@ -230,7 +234,7 @@ interface (`bids_dir output_dir participant|group`):
 - **Resuming**: running the same command again processes only the datasets that are not done: new, failed or
   interrupted datasets, and datasets done with another protocol (only the modules whose settings changed are then
   recomputed). `--rerun` processes all datasets again, `--only ID ...` some of them, `--overwrite` recomputes all their
-  modules. `dmriprep batch-status <output_dir>` lists the datasets that are not done (`--all`: all of them). A dataset is processed by one task at a time: a task that starts while another one is processing the same dataset (e.g. a SLURM array submitted twice) stops without touching it (exit code 75, `skipped` in a local run); the lock is `batch_task.lock` in the dataset folder, and the lock of a task that is gone is taken over.
+  modules (except eddy itself, see **Rerunning into an existing output directory**). `dmriprep batch-status <output_dir>` lists the datasets that are not done (`--all`: all of them). A dataset is processed by one task at a time: a task that starts while another one is processing the same dataset (e.g. a SLURM array submitted twice) stops without touching it (exit code 75, `skipped` in a local run); the lock is `batch_task.lock` in the dataset folder, and the lock of a task that is gone is taken over.
 - **Local execution**: `-j` datasets are processed at the same time, each in its own process with `-t` threads; its
   log is `batch_log.txt` (and the usual `log.txt`) in its folder.
 - **SLURM** (e.g. Longleaf): `--slurm` writes `<output_dir>/batch/slurm_array.sh`, a job array with one task per

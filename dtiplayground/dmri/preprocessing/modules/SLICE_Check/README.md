@@ -3,6 +3,10 @@
 ##### Introduction
 
 SLICE_Check.py will check problematic slices in the diffusion images and will exclude them from the image
+
+When all the baselines of an image are abnormal, the one with the fewest abnormal slices is kept and becomes the first volume, as topup, the tensor fit and tools outside of DTI Playground need a baseline.
+
+A slice is compared with the same slice of the other volumes of its image, so a short image can't be checked: a volume of an image of n volumes reaches a z-score of (n-1)/sqrt(n) at most, and with the default thresholds images of up to 10 volumes are never flagged. This includes the baseline-only images acquired for topup.
  
 ##### Protocol Parameters
 

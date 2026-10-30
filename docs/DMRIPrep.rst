@@ -104,13 +104,18 @@ To run with existing protocol file::
 
 [NOTE] when using 2 image files for SUSCEPTIBILITY_Correct and other multi input modules, order of files can be important. For the SUSCEPTIBILITY_Correct, AP(FH), RL, SI phased file comes first. (e.g. `$ dmriprep -i AP_img.nrrd PA_img.nrrd ...`)
 
+[NOTE] With a full DWI and a scan acquired for topup (baselines, and at most one dummy volume that isn't a baseline), the short scan goes through the pipeline up to eddy, which uses it to refine the correction, and its volumes are removed at the end of EDDYMOTION_Correct: the result has the full DWI only and starts with a baseline. The order of the files doesn't change this. Set `stripBaselineOnlyImage` of SUSCEPTIBILITY_Correct to false to keep them.
+
 Rerunning into an existing output directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A module with a result from a previous run is not recomputed, unless its protocol or the global variables given with
 `-g` changed since that run (they are compared with the `settings.yml` stored in the module's folder; that module and
-the following ones are then recomputed). `--overwrite` recomputes everything. Results written before 0.7.11 have no
-`settings.yml` and are reused with a warning until the run uses `--overwrite`.
+the following ones are then recomputed). `--overwrite` recomputes all modules. An existing eddy output is kept even
+then: when EDDYMOTION_Correct is recomputed, because of `--overwrite`, its protocol or an earlier module, eddy doesn't
+run again as long as `output_eddied.nii.gz` is in its folder (`NN_EDDYMOTION_Correct`), and only the steps after eddy
+are repeated. Delete that folder to run eddy again, e.g. after changing the input of eddy or its options. Results
+written before 0.7.11 have no `settings.yml` and are reused with a warning until the run uses `--overwrite`.
 
 Denoising and Gibbs ringing removal
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -150,6 +155,8 @@ image, which are also columns of the QC_Report CSV and of the cohort table of a 
 - `IMAGE_QC.tsv`, `IMAGE_ndc.tsv`, `IMAGE_QC_plot.png` (QC_Report, option `imageQC`): the same numbers on the raw
   input (`raw_`) and on the preprocessed image (`qced_`) - neighboring DWI correlation, bad slices, and with
   `bTableCheck` the fiber coherence index of the b-table, which names the b-vector axis whose sign would raise it.
+- `stripped_volumes.txt` (folder of EDDYMOTION_Correct): the number of volumes of the baseline-only image removed at
+  the end of eddy.
 
 See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the details of each column.
 

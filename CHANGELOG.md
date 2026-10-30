@@ -3,6 +3,11 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-10-30 (v0.8.28)
+- dmriprep - QC_Report: with two input images and `generatePDF` true (the default) the module crashed in `MergeReports` since 2024 and the `_QCed` output wasn't written. The per-input reports of the modules before `SUSCEPTIBILITY_Correct` are back in the report
+- dmriprep - QC_Report: with two input images, each excluded gradient is shown from the image it came from (the first image crashed, the second had wrong pictures), and the pictures of the same volume in both images no longer overwrite each other. `image_name_1` and `image_name_2` of `QC_report.csv` are the two inputs
+- dmriprep - SUSCEPTIBILITY_Correct: `original_number_of_gradients` of `QC_report.csv` counted the volumes left after exclusions, not those of the input image. `qc_table.tsv` isn't affected
+
 ##### 2026-10-30 (v0.8.27)
 - dmriprep - SUSCEPTIBILITY_Correct: option `stripBaselineOnlyImage` (default true). When one image is a full DWI and the other one was acquired for topup (baselines and at most one dummy volume that isn't a baseline), `EDDYMOTION_Correct` removes the latter at its end, after using it to refine the correction. The result has the full DWI only and starts with a baseline. A dataset reprocessed with an existing protocol is stripped too, while its results that are reused aren't: set the option to false to stay consistent with a cohort processed before
 - dmriprep - SUSCEPTIBILITY_Correct: when all the baselines of a series were excluded, its lowest shell was labeled b=0, losing its directions, and given to topup as b0s. The b0 threshold is now raised only up to b=100; a series without baselines stops with an error. Datasets with fewer than the expected shells in the CNR columns may be affected

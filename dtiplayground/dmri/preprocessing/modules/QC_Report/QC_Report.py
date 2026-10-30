@@ -68,25 +68,24 @@ class QC_Report(prep.modules.DTIPrepModule):
     def MergeReports(self, global_report):        
         for module in self.result_history[1:]:
             if module["module_name"] == "SUSCEPTIBILITY_Correct":
-                for report_file in module['report']['module_report_paths'][0]:
+                reports, own_report = module['report']['module_report_paths']
+                for report_file in [r for r in reports if r.endswith('.md')]: ## older versions: the input images
                     with open(report_file, 'r') as f:
-                        text = f.read()
-                        global_report += text
+                        global_report += f.read()
                 global_report += "* * * * \n"
-                for report_file in module['report']['module_report_paths'][1]:
-                    with open(report_file, 'r') as f:
-                        text = f.read()
-                        global_report += text
-                global_report += "* * * * \n"
-                with open(module['report']['module_report_paths'][2], 'r') as f:
-                    text = f.read()
-                    global_report += text
+                with open(own_report, 'r') as f:
+                    global_report += f.read()
             else:
                 with open(module['report']['module_report_paths'], 'r') as f:
                     text = f.read()
                     global_report += text
         global_report += "* * * * \n"
         return(global_report)
+
+    def susceptibilityImages(self):
+        """The images that the excluded gradients of AddGeneralInfo refer to: the inputs, then the merged image."""
+        inputs, merged = self.result_history[1]['report']['csv_data']['image_name']
+        return inputs + [merged]
 
     def strippedGradients(self):
         for module in self.result_history[1:]:
@@ -236,13 +235,14 @@ class QC_Report(prep.modules.DTIPrepModule):
 
     def AddExcludedGradientsImagesToReport(self, global_report, excluded_gradients):
         global_report += "\n## Excluded DWIs:\n"
-        image_path = self.result_history[1]['report']['csv_data']['image_name']
         if type(excluded_gradients[0]) == int:
             excluded_gradients = [excluded_gradients]
-            image_path = [image_path]
+            image_path = [self.result_history[1]['report']['csv_data']['image_name']]
+        else: ## SUSCEPTIBILITY_Correct: one list per input image, then the merged image
+            image_path = self.susceptibilityImages()
         for image_index in range(len(image_path)):
             if len(excluded_gradients[image_index]) != 0:
-                images = self.CreateImagesOfExcludedGradients(image_path[image_index], excluded_gradients[image_index])
+                images = self.CreateImagesOfExcludedGradients(image_path[image_index], excluded_gradients[image_index], image_index)
                 # logger(str(self.image[image_index]))
                 # casted_image = list(self.image[image_index][0])
                 # logger(str(casted_image))
@@ -294,7 +294,7 @@ class QC_Report(prep.modules.DTIPrepModule):
             values = [self.result_history[1]['report']['csv_data']['image_name']]
         else:
             columns = ["image_name_1", "image_name_2"]
-            values = [self.result_history[1]['report']['csv_data']['image_name'][0], self.result_history[1]['report']['csv_data']['image_name'][1]]
+            values = self.susceptibilityImages()[:2]
         ## original: input of the first module; remaining: the image of this report (after all modules)
         columns += ['original_number_of_gradients', 'remaining_number_of_gradients', 'number_of_excluded_gradients', 'number_of_stripped_gradients']
         values += [number_input_gradients, len(self.image.getGradients()), number_of_excluded_gradients, len(self.strippedGradients())]
@@ -392,7 +392,8 @@ class QC_Report(prep.modules.DTIPrepModule):
     #     return dwi_images_list
 
 
-    def CreateImagesOfExcludedGradients(self, image_path, excluded_gradients):
+    def CreateImagesOfExcludedGradients(self, image_path, excluded_gradients, image_index=0):
+        """Image files of these volumes; image_index: the same volume can be excluded from several images."""
         #input_image = sitk.ReadImage(image_path)
         loaded_img = DWI(image_path)
         input_image = sitk.GetImageFromArray(loaded_img.images)
@@ -415,8 +416,9 @@ class QC_Report(prep.modules.DTIPrepModule):
             dwi_image.paste(sagittal_image, (0, 0))
             dwi_image.paste(axial_image, (sagittal_image.width, 0))
             dwi_image.paste(coronal_image, (sagittal_image.width + axial_image.width, 0))
-            dwi_image.save(output_images_directory + "/excluded_dwi" + str(iter_gradients) + ".jpg")
-            dwi_images_list += [output_images_directory + "/excluded_dwi" + str(iter_gradients) + ".jpg"]
+            dwi_image_path = "{}/excluded_image{}_dwi{}.jpg".format(output_images_directory, image_index, iter_gradients)
+            dwi_image.save(dwi_image_path)
+            dwi_images_list += [dwi_image_path]
 
         return dwi_images_list
     def GetOutputImagesDirectory(self):

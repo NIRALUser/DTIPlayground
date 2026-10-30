@@ -165,6 +165,7 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
 
         image_path_dict = {}
         all_list_report_paths = []
+        module_reports = [] # of the modules that processed each input image
         var_num_grad = self.result['report']['csv_data']['original_number_of_gradients']
         #print (self.result['input'][0]["output"]['image_path'])
         if self.result['input'][0]["output"]['image_path']:
@@ -210,6 +211,9 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                     input_image = previous_result["input"]["image_path"]
                     if (input_image):
                         all_list_report_paths += [os.path.abspath(input_image)] 
+                        ## from the file: the image information of the results is that of the image after the exclusions
+                        from dtiplayground.dmri.preprocessing import batch_report
+                        self.result['report']['csv_data']['original_number_of_gradients'][info['index']] = batch_report._volumes(input_image)
                     if previous_result['report']['csv_data']['excluded_gradients']:
                         if not self.result['report']['csv_data']['excluded_gradients'][info['index']]:
                             self.result['report']['csv_data']['excluded_gradients'][info['index']] = []
@@ -217,16 +221,13 @@ class SUSCEPTIBILITY_Correct(prep.modules.DTIPrepModule):
                     list_report_paths = [os.path.abspath(previous_result["report"]["module_report_paths"])] + list_report_paths
                     if "output_directory" in previous_result["input"]:
                         image_path_dict[inputs]['input_path'] = previous_result["input"]["output_directory"]
-                    if 'image_information' in previous_result['input']:
-                        information = previous_result['input']['image_information']
-                        self.result['report']['csv_data']['original_number_of_gradients'][info['index']] = \
-                            numberOfGradients(information['sizes'], information['image_size'])
+                module_reports += list_report_paths
         
         print("number of input gradients :", self.result['report']['csv_data']['original_number_of_gradients'])
             
         #print("number inputs :", len(self.result['report']['csv_data']['original_number_of_gradients']))
         
-        self.result['report']['module_report_paths'] = [all_list_report_paths, os.path.abspath(self.output_dir) + '/report.md']
+        self.result['report']['module_report_paths'] = [module_reports, os.path.abspath(self.output_dir) + '/report.md']
         
         input_index = 0
         with open(os.path.abspath(self.output_dir) + '/report.md', 'bw+') as f:

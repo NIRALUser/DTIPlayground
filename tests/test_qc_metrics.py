@@ -510,6 +510,57 @@ class TestBaselineOnlySeries(unittest.TestCase):
         self.assertEqual(count, '2\n')
 
 
+class TestQCReportOfTwoImages(unittest.TestCase):
+    def _module(self, image_name, reports=None):
+        from dtiplayground.dmri.preprocessing.modules.QC_Report import QC_Report as module
+        module.logger = lambda *a, **k: None
+        obj = module.QC_Report.__new__(module.QC_Report)
+        obj.result_history = [None, {'module_name': 'SUSCEPTIBILITY_Correct',
+                                     'report': {'csv_data': {'image_name': image_name}, 'module_report_paths': reports}}]
+        return obj
+
+    def test_each_exclusion_is_shown_on_its_image(self):
+        obj = self._module([['ap.nii.gz', 'pa.nii.gz'], 'merged.nrrd'])
+        shown = []
+        obj.CreateImagesOfExcludedGradients = lambda path, gradients, index: shown.append((path, gradients)) or ['x'] * len(gradients)
+        obj.AddExcludedGradientsImagesToReport('', [[2], [30, 31], [40]])
+        self.assertEqual(shown, [('ap.nii.gz', [2]), ('pa.nii.gz', [30, 31]), ('merged.nrrd', [40])])
+
+    def test_the_same_volume_excluded_from_both_images_keeps_two_pictures(self):
+        import nibabel as nib
+        with tempfile.TemporaryDirectory() as d:
+            paths = []
+            for name, value in (('ap', 100), ('pa', 1000)):
+                paths.append(str(Path(d).joinpath(name + '.nii.gz')))
+                nib.save(nib.Nifti1Image(np.full((8, 8, 8, 3), value, dtype=np.int16), np.eye(4)), paths[-1])
+                Path(d).joinpath(name + '.bval').write_text('0 1000 1000\n')
+                Path(d).joinpath(name + '.bvec').write_text('0 1 0\n0 0 1\n0 0 0\n')
+            obj = self._module([paths, 'merged.nrrd'])
+            obj.GetOutputImagesDirectory = lambda: d
+            report = obj.AddExcludedGradientsImagesToReport('', [[1], [1], []])
+            pictures = sorted(p.name for p in Path(d).glob('excluded*.jpg'))
+        self.assertEqual(pictures, ['excluded_image0_dwi1.jpg', 'excluded_image1_dwi1.jpg'])
+        self.assertTrue(all(name in report for name in pictures))
+
+    def test_the_reports_of_the_modules_of_each_image_are_merged(self):
+        with tempfile.TemporaryDirectory() as d:
+            reports = []
+            for name in ('slice1.md', 'slice2.md', 'own.md'):
+                reports.append(str(Path(d).joinpath(name)))
+                Path(reports[-1]).write_text(name + '\n')
+            obj = self._module(None, [reports[:2], reports[2]])
+            merged = obj.MergeReports('')
+            self.assertTrue(all(name in merged for name in ('slice1.md', 'slice2.md', 'own.md')))
+
+    def test_input_images_stored_by_an_older_version_are_left_out(self):
+        with tempfile.TemporaryDirectory() as d:
+            own = Path(d).joinpath('own.md')
+            own.write_text('own\n')
+            gz = Path(d).joinpath('ap.nii.gz')
+            gz.write_bytes(b'\x1f\x8b')
+            self.assertIn('own', self._module(None, [[str(gz)], str(own)]).MergeReports(''))
+
+
 class TestQCReportReuse(unittest.TestCase):
     def _reusable(self, protocol, files):
         from dtiplayground.dmri.preprocessing.modules.QC_Report import QC_Report as module

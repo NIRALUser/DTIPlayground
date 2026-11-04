@@ -178,6 +178,33 @@ class TestNamedColumns(unittest.TestCase):
             self.assertEqual(dti._module(protocol, dti._ibis(d)).subjectAge(), 25.0)
 
 
+class TestDTIRegisterGlobalVariables(unittest.TestCase):
+    """The age options given as global variables (dmriprep run -g age_csv ... ageColumn ...), with a LORIS export whose
+    column names hold a comma."""
+
+    def test_loris_table_from_global_variables(self):
+        dti = TestDTIRegisterAge()
+        with tempfile.TemporaryDirectory() as d:
+            p = _table(d, 'loris.csv', '"VSA demographics,CandID","VSA demographics,Visit_label",'
+                                       '"VSA demographics,Age_at_visit_start"\n105477,VSA,150.5\n999434,VSA,140\n')
+            path = os.path.join(d, '105477', 'VSA', 'mask', '105477_VSA_APPA_topupEddy_corr_noNeg_FWtensor.nrrd')
+            for names in (('ageColumn', 'ageSubjectColumn'), ('age_column', 'age_subject_column')):
+                module = dti._module({}, path)
+                module.global_variables = {'age_csv': p, names[0]: 'VSA demographics,Age_at_visit_start',
+                                           names[1]: 'VSA demographics,CandID'}
+                self.assertEqual(module.subjectAge(), 150.5)
+                module.global_variables['age_units'] = 'years'
+                self.assertEqual(module.subjectAge(), 150.5 * 12)
+
+    def test_the_protocol_wins_over_the_global_variables(self):
+        dti = TestDTIRegisterAge()
+        module = dti._module({'ageColumn': 'a'}, '/x/a.nrrd')
+        module.global_variables = {'ageColumn': 'b', 'age_csv': 'c.csv'}
+        self.assertEqual(module.ageOption('ageColumn'), 'a')
+        self.assertEqual(module.ageOption('ageCSV'), 'c.csv')
+        self.assertIsNone(module.ageOption('ageSessionColumn'))
+
+
 class TestSubjectSessionFromPath(unittest.TestCase):
 
     def test_bids_wins_over_ibis(self):

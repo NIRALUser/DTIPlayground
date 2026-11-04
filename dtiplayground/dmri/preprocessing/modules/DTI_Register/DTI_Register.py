@@ -362,12 +362,23 @@ class DTI_Register(prep.modules.DTIPrepModule):
         logger("Age {} : registering to the mean tensor of bin {} of the normative model".format(age, label),prep.Color.INFO)
         return str(mean)
 
+    def ageOption(self, name):
+        """An age option: the protocol value (ageCSV, ageColumn, ...), else the global variable of 'dmriprep run -g' of
+        the same name or in snake case (age_csv, age_column, ...); None when neither is set. ageUnits is taken from the
+        global variable first, as the protocol always has a value (months)."""
+        snake = re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower().replace('_c_s_v', '_csv')
+        gvars = getattr(self, 'global_variables', None) or {}
+        values = [self.protocol.get(name), gvars.get(name), gvars.get(snake)]
+        if name == 'ageUnits':
+            values = values[1:] + values[:1]
+        return next((v for v in values if v is not None and str(v).strip() != ''), None)
+
     def subjectAge(self):
         """Age of this image, in the unit of the age bins (months): the protocol 'age' (or the global variable),
         otherwise the row of this scan in 'ageCSV', otherwise 'ageRegex' (group 1) matched on the path of the input
         DTI or of the source image."""
-        age = self.protocol.get('age') or self.global_variables.get('age')
-        if age is not None and str(age).strip() != '':
+        age = self.ageOption('age')
+        if age is not None:
             return float(age)
         age = self.ageFromTable()
         if age is not None:
@@ -395,8 +406,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
     def ageFromTable(self):
         """Age of this scan from the protocol 'ageCSV' (the table of 'qc-registration --age-csv'), None when there is
         no table, no subject in the path or no row for it."""
-        path = self.protocol.get('ageCSV') or self.global_variables.get('age_csv')
-        if path is None or str(path).strip() == '':
+        path = self.ageOption('ageCSV')
+        if path is None:
             return None
         if not Path(str(path)).exists():
             logger("Age table {} doesn't exist, falling back to ageRegex".format(path), prep.Color.WARNING)
@@ -409,10 +420,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
                    prep.Color.WARNING)
             return None
         try:
-            table = load_age_table(str(path), self.protocol.get('ageUnits') or 'months',
-                                   self.protocol.get('ageColumn') or None,
-                                   self.protocol.get('ageSubjectColumn') or None,
-                                   self.protocol.get('ageSessionColumn') or None)
+            table = load_age_table(str(path), self.ageOption('ageUnits') or 'months', self.ageOption('ageColumn'),
+                                   self.ageOption('ageSubjectColumn'), self.ageOption('ageSessionColumn'))
         except Exception as e:
             logger("Age table {} could not be read ({}), falling back to ageRegex".format(path, e), prep.Color.WARNING)
             return None

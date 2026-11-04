@@ -60,6 +60,28 @@ def build_network(in_dim, out_dim, width=256, depth=4, latent=128, omega0=10.0, 
     return ModulatedSiren()
 
 
+def build_encoder(in_dim, latent=128, width=256):
+    """An amortized encoder: a per-location MLP of the inputs, the observed deviations and their mask, pooled
+    (mean and max over the observed locations of a scan) into a latent."""
+    import torch
+    import torch.nn as nn
+
+    class SetEncoder(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.point = nn.Sequential(nn.Linear(in_dim, width), nn.ReLU(), nn.Linear(width, width), nn.ReLU())
+            self.out = nn.Sequential(nn.Linear(2 * width, width), nn.ReLU(), nn.Linear(width, latent))
+
+        def forward(self, x, y, obs):
+            h = self.point(torch.cat([x, y * obs, obs], dim=-1))
+            seen = (obs.sum(dim=-1, keepdim=True) > 0).float()
+            mean = (h * seen).sum(dim=1) / seen.sum(dim=1).clamp(min=1.0)
+            mx = torch.where(seen > 0, h, torch.full_like(h, -1e4)).amax(dim=1)
+            return self.out(torch.cat([mean, mx], dim=-1))
+
+    return SetEncoder()
+
+
 ### the model
 
 class FunctaModel:
@@ -108,6 +130,8 @@ class FunctaModel:
         import torch
         steps = self.cfg["steps"] if steps is None else steps
         z = self.z0[None].expand(x.shape[0], -1)
+        if getattr(self, "encoder", None) is not None:  # amortized: the start from the scan's observed values
+            z = z + self.encoder(x, y, obs)
         n = obs.sum(dim=(1, 2)).clamp(min=1.0)
         for _ in range(steps):
             if not create_graph:
@@ -118,10 +142,28 @@ class FunctaModel:
             z = z - self.inner_lr * g
         return z if create_graph else z.detach()
 
+    def refine(self, x, y, obs, z, steps, lr=1e-2):
+        """Further fit of the latents *z* to the observed deviations, *steps* Adam steps at prediction time (as
+        the test-time optimization of functa), from the meta-learned fit."""
+        import torch
+        if not steps:
+            return z
+        z = z.detach().clone().requires_grad_(True)
+        opt = torch.optim.Adam([z], lr=lr)
+        n = obs.sum(dim=(1, 2)).clamp(min=1.0)
+        for _ in range(steps):
+            mean, _ = self.net(x, z)
+            loss = ((((mean - y) ** 2) * obs).sum(dim=(1, 2)) / n).sum()
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+        return z.detach()
+
     @classmethod
     def fit(cls, cohort, prior, scans, masker, ages, inputs="xyz", age=False, hybrid=0, latent=128, steps=5,
             width=256, depth=4, omega0=10.0, epochs=60, batch=16, lr=1e-4, seed=0, device="cuda", holdout=0.1,
-            visible_weight=0.1, ppca_folds=5, min_scans=10, inner_lr0=1e-2, mod_std=0.01):
+            visible_weight=0.1, ppca_folds=5, min_scans=10, inner_lr0=1e-2, mod_std=0.01, test_steps=0,
+            test_lr=1e-2, encoder=False):
         """Meta-train on the deviations of *scans* from the norm of their age bin (*prior*): each epoch hides
         observed values of every scan (*masker*(z, rng)), fits its latent to the visible ones (*steps* inner steps)
         and the mean and log variance of the hidden ones (the visible ones with *visible_weight*). A share *holdout*
@@ -147,7 +189,8 @@ class FunctaModel:
         la = np.log(A + 1.0)
         cfg = {"inputs": inputs, "age": bool(age), "hybrid": int(hybrid), "latent": latent, "steps": steps,
                "width": width, "depth": depth, "omega0": float(omega0), "inner_lr0": float(inner_lr0),
-               "mod_std": float(mod_std),
+               "mod_std": float(mod_std), "test_steps": int(test_steps), "test_lr": float(test_lr),
+               "encoder": bool(encoder),
                "age_mu": float(np.nanmean(la)), "age_sd": float(np.nanstd(la) or 1.0)}
         subjects = sorted({subject_of(cohort.scans[s]) for s in scans})
         rng.shuffle(subjects)
@@ -181,7 +224,11 @@ class FunctaModel:
         z0 = torch.zeros(latent, device=device, requires_grad=True)
         inner_lr = torch.full((latent,), float(inner_lr0), device=device, requires_grad=True)
         model.net, model.z0, model.inner_lr = net, z0, inner_lr
-        opt = torch.optim.Adam([{"params": net.parameters(), "lr": lr}, {"params": [z0, inner_lr], "lr": lr * 10}])
+        model.encoder = build_encoder(in_dim + 2 * M, latent).to(device) if encoder else None
+        groups = [{"params": net.parameters(), "lr": lr}, {"params": [z0, inner_lr], "lr": lr * 10}]
+        if encoder:
+            groups.append({"params": model.encoder.parameters(), "lr": lr * 10})
+        opt = torch.optim.Adam(groups)
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
 
         def pop_of(idx, Zm):
@@ -245,8 +292,13 @@ class FunctaModel:
             if vl < best:
                 best, best_epoch = vl, epoch
                 best_state = ({k: v.detach().clone() for k, v in net.state_dict().items()}, z0.detach().clone(),
-                              inner_lr.detach().clone())
+                              inner_lr.detach().clone(),
+                              None if not encoder else {k: v.detach().clone()
+                                                        for k, v in model.encoder.state_dict().items()})
         net.load_state_dict(best_state[0])
+        if encoder:
+            model.encoder.load_state_dict(best_state[3])
+            model.encoder.eval()
         with torch.no_grad():
             z0.copy_(best_state[1])
             inner_lr.copy_(best_state[2])
@@ -295,7 +347,7 @@ class FunctaModel:
 
     ### prediction
 
-    def predict(self, z, age=None, crossfit=5):
+    def predict(self, z, age=None, crossfit=5, test_steps=None):
         """Mean and SD (positions x metrics, NaN off the axes) of the deviations of a scan from its observed ones
         *z* (positions x metrics, NaN missing) and its *age* (months; needed with cfg['age']). With *crossfit* > 1 the
         observed cells are predicted without their own values too (each of that many groups of tracts with its
@@ -321,6 +373,8 @@ class FunctaModel:
         y = torch.as_tensor(np.nan_to_num(vis), device=self.device) - base
         with torch.enable_grad():
             zl = self.adapt(x, y, obs)
+            steps = self.cfg.get("test_steps", 0) if test_steps is None else test_steps
+            zl = self.refine(x, y, obs, zl, steps, self.cfg.get("test_lr", 1e-2))
         with torch.no_grad():
             mean, logvar = self.net(x, zl)
             mean = mean + base
@@ -344,7 +398,7 @@ class FunctaModel:
 
 def describe(cfg):
     """A short name of the settings of a model."""
-    return "{}{}{} z{} k{} {}x{} w{:g}".format(
-        cfg["inputs"], "+age" if cfg["age"] else "",
+    return "{}{}{}{} z{} k{} {}x{} w{:g}".format(
+        "encoder " if cfg.get("encoder") else "", cfg["inputs"], "+age" if cfg["age"] else "",
         " on population q={}".format(cfg["hybrid"]) if cfg["hybrid"] else "", cfg["latent"], cfg["steps"],
         cfg["depth"], cfg["width"], cfg["omega0"])

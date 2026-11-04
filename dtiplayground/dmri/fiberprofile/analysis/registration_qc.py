@@ -61,7 +61,11 @@ see ``--age-regex``).  Cohorts that name sessions by visit instead (HBCD's
 columns are auto-detected -- an age column named after none of the usual
 conventions is still found by a partial ``candidate_age`` match, or can be named
 outright with ``--age-column``; use ``--age-units`` if the ages are not in
-months).  ``registration_qc.csv`` gives the age of each session in
+months).  Outside BIDS, the IBIS organization is recognised: a folder named with
+a 6 digit subject id followed by a visit folder starting with ``V``
+(``.../999434/VSA-CVD/...`` is subject ``999434``, session ``SA-CVD``; the
+session column of the table may hold ``SA-CVD`` or ``VSA-CVD``).
+``registration_qc.csv`` gives the age of each session in
 ``--age-units`` (column ``age_<units>``, ``age_months`` by default).
 Scans whose age stays unknown are still QC'd against the atlas -- only the
 age-binned normative model needs an age, and those scans are skipped there with
@@ -160,7 +164,7 @@ def parse_bins(spec):
 ## the age table is shared with the DTI_Register module of dmriprep (protocol ageCSV)
 from dtiplayground.dmri.common.age_table import (  # noqa: E402  (kept importable from here)
     AGE_TABLE_AGE_COLS, AGE_TABLE_AGE_SUBSTRINGS, AGE_TABLE_SESSION_COLS, AGE_TABLE_SUBJECT_COLS,
-    AGE_UNIT_TO_MONTHS, age_from_table, bids_key as _bids_key, in_age_bin, load_age_table)
+    AGE_UNIT_TO_MONTHS, age_from_table, bids_key as _bids_key, ibis_subject_session, in_age_bin, load_age_table)
 
 
 def age_for_session(subject, session, age_table, age_re):
@@ -227,7 +231,9 @@ def parse_registered(path):
     """(subject, session, prefix, metric) of a DTI_Register output, or None.
 
     The subject and session are read from the file name (``sub-<id>_ses-<id>_...``), else from the
-    folder names of the path; the metric is ``DTI`` for the tensor, else the name after ``Registered_``
+    folder names of the path, else from the IBIS organization (a 6 digit id folder followed by a visit
+    folder starting with ``V``: ``.../999434/VSA-CVD/...`` is subject ``999434``, session ``VSA-CVD``,
+    found in the age table as ``SA-CVD`` or ``VSA-CVD``); the metric is ``DTI`` for the tensor, else the name after ``Registered_``
     without a ``DTI_`` / ``tensor_`` prefix, in upper case (``tensor_fa`` -> ``FA``).
     """
     m = REGISTERED_RE.match(os.path.basename(path))
@@ -238,8 +244,14 @@ def parse_registered(path):
     subject = next((s.group(1) for s in map(lambda x: SUBJECT_RE.search(x), parts) if s), None)
     session = next((s.group(1) for s in map(lambda x: SESSION_RE.search(x), parts) if s), None)
     if subject is None or session is None:
-        return None
-    rest = re.sub(r"^(?:_?(?:sub|ses)-[^_]+)+_?", "", mid) or mid
+        ## IBIS organization: .../<6 digit id>/V<visit>/..., the session named after its folder (VSA-CVD)
+        ibis_subject, ibis_visit = ibis_subject_session(os.path.abspath(path))
+        if ibis_subject is None:
+            return None
+        subject, session = ibis_subject, "V" + ibis_visit
+        rest = re.sub(r"^{}_{}(?:_|$)".format(re.escape(subject), re.escape(session)), "", mid) or mid
+    else:
+        rest = re.sub(r"^(?:_?(?:sub|ses)-[^_]+)+_?", "", mid) or mid
     pm = PREFIX_RE.match(rest)
     prefix = pm.group("prefix") if pm else rest
     metric = m.group("metric")
@@ -258,7 +270,8 @@ def find_sessions(root, age_table=None, age_re=AGE_RE):
     * ``sub-*/ses-*/AtlasReg/*_Deformed<METRIC>.nii.gz`` and ``*_DeformedDTI.nrrd``
     * outputs of the dmriprep DTI_Register module in any folder below *root*:
       ``<scan>_Registered_<METRIC>.nii.gz`` and ``<scan>_DTI_Registered.nrrd``, the subject and session
-      taken from the scan name (``sub-<id>_ses-<id>_...``) or else from the folder names
+      taken from the scan name (``sub-<id>_ses-<id>_...``) or else from the folder names (BIDS, else the
+      IBIS ``<6 digit id>/V<visit>`` folders)
 
     Multiple acquisitions in the same session (different prefixes) become
     separate scan entries keyed by the full ``sub_ses_prefix`` identifier.

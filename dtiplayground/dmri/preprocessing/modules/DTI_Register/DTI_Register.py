@@ -386,13 +386,11 @@ class DTI_Register(prep.modules.DTIPrepModule):
         return [self.dtiImagePath, getattr(self.image, 'filename', None), str(self.output_dir)]
 
     def subjectSession(self):
-        """(subject, session) of this image from its path, e.g. sub-1234/ses-012m or sub-1234_ses-012m_dwi.nrrd.
-        Either is None when the path doesn't have it."""
-        subject = session = None
-        for path in [p for p in self.agePaths() if p]:
-            subject = subject or (re.search(r'sub-([A-Za-z0-9]+)', str(path)) or [None, None])[1]
-            session = session or (re.search(r'ses-([A-Za-z0-9]+)', str(path)) or [None, None])[1]
-        return subject, session
+        """(subject, session) of this image from its path, e.g. sub-1234/ses-012m or sub-1234_ses-012m_dwi.nrrd, else
+        the IBIS organization .../999434/VSA-CVD/... (subject 999434, session SA-CVD). Either is None when the path
+        doesn't have it."""
+        from dtiplayground.dmri.common.age_table import subject_session_from_path
+        return subject_session_from_path(*self.agePaths())
 
     def ageFromTable(self):
         """Age of this scan from the protocol 'ageCSV' (the table of 'qc-registration --age-csv'), None when there is
@@ -406,7 +404,8 @@ class DTI_Register(prep.modules.DTIPrepModule):
         from dtiplayground.dmri.common.age_table import age_from_table, load_age_table
         subject, session = self.subjectSession()
         if subject is None:
-            logger("No sub-<id> in the path of this image: the age table {} can't be used".format(path),
+            logger("No sub-<id> nor IBIS <6 digit id>/V<visit> folders in the path of this image: the age table {} "
+                   "can't be used".format(path),
                    prep.Color.WARNING)
             return None
         try:
@@ -420,5 +419,5 @@ class DTI_Register(prep.modules.DTIPrepModule):
             logger("No age in {} for subject {}, session {}, falling back to ageRegex".format(path, subject, session),
                    prep.Color.WARNING)
             return None
-        logger("Age of sub-{} ses-{} from {}: {} month(s)".format(subject, session, path, age), prep.Color.INFO)
+        logger("Age of subject {}, session {} from {}: {} month(s)".format(subject, session, path, age), prep.Color.INFO)
         return float(age)

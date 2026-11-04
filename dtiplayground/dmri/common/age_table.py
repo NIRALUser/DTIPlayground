@@ -11,9 +11,14 @@
 #   in months (as floats), the unit of the age bins; an age bin '<lo>-<hi>m' holds the ages from lo up to, not
 #   including, hi + 1 months (in_age_bin), so whole-month ages are binned as before and no age falls between bins.
 #
+#   The subject and session of a scan are read from its path (subject_session_from_path): BIDS entities
+#   (sub-<id>, ses-<id>), else the IBIS organization, a folder named with a 6 digit id followed by a visit folder
+#   starting with 'V' (.../999434/VSA-CVD/... -> subject 999434, session SA-CVD).
+#
 
 import csv
 import logging
+import re
 
 log = logging.getLogger("age-table")
 
@@ -46,6 +51,41 @@ def bids_key(value):
         if v.startswith(pre):
             v = v[len(pre):]
     return v
+
+
+BIDS_SUBJECT_RE = re.compile(r'sub-([A-Za-z0-9]+)')
+BIDS_SESSION_RE = re.compile(r'ses-([A-Za-z0-9]+)')
+IBIS_SUBJECT_RE = re.compile(r'^\d{6}$')
+IBIS_VISIT_RE = re.compile(r'^V(.+)$')
+
+
+def ibis_subject_session(path):
+    """(subject, session) of a path in the IBIS organization: a folder named with a 6 digit id, followed by a visit
+    folder starting with 'V' (.../999434/VSA-CVD/mask/scan.nrrd -> ('999434', 'SA-CVD')); the last such pair of the
+    path. (None, None) when the path has none."""
+    parts = [p for p in re.split(r'[\\/]+', str(path)) if p]
+    for i in range(len(parts) - 2, -1, -1):
+        if IBIS_SUBJECT_RE.match(parts[i]):
+            m = IBIS_VISIT_RE.match(parts[i + 1])
+            if m:
+                return parts[i], m.group(1)
+    return None, None
+
+
+def subject_session_from_path(*paths):
+    """(subject, session) of a scan from its path(s): the BIDS entities sub-<id> / ses-<id> (the first path that has
+    each), else the IBIS organization (ibis_subject_session). Either is None when the paths don't have it."""
+    paths = [str(p) for p in paths if p]
+    subject = session = None
+    for path in paths:
+        subject = subject or (BIDS_SUBJECT_RE.search(path) or [None, None])[1]
+        session = session or (BIDS_SESSION_RE.search(path) or [None, None])[1]
+    if subject is None:
+        for path in paths:
+            ibis = ibis_subject_session(path)
+            if ibis[0] is not None:
+                return ibis
+    return subject, session
 
 
 def load_age_table(path, units="months", age_column=None):
@@ -117,11 +157,17 @@ def load_age_table(path, units="months", age_column=None):
 
 def age_from_table(subject, session, age_table):
     """Age in months of a scan: the entry of its session, else the one of its subject (a table without a session
-    column holds one age per subject). None when neither is there."""
+    column holds one age per subject). None when neither is there. An IBIS visit matches with or without its leading
+    'V' (session 'SA-CVD' is the row 'VSA-CVD' of the table, and the other way round)."""
     if not age_table or subject is None:
         return None
-    for key in ((bids_key(subject), bids_key(session) if session is not None else None),
-                (bids_key(subject), None)):
+    sub = bids_key(subject)
+    keys = []
+    if session is not None:
+        ses = bids_key(session)
+        keys += [(sub, ses), (sub, ses[1:] if ses.startswith('v') and len(ses) > 1 else 'v' + ses)]
+    keys.append((sub, None))
+    for key in keys:
         if key in age_table:
             return age_table[key]
     return None

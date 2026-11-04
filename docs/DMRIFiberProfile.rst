@@ -297,7 +297,9 @@ The age of a profile
 The age decides the age bin of a profile. It is the row of the scan in ``--age-csv``, a participants / sessions table
 (``--age-column`` and ``--age-units`` describe its age column), else ``--age-regex`` on the column name of the
 profile, ``ses-(\d+)m`` by default. The same table is used by ``qc-registration --age-csv`` and by the ``ageCSV``
-option of the DTI_Register module of dmriprep. Profiles with neither are named at the end of the run, as they take
+option of the DTI_Register module of dmriprep. The table is matched on the first two parts of the column name, the
+subject and the session (BIDS ``sub-<id>_ses-<id>_...``, or IBIS ``<id>_V<visit>_...``, the visit found in the table with or
+without its leading ``V``). Profiles with neither are named at the end of the run, as they take
 part in no age bin: they are not QC'd against the prior, and they stay in the summaries and the cleaned profiles.
 ``--exclude-no-age`` excludes them instead: they are left out of the summaries and the cleaned profiles and listed in
 ``excluded_cases.csv`` with the reason ``no age``.

@@ -139,6 +139,48 @@ class TestDTIRegisterAge(unittest.TestCase):
             self.assertEqual(module.subjectSession(), ('1234', 'V02'))
             self.assertEqual(self._module({}, os.path.join(d, 'no_entities.nrrd')).subjectSession(), (None, None))
 
+    def _ibis(self, d):
+        return os.path.join(d, 'Data_DTI', '999434', 'VSA-CVD', 'mask', '999434_VSA-CVD_CMRR_APPA_topupEddy_corr_noNeg_tensor.nrrd')
+
+    def test_the_ibis_organization(self):
+        """A 6 digit id folder followed by a visit folder starting with V, when the path has no BIDS entities."""
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self._module({}, self._ibis(d)).subjectSession(), ('999434', 'SA-CVD'))
+            for session in ('SA-CVD', 'VSA-CVD'):  # the table may name the visit with or without its V
+                p = _table(d, 'ages.csv', 'participant_id,session_id,age\n999434,{},25\n'.format(session))
+                self.assertEqual(self._module({'ageCSV': p}, self._ibis(d)).subjectAge(), 25.0)
+
+
+class TestSubjectSessionFromPath(unittest.TestCase):
+
+    def test_bids_wins_over_ibis(self):
+        self.assertEqual(age_table.subject_session_from_path('/x/123456/V12/sub-1/ses-2/a.nrrd'), ('1', '2'))
+
+    def test_ibis(self):
+        self.assertEqual(age_table.subject_session_from_path('/x/999434/VSA-CVD/mask/a.nrrd'), ('999434', 'SA-CVD'))
+        self.assertEqual(age_table.subject_session_from_path(None, '/x/123456/V06'), ('123456', '06'))
+
+    def test_not_ibis(self):
+        for path in ('/x/99943/VSA-CVD/a.nrrd', '/x/9994345/V06/a.nrrd', '/x/999434/SA-CVD/a.nrrd', '/x/999434',
+                     '/x/a.nrrd'):
+            self.assertEqual(age_table.subject_session_from_path(path), (None, None), path)
+
+    def test_the_visit_matches_with_or_without_v(self):
+        table = {('999434', 'sa-cvd'): 25, ('123456', 'v06'): 6}
+        self.assertEqual(age_table.age_from_table('999434', 'VSA-CVD', table), 25)
+        self.assertEqual(age_table.age_from_table('999434', 'SA-CVD', table), 25)
+        self.assertEqual(age_table.age_from_table('123456', '06', table), 6)
+        self.assertIsNone(age_table.age_from_table('123456', '12', table))
+
+
+class TestRegistrationQCIbis(unittest.TestCase):
+
+    def test_parse_registered(self):
+        from dtiplayground.dmri.fiberprofile.analysis.registration_qc import parse_registered
+        path = '/data/999434/VSA-CVD/mask/999434_VSA-CVD_CMRR_APPA_tensor_Registered_DTI_FA.nii.gz'
+        self.assertEqual(parse_registered(path), ('999434', 'VSA-CVD', 'CMRR_APPA_tensor', 'FA'))
+        self.assertIsNone(parse_registered('/data/x/scan_Registered_FA.nii.gz'))
+
 
 if __name__ == '__main__':
     unittest.main()

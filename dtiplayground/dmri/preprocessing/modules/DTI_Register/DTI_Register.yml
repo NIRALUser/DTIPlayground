@@ -52,7 +52,7 @@ protocol:
         type: filepath-remote
         caption: Age Table
         default_value: null
-        description: CSV/TSV with the age of each scan (as 'dmrifiberprofile qc-registration --age-csv'), for cohorts whose session names don't carry the age. Subject and session columns are detected (participant_id/session_id and variants); one row per subject applies to all of its sessions. The subject and session of the scan are read from its path (sub-<id>, ses-<id>)
+        description: CSV/TSV with the age of each scan (as 'dmrifiberprofile qc-registration --age-csv'), for cohorts whose session names don't carry the age. Subject and session columns are detected (participant_id/session_id and variants); one row per subject applies to all of its sessions. The subject and session of the scan are read from its path (sub-<id>, ses-<id>), else from the IBIS organization (a 6 digit id folder followed by a visit folder starting with V - .../999434/VSA-CVD/... is subject 999434, session SA-CVD; the table may name the session SA-CVD or VSA-CVD)
       ageColumn:
         type: string
         caption: Age Column

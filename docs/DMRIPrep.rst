@@ -136,7 +136,9 @@ With a normative model of the reference atlas (DTI_Register option `referenceNor
 `dmrifiberprofile qc-registration --build-normative`), the DTI is registered to the mean tensor of the age bin of the
 subject instead of `referenceImage`. The age is the protocol `age` (or the global variable `age`), else the row of the
 scan in `ageCSV`, a participants / sessions table as used by `qc-registration --age-csv` (`ageColumn` and `ageUnits`
-describe its age column; the subject and session are read from the path as `sub-<id>` / `ses-<id>`), else `ageRegex`
+describe its age column; the subject and session are read from the path as `sub-<id>` / `ses-<id>`, else from the
+IBIS organization, a 6 digit id folder followed by a visit folder starting with `V`: `.../999434/VSA-CVD/...` is subject
+`999434`, session `SA-CVD`, which the table may name `SA-CVD` or `VSA-CVD`), else `ageRegex`
 on the path, ``ses-(\d+)m`` by default. Without any of them the reference image is used, with a warning.
 
 QC outputs

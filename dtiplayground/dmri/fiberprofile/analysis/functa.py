@@ -26,7 +26,7 @@ log = logging.getLogger("impute")
 
 ### the network
 
-def build_network(in_dim, out_dim, width=256, depth=4, latent=128, omega0=10.0):
+def build_network(in_dim, out_dim, width=256, depth=4, latent=128, omega0=10.0, mod_std=0.01):
     import torch
     import torch.nn as nn
 
@@ -44,7 +44,7 @@ def build_network(in_dim, out_dim, width=256, depth=4, latent=128, omega0=10.0):
                     n = layer.in_features
                     b = 1.0 / n if i == 0 else np.sqrt(6.0 / n) / omega0
                     layer.weight.uniform_(-b, b)
-                self.mod.weight.normal_(0.0, 0.01)
+                self.mod.weight.normal_(0.0, mod_std)
                 b = np.sqrt(6.0 / width) / omega0
                 self.head.weight.uniform_(-b, b)
                 self.head.bias.zero_()
@@ -121,7 +121,7 @@ class FunctaModel:
     @classmethod
     def fit(cls, cohort, prior, scans, masker, ages, inputs="xyz", age=False, hybrid=0, latent=128, steps=5,
             width=256, depth=4, omega0=10.0, epochs=60, batch=16, lr=1e-4, seed=0, device="cuda", holdout=0.1,
-            visible_weight=0.1, ppca_folds=5, min_scans=10):
+            visible_weight=0.1, ppca_folds=5, min_scans=10, inner_lr0=1e-2, mod_std=0.01):
         """Meta-train on the deviations of *scans* from the norm of their age bin (*prior*): each epoch hides
         observed values of every scan (*masker*(z, rng)), fits its latent to the visible ones (*steps* inner steps)
         and the mean and log variance of the hidden ones (the visible ones with *visible_weight*). A share *holdout*
@@ -146,7 +146,8 @@ class FunctaModel:
         A = np.asarray([ages[s] if ages[s] is not None else np.nan for s in scans], dtype=np.float32)
         la = np.log(A + 1.0)
         cfg = {"inputs": inputs, "age": bool(age), "hybrid": int(hybrid), "latent": latent, "steps": steps,
-               "width": width, "depth": depth, "omega0": float(omega0),
+               "width": width, "depth": depth, "omega0": float(omega0), "inner_lr0": float(inner_lr0),
+               "mod_std": float(mod_std),
                "age_mu": float(np.nanmean(la)), "age_sd": float(np.nanstd(la) or 1.0)}
         subjects = sorted({subject_of(cohort.scans[s]) for s in scans})
         rng.shuffle(subjects)
@@ -176,9 +177,9 @@ class FunctaModel:
         model._pos, model._static = cls.static_inputs(cohort, inputs)
         pos = model._pos
         in_dim = model._static.shape[1] + (1 if age else 0) + (2 * M if hybrid else 0)
-        net = build_network(in_dim, M, width, depth, latent, omega0).to(device)
+        net = build_network(in_dim, M, width, depth, latent, omega0, mod_std).to(device)
         z0 = torch.zeros(latent, device=device, requires_grad=True)
-        inner_lr = torch.full((latent,), 1e-2, device=device, requires_grad=True)
+        inner_lr = torch.full((latent,), float(inner_lr0), device=device, requires_grad=True)
         model.net, model.z0, model.inner_lr = net, z0, inner_lr
         opt = torch.optim.Adam([{"params": net.parameters(), "lr": lr}, {"params": [z0, inner_lr], "lr": lr * 10}])
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
@@ -261,12 +262,34 @@ class FunctaModel:
             num += np.where(h, r2, 0.0).sum(axis=(0, 1))
             den += h.sum(axis=(0, 1))
         model.scale = np.sqrt(np.where(den > 0, num / np.maximum(den, 1), 1.0))
+        # the inner loop: the share of the visible deviations it explains, from the initialization and after it
+        fit0 = fit1 = tot = 0.0
+        for b in range(0, len(ho), batch):
+            idx = ho[b:b + batch]
+            Zm = Zh[b:b + batch]
+            pop = hb(b)
+            x = torch.as_tensor(model.features(Zm, A[idx], pop), device=device)
+            base = 0.0 if pop is None else torch.as_tensor(np.nan_to_num(pop[0][:, pos]), device=device)
+            obs = torch.as_tensor(~np.isnan(Zm[:, pos]), dtype=torch.float32, device=device)
+            y = torch.as_tensor(np.nan_to_num(Zm[:, pos]), device=device)
+            for steps_, acc in ((0, "fit0"), (steps, "fit1")):
+                zl = model.adapt(x, y - base, obs, steps=steps_)
+                with torch.no_grad():
+                    err = float((((net(x, zl)[0] + base - y) ** 2) * obs).sum())
+                if acc == "fit0":
+                    fit0 += err
+                else:
+                    fit1 += err
+            tot += float(((y ** 2) * obs).sum())
         model._ppca = full
         model.info = dict(cfg, epochs=epochs, best_epoch=int(best_epoch), holdout_loss=round(best, 4),
+                          visible_r2_init=round(1 - fit0 / max(tot, 1e-12), 3),
+                          visible_r2_adapted=round(1 - fit1 / max(tot, 1e-12), 3),
                           train_scans=int(len(tr)), seconds=round(time.time() - t0, 1),
                           sd_scale={cohort.metrics[m]: round(float(model.scale[m]), 3) for m in range(M)})
-        log.info("  functa %s: %d scans, best epoch %d of %d, held-out NLL %.3f, SD scale %s (%.0f s)",
-                 describe(cfg), len(tr), best_epoch + 1, epochs, best,
+        log.info("  functa %s: %d scans, best epoch %d of %d, held-out NLL %.3f, visible R2 %.3f -> %.3f by the inner "
+                 "steps, SD scale %s (%.0f s)", describe(cfg), len(tr), best_epoch + 1, epochs, best,
+                 model.info["visible_r2_init"], model.info["visible_r2_adapted"],
                  " ".join("{} {:.2f}".format(cohort.metrics[m], model.scale[m]) for m in range(M)), time.time() - t0)
         return model
 

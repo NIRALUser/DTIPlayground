@@ -3,6 +3,10 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-11-04 (v0.8.29)
+- Age table (dmriprep DTI_Register `ageCSV`, `dmrifiberprofile qc-registration` / `qc-profiles --age-csv`): besides BIDS `sub-<id>` / `ses-<id>`, the subject and session of a scan are read from the IBIS organization, a 6 digit id folder followed by a visit folder starting with `V` (`.../999434/VSA-CVD/...` is subject `999434`, session `SA-CVD`). The session column of the table may name the visit with or without its `V`. qc-registration now finds DTI_Register outputs in such folders
+- dmrifiberprofile impute-profiles: prototype of a functa model (phase 5 of the imputation plan), not yet a `--method`
+
 ##### 2026-10-30 (v0.8.28)
 - dmriprep - QC_Report: with two input images and `generatePDF` true (the default) the module crashed in `MergeReports` since 2024 and the `_QCed` output wasn't written. The per-input reports of the modules before `SUSCEPTIBILITY_Correct` are back in the report
 - dmriprep - QC_Report: with two input images, each excluded gradient is shown from the image it came from (the first image crashed, the second had wrong pictures), and the pictures of the same volume in both images no longer overwrite each other. `image_name_1` and `image_name_2` of `QC_report.csv` are the two inputs

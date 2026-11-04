@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-11-04 (v0.8.31)
+- dmriprep - DTI_Register: the age options can be given as global variables (`dmriprep run -g`), by their name or in snake case: `ageColumn` / `age_column`, `ageSubjectColumn`, `ageSessionColumn`, `ageUnits`. Before, only `age` and `age_csv` were read from them, and a table whose columns aren't auto-detected (a LORIS export, `"VSA demographics,CandID"`) failed with "need a subject column". A value in the protocol wins, except for `ageUnits`
+
 ##### 2026-11-04 (v0.8.30)
 - Age table: the subject and session columns can be named, as the age column: DTI_Register options `ageSubjectColumn` / `ageSessionColumn`, `dmrifiberprofile qc-registration`, `qc-profiles` and `impute-profiles` options `--age-subject-column` / `--age-session-column`. Auto-detection also recognises `CandID`, `cand_id` and `participant` as the subject column and `visit_label` as the session column
 

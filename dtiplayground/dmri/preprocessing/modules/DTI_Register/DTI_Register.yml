@@ -58,6 +58,16 @@ protocol:
         caption: Age Column
         default_value: null
         description: Name of the ageCSV column holding the age (default - auto-detect - age, age_months, candidate_age, ...)
+      ageSubjectColumn:
+        type: string
+        caption: Age Table Subject Column
+        default_value: null
+        description: Name of the ageCSV column holding the subject id (default - auto-detect - participant_id, subject_id, subject, id, candid, ...)
+      ageSessionColumn:
+        type: string
+        caption: Age Table Session Column
+        default_value: null
+        description: Name of the ageCSV column holding the session / visit (default - auto-detect - session_id, session, visit, visit_label, ...)
       ageUnits:
         type: list
         caption: Age Units

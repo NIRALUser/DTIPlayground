@@ -151,6 +151,33 @@ class TestDTIRegisterAge(unittest.TestCase):
                 self.assertEqual(self._module({'ageCSV': p}, self._ibis(d)).subjectAge(), 25.0)
 
 
+class TestNamedColumns(unittest.TestCase):
+
+    def test_the_subject_and_session_columns_can_be_named(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = _table(d, 'ages.csv', 'ScanID,Identifiers,VisitName,AgeAtScan\nx,999434,VSA-CVD,25\n')
+            self.assertRaises(ValueError, age_table.load_age_table, p)  # no subject column detected
+            table = age_table.load_age_table(p, age_column='AgeAtScan', subject_column='identifiers',
+                                             session_column='VisitName')
+            self.assertEqual(table, {('999434', 'vsa-cvd'): 25})
+            self.assertEqual(age_table.age_from_table('999434', 'SA-CVD', table), 25)
+            with self.assertRaises(ValueError):
+                age_table.load_age_table(p, age_column='AgeAtScan', subject_column='nope')
+
+    def test_ibis_style_columns_are_detected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = _table(d, 'ages.csv', 'CandID,Visit_label,age\n999434,V24,24\n')
+            self.assertEqual(age_table.load_age_table(p), {('999434', 'v24'): 24})
+
+    def test_dti_register_named_columns(self):
+        dti = TestDTIRegisterAge()
+        with tempfile.TemporaryDirectory() as d:
+            p = _table(d, 'ages.csv', 'Identifiers,VisitName,AgeAtScan\n999434,VSA-CVD,25\n')
+            protocol = {'ageCSV': p, 'ageColumn': 'AgeAtScan', 'ageSubjectColumn': 'Identifiers',
+                        'ageSessionColumn': 'VisitName'}
+            self.assertEqual(dti._module(protocol, dti._ibis(d)).subjectAge(), 25.0)
+
+
 class TestSubjectSessionFromPath(unittest.TestCase):
 
     def test_bids_wins_over_ibis(self):

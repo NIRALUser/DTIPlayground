@@ -410,7 +410,9 @@ class DTI_Register(prep.modules.DTIPrepModule):
             return None
         try:
             table = load_age_table(str(path), self.protocol.get('ageUnits') or 'months',
-                                   self.protocol.get('ageColumn') or None)
+                                   self.protocol.get('ageColumn') or None,
+                                   self.protocol.get('ageSubjectColumn') or None,
+                                   self.protocol.get('ageSessionColumn') or None)
         except Exception as e:
             logger("Age table {} could not be read ({}), falling back to ageRegex".format(path, e), prep.Color.WARNING)
             return None

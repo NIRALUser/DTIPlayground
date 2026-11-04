@@ -295,7 +295,8 @@ The age of a profile
 ~~~~~~~~~~~~~~~~~~~~
 
 The age decides the age bin of a profile. It is the row of the scan in ``--age-csv``, a participants / sessions table
-(``--age-column`` and ``--age-units`` describe its age column), else ``--age-regex`` on the column name of the
+(``--age-column`` and ``--age-units`` describe its age column, ``--age-subject-column`` and ``--age-session-column`` name
+its subject and session columns when they aren't detected), else ``--age-regex`` on the column name of the
 profile, ``ses-(\d+)m`` by default. The same table is used by ``qc-registration --age-csv`` and by the ``ageCSV``
 option of the DTI_Register module of dmriprep. The table is matched on the first two parts of the column name, the
 subject and the session (BIDS ``sub-<id>_ses-<id>_...``, or IBIS ``<id>_V<visit>_...``, the visit found in the table with or
@@ -507,7 +508,7 @@ normative cohort, either layout), the method imputes the scan's deviation from t
 (``--relative-to-prior``, the default with ``--prior-stats-dir``; ``--no-relative-to-prior`` imputes the values). A
 scan that is above the norm in a tract tends to be above it in the neighbouring tracts as well, and the norm carries
 what the neighbours can't: the level of each tract at the scan's age. The age of a scan comes from ``--age-csv``
-(``--age-column``, ``--age-units``, as for ``qc-profiles``) or its name (``--age-regex``, default ``ses-<months>m``);
+(``--age-column``, ``--age-subject-column``, ``--age-session-column``, ``--age-units``, as for ``qc-profiles``) or its name (``--age-regex``, default ``ses-<months>m``);
 a scan without an age, or outside the age bins, is not imputed with the norm.
 
 The methods (``--method``):

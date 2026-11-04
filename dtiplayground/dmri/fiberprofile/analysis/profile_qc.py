@@ -1332,6 +1332,10 @@ def configure_parser(p):
                         "subject and session of each profile")
     p.add_argument("--age-column", default=None, metavar="NAME",
                    help="Name of the --age-csv column holding the age (default: auto-detect)")
+    p.add_argument("--age-subject-column", default=None, metavar="NAME",
+                   help="Name of the --age-csv column holding the subject id (default: auto-detect participant_id, subject_id, subject, id, candid, ...)")
+    p.add_argument("--age-session-column", default=None, metavar="NAME",
+                   help="Name of the --age-csv column holding the session / visit (default: auto-detect session_id, session, visit, visit_label, ...)")
     p.add_argument("--age-units", default="months", choices=sorted(AGE_UNIT_TO_MONTHS),
                    help="Units of the --age-csv age column, and of the ages in the output tables (the age_<units> "
                         "column of the summaries, excluded_cases, outliers and profile_qc tables; default: months)")
@@ -1442,12 +1446,14 @@ def run_args(args, p) -> int:
     log.info("Age bins (months; lo-hi holds the ages from lo up to hi+1, oldest open-ended): %s",
              [lbl for _, _, lbl in bins])
 
-    if args.age_column and not args.age_csv:
-        p.error("--age-column only applies to --age-csv")
+    for opt in ("age_column", "age_subject_column", "age_session_column"):
+        if getattr(args, opt) and not args.age_csv:
+            p.error("--{} only applies to --age-csv".format(opt.replace("_", "-")))
     age_table = None
     if args.age_csv:
         try:
-            age_table = load_age_table(args.age_csv, args.age_units, args.age_column)
+            age_table = load_age_table(args.age_csv, args.age_units, args.age_column,
+                                       args.age_subject_column, args.age_session_column)
         except (OSError, ValueError) as exc:
             p.error(f"--age-csv: {exc}")
     set_age_source(age_table, args.age_regex)

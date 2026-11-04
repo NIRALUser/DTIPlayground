@@ -22,8 +22,8 @@ import re
 
 log = logging.getLogger("age-table")
 
-AGE_TABLE_SUBJECT_COLS = ("participant_id", "subject_id", "subject", "sub", "id")
-AGE_TABLE_SESSION_COLS = ("session_id", "session", "ses", "visit_id", "visit")
+AGE_TABLE_SUBJECT_COLS = ("participant_id", "subject_id", "subject", "sub", "id", "participant", "candid", "cand_id")
+AGE_TABLE_SESSION_COLS = ("session_id", "session", "ses", "visit_id", "visit", "visit_label")
 AGE_TABLE_AGE_COLS = ("age_months", "age_month", "age_mo", "age_m", "candidate_age",
                       "age_at_scan", "scan_age", "age")
 # fallback when none of the above matches exactly: any column whose name contains
@@ -88,13 +88,14 @@ def subject_session_from_path(*paths):
     return subject, session
 
 
-def load_age_table(path, units="months", age_column=None):
+def load_age_table(path, units="months", age_column=None, subject_column=None, session_column=None):
     """{(subject, session|None): age_in_months} from a CSV/TSV participants/sessions table.
 
     *age_column* names the age column explicitly (case-insensitive); without it
     the column is auto-detected (BIDS ``age`` and common variants, then a
     partial name match on ``candidate_age`` for HBCD-style headers such as
-    ``candidate_age_months``).  The subject and session columns are always
+    ``candidate_age_months``).  *subject_column* and *session_column* name the
+    subject and session columns the same way; without them they are
     auto-detected (``participant_id`` / ``session_id`` and variants); a table
     without a session column gives one age per subject, applied to all of that
     subject's sessions.
@@ -115,11 +116,17 @@ def load_age_table(path, units="months", age_column=None):
     def pick(cands):
         return next((have[c] for c in cands if c in have), None)
 
-    sub_col, ses_col = pick(AGE_TABLE_SUBJECT_COLS), pick(AGE_TABLE_SESSION_COLS)
-    if age_column:  # user-specified column wins over any auto-detection
-        age_col = have.get(age_column.strip().lower())
-        if age_col is None:
-            raise ValueError(f"{path}: no column '{age_column}', found {sorted(have)}")
+    def named(name):
+        col = have.get(name.strip().lower())
+        if col is None:
+            raise ValueError(f"{path}: no column '{name}', found {sorted(have)}")
+        return col
+
+    # user-specified columns win over any auto-detection
+    sub_col = named(subject_column) if subject_column else pick(AGE_TABLE_SUBJECT_COLS)
+    ses_col = named(session_column) if session_column else pick(AGE_TABLE_SESSION_COLS)
+    if age_column:
+        age_col = named(age_column)
     else:
         age_col = pick(AGE_TABLE_AGE_COLS)
         if age_col is None:  # no exact hit -> partial match (in column order)
@@ -130,7 +137,7 @@ def load_age_table(path, units="months", age_column=None):
                          path, age_col, "/".join(AGE_TABLE_AGE_SUBSTRINGS))
     if sub_col is None:
         raise ValueError(f"{path}: need a subject column "
-                         f"({', '.join(AGE_TABLE_SUBJECT_COLS)}), found {sorted(have)}")
+                         f"({', '.join(AGE_TABLE_SUBJECT_COLS)}) -- name it explicitly; found {sorted(have)}")
     if age_col is None:
         raise ValueError(f"{path}: need an age column "
                          f"({', '.join(AGE_TABLE_AGE_COLS)}, or a name containing "

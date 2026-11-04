@@ -60,7 +60,8 @@ see ``--age-regex``).  Cohorts that name sessions by visit instead (HBCD's
 ``participants.tsv`` / ``sessions.tsv`` works: the subject, session and age
 columns are auto-detected -- an age column named after none of the usual
 conventions is still found by a partial ``candidate_age`` match, or can be named
-outright with ``--age-column``; use ``--age-units`` if the ages are not in
+outright with ``--age-column``, as can the subject and session columns with
+``--age-subject-column`` / ``--age-session-column``; use ``--age-units`` if the ages are not in
 months).  Outside BIDS, the IBIS organization is recognised: a folder named with
 a 6 digit subject id followed by a visit folder starting with ``V``
 (``.../999434/VSA-CVD/...`` is subject ``999434``, session ``SA-CVD``; the
@@ -1212,6 +1213,10 @@ def configure_parser(p):
                         "whose name contains 'candidate_age'")
     p.add_argument("--age-column", default=None, metavar="NAME",
                    help="Name of the --age-csv column holding the age (default: auto-detect)")
+    p.add_argument("--age-subject-column", default=None, metavar="NAME",
+                   help="Name of the --age-csv column holding the subject id (default: auto-detect participant_id, subject_id, subject, id, candid, ...)")
+    p.add_argument("--age-session-column", default=None, metavar="NAME",
+                   help="Name of the --age-csv column holding the session / visit (default: auto-detect session_id, session, visit, visit_label, ...)")
     p.add_argument("--age-units", default="months", choices=sorted(AGE_UNIT_TO_MONTHS),
                    help="Units of the --age-csv age column, and of the ages in registration_qc.csv (column "
                         "age_<units>; default: months)")
@@ -1281,11 +1286,13 @@ def run_args(args, p) -> int:
     except re.error as exc:
         p.error(f"--age-regex is not a valid regex: {exc}")
     age_table = None
-    if args.age_column and not args.age_csv:
-        p.error("--age-column only applies to --age-csv")
+    for opt in ("age_column", "age_subject_column", "age_session_column"):
+        if getattr(args, opt) and not args.age_csv:
+            p.error("--{} only applies to --age-csv".format(opt.replace("_", "-")))
     if args.age_csv:
         try:
-            age_table = load_age_table(args.age_csv, args.age_units, args.age_column)
+            age_table = load_age_table(args.age_csv, args.age_units, args.age_column,
+                                       args.age_subject_column, args.age_session_column)
         except (OSError, ValueError) as exc:
             p.error(f"--age-csv: {exc}")
 

@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-11-04 (v0.8.30)
+- Age table: the subject and session columns can be named, as the age column: DTI_Register options `ageSubjectColumn` / `ageSessionColumn`, `dmrifiberprofile qc-registration`, `qc-profiles` and `impute-profiles` options `--age-subject-column` / `--age-session-column`. Auto-detection also recognises `CandID`, `cand_id` and `participant` as the subject column and `visit_label` as the session column
+
 ##### 2026-11-04 (v0.8.29)
 - Age table (dmriprep DTI_Register `ageCSV`, `dmrifiberprofile qc-registration` / `qc-profiles --age-csv`): besides BIDS `sub-<id>` / `ses-<id>`, the subject and session of a scan are read from the IBIS organization, a 6 digit id folder followed by a visit folder starting with `V` (`.../999434/VSA-CVD/...` is subject `999434`, session `SA-CVD`). The session column of the table may name the visit with or without its `V`. qc-registration now finds DTI_Register outputs in such folders
 - dmrifiberprofile impute-profiles: prototype of a functa model (phase 5 of the imputation plan), not yet a `--method`

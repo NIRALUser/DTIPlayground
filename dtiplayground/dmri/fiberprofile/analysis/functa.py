@@ -13,6 +13,12 @@
 #   tract and the scan's log age; with *hybrid* the prediction of a population model (PPCA) and its log SD, and the
 #   network predicts the correction to that prediction (as the graph U-Net, graph_unet.py).
 #
+#   Status: a prototype, not a method of impute-profiles. In phase 5 (2026-11-04/05, docs/ImputeValidation.rst,
+#   "Phase 5: functa") it was not competitive: over 5 rounds and 60 configurations (inner steps, step sizes, test-time
+#   refinement, an encoder start, depth 2-8, width 64-512, latent 16-512) its best error on a held-out screen was 0.702
+#   of the age-bin mean's (as a hybrid), against 0.654 for the hybrid graph U-Net and 0.720 for the population model
+#   alone; on the deviations at best 0.736. Small networks underfit, the largest overfit the deviations.
+#
 
 import logging
 import time

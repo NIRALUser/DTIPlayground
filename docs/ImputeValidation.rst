@@ -6,8 +6,63 @@ This page documents the validation of ``dmrifiberprofile impute-profiles`` with 
 infant cohort, in phases: every method imputing a scan from its own observed values (phase 1, 2026-10-15),
 from its deviations from the age-bin norm (phase 2, 2026-10-16), with a population model of the normative cohort
 (phase 3, 2026-10-16), and with continuous age norms and a second cohort pooled with a batch correction (phase 3b,
-2026-10-22), and with a graph U-Net after CONFETTI (phase 4, 2026-10-28). The results set the defaults of the
-command. `Phases 1-3 with the phase-4 protocol`_ compares all phases on the same scans.
+2026-10-22), with a graph U-Net after CONFETTI (phase 4, 2026-10-28), and a functa model, which was not adopted
+(phase 5, 2026-11-05). The results set the defaults of the command. `Phases 1-3 with the phase-4 protocol`_
+compares all phases on the same scans.
+
+Phase 5: functa (not adopted)
+-----------------------------
+
+Phase 5 (2026-11-04 to 2026-11-05) tried a functa model (Dupont et al. 2022; MedFuncta): one SIREN shared by the
+scans of the normative cohort, modulated per scan by shifts from a latent vector that a few meta-learned gradient
+steps fit to the scan's observed values, meta-trained to predict values hidden in the validation patterns
+(``functa.py``, an unwired prototype). It is not competitive: over 5 rounds and 60 configurations its best error is
+0.702 of the age-bin mean's, against 0.654 for the hybrid graph U-Net and 0.720 for the population model alone, so
+it was not validated with 3 seeds and is not a method of ``impute-profiles``.
+
+The numbers are from a quick held-out screen on the 7 measures (30 test subjects, 2 rounds of hidden values; the
+mean over the four patterns, relative to the age-bin mean): on the deviations from the age-bin norm, and as a hybrid
+correcting the population prediction (cross-fitted by subject, as the graph U-Net).
+
+.. table::
+   :class: longtable
+
+   ======  ===============================================================================  ======================  ===========
+   round   change                                                                           best on the deviations  best hybrid
+   ======  ===============================================================================  ======================  ===========
+   1       functa as planned: 5 inner steps, step size and modulation scale 0.01            0.790                   0.716
+   2       inner step size 1, modulation scale 0.1                                          0.882                   0.712
+   3       10-20 inner steps, step size and scale 0.03, up to 200 Adam steps at prediction  0.749                   0.703
+   4       an amortized set encoder for the start of the latent                             0.754                   0.708
+   grid    depth 2-4 x width 64-256 x latent 16-128 (54 trainings)                          0.749                   0.704
+   larger  6-8 x 512, latent 256-512, 60 epochs                                             0.736                   0.702
+   ======  ===============================================================================  ======================  ===========
+
+The best hybrid against the references on the same split:
+
+.. table::
+   :class: longtable
+
+   ==================================  =====  =======  =============  ======  =======  ============  ===========
+   model                               gap    end gap  whole profile  region  overall  whole tensor  whole NODDI
+   ==================================  =====  =======  =============  ======  =======  ============  ===========
+   hybrid graph U-Net (phase 4)        0.570  0.678    0.658          0.711   0.654    0.483         0.672
+   functa hybrid, 6 x 512, latent 256  0.641  0.750    0.689          0.728   0.702    0.671         0.761
+   population model alone              0.665  0.780    0.702          0.732   0.720    0.683         0.774
+   ==================================  =====  =======  =============  ======  =======  ============  ===========
+
+- **The inner loop first**: as planned, the inner steps fitted none of a scan's visible values (R² -0.06 before
+  them, -0.05 after), so every scan got about the same prediction. More steps, larger step sizes and refinement at
+  prediction time make them fit 37-48%; an encoder start gives the same.
+- **Then the network**: the error falls steadily with depth, width and latent size, with no overfitting in the
+  grid (best epochs 50-100 of 100, the held-out loss of the hybrid below its training loss); the smallest network
+  (2 x 64, latent 16) is at 0.808 and 0.718. The largest ones overfit the deviations (6 x 512: training loss down to
+  -0.30, held-out up to 0.34, best epochs 20-22) without beating the population model, and the largest hybrids are
+  no better than 4 x 256. Age, tract inputs and the learning rate made no difference.
+- **Why**: a single smooth function of the 3-D position, shifted per scan, does not carry the tract-specific
+  structure of the population model (a weight per location) or of the graph U-Net (each location's own input). As a
+  hybrid it adds at most 0.018 to the population prediction, and nothing for regions or a missing measure, where
+  the graph U-Net gains most.
 
 Phase 4: summary
 ----------------

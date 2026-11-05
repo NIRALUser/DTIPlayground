@@ -163,7 +163,7 @@ class FunctaModel:
     def fit(cls, cohort, prior, scans, masker, ages, inputs="xyz", age=False, hybrid=0, latent=128, steps=5,
             width=256, depth=4, omega0=10.0, epochs=60, batch=16, lr=1e-4, seed=0, device="cuda", holdout=0.1,
             visible_weight=0.1, ppca_folds=5, min_scans=10, inner_lr0=1e-2, mod_std=0.01, test_steps=0,
-            test_lr=1e-2, encoder=False):
+            test_lr=1e-2, encoder=False, weight_decay=0.0):
         """Meta-train on the deviations of *scans* from the norm of their age bin (*prior*): each epoch hides
         observed values of every scan (*masker*(z, rng)), fits its latent to the visible ones (*steps* inner steps)
         and the mean and log variance of the hidden ones (the visible ones with *visible_weight*). A share *holdout*
@@ -190,7 +190,7 @@ class FunctaModel:
         cfg = {"inputs": inputs, "age": bool(age), "hybrid": int(hybrid), "latent": latent, "steps": steps,
                "width": width, "depth": depth, "omega0": float(omega0), "inner_lr0": float(inner_lr0),
                "mod_std": float(mod_std), "test_steps": int(test_steps), "test_lr": float(test_lr),
-               "encoder": bool(encoder),
+               "encoder": bool(encoder), "weight_decay": float(weight_decay),
                "age_mu": float(np.nanmean(la)), "age_sd": float(np.nanstd(la) or 1.0)}
         subjects = sorted({subject_of(cohort.scans[s]) for s in scans})
         rng.shuffle(subjects)
@@ -225,10 +225,11 @@ class FunctaModel:
         inner_lr = torch.full((latent,), float(inner_lr0), device=device, requires_grad=True)
         model.net, model.z0, model.inner_lr = net, z0, inner_lr
         model.encoder = build_encoder(in_dim + 2 * M, latent).to(device) if encoder else None
-        groups = [{"params": net.parameters(), "lr": lr}, {"params": [z0, inner_lr], "lr": lr * 10}]
+        groups = [{"params": net.parameters(), "lr": lr, "weight_decay": weight_decay},
+                  {"params": [z0, inner_lr], "lr": lr * 10}]
         if encoder:
             groups.append({"params": model.encoder.parameters(), "lr": lr * 10})
-        opt = torch.optim.Adam(groups)
+        opt = torch.optim.AdamW(groups, weight_decay=0.0)
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs)
 
         def pop_of(idx, Zm):
@@ -270,16 +271,18 @@ class FunctaModel:
         Zh, hid_h = masked(ho, hr)
         pop_h = pop_of(ho, Zh)
         hb = lambda b: None if pop_h is None else (pop_h[0][b:b + batch], pop_h[1][b:b + batch])
-        best, best_state, best_epoch = np.inf, None, 0
+        best, best_state, best_epoch, history = np.inf, None, 0, []
         for epoch in range(epochs):
             net.train()
             order = rng.permutation(tr)
+            tl = []
             for b in range(0, len(order), batch):
                 idx = order[b:b + batch]
                 if len(idx) < 2:
                     continue
                 Zm, hid = masked(idx, rng)
                 loss, _, _ = loss_of(idx, Zm, hid)
+                tl.append(loss.item())
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
@@ -289,6 +292,7 @@ class FunctaModel:
             net.eval()
             vl = float(np.mean([loss_of(ho[b:b + batch], Zh[b:b + batch], hid_h[b:b + batch], hb(b), False)[0].item()
                                 for b in range(0, len(ho), batch)]))
+            history.append((float(np.mean(tl)), vl))
             if vl < best:
                 best, best_epoch = vl, epoch
                 best_state = ({k: v.detach().clone() for k, v in net.state_dict().items()}, z0.detach().clone(),
@@ -335,12 +339,15 @@ class FunctaModel:
             tot += float(((y ** 2) * obs).sum())
         model._ppca = full
         model.info = dict(cfg, epochs=epochs, best_epoch=int(best_epoch), holdout_loss=round(best, 4),
+                          train_loss_at_best=round(history[best_epoch][0], 4),
+                          train_loss_last=round(history[-1][0], 4), holdout_loss_last=round(history[-1][1], 4),
                           visible_r2_init=round(1 - fit0 / max(tot, 1e-12), 3),
                           visible_r2_adapted=round(1 - fit1 / max(tot, 1e-12), 3),
                           train_scans=int(len(tr)), seconds=round(time.time() - t0, 1),
                           sd_scale={cohort.metrics[m]: round(float(model.scale[m]), 3) for m in range(M)})
-        log.info("  functa %s: %d scans, best epoch %d of %d, held-out NLL %.3f, visible R2 %.3f -> %.3f by the inner "
-                 "steps, SD scale %s (%.0f s)", describe(cfg), len(tr), best_epoch + 1, epochs, best,
+        log.info("  functa %s: %d scans, best epoch %d of %d, NLL train %.3f / held-out %.3f there (last epoch %.3f / "
+                 "%.3f), visible R2 %.3f -> %.3f by the inner steps, SD scale %s (%.0f s)", describe(cfg), len(tr),
+                 best_epoch + 1, epochs, history[best_epoch][0], best, history[-1][0], history[-1][1],
                  model.info["visible_r2_init"], model.info["visible_r2_adapted"],
                  " ".join("{} {:.2f}".format(cohort.metrics[m], model.scale[m]) for m in range(M)), time.time() - t0)
         return model

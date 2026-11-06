@@ -140,8 +140,9 @@ describe its age column, `ageSubjectColumn` and `ageSessionColumn` name its subj
 detected; the subject and session are read from the path as `sub-<id>` / `ses-<id>`, else from the
 IBIS organization, a 6 digit id folder followed by a visit folder starting with `V`: `.../999434/VSA-CVD/...` is subject
 `999434`, session `SA-CVD`, which the table may name `SA-CVD` or `VSA-CVD`), else `ageRegex`
-on the path, ``ses-(\d+)m`` by default. Without any of them the reference image is used, with a warning. The age
-options can also be given as global variables, by their name or in snake case (`-g age_csv ages.csv age_subject_column
+on the path, ``ses-(\d+)m`` by default, else `ageFallback` (an age in months for the images that have none, with a
+warning). Without any of them the reference image is used, with a warning. The age
+options can also be given as global variables, by their name or in snake case (`-g age_fallback 24`, `-g age_csv ages.csv age_subject_column
 'VSA demographics,CandID' age_column 'VSA demographics,Age_at_visit_start'`); a value in the protocol wins, except for
 `ageUnits`.
 

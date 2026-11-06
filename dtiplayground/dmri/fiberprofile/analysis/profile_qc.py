@@ -24,9 +24,9 @@ For every table, the columns (``<subject>_<session>_<prefix>`` identifiers) are
 grouped into age bins. The age of a profile is the row of its scan in
 ``--age-csv`` (a participants/sessions table, as ``qc-registration --age-csv``;
 ``--age-column`` and ``--age-units`` describe its age column), else
-``--age-regex`` on the column name (``ses-<months>m`` by default) -- the same
-order as ``qc-registration`` and the DTI_Register module of dmriprep. A profile
-with neither takes part in no age bin, and they are counted at the end of the
+``--age-regex`` on the column name (``ses-<months>m`` by default), else
+``--age-fallback`` -- the same order as ``qc-registration`` and the DTI_Register
+module of dmriprep. A profile with none of them takes part in no age bin, and they are counted at the end of the
 run; ``--exclude-no-age`` removes them from the cleaned profiles and lists them
 in ``excluded_cases.csv`` (reason ``no age``), since they are not QC'd. Ages are
 fractional months; a bin ``lo-hi`` holds the ages from lo up to hi+1 months, and
@@ -142,7 +142,8 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from dtiplayground.dmri.common.age_table import AGE_UNIT_TO_MONTHS, age_from_table, in_age_bin, load_age_table, months_to
+from dtiplayground.dmri.common.age_table import (AGE_UNIT_TO_MONTHS, age_fallback_months, age_from_table, in_age_bin,
+                                                 load_age_table, months_to)
 from dtiplayground.dmri.fiberprofile.analysis.gather import normalize_metric
 
 log = logging.getLogger("profile_qc")
@@ -174,10 +175,12 @@ ARC_TOLERANCE = 0.01
 # Ages of the cohort: the table of --age-csv and the pattern read from the column names, see set_age_source
 _AGE_TABLE = {}
 _AGE_RE = AGE_RE
+# Age in months of the scans that neither the table nor the pattern gives one (--age-fallback), None: no age
+_AGE_FALLBACK = None
 # Unit of the ages in the output tables (--age-units); the ages are in months everywhere else
 _AGE_UNITS = "months"
 # Where the age of each column came from, for the summary at the end of the run
-_AGE_SOURCE = {"table": set(), "pattern": set(), "none": set()}
+_AGE_SOURCE = {"table": set(), "pattern": set(), "fallback": set(), "none": set()}
 # Preferred metric ordering for the plot subplot grid; others appended.
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF"]
 # The four DTI metrics shown in the excluded-profiles review figures.
@@ -254,13 +257,15 @@ def parse_bins(spec: str):
     return [tuple(b) for b in bins]
 
 
-def set_age_source(table=None, regex=None):
+def set_age_source(table=None, regex=None, fallback=None):
     """The ages of the profiles: a table of the cohort ({(subject, session): months}, see
-    dtiplayground.dmri.common.age_table) and the pattern read from the column names when the table has no row for a
-    scan. Returns the number of entries of the table."""
-    global _AGE_TABLE, _AGE_RE
+    dtiplayground.dmri.common.age_table), the pattern read from the column names when the table has no row for a
+    scan, and the age in months (*fallback*, None: none) of the scans that neither gives one. Returns the number of
+    entries of the table."""
+    global _AGE_TABLE, _AGE_RE, _AGE_FALLBACK
     _AGE_TABLE = dict(table or {})
     _AGE_RE = re.compile(regex) if regex else AGE_RE
+    _AGE_FALLBACK = None if fallback is None else float(fallback)
     for seen in _AGE_SOURCE.values():
         seen.clear()
     return len(_AGE_TABLE)
@@ -268,8 +273,8 @@ def set_age_source(table=None, regex=None):
 
 def age_of(column: str, record=True):
     """Age in months (float) of a profile column (``<subject>_<session>_<prefix>``): its row in the age table, else
-    the pattern on the column name. None when neither gives one, and that column takes part in no age bin. *record*:
-    count where the age came from, for the summary of the run."""
+    the pattern on the column name, else the fallback age. None when none gives one, and that column takes part in no
+    age bin. *record*: count where the age came from, for the summary of the run."""
     if _AGE_TABLE:
         tokens = column.split("_")
         age = age_from_table(tokens[0], tokens[1] if len(tokens) > 1 else None, _AGE_TABLE)
@@ -278,12 +283,18 @@ def age_of(column: str, record=True):
                 _AGE_SOURCE["table"].add(column)
             return float(age)
     m = _AGE_RE.search(column)
+    age = None
+    if m:
+        try:
+            age = float(m.group(1))
+        except (ValueError, IndexError):
+            age = None
+    source = "pattern"
+    if age is None:
+        age, source = _AGE_FALLBACK, ("none" if _AGE_FALLBACK is None else "fallback")
     if record:
-        _AGE_SOURCE["pattern" if m else "none"].add(column)
-    try:
-        return float(m.group(1)) if m else None
-    except ValueError:
-        return None
+        _AGE_SOURCE[source].add(column)
+    return age
 
 
 def age_column():
@@ -1342,6 +1353,9 @@ def configure_parser(p):
     p.add_argument("--age-regex", default=AGE_RE.pattern,
                    help="Pattern for the age in a column name (group 1, months), used when the table has no row "
                         "for that scan (default: %(default)s)")
+    p.add_argument("--age-fallback", type=float, default=None, metavar="AGE",
+                   help="Age (in --age-units) of the profiles that neither --age-csv nor the column name gives one; "
+                        "they are listed in the log (default: none, those profiles are in no age bin)")
     p.add_argument("--exclude-no-age", action="store_true",
                    help="Exclude the profiles without an age (no row in --age-csv and no age in the column name): "
                         "they are in no age bin, so not QC'd against the prior; they are removed from the summaries "
@@ -1456,7 +1470,11 @@ def run_args(args, p) -> int:
                                        args.age_subject_column, args.age_session_column)
         except (OSError, ValueError) as exc:
             p.error(f"--age-csv: {exc}")
-    set_age_source(age_table, args.age_regex)
+    try:
+        fallback = age_fallback_months(args.age_fallback, args.age_units)
+    except ValueError as exc:
+        p.error(f"--age-fallback: {exc}")
+    set_age_source(age_table, args.age_regex, fallback)
     global _AGE_UNITS
     _AGE_UNITS = args.age_units
 
@@ -1520,10 +1538,14 @@ def run_args(args, p) -> int:
                                         exclude_ids=reg_ss, exclude_full=full_excl)
     log.info("Wrote %d age-bin stats CSVs and %d plots%s.",
              n_csv, n_plots, "" if args.no_plots else f" under {plots_sub}/")
-    n_table, n_pattern, n_none = (len(_AGE_SOURCE[k]) for k in ("table", "pattern", "none"))
-    log.info("Ages of %d profile(s): %d from %s, %d from the column names (%s)%s",
-             n_table + n_pattern + n_none, n_table, args.age_csv or "a table", n_pattern, args.age_regex,
+    n_table, n_pattern, n_fallback, n_none = (len(_AGE_SOURCE[k]) for k in ("table", "pattern", "fallback", "none"))
+    log.info("Ages of %d profile(s): %d from %s, %d from the column names (%s)%s%s",
+             n_table + n_pattern + n_fallback + n_none, n_table, args.age_csv or "a table", n_pattern, args.age_regex,
+             f", {n_fallback} with the fallback age {args.age_fallback:g} {args.age_units}" if n_fallback else "",
              f", {n_none} without an age (left out of every age bin)" if n_none else "")
+    if n_fallback:
+        log.warning("Fallback age %g %s for %d profile(s) without an age: %s", args.age_fallback, args.age_units,
+                    n_fallback, ", ".join(sorted(_AGE_SOURCE["fallback"])))
     if age_table and not n_table:
         log.warning("No profile matched a row of %s: check that its subject and session columns hold the ids of the "
                     "profile columns (<subject>_<session>_...)", args.age_csv)

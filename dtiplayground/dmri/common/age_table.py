@@ -44,6 +44,17 @@ def months_to(age, units="months"):
     return None if age is None else age / AGE_UNIT_TO_MONTHS[units]
 
 
+def age_fallback_months(age, units="months"):
+    """The fallback age of the scans without one (--age-fallback, in *units*) in months; None stays None. A negative
+    age is an error."""
+    if age is None:
+        return None
+    age = float(age)
+    if not age >= 0:
+        raise ValueError(f"the fallback age must be a non-negative number, not {age}")
+    return age * AGE_UNIT_TO_MONTHS[units]
+
+
 def bids_key(value):
     """'sub-1007170889' / 'SUB-1007170889' -> '1007170889' (entity value, lowercased)."""
     v = str(value).strip().lower()

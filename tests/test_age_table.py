@@ -178,6 +178,62 @@ class TestNamedColumns(unittest.TestCase):
             self.assertEqual(dti._module(protocol, dti._ibis(d)).subjectAge(), 25.0)
 
 
+class TestAgeFallback(unittest.TestCase):
+    """The fallback age of the scans without one (DTI_Register ageFallback, dmrifiberprofile --age-fallback): used only
+    when no other source gives an age."""
+
+    def test_the_units_of_the_fallback(self):
+        self.assertIsNone(age_table.age_fallback_months(None))
+        self.assertEqual(age_table.age_fallback_months(24), 24.0)
+        self.assertEqual(age_table.age_fallback_months(2, 'years'), 24.0)
+        self.assertEqual(age_table.age_fallback_months(0), 0.0)
+        with self.assertRaises(ValueError):
+            age_table.age_fallback_months(-1)
+
+    def test_dti_register_uses_the_fallback_last(self):
+        dti = TestDTIRegisterAge()
+        with tempfile.TemporaryDirectory() as d:
+            p = _table(d, 'ages.csv', 'participant_id,session_id,age\nsub-1234,ses-V02,14\n')
+            self.assertEqual(dti._module({'ageFallback': 30}, dti._paths(d)).subjectAge(), 30.0)  # nothing else
+            self.assertEqual(dti._module({'ageFallback': 30, 'ageCSV': p}, dti._paths(d)).subjectAge(), 14.0)
+            self.assertEqual(dti._module({'ageFallback': 30}, dti._paths(d, 'ses-006m')).subjectAge(), 6.0)
+            self.assertEqual(dti._module({'ageFallback': 30, 'age': 7}, dti._paths(d)).subjectAge(), 7.0)
+            other = os.path.join(d, 'sub-9999', 'ses-V02', 'sub-9999_ses-V02_dwi_DTI.nrrd')  # not in the table
+            self.assertEqual(dti._module({'ageFallback': 30, 'ageCSV': p}, other).subjectAge(), 30.0)
+
+    def test_dti_register_fallback_from_the_global_variables(self):
+        dti = TestDTIRegisterAge()
+        with tempfile.TemporaryDirectory() as d:
+            for name in ('ageFallback', 'age_fallback'):
+                module = dti._module({}, dti._paths(d))
+                module.global_variables = {name: '30'}
+                self.assertEqual(module.subjectAge(), 30.0)
+
+    def test_dti_register_ignores_an_invalid_fallback(self):
+        dti = TestDTIRegisterAge()
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(dti._module({'ageFallback': -3}, dti._paths(d)).subjectAge())
+            self.assertIsNone(dti._module({'ageFallback': 'old'}, dti._paths(d)).subjectAge())
+
+    def test_qc_registration_session_age(self):
+        import re
+        from dtiplayground.dmri.fiberprofile.analysis import registration_qc as rq
+        pattern = re.compile(r'ses-(\d+)m')
+        table = {('1234', 'v02'): 14.0}
+        self.assertEqual(rq.age_for_session('sub-1234', 'ses-V02', table, pattern, 30.0), 14.0)
+        self.assertEqual(rq.age_for_session('sub-1234', 'ses-006m', None, pattern, 30.0), 6.0)
+        self.assertEqual(rq.age_for_session('sub-5678', 'ses-V02', table, pattern, 30.0), 30.0)
+        self.assertIsNone(rq.age_for_session('sub-5678', 'ses-V02', table, pattern))
+
+    def test_impute_profiles_scan_ages(self):
+        from dtiplayground.dmri.fiberprofile.analysis import impute_profiles as ip, profile_qc
+        self.addCleanup(profile_qc.set_age_source)
+        cohort = type('Cohort', (), {'scans': ['sub-1_ses-006m_x', 'sub-2_ses-V02_x']})()
+        self.assertEqual(ip.scan_ages(cohort), [6.0, None])
+        self.assertEqual(ip.scan_ages(cohort, fallback=30), [6.0, 30.0])
+        self.assertEqual(ip.scan_ages(cohort, age_units='years', fallback=2), [6.0, 24.0])
+
+
 class TestDTIRegisterGlobalVariables(unittest.TestCase):
     """The age options given as global variables (dmriprep run -g age_csv ... ageColumn ...), with a LORIS export whose
     column names hold a comma."""

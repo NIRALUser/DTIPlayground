@@ -337,7 +337,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
         bins = json.load(open(manifest)).get('bins', [])
         age = self.subjectAge()
         if age is None:
-            logger("No age for this image (protocol 'age' or 'ageRegex' on the image path), using the reference image",prep.Color.WARNING)
+            logger("No age for this image (protocol 'age', 'ageCSV', 'ageRegex' on the image path or 'ageFallback'), using the reference image",prep.Color.WARNING)
             return None
         ranges = []
         for b in bins:
@@ -376,20 +376,42 @@ class DTI_Register(prep.modules.DTIPrepModule):
     def subjectAge(self):
         """Age of this image, in the unit of the age bins (months): the protocol 'age' (or the global variable),
         otherwise the row of this scan in 'ageCSV', otherwise 'ageRegex' (group 1) matched on the path of the input
-        DTI or of the source image."""
+        DTI or of the source image, otherwise 'ageFallback' (or the global variable age_fallback), with a warning."""
         age = self.ageOption('age')
         if age is not None:
             return float(age)
         age = self.ageFromTable()
         if age is not None:
             return age
+        age = self.ageFromPath()
+        if age is not None:
+            return age
+        fallback = self.ageOption('ageFallback')
+        if fallback is None:
+            return None
+        try:
+            fallback = float(fallback)
+        except (TypeError, ValueError):
+            logger("ageFallback {} is not a number, ignored".format(fallback),prep.Color.WARNING)
+            return None
+        if not fallback >= 0:
+            logger("ageFallback {} is negative, ignored".format(fallback),prep.Color.WARNING)
+            return None
+        logger("No age for this image (ageCSV, ageRegex), using the fallback age {:g} month(s) (ageFallback)".format(fallback),prep.Color.WARNING)
+        return fallback
+
+    def ageFromPath(self):
+        """'ageRegex' (group 1) matched on the path of the input DTI or of the source image, None without a match."""
         pattern = self.protocol.get('ageRegex')
         if pattern is None or str(pattern).strip() == '':
             return None
         for path in [p for p in self.agePaths() if p]:
             match = re.search(str(pattern), str(path))
             if match:
-                return float(match.group(1))
+                try:
+                    return float(match.group(1))
+                except (IndexError, ValueError):
+                    return None
         return None
 
     def agePaths(self):

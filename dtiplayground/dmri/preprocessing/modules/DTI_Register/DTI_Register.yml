@@ -47,7 +47,7 @@ protocol:
         type: float
         caption: Age
         default_value: null
-        description: Age of the subject in the unit of the age bins of the normative model (months); taken from ageCSV, or read from the image path with ageRegex, if not set
+        description: Age of the subject in the unit of the age bins of the normative model (months); taken from ageCSV, or read from the image path with ageRegex, if not set (then ageFallback, if set). It overrides the others, so use ageFallback for an age of the images that have none
       ageCSV:
         type: filepath-remote
         caption: Age Table
@@ -91,6 +91,11 @@ protocol:
         caption: Age Pattern
         default_value: ses-(\d+)m
         description: Regular expression for the age in the path of the input image (group 1), used when neither age nor ageCSV gives one
+      ageFallback:
+        type: float
+        caption: Fallback Age
+        default_value: null
+        description: Age (months) of an image that neither age, ageCSV nor ageRegex gives one, with a warning in the log; without it such an image is registered to the reference image
       ANTsPath:
         type: dirpath-remote
         caption: ANTS directory

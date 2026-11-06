@@ -142,7 +142,23 @@ class TestAgeOfAProfile(unittest.TestCase):
         profile_qc.age_of('sub-2_ses-017m_acq-x') # the pattern
         profile_qc.age_of('sub-3_ses-V03_acq-x') # neither
         self.assertEqual({k: len(v) for k, v in profile_qc._AGE_SOURCE.items()},
-                         {'table': 1, 'pattern': 1, 'none': 1})
+                         {'table': 1, 'pattern': 1, 'fallback': 0, 'none': 1})
+
+    def test_the_fallback_age_is_last(self):
+        """--age-fallback: only for the columns that neither the table nor the pattern gives an age."""
+        profile_qc.set_age_source({('1', 'v02'): 14}, None, 30)
+        self.assertEqual(profile_qc.age_of('sub-1_ses-V02_acq-x'), 14)  # the table
+        self.assertEqual(profile_qc.age_of('sub-2_ses-017m_acq-x'), 17) # the pattern
+        self.assertEqual(profile_qc.age_of('sub-3_ses-V03_acq-x'), 30)  # neither
+        self.assertEqual({k: len(v) for k, v in profile_qc._AGE_SOURCE.items()},
+                         {'table': 1, 'pattern': 1, 'fallback': 1, 'none': 0})
+        grouped = profile_qc.bin_columns(['sub-3_ses-V03_acq-x'], profile_qc.parse_bins('0-3,4-9,10-60'))
+        self.assertEqual(grouped['10-60m'], ['sub-3_ses-V03_acq-x'])
+
+    def test_no_fallback_by_default(self):
+        profile_qc.set_age_source({('1', 'v02'): 14}, None, 30)
+        profile_qc.set_age_source({('1', 'v02'): 14})
+        self.assertIsNone(profile_qc.age_of('sub-3_ses-V03_acq-x'))
 
 
 class TestFindPriorStats(unittest.TestCase):

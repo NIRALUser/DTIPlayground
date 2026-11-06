@@ -488,10 +488,14 @@ def bins_from_labels(labels):
     return bins_from_spec(",".join(spec))
 
 
+_FALLBACK_LOGGED = set()  # the scans given the fallback age, logged once
+
+
 def scan_ages(cohort, age_csv=None, age_units="months", age_regex=None, age_column=None, subject_column=None,
-              session_column=None):
+              session_column=None, fallback=None):
     """Age in months (or None) of every scan: its row in *age_csv* (one table or several, e.g. one per batch), else the
-    pattern on its name (as qc-profiles)."""
+    pattern on its name (as qc-profiles), else *fallback* (in *age_units*; None: no age), with a warning."""
+    from dtiplayground.dmri.common.age_table import age_fallback_months
     from dtiplayground.dmri.fiberprofile.analysis.profile_qc import age_of, set_age_source
     table = None
     if age_csv:
@@ -500,7 +504,17 @@ def scan_ages(cohort, age_csv=None, age_units="months", age_regex=None, age_colu
         for path in [age_csv] if isinstance(age_csv, str) else age_csv:
             table.update(load_age_table(path, age_units, age_column, subject_column, session_column))
     set_age_source(table, age_regex)
-    return [age_of(scan, record=False) for scan in cohort.scans]
+    ages = [age_of(scan, record=False) for scan in cohort.scans]
+    months = age_fallback_months(fallback, age_units)
+    if months is not None:
+        missing = [scan for scan, age in zip(cohort.scans, ages) if age is None]
+        new = [scan for scan in missing if (scan, months) not in _FALLBACK_LOGGED]
+        if new:
+            log.warning("Fallback age %g %s for %d scan(s) without an age: %s", fallback, age_units, len(new),
+                        ", ".join(new))
+            _FALLBACK_LOGGED.update((scan, months) for scan in new)
+        ages = [months if age is None else age for age in ages]
+    return ages
 
 
 def subject_of(scan):
@@ -1913,7 +1927,8 @@ def fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev)
     n_folds = max(1, min(args.validate_folds, len(subjects)))
     fold_of = {subj: i % n_folds for i, subj in enumerate(subjects)}
     ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None))
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None))
     usable = [s for s in range(len(cohort.scans)) if scan_bin[s] >= 0
               and not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts, s)]
     out = defaultdict(list)
@@ -2017,7 +2032,8 @@ def validation_prior(cohort, args, configs, siren):
         or bool(set(MODELS) & {m.strip() for m in args.validate_methods.split(",")}) \
         or any(kind != "bins" for _, kind, _ in age_norm_specs(args))
     ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None))
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None))
     if not needed and (all(a is None for a in ages) or (args.validate_prior == "files" and not args.prior_stats_dir)):
         return None  # only for the age bin reference, which is then left out
     if args.validate_prior == "files":
@@ -2038,7 +2054,8 @@ def report_bins(cohort, args, prior):
     if prior is not None:
         return prior.bins, prior.scan_bin
     ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None))
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None))
     if all(a is None for a in ages):
         return None, None
     bins = bins_from_spec(args.bins)
@@ -2417,7 +2434,8 @@ def validate(cohort, args):
         held = sorted({o for s in sample for o in subject_scans[subject_of(cohort.scans[s])]})
         correct_batches(cohort, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
                                                 args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None)), held, out)
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None)), held, out)
         prior = validation_prior(cohort, args, configs, siren)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -2462,7 +2480,8 @@ def validate(cohort, args):
                  args.validate_folds)
         models = fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev)
     ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None))
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None))
     by_age = defaultdict(lambda: np.zeros(3))  # (setting keys, pattern, metric, age) -> n, nsse setting, nsse age mean
     # (setting keys, pattern, metric, scan) -> n, sse setting, sse age mean, nsse setting, nsse age mean
     by_scan = defaultdict(lambda: np.zeros(5))
@@ -2878,6 +2897,9 @@ def add_parser(subparsers):
                    help="--age-csv column of the session / visit (default: auto-detect)")
     n.add_argument("--age-units", default="months", choices=sorted(__import__(
         "dtiplayground.dmri.common.age_table", fromlist=["x"]).AGE_UNIT_TO_MONTHS), help="Units of --age-csv (default: months)")
+    n.add_argument("--age-fallback", type=float, default=None, metavar="AGE",
+                   help="Age (in --age-units) of the scans that neither --age-csv nor the column name gives one; "
+                        "they are listed in the log (default: none, those scans have no age)")
     n.add_argument("--age-regex", default=None,
                    help="Pattern of the age in months in a column name, group 1 (default: that of qc-profiles, ses-(\\d+)m)")
     n.add_argument("--age-norm", default=None, choices=AGE_NORMS,
@@ -3106,6 +3128,9 @@ def run(args):
     from dtiplayground.dmri.fiberprofile.analysis import setup_logging
     setup_logging(args.verbose)
     resolve_defaults(args)
+    if getattr(args, "age_fallback", None) is not None and not args.age_fallback >= 0:
+        log.error("--age-fallback must be a non-negative age, not %g", args.age_fallback)
+        return 1
     args.max_distance = args.max_distance or None
     args.max_gap = args.max_gap or None
     args.report_dir = args.report_dir or os.path.normpath(args.out_dir) + "_report"
@@ -3136,7 +3161,8 @@ def run(args):
             return 1
         corr = correct_batches(cohort, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
                                                        args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None)), report_dir=args.report_dir)
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None)), report_dir=args.report_dir)
     spatial = [m for m in (args.method, args.fallback) if m in SPATIAL + ("graph-unet",)]
     if spatial and axes is None:
         log.error("--axis-dir is needed for %s", ", ".join(spatial))
@@ -3150,7 +3176,8 @@ def run(args):
     if args.relative_to_prior or {"prior-mean", "graph-unet"} & {args.method, args.fallback} or population or \
             args.fit_model or args.fit_graph_model:
         ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None))
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None))
         if args.model:
             model = Population.load(args.model)
             share = model.bind(cohort)
@@ -3262,7 +3289,8 @@ def run(args):
                                                        graph_model=graph_model)
     if corr is not None:  # back to the units of each scan's own batch
         ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
-                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None))
+                  getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                  getattr(args, "age_fallback", None))
         harmonized = imputed
         imputed = corr.apply(imputed, ages, cohort.scan_batch, inverse=True)
         sds = corr.apply(sds, ages, cohort.scan_batch, inverse=True, sd=True, at=(harmonized, imputed))

@@ -300,8 +300,11 @@ its subject and session columns when they aren't detected), else ``--age-regex``
 profile, ``ses-(\d+)m`` by default. The same table is used by ``qc-registration --age-csv`` and by the ``ageCSV``
 option of the DTI_Register module of dmriprep. The table is matched on the first two parts of the column name, the
 subject and the session (BIDS ``sub-<id>_ses-<id>_...``, or IBIS ``<id>_V<visit>_...``, the visit found in the table with or
-without its leading ``V``). Profiles with neither are named at the end of the run, as they take
-part in no age bin: they are not QC'd against the prior, and they stay in the summaries and the cleaned profiles.
+without its leading ``V``). ``--age-fallback`` gives an age (in ``--age-units``) to the profiles that neither gives
+one, e.g. a cohort of one age with a few scans missing from the table; the profiles that get it are named in the log.
+``qc-registration`` and ``impute-profiles`` have the same option. Profiles with no age at all are named at the end of
+the run, as they take part in no age bin: they are not QC'd against the prior, and they stay in the summaries and the
+cleaned profiles.
 ``--exclude-no-age`` excludes them instead: they are left out of the summaries and the cleaned profiles and listed in
 ``excluded_cases.csv`` with the reason ``no age``.
 
@@ -508,8 +511,8 @@ normative cohort, either layout), the method imputes the scan's deviation from t
 (``--relative-to-prior``, the default with ``--prior-stats-dir``; ``--no-relative-to-prior`` imputes the values). A
 scan that is above the norm in a tract tends to be above it in the neighbouring tracts as well, and the norm carries
 what the neighbours can't: the level of each tract at the scan's age. The age of a scan comes from ``--age-csv``
-(``--age-column``, ``--age-subject-column``, ``--age-session-column``, ``--age-units``, as for ``qc-profiles``) or its name (``--age-regex``, default ``ses-<months>m``);
-a scan without an age, or outside the age bins, is not imputed with the norm.
+(``--age-column``, ``--age-subject-column``, ``--age-session-column``, ``--age-units``, as for ``qc-profiles``) or its name (``--age-regex``, default ``ses-<months>m``),
+else ``--age-fallback``; a scan without an age, or outside the age bins, is not imputed with the norm.
 
 The methods (``--method``):
 

@@ -165,19 +165,22 @@ def parse_bins(spec):
 ## the age table is shared with the DTI_Register module of dmriprep (protocol ageCSV)
 from dtiplayground.dmri.common.age_table import (  # noqa: E402  (kept importable from here)
     AGE_TABLE_AGE_COLS, AGE_TABLE_AGE_SUBSTRINGS, AGE_TABLE_SESSION_COLS, AGE_TABLE_SUBJECT_COLS,
-    AGE_UNIT_TO_MONTHS, age_from_table, bids_key as _bids_key, ibis_subject_session, in_age_bin, load_age_table)
+    AGE_UNIT_TO_MONTHS, age_fallback_months, age_from_table, bids_key as _bids_key, ibis_subject_session, in_age_bin,
+    load_age_table)
 
 
-def age_for_session(subject, session, age_table, age_re):
-    """Age in months from the table (session- then subject-level), else the session name."""
+def age_for_session(subject, session, age_table, age_re, fallback=None):
+    """Age in months from the table (session- then subject-level), else the session name, else *fallback* (months;
+    None: no age)."""
     age = age_from_table(subject, session, age_table)
     if age is not None:
         return age
     m = age_re.search(session)
     try:
-        return float(m.group(1)) if m else None
-    except ValueError:
-        return None
+        age = float(m.group(1)) if m else None
+    except (ValueError, IndexError):
+        age = None
+    return fallback if age is None else age
 
 
 def bin_label_for_age(age, bins):
@@ -263,7 +266,7 @@ def parse_registered(path):
     return subject, session, prefix, metric
 
 
-def find_sessions(root, age_table=None, age_re=AGE_RE):
+def find_sessions(root, age_table=None, age_re=AGE_RE, age_fallback=None):
     """Discover scans (one per subject/session/prefix) with metric/tensor paths.
 
     Two layouts are recognised under *root*:
@@ -277,9 +280,9 @@ def find_sessions(root, age_table=None, age_re=AGE_RE):
     Multiple acquisitions in the same session (different prefixes) become
     separate scan entries keyed by the full ``sub_ses_prefix`` identifier.
 
-    ``age`` is None when neither *age_table* nor the session name supplies one;
-    such scans are still returned (age is only *required* for the age-binned
-    normative model -- the caller decides).
+    ``age`` is *age_fallback* (months, listed in the log) when neither *age_table*
+    nor the session name supplies one, else None; such scans are still returned
+    (age is only *required* for the age-binned normative model -- the caller decides).
     """
     scans = {}  # (subject, session, prefix) -> entry
     no_age = []
@@ -291,7 +294,7 @@ def find_sessions(root, age_table=None, age_re=AGE_RE):
             if age is None and os.path.join(subject, session) not in no_age:
                 no_age.append(os.path.join(subject, session))
             scans[key] = {"id": f"{subject}_{session}_{prefix}", "subject": subject, "session": session,
-                          "prefix": prefix, "age": age, "scalars": {}, "tensor": None}
+                          "prefix": prefix, "age": age_fallback if age is None else age, "scalars": {}, "tensor": None}
         entry = scans[key]
         if metric == "DTI":
             if f.endswith(".nrrd"):
@@ -333,7 +336,10 @@ def find_sessions(root, age_table=None, age_re=AGE_RE):
     if derived:
         log.info("%d scan(s) without all of the %s maps (e.g. %s): the missing maps are computed from the registered tensor",
                  len(derived), "/".join(ALL_SCALARS), ", ".join(derived[:3]))
-    if no_age:
+    if no_age and age_fallback is not None:
+        log.warning("no age information for %d session(s), given the fallback age of %g month(s): %s", len(no_age),
+                    age_fallback, ", ".join("/".join(d.split(os.sep)[-2:]) for d in no_age))
+    elif no_age:
         log.warning("no age information for %d session(s) (e.g. %s)%s", len(no_age),
                     ", ".join("/".join(d.split(os.sep)[-2:]) for d in no_age[:3]),
                     "" if len(no_age) < 4 else ", ...")
@@ -1222,6 +1228,9 @@ def configure_parser(p):
                         "age_<units>; default: months)")
     p.add_argument("--age-regex", default=AGE_RE.pattern,
                    help=f"Regex whose first group is the session-name age in months (default: {AGE_RE.pattern!r})")
+    p.add_argument("--age-fallback", type=float, default=None, metavar="AGE",
+                   help="Age (in --age-units) of the sessions that neither --age-csv nor the session name gives one; "
+                        "they are listed in the log (default: none, those sessions are in no age bin)")
     p.add_argument("--scalar-metrics", default="FA", help="Comma list of scalar metrics to QC (default: FA)")
     p.add_argument("--no-angular", action="store_true", help="Skip the tensor angular-error metric")
     p.add_argument("--mask-threshold", type=float, default=1e-3, help="FA threshold for the brain mask (default: 1e-3)")
@@ -1295,6 +1304,10 @@ def run_args(args, p) -> int:
                                        args.age_subject_column, args.age_session_column)
         except (OSError, ValueError) as exc:
             p.error(f"--age-csv: {exc}")
+    try:
+        age_fallback = age_fallback_months(args.age_fallback, args.age_units)
+    except ValueError as exc:
+        p.error(f"--age-fallback: {exc}")
 
     atlas_fa, _ = load_scalar(atlas_scalar_paths["FA"])
     atlas_wm = atlas_fa > args.angular_fa_min
@@ -1316,7 +1329,7 @@ def run_args(args, p) -> int:
         ref_dir = args.reference_dir or args.data_dir
         if not args.normative_dir:
             p.error("--build-normative requires --normative-dir")
-        sessions = find_sessions(ref_dir, age_table, age_re)
+        sessions = find_sessions(ref_dir, age_table, age_re, age_fallback)
         if not sessions:
             log.error("no reference sessions found under %s -- expected %s/sub-*/ses-*/AtlasReg/*_Deformed*.nii.gz "
                       "or DTI_Register outputs sub-<id>_ses-<id>_*_Registered_<METRIC>.nii.gz below it", ref_dir, ref_dir)
@@ -1390,7 +1403,7 @@ def run_args(args, p) -> int:
                 return 1
             log.warning("--ignore-threshold-mismatch given: continuing with mismatched thresholds")
 
-    sessions = find_sessions(args.data_dir, age_table, age_re)
+    sessions = find_sessions(args.data_dir, age_table, age_re, age_fallback)
     if not sessions:
         log.error("no sessions found under %s -- expected %s/sub-*/ses-*/AtlasReg/*_Deformed*.nii.gz "
                   "or DTI_Register outputs sub-<id>_ses-<id>_*_Registered_<METRIC>.nii.gz below it",

@@ -3,6 +3,13 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-11-06 (v0.8.32)
+- Dependencies upgraded as one set, tested together (`requirements.txt`): dipy 1.9.0 -> 1.12.1, numpy 1.26.4 -> 2.4.6, pandas 2.2.2 -> 3.1.1, nibabel 5.2.1 -> 5.4.2, pynrrd 1.0.0 -> 1.1.3, scipy >= 1.15. **Python 3.11 or newer is now required** (dipy 1.12). `setup.py` raises the lower bounds of the compiled packages (h5py, opencv, SimpleITK, vtk, torch, matplotlib, scikit-image, scikit-learn) to their first releases built for numpy 2, so that `pip install --upgrade dtiplayground` replaces older builds in an existing environment; `fury` and `pypdf2` are no longer needed. The Docker image is based on Ubuntu 24.04 (Python 3.12, in a venv)
+- dmriprep - DWI_Denoise: with `method: patch2self`, dipy 1.12 runs version 3 of Patch2Self (its default), whose results differ from those of the version of dipy 1.9. To stay consistent with a cohort denoised with Patch2Self before, keep processing it with v0.8.31. MP-PCA is unchanged
+- dmriprep: on the IBIS test scan (13 modules, two phase encodings), the outputs with the new dependencies are the same as with the old ones from the same eddy output: mask and DTI maps identical, FWDTI, DKI and NODDI maps different in at most 0.03% of the brain voxels (fits at their limits), the same tractogram and QC report
+- dmriprep - BRAIN_Tractography: the tractogram is written with dtiplayground's own fiber writer (`.vtk` ASCII, `.vtp` binary) instead of dipy's, which needed fury; the fibers keep their orientation colors
+- dmriprep - EDDYMOTION_Correct: with pandas 3 the module stopped after eddy with `KeyError: 0` while writing its report
+
 ##### 2026-11-04 (v0.8.31)
 - dmriprep - DTI_Register: the age options can be given as global variables (`dmriprep run -g`), by their name or in snake case: `ageColumn` / `age_column`, `ageSubjectColumn`, `ageSessionColumn`, `ageUnits`. Before, only `age` and `age_csv` were read from them, and a table whose columns aren't auto-detected (a LORIS export, `"VSA demographics,CandID"`) failed with "need a subject column". A value in the protocol wins, except for `ageUnits`
 

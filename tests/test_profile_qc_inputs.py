@@ -649,8 +649,89 @@ class TestQCAtOtherArcLengths(unittest.TestCase):
         code, stats = self._run(100.0)
         self.assertEqual(code, 1)
         self.assertEqual(list(pd.read_csv(os.path.join(stats, 'batch_shifts_mean.csv')).columns),
-                         ['metric', 'bin', 'kind', 'shift', 'n_profiles'])
+                         ['batch', 'metric', 'bin', 'kind', 'shift', 'n_profiles', 'n_scans', 'source'])
         self.assertFalse(os.path.exists(os.path.join(stats, 'profile_qc_mean.csv')))
+
+
+class TestEnvelopeBatches(unittest.TestCase):
+    """--envelope-batch-correct with batches: a testing population of two sites, site B with an MD 25% higher than
+    the normative data. One shift for the whole population (site A is the majority) leaves site B outside the
+    envelope; one shift per site (--batch-column of the age table, or --batch-regex) brings it back, and the scan of
+    site B whose MD is off from its own site is still flagged."""
+
+    @staticmethod
+    def _tables(root, names, scale):
+        arc = np.linspace(-20, 20, 21)
+        rng = np.random.default_rng(1)
+        for tract in ('CGH_R', 'UNC_L'):
+            for metric, base in (('fa', 0.45), ('md', 0.0011)):
+                cols = {}
+                for name in names:
+                    prof = base * (1 + 0.3 * np.sin(arc / 10) + 0.01 * rng.standard_normal(arc.size))
+                    cols[name] = prof * (scale.get(name, 1.0) if metric == 'md' else 1.0)
+                df = pd.DataFrame(cols, index=pd.Index(arc, name='Arc Length'))
+                Path(root, tract).mkdir(parents=True, exist_ok=True)
+                df.to_csv(Path(root, tract, '{}_{}.csv'.format(tract, metric)))
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        d = self.tmp.name
+        self.norm, self.data = os.path.join(d, 'norm'), os.path.join(d, 'data')
+        self._tables(self.norm, ['sub-9{:02d}_ses-012m_dwi'.format(i) for i in range(12)], {})
+        site_a = ['sub-0{:02d}_ses-012m_dwi'.format(i) for i in range(10)]
+        site_b = ['sub-1{:02d}_ses-012m_dwi'.format(i) for i in range(6)]
+        scale = {n: 1.25 for n in site_b}
+        scale['sub-105_ses-012m_dwi'] = 1.25 * 1.3  # off from its own site too
+        self._tables(self.data, site_a + site_b, scale)
+        self.table = os.path.join(d, 'participants.tsv')
+        with open(self.table, 'w') as fh:
+            fh.write('participant_id\tsession_id\tage\tsite\n')
+            for n in site_a + site_b:
+                fh.write('{}\t{}\t12\t{}\n'.format(n.split('_')[0], n.split('_')[1], 'B' if n.startswith('sub-1') else 'A'))
+        self.assertEqual(profile_qc.main(['--profiles-dir', self.norm, '-o', os.path.join(d, 'normQC'), '--no-plots']), 0)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _flagged(self, *options):
+        out = os.path.join(self.tmp.name, 'QC{}'.format(len(os.listdir(self.tmp.name))))
+        self.assertEqual(profile_qc.main(['--profiles-dir', self.data, '--prior-stats-dir', self.norm, '-o', out,
+                                          '--no-plots'] + list(options)), 0)
+        qc = pd.read_csv(os.path.join(out, 'Profiles_Stats', 'profile_qc_mean.csv'))
+        shifts_csv = os.path.join(out, 'Profiles_Stats', 'batch_shifts_mean.csv')
+        shifts = pd.read_csv(shifts_csv, dtype={'batch': str}, keep_default_na=False) if os.path.exists(shifts_csv) else None
+        return {c.split('_')[0] for c in qc[qc['is_outlier']]['subject_session']}, shifts
+
+    def test_one_shift_for_the_population_leaves_site_b_out(self):
+        site_b = {'sub-1{:02d}'.format(i) for i in range(6)}
+        flagged, _ = self._flagged()
+        self.assertEqual(flagged, site_b)
+        flagged, shifts = self._flagged('--envelope-batch-correct')
+        self.assertEqual(flagged, site_b)
+        self.assertEqual(set(shifts['batch']), {''})
+        self.assertAlmostEqual(float(shifts[shifts['metric'] == 'md']['shift'].iloc[0]), 1.0, delta=0.02)
+
+    def test_a_shift_per_site(self):
+        for options in (['--age-csv', self.table, '--batch-column', 'site'],
+                        ['--batch-csv', self.table, '--batch-column', 'site'],
+                        ['--batch-regex', r'^sub-(\d)']):
+            with self.subTest(options=options):
+                flagged, shifts = self._flagged('--envelope-batch-correct', *options)
+                self.assertEqual(flagged, {'sub-105'})
+                md = shifts[shifts['metric'] == 'md'].set_index('batch')
+                self.assertEqual(len(md), 2)
+                self.assertAlmostEqual(float(md['shift'].max()), 1.25, delta=0.03)
+                self.assertAlmostEqual(float(md['shift'].min()), 1.0, delta=0.02)
+                self.assertEqual(set(md['source']), {'batch'})
+                self.assertEqual(sorted(md['n_scans']), [6, 10])
+
+    def test_a_small_site_gets_the_population_shift(self):
+        flagged, shifts = self._flagged('--envelope-batch-correct', '--batch-csv', self.table, '--batch-column', 'site',
+                                        '--batch-min-scans', '7')
+        md = shifts[shifts['metric'] == 'md'].set_index('batch')
+        self.assertEqual(md.loc['B', 'source'], 'cohort')
+        self.assertAlmostEqual(float(md.loc['B', 'shift']), float(md.loc['A', 'shift']), delta=0.02)
+        self.assertEqual(flagged, {'sub-1{:02d}'.format(i) for i in range(6)})
 
 
 if __name__ == '__main__':

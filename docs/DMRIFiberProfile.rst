@@ -257,6 +257,7 @@ lists all the options of each.
     QC of the registration of the subjects to the atlas: similarity of the deformed metric maps, angular error, CSF
     check and an age conditional normative model, with a combined outlier flag. ``--build-normative`` builds that
     model from a reference cohort, including the mean tensor of each age bin that DTI_Register can register to.
+    ``--batch-correct`` and ``--batch-column`` correct for sites and scanners (`Batches: sites and scanners`_).
 
 ``qc-profiles``
     Age binned statistics of the profiles (``<tract>/<tract>_<metric>_agebinstats.csv``) and their plots, and the QC
@@ -313,6 +314,38 @@ months (``--bins 0-3,4-9,10-60``): a bin ``lo-hi`` holds the ages from ``lo`` up
 so 3.5 months is in ``0-3m``. The tables of ``--stats-dir`` give the age of every scan in the column
 ``age_<units>``, in ``--age-units`` (``age_months`` by default; ``--age-units years`` for a table in years gives
 ``age_years``). ``qc-registration`` writes the age of each session in ``registration_qc.csv`` the same way.
+
+Batches: sites and scanners
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A scanner or protocol offset (another site, another b-value) shifts FA and scales the diffusivities of every scan of
+a batch. Both QCs compare the scans with a normative reference, so a batch that differs from it looks like a group of
+outliers without any registration or tracking error. ``qc-registration --batch-correct`` and ``qc-profiles
+--envelope-batch-correct`` estimate that offset and remove it before the comparison: additive for FA-like metrics,
+multiplicative for the diffusivities (``--batch-mult-metrics``), one value per batch, metric and age bin, the median
+over the scans of the batch of each scan's median deviation from the reference. One badly registered scan, or one
+scan with bad profiles, cannot hide itself that way.
+
+Without batches the whole cohort is one batch, which is right when it was acquired the same way. A cohort of several
+sites or scanners needs them, or the correction (taken from the largest site) leaves the other sites off. The batch of
+a scan comes from a column of a table, ``--batch-column site``: of ``--age-csv`` by default (with its subject and
+session columns), or of ``--batch-csv`` (``--batch-subject-column`` and ``--batch-session-column`` name its subject and
+session columns if they aren't detected). ``--batch-regex`` takes the batch from group 1 of a pattern instead, on the
+path of the FA map for ``qc-registration`` and on the column name of the profile for ``qc-profiles``, for the scans
+the table doesn't have. A batch with fewer than ``--batch-min-scans`` scans (5) in an age bin gets the shift of the
+whole cohort; scans without a batch form one of their own.
+
+``qc-registration`` also flags each session against its own batch: with batches, the median of the combined score (and
+of the features of ``--combine mahalanobis``) of each batch is removed before the outlier cut. Its ``batch_shifts.csv``
+lists the shifts (``batch``, ``bin``, ``metric``, ``kind``, ``shift``, ``n_scans``, and ``source``: ``batch``, or
+``cohort`` for a batch too small for its own), and ``registration_qc.csv`` has the ``batch`` of every session and,
+with batches, the ``combined_score_batch_centered``. The correction applies to the z-scores, MAE, SSIM, NCC and the CSF
+check; the angular metrics don't depend on such offsets.
+
+On 40 sessions of the IBIS reference dataset with the scans of a small site (6 sessions) given a scanner offset (FA
+-0.04, MD/RD/AD x1.15), ``qc-registration`` with FA, MD, RD and AD flagged 4 of the 5 well registered sessions of that
+site without batches, and none with ``--batch-column``; the two misregistered sessions (shifted by 3 mm) were flagged
+either way, with a higher score with the batches.
 
 Locations sampled outside the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -399,7 +432,7 @@ floats in ``--age-units``, in a column named after them (``age_months`` by defau
      - tract, metric and scan of the cleaned profiles compared with the prior
    * - ``batch_shifts_<ref>.csv``
      - with ``--envelope-batch-correct``
-     - metric and age bin
+     - batch, metric and age bin
    * - ``excluded_cases.csv``
      - when a scan is excluded
      - exclusion
@@ -455,16 +488,19 @@ removes that table from ``--stats-dir`` when it finds one.
 profiles: how the scans that are kept compare with the prior. No decision is made on them.
 
 **batch_shifts_<ref>.csv** -- the shift between the cohort and the prior used by ``--envelope-batch-correct``, per
-metric and age bin. It is estimated from all the tracts: for each profile, the median along the arc length of its
+batch (`Batches: sites and scanners`_; one, named ``''``, without ``--batch-column`` / ``--batch-regex``), metric and
+age bin. It is estimated from all the tracts: for each profile, the median along the arc length of its
 difference to the prior median (``value - prior``), or of its ratio for the metrics of ``--batch-mult-metrics``
 (``md,rd,ad``: ``value / prior``); the shift is the median of those over the profiles. A profile is corrected by
 subtracting the shift (or dividing by it) before the envelope check; the shape check is not affected. The table only
 has the header line when no shift can be estimated (the run then warns).
 
-- ``metric``, ``bin``
+- ``batch``, ``metric``, ``bin``
 - ``kind``: ``add`` or ``mul``
 - ``shift``: the offset (``add``) or the ratio (``mul``)
-- ``n_profiles``: the number of profiles it was estimated from
+- ``n_profiles``, ``n_scans``: the number of profiles and of scans of the batch it was estimated from
+- ``source``: ``batch``, or ``cohort`` when the batch has fewer than ``--batch-min-scans`` scans in that age bin and
+  gets the shift of the whole cohort
 
 **excluded_cases.csv** -- one row per exclusion, written when a scan is excluded.
 

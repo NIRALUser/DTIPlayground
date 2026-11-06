@@ -34,6 +34,22 @@ Metrics
   subject FA rises (``CSF_FAmean``).  Needs deformed MD maps; skip with
   ``--no-csf-check``.
 
+Batches
+-------
+A scanner or protocol offset of FA or of the diffusivities (another site, a
+change of b-value) raises the z-scores, MAE and CSF_MDratio of every scan of a
+batch, without any registration error.  ``--batch-correct`` estimates that
+offset per (batch, metric, age bin) -- the median over the scans of the batch
+of each scan's median deviation from the normative mean (or the atlas),
+additive for FA, multiplicative for MD/RD/AD -- and removes it from the maps
+before they are compared (``batch_shifts.csv``).  The batch is a median over
+scans, so a single failed registration does not correct itself away.  With
+batches (``--batch-column`` of the age table or ``--batch-csv``, or
+``--batch-regex`` on the path), the outlier cut also compares each scan with
+its own batch: the batch medians of the combined score and of the Mahalanobis
+features are removed first.  NCC, the angular metrics and the SSIM blobs are
+insensitive to such offsets and are left as they are.
+
 Age handling
 ------------
 Subjects are age-diverse but registered into one age-specific atlas, so raw
@@ -161,6 +177,9 @@ def parse_bins(spec):
         bins[-1][1] = 10**9  # oldest bin open-ended
     return [tuple(b) for b in bins]
 
+
+from dtiplayground.dmri.fiberprofile.analysis.batches import (  # noqa: E402
+    add_batch_arguments, batch_assigner, center_by_batch, log_batches)
 
 ## the age table is shared with the DTI_Register module of dmriprep (protocol ageCSV)
 from dtiplayground.dmri.common.age_table import (  # noqa: E402  (kept importable from here)
@@ -965,7 +984,7 @@ def qc_subject(s, atlas, bins, normative_dir, cfg, out_dir=None):
     for m in cfg["scalar_metrics"]:
         if m not in s["scalars"]:
             continue
-        v, _ = load_scalar(s["scalars"][m])
+        v = apply_scalar_shift(load_scalar(s["scalars"][m])[0], m, s, label, cfg.get("batch_shifts"))
         dr = float(atlas_scalars[m][mask].max() - atlas_scalars[m][mask].min()) or 1.0
         row[f"{m}_MAE"] = masked_mae(v, atlas_scalars[m], mask)
         row[f"{m}_NCC"] = masked_ncc(v, atlas_scalars[m], mask)
@@ -1042,8 +1061,10 @@ def qc_subject(s, atlas, bins, normative_dir, cfg, out_dir=None):
 
     # --- CSF / ventricle sanity check ---
     if atlas.get("csf_roi") is not None:
+        shifts = cfg.get("batch_shifts")
         smd = load_scalar(s["scalars"]["MD"])[0] if "MD" in s["scalars"] else None
-        row.update(csf_metrics(sfa, smd, atlas["md"], atlas["csf_roi"]))
+        smd = None if smd is None else apply_scalar_shift(smd, "MD", s, label, shifts)
+        row.update(csf_metrics(apply_scalar_shift(sfa, "FA", s, label, shifts), smd, atlas["md"], atlas["csf_roi"]))
 
     # --- write maps + preview ---
     if save_maps and maps:
@@ -1053,6 +1074,83 @@ def qc_subject(s, atlas, bins, normative_dir, cfg, out_dir=None):
             nib.save(nib.Nifti1Image(arr, ref_affine), os.path.join(sub_out, f"{s['id']}_{name}.nii.gz"))
         make_preview(s["id"], atlas_fa, sfa, maps, out_dir)
     return row
+
+
+def estimate_scalar_shifts(sessions, atlas_paths, bins, normative_dir, metrics, mult_metrics, mask_thr, min_scans):
+    """Batch shift of the scalar maps vs the reference, per (batch, metric, age bin).
+
+    The reference is the mean of the age bin of the normative model, or the atlas map without one (then the shift
+    also takes up the age difference to the atlas). For every scan the median over its brain mask of
+    ``value - reference`` (additive, FA-like metrics) or ``value / reference`` (multiplicative, the diffusivities in
+    *mult_metrics*) is its offset; the shift of a batch is the median of the offsets of its scans, so that one badly
+    registered scan cannot take its own error away. A batch with fewer than *min_scans* scans in an age bin gets the
+    shift of the whole cohort in that bin (none when the cohort has fewer either).
+
+    Returns ``{(batch, metric, bin): (kind, value, n_scans, source)}``, kind "add" or "mul", source "batch" or
+    "cohort", and the cohort shifts under the batch ``"*"``.
+    """
+    from collections import defaultdict
+    atlas_fa = load_scalar(atlas_paths["FA"])[0]
+    atlas_maps, norm_cache = {}, {}
+    per, pooled = defaultdict(list), defaultdict(list)
+    for s in sessions:
+        label = bin_label_for_age(s["age"], bins)
+        sfa = load_scalar(s["scalars"]["FA"])[0]
+        mask = brain_mask(sfa, atlas_fa, mask_thr)
+        for m in metrics:
+            if m not in s["scalars"]:
+                continue
+            if normative_dir:
+                if label is None:
+                    continue
+                if (label, m) not in norm_cache:
+                    norm_cache[(label, m)] = load_normative_scalar(normative_dir, label, m)
+                norm = norm_cache[(label, m)]
+                if norm is None:
+                    continue
+                ref = norm[0]
+            else:
+                if m not in atlas_paths:
+                    continue
+                if m not in atlas_maps:
+                    atlas_maps[m] = load_scalar(atlas_paths[m])[0]
+                ref = atlas_maps[m]
+            v = sfa if m == "FA" else load_scalar(s["scalars"][m])[0]
+            valid = mask & np.isfinite(ref) & np.isfinite(v)
+            if m in mult_metrics:
+                valid &= (ref > 0) & (v > 0)
+                offset = np.median(v[valid] / ref[valid]) if valid.any() else np.nan
+            else:
+                offset = np.median(v[valid] - ref[valid]) if valid.any() else np.nan
+            if np.isfinite(offset):
+                per[(s.get("batch", ""), m, label)].append(float(offset))
+                pooled[(m, label)].append(float(offset))
+
+    shifts = {}
+    for (m, label), vals in pooled.items():
+        if len(vals) >= min_scans:
+            shifts[("*", m, label)] = ("mul" if m in mult_metrics else "add", float(np.median(vals)), len(vals),
+                                       "cohort")
+    for (batch, m, label), vals in per.items():
+        kind = "mul" if m in mult_metrics else "add"
+        if len(vals) >= min_scans:
+            shifts[(batch, m, label)] = (kind, float(np.median(vals)), len(vals), "batch")
+        elif ("*", m, label) in shifts:
+            shifts[(batch, m, label)] = (kind, shifts[("*", m, label)][1], len(vals), "cohort")
+    return shifts
+
+
+def apply_scalar_shift(v, metric, s, label, shifts):
+    """The map *v* of scan *s* in the frame of the reference: its batch shift (estimate_scalar_shifts) removed."""
+    if not shifts:
+        return v
+    entry = shifts.get((s.get("batch", ""), metric, label))
+    if entry is None:
+        return v
+    kind, val = entry[0], entry[1]
+    if kind == "mul":
+        return v / val if val > 0 else v
+    return v - val
 
 
 def robust_z(x):
@@ -1264,6 +1362,16 @@ def configure_parser(p):
     p.add_argument("--mahal-support", type=float, default=0.85,
                    help="Fraction of the cohort the MCD covariance is estimated from (default: 0.85)")
     p.add_argument("--outlier-mad", type=float, default=3.5, help="Robust-z cutoff on the combined score (default: 3.5)")
+    p.add_argument("--batch-correct", action="store_true",
+                   help="Remove a technical offset of the scalar maps (FA, MD, ...) vs the normative model (or the "
+                        "atlas without one) before they are compared: a robust median shift per (batch, metric, age "
+                        "bin), additive for FA-like metrics and multiplicative for diffusivities, written to "
+                        "batch_shifts.csv. Without --batch-column/--batch-regex the cohort is one batch. The angular "
+                        "metrics are not affected")
+    p.add_argument("--batch-mult-metrics", default="MD,RD,AD",
+                   help="Metrics corrected multiplicatively (others additively) under --batch-correct "
+                        "(default: MD,RD,AD)")
+    add_batch_arguments(p, "the path of the scan's FA map")
     p.add_argument("--save-all-maps", action="store_true",
                    help="Write disagreement maps + previews for every session (default: only flagged outliers)")
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
@@ -1308,6 +1416,7 @@ def run_args(args, p) -> int:
         age_fallback = age_fallback_months(args.age_fallback, args.age_units)
     except ValueError as exc:
         p.error(f"--age-fallback: {exc}")
+    assign_batch = batch_assigner(args, p)
 
     atlas_fa, _ = load_scalar(atlas_scalar_paths["FA"])
     atlas_wm = atlas_fa > args.angular_fa_min
@@ -1436,6 +1545,36 @@ def run_args(args, p) -> int:
 
     log.info("QC on %d sessions", len(sessions))
 
+    # --- batches and the batch shift of the scalar maps ---
+    for s in sessions:
+        s["batch"] = assign_batch(s["subject"], s["session"], s["scalars"].get("FA", s["id"]))
+    if assign_batch.active:
+        log_batches([s["batch"] for s in sessions], "session")
+    if args.batch_correct:
+        mult_metrics = {m.strip().upper() for m in args.batch_mult_metrics.split(",") if m.strip()}
+        shift_metrics = list(scalar_metrics) + (["MD"] if atlas.get("csf_roi") is not None and "MD" not in scalar_metrics else [])
+        shifts = estimate_scalar_shifts([s for s in sessions if "FA" in s["scalars"]], atlas_scalar_paths, bins,
+                                        normative_dir, shift_metrics, mult_metrics, args.mask_threshold,
+                                        args.batch_min_scans)
+        cfg["batch_shifts"] = shifts
+        log.info("Batch correction of the scalar maps vs the %s, robust median shift per (batch, metric, bin):",
+                 "normative model" if normative_dir else "atlas")
+        brows = []
+        for (batch, m, label), (kind, val, n, source) in sorted(shifts.items(), key=lambda kv: tuple(map(str, kv[0]))):
+            if batch == "*":
+                continue  # the cohort shift: the batch '' without batches, else listed for the batches that use it
+            desc = f"{val:+.4g}" if kind == "add" else f"x{val:.4g}"
+            log.info("  %-10s %-4s [%s]: %s %s (n=%d%s)", batch or ("(cohort)" if not assign_batch.active else "(none)"),
+                     m, label, kind, desc, n, ", too few: the cohort shift" if source == "cohort" and batch != "*" else "")
+            brows.append({"batch": batch, "bin": label, "metric": m, "kind": kind, "shift": val, "n_scans": n,
+                          "source": source})
+        if not brows:
+            log.warning("  no batch shift could be estimated (fewer than --batch-min-scans %d scans with values "
+                        "where the reference has some): the maps are not corrected", args.batch_min_scans)
+        import pandas as pd
+        pd.DataFrame(brows, columns=["batch", "bin", "metric", "kind", "shift", "n_scans", "source"]).to_csv(
+            os.path.join(args.out_dir, "batch_shifts.csv"), index=False)
+
     save_all = args.save_all_maps
     rows, scored = [], []
     for s in sessions:
@@ -1484,10 +1623,23 @@ def run_args(args, p) -> int:
                     ", ..." if len(unscored) > 3 else "",
                     ", ".join(sorted({str(b) for b in df.loc[df["id"].isin(unscored), "bin"]})))
 
-    df["combined_robust_z"] = robust_z(df["combined_score"].to_numpy())
+    df["batch"] = [s["batch"] for s in scored]
+    score = df["combined_score"].to_numpy()
+    if assign_batch.active:
+        ## every scan compared with its own batch: the batch medians of the scores (and of the Mahalanobis
+        ## features) are removed before the outlier cut, so that a batch with an offset isn't flagged as a whole
+        score, info = center_by_batch(score, df["batch"], args.batch_min_scans)
+        df["combined_score_batch_centered"] = score
+        for b, (n, med) in sorted(info.items()):
+            log.info("  batch %-10s %3d session(s), median combined score %s", b or "(none)", n,
+                     "{:.3g}".format(med[0]) if med is not None else
+                     "- (fewer than --batch-min-scans {}: compared with the whole cohort)".format(args.batch_min_scans))
+    df["combined_robust_z"] = robust_z(score)
 
     # --- Mahalanobis: always scored, flags only when it is the selected rule ---
     X, names = worseness_features(df, scalar_metrics, do_angular)
+    if assign_batch.active and X.shape[1]:
+        X = center_by_batch(X, df["batch"], args.batch_min_scans)[0]
     mah = robust_mahalanobis(X, names, support=args.mahal_support)
     mahal_flag = None
     if mah is not None:

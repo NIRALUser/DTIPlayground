@@ -102,7 +102,10 @@ or interpolated; a run where no profile can be compared with it stops):
       correct`` first removes a technical location offset between the testing and
       normative populations (robust median shift per (metric, age-bin); additive
       for FA-like metrics, multiplicative for diffusivities) so a batch effect
-      does not masquerade as value outliers.  It does not touch the shape QC.
+      does not masquerade as value outliers; with ``--batch-column`` (a site or
+      scanner column of the age table or ``--batch-csv``) or ``--batch-regex``,
+      one shift per batch, for a testing population of several batches.  It does
+      not touch the shape QC.
   (2) **shape / anatomy outlier** -- based on the ``--shape-metric`` (FA) profile
       only, since flat metrics carry little shape information: the Pearson
       correlation with the prior bin **mean** (or ``--corr-reference median``)
@@ -144,6 +147,8 @@ import pandas as pd
 
 from dtiplayground.dmri.common.age_table import (AGE_UNIT_TO_MONTHS, age_fallback_months, age_from_table, in_age_bin,
                                                  load_age_table, months_to)
+from dtiplayground.dmri.fiberprofile.analysis.batches import (BatchAssigner, add_batch_arguments, batch_assigner,
+                                                             log_batches)
 from dtiplayground.dmri.fiberprofile.analysis.gather import normalize_metric
 
 log = logging.getLogger("profile_qc")
@@ -177,6 +182,10 @@ _AGE_TABLE = {}
 _AGE_RE = AGE_RE
 # Age in months of the scans that neither the table nor the pattern gives one (--age-fallback), None: no age
 _AGE_FALLBACK = None
+# Batch of each profile column (--batch-column / --batch-regex), see batch_of
+_BATCH = BatchAssigner()
+# Scans a batch needs in an age bin for its own envelope batch shift (--batch-min-scans)
+_BATCH_MIN_SCANS = 5
 # Unit of the ages in the output tables (--age-units); the ages are in months everywhere else
 _AGE_UNITS = "months"
 # Where the age of each column came from, for the summary at the end of the run
@@ -295,6 +304,13 @@ def age_of(column: str, record=True):
     if record:
         _AGE_SOURCE[source].add(column)
     return age
+
+
+def batch_of(column):
+    """The batch of a profile column (``<subject>_<session>_<prefix>``): its row in the batch table, else the
+    --batch-regex on the column name; '' without one."""
+    tokens = column.split("_")
+    return _BATCH(tokens[0], tokens[1] if len(tokens) > 1 else None, column)
 
 
 def age_column():
@@ -866,20 +882,26 @@ def fraction_inside(M: np.ndarray, lo: np.ndarray, hi: np.ndarray):
     return frac, n_valid.astype(int), n_inside.astype(int)
 
 
-def estimate_batch_shifts(inputs, prior_dir, bins, mult_metrics, exclude_ids=None, exclude_full=None):
+def estimate_batch_shifts(inputs, prior_dir, bins, mult_metrics, exclude_ids=None, exclude_full=None,
+                          min_scans=None):
     """Robust batch shift of the testing population vs the normative reference.
 
-    For each (metric, age-bin), pools across tracts the per-profile **median**
+    For each (batch, metric, age-bin), pools across tracts the per-profile **median**
     residual to the normative centre (median/p50) and takes the median over
     profiles -- additive (``value - ref``) for FA-like metrics, multiplicative
-    (``value / ref``) for diffusivities in *mult_metrics*.  Returns
-    ``{(metric, bin): (kind, value, n_profiles)}`` with kind in {"add", "mul"}.
+    (``value / ref``) for diffusivities in *mult_metrics*.  The batch of a profile
+    is ``batch_of`` its column ('' for all without --batch-column/--batch-regex);
+    a batch with fewer than *min_scans* scans in a bin gets the shift of the whole
+    testing population there.  Returns ``{(batch, metric, bin): (kind, value,
+    n_profiles, n_scans, source)}`` with kind in {"add", "mul"} and source in
+    {"batch", "cohort"}; the population shifts are under the batch ``"*"``.
     This corrects a technical location offset between populations for the
     envelope (value) QC only; the shape QC is shift/scale invariant.
     """
     from collections import defaultdict
 
-    per = defaultdict(list)
+    min_scans = _BATCH_MIN_SCANS if min_scans is None else min_scans
+    per, scans = defaultdict(list), defaultdict(set)
     for csv_path in inputs:
         tract, metric = tract_and_metric(csv_path)
         prior_path = find_prior_stats(prior_dir, tract, metric)
@@ -905,26 +927,44 @@ def estimate_batch_shifts(inputs, prior_dir, bins, mult_metrics, exclude_ids=Non
                 else:
                     resid = np.where(np.isfinite(M) & np.isfinite(ref), M - ref, np.nan)
                 prof_med = np.nanmedian(resid, axis=0)  # one robust residual per profile column
-            per[(metric, label)].extend(prof_med[np.isfinite(prof_med)].tolist())
+            for c, r in zip(cols, prof_med):
+                if np.isfinite(r):
+                    for batch in (batch_of(c), "*"):
+                        per[(batch, metric, label)].append(float(r))
+                        scans[(batch, metric, label)].add(subject_session_of(c))
 
     shifts = {}
-    for (metric, label), vals in per.items():
-        arr = np.asarray(vals, dtype=float)
-        if arr.size == 0:
-            continue
+    for (batch, metric, label), vals in per.items():
         kind = "mul" if metric in mult_metrics else "add"
-        shifts[(metric, label)] = (kind, float(np.median(arr)), int(arr.size))
+        n_scans = len(scans[(batch, metric, label)])
+        if batch == "*" or n_scans >= min_scans or not _BATCH.active:  # without batches, the population is one
+            shifts[(batch, metric, label)] = (kind, float(np.median(vals)), len(vals), n_scans,
+                                              "cohort" if batch == "*" else "batch")
+    for (batch, metric, label), vals in per.items():
+        if (batch, metric, label) not in shifts:
+            kind, val = shifts[("*", metric, label)][:2]
+            shifts[(batch, metric, label)] = (kind, val, len(vals), len(scans[(batch, metric, label)]), "cohort")
     return shifts
 
 
-def _apply_batch_shift(M, metric, label, batch_shifts):
-    """Bring testing values into the normative frame for the envelope check."""
-    if not batch_shifts or (metric, label) not in batch_shifts:
+def _apply_batch_shift(M, metric, label, batch_shifts, columns=None):
+    """Bring testing values into the normative frame for the envelope check: each column (the profile *columns*)
+    by the shift of its batch, all by the population shift without *columns*."""
+    if not batch_shifts:
         return M
-    kind, val, _ = batch_shifts[(metric, label)]
-    if kind == "mul":
-        return M / val if val not in (0.0,) else M
-    return M - val
+    batches = [batch_of(c) for c in columns] if columns is not None else ["*"] * M.shape[1]
+    out = np.array(M, dtype=float, copy=True)
+    for j, b in enumerate(batches):
+        entry = batch_shifts.get((b, metric, label)) or batch_shifts.get(("*", metric, label))
+        if entry is None:
+            continue
+        kind, val = entry[0], entry[1]
+        if kind == "mul":
+            if val != 0.0:
+                out[:, j] = out[:, j] / val
+        else:
+            out[:, j] = out[:, j] - val
+    return out
 
 
 def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, exclude_ids=None,
@@ -965,7 +1005,7 @@ def compute_profile_qc(inputs, prior_dir, bins, corr_reference, envelope_cfg, ex
             present = np.isfinite(M).sum(axis=0)
             r = pearson_columns(M, ref_vec)  # shape: shift/scale invariant, uses raw M
             if env is not None:
-                M_env = _apply_batch_shift(M, metric, label, batch_shifts)
+                M_env = _apply_batch_shift(M, metric, label, batch_shifts, cols)
                 frac, nval, nin = fraction_inside(M_env, env[0], env[1])
             else:
                 frac = np.full(len(cols), np.nan)
@@ -1211,7 +1251,7 @@ def plot_excluded_profiles(inputs, prior_dir, bins, envelope_cfg, prof_outliers_
                     if col not in df.columns or bin_label_for_age(age_of(col), bins) != label:
                         continue
                     v = df[col].to_numpy(dtype=float)
-                    v = _apply_batch_shift(v[:, None], metric, label, batch_shifts)[:, 0]
+                    v = _apply_batch_shift(v[:, None], metric, label, batch_shifts, [col])[:, 0]
                     ax.plot(x, v, color=color, lw=0.7, alpha=0.75,
                             ls="-" if col in prof_set else "--", zorder=2)
                     n_cell += 1
@@ -1393,11 +1433,13 @@ def configure_parser(p):
                         "is below this (default: 0.9)")
     p.add_argument("--envelope-batch-correct", action="store_true",
                    help="Correct a batch shift (testing vs normative) before the value/envelope QC: a robust "
-                        "median shift per (metric, age-bin), additive for FA-like metrics and multiplicative "
-                        "for diffusivities. Does NOT affect the shape/correlation QC")
+                        "median shift per (batch, metric, age-bin), additive for FA-like metrics and multiplicative "
+                        "for diffusivities. The testing population is one batch unless --batch-column or "
+                        "--batch-regex gives several. Does NOT affect the shape/correlation QC")
     p.add_argument("--batch-mult-metrics", default="md,rd,ad",
                    help="Metrics corrected multiplicatively (others additively) under --envelope-batch-correct "
                         "(default: md,rd,ad)")
+    add_batch_arguments(p, "the profile column name (<subject>_<session>_<prefix>)")
     # (2) shape / anatomy outliers (correlation to reference profile)
     p.add_argument("--shape-outlier-method", default="threshold", choices=["threshold", "iqr"],
                    help="Flag shape outliers by a fixed correlation threshold, or a robust per-group "
@@ -1475,8 +1517,13 @@ def run_args(args, p) -> int:
     except ValueError as exc:
         p.error(f"--age-fallback: {exc}")
     set_age_source(age_table, args.age_regex, fallback)
-    global _AGE_UNITS
+    global _AGE_UNITS, _BATCH, _BATCH_MIN_SCANS
     _AGE_UNITS = args.age_units
+    _BATCH = batch_assigner(args, p)
+    _BATCH_MIN_SCANS = args.batch_min_scans
+    if _BATCH.active and not args.envelope_batch_correct:
+        log.warning("--batch-column/--batch-regex only matter for --envelope-batch-correct, which isn't given: the "
+                    "envelope QC is not batch corrected")
 
     inputs = select_inputs(args.profiles_dir)
     log.info("Found %d metric tables under %s", len(inputs), args.profiles_dir)
@@ -1589,17 +1636,30 @@ def run_args(args, p) -> int:
             mult_metrics = {m.strip() for m in args.batch_mult_metrics.split(",") if m.strip()}
             batch_shifts = estimate_batch_shifts(inputs, args.prior_stats_dir, bins, mult_metrics,
                                                  exclude_ids=reg_ss, exclude_full=full_excl)
-            log.info("Envelope batch correction (testing vs normative), robust median shift per (metric, bin):")
+            if _BATCH.active:
+                columns = set()
+                for f in inputs:
+                    columns |= set(pd.read_csv(f, nrows=0, index_col=0).columns)
+                log_batches([batch_of(c) for c in sorted(columns)], "profile column")
+            log.info("Envelope batch correction (testing vs normative), robust median shift per (%smetric, bin):",
+                     "batch, " if _BATCH.active else "")
             os.makedirs(stats_root, exist_ok=True)
             brows = []
-            for (metric, label), (kind, val, n) in sorted(batch_shifts.items()):
+            for (batch, metric, label), (kind, val, n, n_scans, source) in sorted(batch_shifts.items()):
+                if batch == "*":
+                    continue  # the population shift: the batch '' without batches, else of the batches that use it
                 desc = f"{val:+.4g}" if kind == "add" else f"×{val:.4g}"
-                log.info("  %-4s [%s]: %s %s (n=%d profiles)", metric, label, kind, desc, n)
-                brows.append({"metric": metric, "bin": label, "kind": kind, "shift": val, "n_profiles": n})
+                log.info("  %s%-4s [%s]: %s %s (n=%d profiles, %d scans%s)",
+                         f"{batch or '(none)':<10} " if _BATCH.active else "", metric, label, kind, desc, n, n_scans,
+                         f"; fewer than --batch-min-scans {_BATCH_MIN_SCANS}: the population shift"
+                         if source == "cohort" else "")
+                brows.append({"batch": batch, "metric": metric, "bin": label, "kind": kind, "shift": val,
+                              "n_profiles": n, "n_scans": n_scans, "source": source})
             if not brows:
                 log.warning("  no batch shift could be estimated: no profile has values where the prior has some, "
                             "the envelope QC is not corrected")
-            pd.DataFrame(brows, columns=["metric", "bin", "kind", "shift", "n_profiles"]).to_csv(
+            pd.DataFrame(brows, columns=["batch", "metric", "bin", "kind", "shift", "n_profiles", "n_scans",
+                                         "source"]).to_csv(
                 os.path.join(stats_root, f"batch_shifts_{args.corr_reference}.csv"), index=False)
 
         qc = compute_profile_qc(inputs, args.prior_stats_dir, bins, args.corr_reference, env_cfg,

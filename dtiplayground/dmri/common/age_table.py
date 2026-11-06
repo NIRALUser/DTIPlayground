@@ -99,6 +99,21 @@ def subject_session_from_path(*paths):
     return subject, session
 
 
+def _read_rows(path):
+    """The rows of a CSV/TSV table (the delimiter is detected) as dicts; an error when it has none."""
+    with open(path, newline="") as fh:
+        sample = fh.read(8192)
+        fh.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
+        except csv.Error:
+            dialect = csv.excel_tab if "\t" in sample.splitlines()[0] else csv.excel
+        rows = list(csv.DictReader(fh, dialect=dialect))
+    if not rows:
+        raise ValueError(f"{path} has no data rows")
+    return rows
+
+
 def load_age_table(path, units="months", age_column=None, subject_column=None, session_column=None):
     """{(subject, session|None): age_in_months} from a CSV/TSV participants/sessions table.
 
@@ -111,17 +126,7 @@ def load_age_table(path, units="months", age_column=None, subject_column=None, s
     without a session column gives one age per subject, applied to all of that
     subject's sessions.
     """
-    with open(path, newline="") as fh:
-        sample = fh.read(8192)
-        fh.seek(0)
-        try:
-            dialect = csv.Sniffer().sniff(sample, delimiters=",\t;")
-        except csv.Error:
-            dialect = csv.excel_tab if "\t" in sample.splitlines()[0] else csv.excel
-        rows = list(csv.DictReader(fh, dialect=dialect))
-    if not rows:
-        raise ValueError(f"{path} has no data rows")
-
+    rows = _read_rows(path)
     have = {c.strip().lower(): c for c in rows[0] if c}
 
     def pick(cands):
@@ -177,7 +182,13 @@ def age_from_table(subject, session, age_table):
     """Age in months of a scan: the entry of its session, else the one of its subject (a table without a session
     column holds one age per subject). None when neither is there. An IBIS visit matches with or without its leading
     'V' (session 'SA-CVD' is the row 'VSA-CVD' of the table, and the other way round)."""
-    if not age_table or subject is None:
+    return value_from_table(subject, session, age_table)
+
+
+def value_from_table(subject, session, table):
+    """The entry of a scan in a table keyed by (subject, session|None), as age_from_table: its session, else its
+    subject; None when neither is there."""
+    if not table or subject is None:
         return None
     sub = bids_key(subject)
     keys = []
@@ -186,6 +197,40 @@ def age_from_table(subject, session, age_table):
         keys += [(sub, ses), (sub, ses[1:] if ses.startswith('v') and len(ses) > 1 else 'v' + ses)]
     keys.append((sub, None))
     for key in keys:
-        if key in age_table:
-            return age_table[key]
+        if key in table:
+            return table[key]
     return None
+
+
+def load_batch_table(path, batch_column, subject_column=None, session_column=None):
+    """{(subject, session|None): batch name} from a CSV/TSV table, e.g. the age table with a site or scanner column
+    (the batches of the QC batch correction, --batch-column). The subject and session columns are named or
+    auto-detected as in load_age_table; a table without a session column gives one batch per subject. Rows with an
+    empty batch are left out."""
+    rows = _read_rows(path)
+    have = {c.strip().lower(): c for c in rows[0] if c}
+
+    def named(name):
+        col = have.get(name.strip().lower())
+        if col is None:
+            raise ValueError(f"{path}: no column '{name}', found {sorted(have)}")
+        return col
+
+    batch_col = named(batch_column)
+    sub_col = named(subject_column) if subject_column else next(
+        (have[c] for c in AGE_TABLE_SUBJECT_COLS if c in have), None)
+    ses_col = named(session_column) if session_column else next(
+        (have[c] for c in AGE_TABLE_SESSION_COLS if c in have), None)
+    if sub_col is None:
+        raise ValueError(f"{path}: need a subject column "
+                         f"({', '.join(AGE_TABLE_SUBJECT_COLS)}) -- name it explicitly; found {sorted(have)}")
+    table = {}
+    for r in rows:
+        batch = str(r.get(batch_col) or "").strip()
+        if batch and batch.lower() not in ("n/a", "na", "nan"):
+            table[(bids_key(r[sub_col]), bids_key(r[ses_col]) if ses_col else None)] = batch
+    if not table:
+        raise ValueError(f"{path}: no batch in column '{batch_col}'")
+    log.info("Batch table %s: %d entries, %d batch(es) (%s) from columns (%s, %s, %s)", path, len(table),
+             len(set(table.values())), ", ".join(sorted(set(table.values()))[:8]), sub_col, ses_col or "-", batch_col)
+    return table

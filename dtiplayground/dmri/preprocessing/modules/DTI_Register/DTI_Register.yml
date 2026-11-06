@@ -75,17 +75,17 @@ protocol:
         candidates:
           - value: months
             caption: Months
-            description: Ages of ageCSV are in months
+            description: Ages of ageCSV and ageFallback are in months
           - value: years
             caption: Years
-            description: Ages of ageCSV are in years
+            description: Ages of ageCSV and ageFallback are in years
           - value: weeks
             caption: Weeks
-            description: Ages of ageCSV are in weeks
+            description: Ages of ageCSV and ageFallback are in weeks
           - value: days
             caption: Days
-            description: Ages of ageCSV are in days
-        description: Units of the age column of ageCSV (converted to the months of the age bins)
+            description: Ages of ageCSV and ageFallback are in days
+        description: Units of the age column of ageCSV and of ageFallback (converted to the months of the age bins); age and ageRegex are in months
       ageRegex:
         type: string
         caption: Age Pattern
@@ -95,7 +95,7 @@ protocol:
         type: float
         caption: Fallback Age
         default_value: null
-        description: Age (months) of an image that neither age, ageCSV nor ageRegex gives one, with a warning in the log; without it such an image is registered to the reference image
+        description: Age of an image that neither age, ageCSV nor ageRegex gives one, in ageUnits (months by default), with a warning in the log; without it such an image is registered to the reference image
       ANTsPath:
         type: dirpath-remote
         caption: ANTS directory

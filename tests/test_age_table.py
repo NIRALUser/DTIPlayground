@@ -209,6 +209,23 @@ class TestAgeFallback(unittest.TestCase):
                 module.global_variables = {name: '30'}
                 self.assertEqual(module.subjectAge(), 30.0)
 
+    def test_dti_register_fallback_in_age_units(self):
+        dti = TestDTIRegisterAge()
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(dti._module({'ageFallback': 2, 'ageUnits': 'years'}, dti._paths(d)).subjectAge(), 24.0)
+            self.assertEqual(dti._module({'ageFallback': 2, 'ageUnits': 'months'}, dti._paths(d)).subjectAge(), 2.0)
+            self.assertAlmostEqual(dti._module({'ageFallback': 365.25, 'ageUnits': 'days'}, dti._paths(d)).subjectAge(), 12.0)
+            # the units of the table and of the fallback are the same option: a table in years, its fallback too
+            p = _table(d, 'ages.csv', 'participant_id,session_id,age\nsub-1234,ses-V02,1.5\n')
+            other = os.path.join(d, 'sub-9999', 'ses-V02', 'sub-9999_ses-V02_dwi_DTI.nrrd')
+            self.assertEqual(dti._module({'ageFallback': 2, 'ageUnits': 'years', 'ageCSV': p}, dti._paths(d)).subjectAge(), 18.0)
+            self.assertEqual(dti._module({'ageFallback': 2, 'ageUnits': 'years', 'ageCSV': p}, other).subjectAge(), 24.0)
+            # the global variables (dmriprep run -g age_units years age_fallback 2); age_units wins over the protocol
+            module = dti._module({}, dti._paths(d))
+            module.global_variables = {'age_units': 'years', 'age_fallback': '2'}
+            self.assertEqual(module.subjectAge(), 24.0)
+            self.assertIsNone(dti._module({'ageFallback': 2, 'ageUnits': 'decades'}, dti._paths(d)).subjectAge())
+
     def test_dti_register_ignores_an_invalid_fallback(self):
         dti = TestDTIRegisterAge()
         with tempfile.TemporaryDirectory() as d:

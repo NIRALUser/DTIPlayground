@@ -338,11 +338,12 @@ whole cohort; scans without a batch form one of their own.
 A session can have two scans from different scanners or protocols (two prefixes, ``..._acq-dir79_dwi`` and
 ``..._acq-dir42_dwi``). The table then has a row for each, with the same subject and session and different batches,
 and the batch of each scan is the row whose values appear in the scan name (the file name of its FA map for
-``qc-registration``, the column name of the profile for ``qc-profiles``), as whole words, case-insensitive: only the
-columns where those rows differ are compared, typically an acquisition, protocol or scan column, or the batch itself
-(``CMRR_APPA`` in ``999434_VSA-CVD_CMRR_APPA_tensor``). The log says which column told the scans apart. A scan that
-matches no row, or rows of different batches, gets ``--batch-regex`` if given, else no batch, with a warning that
-names it.
+``qc-registration``, the column name of the profile for ``qc-profiles``), case-insensitive: only the columns where
+those rows differ are compared, typically a prefix (the ``prefix`` of ``registration_qc.csv``), acquisition, protocol or
+scan column, or the batch itself. Whole words first (``CMRR_APPA`` or ``APPA`` in ``999434_VSA-CVD_CMRR_APPA_tensor``;
+``dir6`` is not in ``acq-dir64``); when no row matches so, any part of the name of at least 2 characters (``b2000`` in
+``acq-b2000dir32``). The log says which column told the scans apart, and how. A scan that matches no row, or rows of
+different batches, gets ``--batch-regex`` if given, else no batch, with a warning that names it.
 
 ``qc-registration`` also flags each session against its own batch: with batches, the median of the combined score (and
 of the features of ``--combine mahalanobis``) of each batch is removed before the outlier cut. Its ``batch_shifts.csv``

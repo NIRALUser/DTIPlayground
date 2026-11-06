@@ -51,24 +51,31 @@ def _in_name(value, name):
                                      re.IGNORECASE) is not None
 
 
+def _in_name_anywhere(value, name):
+    """Whether *value* (at least 2 characters) is anywhere in *name*, case-insensitive ('b2000' in 'acq-b2000dir32')."""
+    return len(value) >= 2 and value.lower() in name.lower()
+
+
 def resolve_batch_rows(rows, name):
     """The batch of the scan *name* among the BatchRows of its session (rows of different batches): the row whose
-    values, in the columns where the rows differ (an acquisition, protocol or scan column, or the batch itself),
-    appear in the name. Returns (batch, [matching columns]), or (None, reason) when no row or rows of different
-    batches match."""
+    values, in the columns where the rows differ (a prefix, acquisition, protocol or scan column, or the batch
+    itself), appear in the name. Whole words first ('dir64' is in 'acq-dir64_dwi', 'dir6' is not); when no row
+    matches so, any part of the name ('b2000' in 'acq-b2000dir32'). Returns (batch, [matching columns], with
+    '(part of a word)' for the second kind), or (None, reason) when no row or rows of different batches match."""
     columns = sorted({c for _, cells in rows for c in cells})
     differ = [c for c in columns if len({cells.get(c, "") for _, cells in rows}) > 1]
-    matches = []
-    for batch, cells in rows:
-        hit = [c for c in differ if _in_name(cells.get(c, ""), name)]
-        if hit:
-            matches.append((batch, hit))
-    batches = {b for b, _ in matches}
-    if len(batches) == 1:
-        return batches.pop(), sorted({c for _, hit in matches for c in hit})
-    if not matches:
-        return None, "no row's {} in the name".format("/".join(differ) or "values")
-    return None, "rows of batches {} match".format(", ".join(sorted(batches)))
+    for match, how in ((_in_name, ""), (_in_name_anywhere, " (part of a word)")):
+        matches = []
+        for batch, cells in rows:
+            hit = [c for c in differ if match(cells.get(c, ""), name)]
+            if hit:
+                matches.append((batch, hit))
+        batches = {b for b, _ in matches}
+        if len(batches) == 1:
+            return batches.pop(), [c + how for c in sorted({c for _, hit in matches for c in hit})]
+        if matches:
+            return None, "rows of batches {} match".format(", ".join(sorted(batches)))
+    return None, "no row's {} in the name".format("/".join(differ) or "values")
 
 
 class BatchAssigner:

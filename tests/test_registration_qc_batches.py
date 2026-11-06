@@ -159,13 +159,39 @@ class TestBatchRowsOfASession(unittest.TestCase):
         self.assertEqual(resolve_batch_rows(rows, 'sub-1_ses-2_acq-dir42_dwi_Registered_FA.nii.gz'), ('Skyra', ['acq']))
         self.assertEqual(resolve_batch_rows(rows, '999434_VSA_Skyra_tensor'), ('Skyra', ['scanner']))  # the batch itself
         self.assertIsNone(resolve_batch_rows(rows, 'sub-1_ses-2_acq-dir6_dwi')[0])     # no row
-        self.assertIsNone(resolve_batch_rows(rows, 'sub-1_ses-2_acq-dir797_dwi')[0])   # not a whole token
+        # not a whole word, but no row matches as one: the part of a word decides
+        self.assertEqual(resolve_batch_rows(rows, 'sub-1_ses-2_acq-dir797_dwi'), ('Prisma', ['acq (part of a word)']))
         self.assertIsNone(resolve_batch_rows(rows, 'sub-1_dir79_dir42_dwi')[0])         # both rows
         # the age is the same in both rows, so it can't match by accident ('12' in 'ses-12')
         self.assertIsNone(resolve_batch_rows(rows, 'sub-1_ses-12_dwi')[0])
         # a value with an underscore (IBIS prefixes), any case
         rows = [('A', {'protocol': 'CMRR_APPA'}), ('B', {'protocol': 'CMRR_PAAP'})]
         self.assertEqual(resolve_batch_rows(rows, '999434_VSA-CVD_cmrr_paap_tensor')[0], 'B')
+
+    def test_prefix_column(self):
+        """A prefix column (as registration_qc.csv's) whose values identify the scans of a session by a substring."""
+        from dtiplayground.dmri.fiberprofile.analysis.batches import resolve_batch_rows
+        ibis = '999434_VSA-CVD_CMRR_PAAP_tensor_Registered_FA.nii.gz'
+        # the whole prefix, or an identifying word of it
+        for a, b in (('CMRR_APPA_tensor', 'CMRR_PAAP_tensor'), ('APPA', 'PAAP'), ('appa', 'paap')):
+            rows = [('Prisma', {'prefix': a}), ('Trio', {'prefix': b})]
+            self.assertEqual(resolve_batch_rows(rows, ibis), ('Trio', ['prefix']), (a, b))
+        # a part of a word: b2000 in acq-b2000dir32
+        rows = [('A', {'prefix': 'b1000'}), ('B', {'prefix': 'b2000'})]
+        self.assertEqual(resolve_batch_rows(rows, 'sub-1_ses-1_acq-b2000dir32_dwi_Registered_FA.nii.gz'),
+                         ('B', ['prefix (part of a word)']))
+        # whole words first: dir6 is part of dir64, but the row of dir64 matches it as a word
+        rows = [('A', {'prefix': 'dir6'}), ('B', {'prefix': 'dir64'})]
+        self.assertEqual(resolve_batch_rows(rows, 'sub-1_ses-1_acq-dir64_dwi')[0], 'B')
+        self.assertEqual(resolve_batch_rows(rows, 'sub-1_ses-1_acq-dir6_dwi')[0], 'A')
+        # parts of a word of two rows: no batch, rather than a guess
+        rows = [('A', {'prefix': 'b100'}), ('B', {'prefix': 'b1000'})]
+        batch, why = resolve_batch_rows(rows, 'sub-1_ses-1_acq-b1000dir64_dwi')
+        self.assertIsNone(batch)
+        self.assertIn('rows of batches A, B match', why)
+        # a single character is never matched as a part of a word
+        rows = [('A', {'prefix': 'a'}), ('B', {'prefix': 'b'})]
+        self.assertIsNone(resolve_batch_rows(rows, 'sub-1_ses-1_acq-xbx_dwi')[0])
 
     def test_assigner(self):
         from dtiplayground.dmri.common.age_table import load_batch_table
@@ -217,6 +243,22 @@ class TestBatchRowsOfASession(unittest.TestCase):
         self.assertEqual(dict(zip(df['prefix'], df['batch'])), {'acq-std_dwi': 'Prisma', 'acq-alt_dwi': 'Skyra'})
         s = pd.read_csv(os.path.join(out, 'batch_shifts.csv')).set_index(['batch', 'metric'])['shift']
         self.assertAlmostEqual(s[('Skyra', 'MD')] / s[('Prisma', 'MD')], 1.15, delta=0.01)
+        ## a prefix column instead of the acquisition: the prefix of registration_qc.csv, or a part of a word of it
+        for std, alt in (('acq-std_dwi', 'acq-alt_dwi'), ('cq-st', 'cq-al')):
+            with self.subTest(prefix=(std, alt)):
+                rows = ['participant_id\tsession_id\tage\tprefix\tscanner']
+                for line in lines[1:]:
+                    sub, ses, age, acq, scanner = line.split('\t')
+                    rows.append('\t'.join([sub, ses, age, std if acq == 'acq-std' else alt, scanner]))
+                table2 = self._table(tmp.name, '\n'.join(rows) + '\n')
+                out2 = os.path.join(tmp.name, 'qc_' + std)
+                with self.assertLogs('batches', level='INFO') as logs:
+                    self.assertEqual(rq.main(common + ['--out-dir', out2, '--age-csv', table2, '--batch-column',
+                                                       'scanner', '--batch-correct']), 0)
+                df2 = pd.read_csv(os.path.join(out2, 'registration_qc.csv'), keep_default_na=False)
+                self.assertEqual(dict(zip(df2['prefix'], df2['batch'])),
+                                 {'acq-std_dwi': 'Prisma', 'acq-alt_dwi': 'Skyra'})
+                self.assertTrue(any('told apart by the prefix' in m for m in logs.output))
 
 
 class TestCenterByBatch(unittest.TestCase):

@@ -124,6 +124,23 @@ class TestRegistrationQCBatches(unittest.TestCase):
             rq.main(self.common + ['--out-dir', os.path.join(self.root, 'x'), '--batch-csv', self.table])
 
 
+class TestBatchNote(unittest.TestCase):
+    """The batch of a session and the shift its maps got, in its 'scored' log line."""
+
+    def test_note(self):
+        shifts = {('A', 'FA', '10-60m'): ('add', -0.01, 10, 'batch'), ('B', 'FA', '10-60m'): ('add', -0.01, 3, 'cohort')}
+        a, b, c = {'batch': 'A'}, {'batch': 'B'}, {'batch': 'C'}
+        self.assertEqual(rq.batch_note(a, '10-60m', False, None, 5), '')
+        self.assertEqual(rq.batch_note(a, '10-60m', True, None, 5), ', batch A')
+        self.assertEqual(rq.batch_note(a, '10-60m', True, shifts, 5), ', batch A, own batch shift')
+        self.assertEqual(rq.batch_note(b, '10-60m', True, shifts, 5),
+                         ', batch B, cohort shift: batch of fewer than 5 scans')
+        self.assertEqual(rq.batch_note(c, '10-60m', True, shifts, 5),
+                         ', batch C, not batch corrected: fewer than 5 scans with a shift')
+        self.assertEqual(rq.batch_note({'batch': ''}, '10-60m', False, {('', 'FA', '10-60m'): ('add', 0, 9, 'batch')}, 5),
+                         ', cohort shift')
+
+
 class TestCenterByBatch(unittest.TestCase):
 
     def test_center(self):

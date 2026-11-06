@@ -1153,6 +1153,23 @@ def apply_scalar_shift(v, metric, s, label, shifts):
     return v - val
 
 
+def batch_note(s, label, batches, shifts, min_scans):
+    """', batch <name>' for the log line of scan *s* (with batches), and with --batch-correct the shift its maps got:
+    that of its batch, of the whole cohort (a batch with fewer than *min_scans* scans in the age bin), or none."""
+    parts = []
+    if batches:
+        parts.append("batch {}".format(s.get("batch") or "(none)"))
+    if shifts is not None:
+        sources = {shifts[k][3] for k in shifts if k[0] == s.get("batch", "") and k[2] == label}
+        if not sources:
+            parts.append("not batch corrected: fewer than {} scans with a shift".format(min_scans))
+        elif sources == {"batch"}:
+            parts.append("own batch shift" if batches else "cohort shift")
+        else:
+            parts.append("cohort shift: batch of fewer than {} scans".format(min_scans))
+    return "".join(", " + p for p in parts)
+
+
 def robust_z(x):
     """MAD-based z-score (median/1.4826·MAD); 0 where scale is degenerate."""
     x = np.asarray(x, dtype=float)
@@ -1583,8 +1600,9 @@ def run_args(args, p) -> int:
             continue
         rows.append(qc_subject(s, atlas, bins, normative_dir, cfg, args.out_dir if save_all else None))
         scored.append(s)
-        log.info("  scored %s (age %s, bin %s)%s", s["id"],
+        log.info("  scored %s (age %s, bin %s%s)%s", s["id"],
                  f"{s['age']:g}m" if s["age"] is not None else "unknown", rows[-1]["bin"],
+                 batch_note(s, rows[-1]["bin"], assign_batch.active, cfg.get("batch_shifts"), args.batch_min_scans),
                  " [maps saved]" if save_all else "")
 
     if not rows:

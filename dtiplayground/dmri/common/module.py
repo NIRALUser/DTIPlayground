@@ -266,7 +266,7 @@ class DTIPlaygroundModule: #base class
             for f in self.output_files]
 
     def restoreOutputFiles(self):
-        """The output files of a reused result (written by storeOutputFiles; results of versions before 0.8.33 have
+        """The output files of a reused result (written by storeOutputFiles; results of versions before 0.9.0 have
         none, their files aren't copied again)."""
         for f in self.result['output'].get('output_files') or []:
             source = Path(self.output_dir).joinpath(f['source']).resolve()

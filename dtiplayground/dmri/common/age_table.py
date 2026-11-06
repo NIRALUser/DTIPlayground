@@ -202,11 +202,18 @@ def value_from_table(subject, session, table):
     return None
 
 
+class BatchRows(list):
+    """The rows of a subject / session that the batch table gives different batches: a list of (batch, {column:
+    value}) with the other columns of each row (not the subject and session), to tell the scans of that session
+    apart by their names (see dtiplayground.dmri.fiberprofile.analysis.batches.resolve_batch_rows)."""
+
+
 def load_batch_table(path, batch_column, subject_column=None, session_column=None):
     """{(subject, session|None): batch name} from a CSV/TSV table, e.g. the age table with a site or scanner column
     (the batches of the QC batch correction, --batch-column). The subject and session columns are named or
     auto-detected as in load_age_table; a table without a session column gives one batch per subject. Rows with an
-    empty batch are left out."""
+    empty batch are left out. A subject / session with rows of different batches (two scans of a session from
+    different scanners or protocols) maps to the BatchRows of those rows instead of a name."""
     rows = _read_rows(path)
     have = {c.strip().lower(): c for c in rows[0] if c}
 
@@ -224,13 +231,27 @@ def load_batch_table(path, batch_column, subject_column=None, session_column=Non
     if sub_col is None:
         raise ValueError(f"{path}: need a subject column "
                          f"({', '.join(AGE_TABLE_SUBJECT_COLS)}) -- name it explicitly; found {sorted(have)}")
-    table = {}
+    grouped = {}
     for r in rows:
         batch = str(r.get(batch_col) or "").strip()
         if batch and batch.lower() not in ("n/a", "na", "nan"):
-            table[(bids_key(r[sub_col]), bids_key(r[ses_col]) if ses_col else None)] = batch
-    if not table:
+            key = (bids_key(r[sub_col]), bids_key(r[ses_col]) if ses_col else None)
+            cells = {c: str(v or "").strip() for c, v in r.items() if c and c not in (sub_col, ses_col)}
+            grouped.setdefault(key, []).append((batch, cells))
+    if not grouped:
         raise ValueError(f"{path}: no batch in column '{batch_col}'")
+    table, conflicts = {}, []
+    for key, entries in grouped.items():
+        if len({b for b, _ in entries}) == 1:
+            table[key] = entries[0][0]
+        else:
+            table[key] = BatchRows(entries)
+            conflicts.append(key)
+    names = sorted({b for entries in grouped.values() for b, _ in entries})
     log.info("Batch table %s: %d entries, %d batch(es) (%s) from columns (%s, %s, %s)", path, len(table),
-             len(set(table.values())), ", ".join(sorted(set(table.values()))[:8]), sub_col, ses_col or "-", batch_col)
+             len(names), ", ".join(names[:8]), sub_col, ses_col or "-", batch_col)
+    if conflicts:
+        log.info("  %d subject/session(s) have rows of different batches (e.g. %s): the batch of each of their scans "
+                 "is the row whose values appear in the scan name", len(conflicts),
+                 ", ".join("/".join(k for k in key if k) for key in conflicts[:3]))
     return table

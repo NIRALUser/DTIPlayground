@@ -13,7 +13,7 @@ import warnings
 
 import numpy as np
 
-from dtiplayground.dmri.common.age_table import load_batch_table, value_from_table
+from dtiplayground.dmri.common.age_table import BatchRows, load_batch_table, value_from_table
 
 log = logging.getLogger("batches")
 
@@ -44,24 +44,80 @@ def add_batch_arguments(p, regex_target):
                         "gets those of the whole cohort (default: 5)")
 
 
+def _in_name(value, name):
+    """Whether *value* is in *name* as a whole token: not inside a longer run of letters and digits ('dir79' is in
+    'acq-dir79_dwi', '79' is not, 'CMRR_APPA' is in '999434_VSA_CMRR_APPA_tensor'), case-insensitive."""
+    return bool(value) and re.search(r"(?<![A-Za-z0-9]){}(?![A-Za-z0-9])".format(re.escape(value)), name,
+                                     re.IGNORECASE) is not None
+
+
+def resolve_batch_rows(rows, name):
+    """The batch of the scan *name* among the BatchRows of its session (rows of different batches): the row whose
+    values, in the columns where the rows differ (an acquisition, protocol or scan column, or the batch itself),
+    appear in the name. Returns (batch, [matching columns]), or (None, reason) when no row or rows of different
+    batches match."""
+    columns = sorted({c for _, cells in rows for c in cells})
+    differ = [c for c in columns if len({cells.get(c, "") for _, cells in rows}) > 1]
+    matches = []
+    for batch, cells in rows:
+        hit = [c for c in differ if _in_name(cells.get(c, ""), name)]
+        if hit:
+            matches.append((batch, hit))
+    batches = {b for b, _ in matches}
+    if len(batches) == 1:
+        return batches.pop(), sorted({c for _, hit in matches for c in hit})
+    if not matches:
+        return None, "no row's {} in the name".format("/".join(differ) or "values")
+    return None, "rows of batches {} match".format(", ".join(sorted(batches)))
+
+
 class BatchAssigner:
-    """The batch of a scan: its row in the batch table, else group 1 of the pattern, else NO_BATCH."""
+    """The batch of a scan: its row in the batch table (the row matching its name, see resolve_batch_rows, when the
+    table gives its session several batches), else group 1 of the pattern, else NO_BATCH."""
 
     def __init__(self, table=None, regex=None):
         self.table = table or {}
         self.regex = re.compile(regex) if regex else None
+        self.resolved, self.unresolved = {}, {}  # scan name -> (batch, columns) / reason
 
     @property
     def active(self):
         return bool(self.table) or self.regex is not None
 
-    def __call__(self, subject, session, text=""):
+    def __call__(self, subject, session, text="", name=None):
+        """*text*: what --batch-regex is matched on; *name*: the name of the scan (default *text*), to pick its row
+        when the table gives its session several batches."""
         batch = value_from_table(subject, session, self.table)
+        if isinstance(batch, BatchRows):
+            name = str(text if name is None else name)
+            batch, why = resolve_batch_rows(batch, name)
+            if batch is None:
+                self.unresolved[name] = why
+            else:
+                self.resolved[name] = (batch, why)
         if batch is None and self.regex is not None:
             m = self.regex.search(str(text))
             if m:
                 batch = m.group(1) if m.groups() else m.group(0)
         return NO_BATCH if batch is None else str(batch)
+
+    def report(self):
+        """Log how the scans of the sessions with rows of different batches were told apart."""
+        if self.resolved:
+            by_column = {}
+            for name, (batch, columns) in self.resolved.items():
+                by_column.setdefault("/".join(columns), []).append(name)
+            for columns, names in sorted(by_column.items()):
+                log.info("Batch of %d scan(s) of sessions with rows of different batches told apart by the %s in "
+                         "the scan name (e.g. %s -> %s)", len(names), columns, names[0], self.resolved[names[0]][0])
+        if self.unresolved:
+            log.warning("%d scan(s) of sessions with rows of different batches match none or several of them, so "
+                        "their batch is unknown%s: %s", len(self.unresolved),
+                        " (--batch-regex gives it, if it matches)" if self.regex else
+                        "; give the table a column whose value is in the scan name (e.g. the acquisition) or use "
+                        "--batch-regex",
+                        "; ".join(f"{n} ({why})" for n, why in sorted(self.unresolved.items())[:5])
+                        + (" ..." if len(self.unresolved) > 5 else ""))
 
 
 def batch_assigner(args, p):

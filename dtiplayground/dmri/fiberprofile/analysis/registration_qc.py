@@ -1560,13 +1560,15 @@ def run_args(args, p) -> int:
             return 1
         sessions = dated
 
-    log.info("QC on %d sessions", len(sessions))
+    log.info("QC on %d scans (%d sessions)", len(sessions), len({(s["subject"], s["session"]) for s in sessions}))
 
     # --- batches and the batch shift of the scalar maps ---
     for s in sessions:
-        s["batch"] = assign_batch(s["subject"], s["session"], s["scalars"].get("FA", s["id"]))
+        fa = s["scalars"].get("FA", s["id"])
+        s["batch"] = assign_batch(s["subject"], s["session"], fa, name=os.path.basename(str(fa)))
     if assign_batch.active:
-        log_batches([s["batch"] for s in sessions], "session")
+        assign_batch.report()
+        log_batches([s["batch"] for s in sessions], "scan")
     if args.batch_correct:
         mult_metrics = {m.strip().upper() for m in args.batch_mult_metrics.split(",") if m.strip()}
         shift_metrics = list(scalar_metrics) + (["MD"] if atlas.get("csf_roi") is not None and "MD" not in scalar_metrics else [])
@@ -1693,7 +1695,7 @@ def run_args(args, p) -> int:
     report["age"] = pd.to_numeric(report["age"], errors="coerce") / AGE_UNIT_TO_MONTHS[args.age_units]
     report.rename(columns={"age": f"age_{args.age_units}"}).to_csv(csv, index=False)
     n_out = int(df["is_outlier"].sum())
-    log.info("Wrote %s | %d/%d sessions flagged (%s > %.2f)",
+    log.info("Wrote %s | %d/%d scans flagged (%s > %.2f)",
              csv, n_out, len(df), "Mahalanobis d" if rule == "mahalanobis" else "combined robust-z",
              cutoff)
     if n_out:
@@ -1708,7 +1710,7 @@ def run_args(args, p) -> int:
     else:
         for i in np.where(df["is_outlier"].to_numpy())[0]:
             qc_subject(scored[i], atlas, bins, normative_dir, cfg, args.out_dir)
-        log.info("Saved maps + previews for %d flagged session(s) under %s/{maps,previews}", n_out, args.out_dir)
+        log.info("Saved maps + previews for %d flagged scan(s) under %s/{maps,previews}", n_out, args.out_dir)
     return 0
 
 

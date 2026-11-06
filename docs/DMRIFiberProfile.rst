@@ -335,6 +335,15 @@ path of the FA map for ``qc-registration`` and on the column name of the profile
 the table doesn't have. A batch with fewer than ``--batch-min-scans`` scans (5) in an age bin gets the shift of the
 whole cohort; scans without a batch form one of their own.
 
+A session can have two scans from different scanners or protocols (two prefixes, ``..._acq-dir79_dwi`` and
+``..._acq-dir42_dwi``). The table then has a row for each, with the same subject and session and different batches,
+and the batch of each scan is the row whose values appear in the scan name (the file name of its FA map for
+``qc-registration``, the column name of the profile for ``qc-profiles``), as whole words, case-insensitive: only the
+columns where those rows differ are compared, typically an acquisition, protocol or scan column, or the batch itself
+(``CMRR_APPA`` in ``999434_VSA-CVD_CMRR_APPA_tensor``). The log says which column told the scans apart. A scan that
+matches no row, or rows of different batches, gets ``--batch-regex`` if given, else no batch, with a warning that
+names it.
+
 ``qc-registration`` also flags each session against its own batch: with batches, the median of the combined score (and
 of the features of ``--combine mahalanobis``) of each batch is removed before the outlier cut. Its ``batch_shifts.csv``
 lists the shifts (``batch``, ``bin``, ``metric``, ``kind``, ``shift``, ``n_scans``, and ``source``: ``batch``, or

@@ -1640,7 +1640,9 @@ def run_args(args, p) -> int:
                 columns = set()
                 for f in inputs:
                     columns |= set(pd.read_csv(f, nrows=0, index_col=0).columns)
-                log_batches([batch_of(c) for c in sorted(columns)], "profile column")
+                batches = [batch_of(c) for c in sorted(columns)]
+                _BATCH.report()
+                log_batches(batches, "profile column")
             log.info("Envelope batch correction (testing vs normative), robust median shift per (%smetric, bin):",
                      "batch, " if _BATCH.active else "")
             os.makedirs(stats_root, exist_ok=True)

@@ -725,6 +725,31 @@ class TestEnvelopeBatches(unittest.TestCase):
                 self.assertEqual(set(md['source']), {'batch'})
                 self.assertEqual(sorted(md['n_scans']), [6, 10])
 
+    def test_two_scans_of_a_session_from_two_scanners(self):
+        """Every session has a scan of each scanner (acq-std, acq-alt with the MD offset): the table has a row per
+        scan, told apart by the acquisition in the column names."""
+        d = self.tmp.name
+        data = os.path.join(d, 'data2')
+        subs = ['sub-2{:02d}'.format(i) for i in range(8)]
+        names = [f'{s}_ses-012m_acq-{a}_dwi' for s in subs for a in ('std', 'alt')]
+        scale = {n: 1.25 for n in names if 'acq-alt' in n}
+        scale['sub-207_ses-012m_acq-alt_dwi'] = 1.25 * 1.3
+        self._tables(data, names, scale)
+        table = os.path.join(d, 'scans.tsv')
+        with open(table, 'w') as fh:
+            fh.write('participant_id\tsession_id\tacquisition\tscanner\n')
+            for s in subs:
+                fh.write(f'{s}\tses-012m\tacq-std\tPrisma\n{s}\tses-012m\tacq-alt\tSkyra\n')
+        out = os.path.join(d, 'QC2')
+        self.assertEqual(profile_qc.main(['--profiles-dir', data, '--prior-stats-dir', self.norm, '-o', out,
+                                          '--no-plots', '--envelope-batch-correct', '--batch-csv', table,
+                                          '--batch-column', 'scanner']), 0)
+        qc = pd.read_csv(os.path.join(out, 'Profiles_Stats', 'profile_qc_mean.csv'))
+        self.assertEqual(set(qc[qc['is_outlier']]['subject_session']), {'sub-207_ses-012m_acq-alt_dwi'})
+        md = pd.read_csv(os.path.join(out, 'Profiles_Stats', 'batch_shifts_mean.csv')).query('metric == "md"')
+        self.assertEqual(dict(zip(md['batch'], md['n_scans'])), {'Prisma': 8, 'Skyra': 8})
+        self.assertAlmostEqual(float(md.set_index('batch').loc['Skyra', 'shift']), 1.25, delta=0.03)
+
     def test_a_small_site_gets_the_population_shift(self):
         flagged, shifts = self._flagged('--envelope-batch-correct', '--batch-csv', self.table, '--batch-column', 'site',
                                         '--batch-min-scans', '7')

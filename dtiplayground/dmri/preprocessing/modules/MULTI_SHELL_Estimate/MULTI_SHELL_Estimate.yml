@@ -24,9 +24,9 @@ protocol:
             caption: AMICO
             description: NODDI model of AMICO (NDI, ODI, FWF)
           - value: mrtrix3
-            caption: mrtrix3
-            description: mrtrix3 dwi2adc (S0, ADC)
-        description: Tools to estimate multi-shell models (dipy / AMICO NODDI / mrtrix3)
+            caption: ADC (dwi2adc)
+            description: Mono-exponential ADC and S0, as mrtrix3's dwi2adc (built in, or mrtrix3 itself)
+        description: Tools to estimate multi-shell models (dipy / AMICO NODDI / ADC)
       model:
         type: list
         caption: Model
@@ -52,32 +52,42 @@ protocol:
             caption: IVIM
             description: Intravoxel Incoherent Motion
             if : { "tool" : "dipy" }
-        if : { "tool" : "dipy" }
+          - value: noddi
+            caption: NODDI
+            description: Neurite orientation dispersion and density (NDI, ODI, FWF), the model of AMICO
+            if : { "tool" : "amico" }
+          - value: adc
+            caption: ADC
+            description: Mono-exponential ADC and S0 (dwi2adc)
+            if : { "tool" : "mrtrix3" }
+        description: Model to fit; AMICO fits NODDI, mrtrix3 (dwi2adc) the ADC
       optimizationMethod_dti:
         type: list
         caption: Optimization Method DTI
         default_value: wls
-        description: Optimizaition Method
+        description: Optimization method of the tensor fit (with AMICO, of the fit that gives the fiber directions)
         candidates:
           - value : wls
             caption: Weighted Least Squares
             description: Weighted Least Squares
           - value : lls
             caption: Linear Least Squares
-            description: Linear Least Squares
+            description: Linear (ordinary) least squares, dipy's OLS
           - value : nls
             caption: Non-Linear Least Squares
             description: Non-Linear Least Squares
             if : { "tool" : "dipy" }
-          - value: ols
-            caption: Ordinary Least Squares
-            description: Ordinary Least Squares
-            if : { "tool": "amico"}
           - value : restore
             caption: RESTORE
             description: RESTORE
             if : { "tool" : "dipy" }
-        if : { "model" : "dti", "tool" : "dipy,amico" }
+        if : { "model" : "dti,noddi", "tool" : "dipy,amico" }
+      maxBValue:
+        type: float
+        caption: Maximum b-value (DTI)
+        default_value: 1600
+        description: The shells with a b-value above this are left out of the fit of the DTI model, as in DTI_Estimate (they bias the tensor); 0 or empty uses all the shells. When no diffusion weighted shell is at or below it, all the volumes are used. The other models use all the shells
+        if : { "model" : "dti", "tool" : "dipy" }
       optimizationMethod_fwdti:
         type: list
         caption: Optimization Method FreeWater DTI
@@ -119,9 +129,31 @@ protocol:
         default_value: 200
         description: The b-value to split the data on for two-stage fit. This will be used while estimating the value of S0
         if : { "model" : "ivim", "tool" : "dipy" }
+      adcImplementation:
+        type: list
+        caption: ADC implementation
+        default_value: auto
+        description: The built-in ADC fit (identical to mrtrix3's dwi2adc, no mrtrix3 needed) or mrtrix3's dwi2adc
+        candidates:
+          - value: auto
+            caption: Auto
+            description: The built-in fit
+          - value: builtin
+            caption: Built-in
+            description: Log-linear least squares fit of S = S0 exp(-b ADC) in dtiplayground, as dwi2adc
+          - value: mrtrix3
+            caption: mrtrix3
+            description: mrtrix3's dwi2adc, an external program
+        if : { "tool" : "mrtrix3" }
+      adcMaxBValue:
+        type: float
+        caption: Maximum b-value (ADC)
+        default_value: 0
+        description: The shells with a b-value above this are left out of the ADC fit; 0 (default) or empty uses all the shells, as dwi2adc. The mono-exponential ADC of several shells depends on their b-values (it decreases with the higher shells)
+        if : { "tool" : "mrtrix3" }
       maskPath: 
         type: filepath-remote
         caption: Brain Mask
         default_value: ''
-        description: Brain mask (NRRD or NIfTI); if empty, the mask of BRAIN_Mask is used, else the whole image
-        if : { "tool" : "dipy,amico" }
+        description: Brain mask (NRRD or NIfTI); if empty, the mask of BRAIN_Mask is used, else the whole image. mrtrix3 (dwi2adc) has no mask option, its maps are set to 0 outside the mask
+        if : { "tool" : "dipy,amico,mrtrix3" }

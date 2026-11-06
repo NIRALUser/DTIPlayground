@@ -50,5 +50,77 @@ class TestFitVolumes(unittest.TestCase):
             _module(self.BVALS, maxBValue='high').fitVolumes()
 
 
+class TestTractographyFitVolumes(unittest.TestCase):
+    """BRAIN_Tractography fits its tensor on the shells of DTI_Estimate: its maxBValue, else DTI_Estimate's."""
+
+    def _module(self, protocol, global_variables):
+        from dtiplayground.dmri.preprocessing.modules.BRAIN_Tractography import BRAIN_Tractography as bt
+        obj = bt.BRAIN_Tractography.__new__(bt.BRAIN_Tractography)
+        obj.protocol, obj.global_variables = protocol, global_variables
+        bt.logger = lambda *a, **k: None
+        return obj
+
+    def test_precedence(self):
+        bvals = [0, 500, 1500, 3000, 3000]
+        fit = lambda m: m.fitVolumes(bvals)[0].tolist()
+        self.assertEqual(fit(self._module({}, {})), [True, True, True, False, False])            # 1600
+        self.assertEqual(fit(self._module({'maxBValue': None}, {'dti_max_bvalue': 0})), [True] * 5)  # DTI_Estimate's
+        self.assertEqual(fit(self._module({'maxBValue': 1000}, {'dti_max_bvalue': 0})),
+                         [True, True, False, False, False])                                            # its own
+
+
+class TestMultiShell(unittest.TestCase):
+    """MULTI_SHELL_Estimate: the DTI model's shells (maxBValue) and the names of its outputs."""
+
+    def _module(self, protocol, global_vars, output_dir='/x/12_MULTI_SHELL_Estimate'):
+        from dtiplayground.dmri.preprocessing.modules.MULTI_SHELL_Estimate import MULTI_SHELL_Estimate as ms
+        obj = ms.MULTI_SHELL_Estimate.__new__(ms.MULTI_SHELL_Estimate)
+        obj.protocol, obj.global_vars, obj.output_dir = protocol, global_vars, output_dir
+        ms.logger = lambda *a, **k: None
+        return obj
+
+    def test_shells(self):
+        bvals = [0, 500, 1500, 3000]
+        self.assertEqual(self._module({}, {}).fitVolumes(bvals)[0].tolist(), [True, True, True, False])
+        self.assertEqual(self._module({'maxBValue': 0}, {}).fitVolumes(bvals)[0].tolist(), [True] * 4)
+
+    def test_output_names(self):
+        import tempfile, os
+        with tempfile.TemporaryDirectory() as d:
+            tensor = os.path.join(d, '07_DTI_Estimate', 'tensor.nrrd')
+            os.makedirs(os.path.dirname(tensor))
+            open(tensor, 'w').close()
+            own = os.path.join(d, '12_MULTI_SHELL_Estimate')
+            self.assertEqual(self._module({}, {'dti_path': tensor}, own).outputName('dti'), 'MULTI_SHELL_DTI')
+            self.assertEqual(self._module({}, {}, own).outputName('dti'), 'DTI')  # without DTI_Estimate
+            self.assertEqual(self._module({}, {'dti_path': os.path.join(d, 'gone.nrrd')}, own).outputName('dti'), 'DTI')
+            self.assertEqual(self._module({}, {'dti_path': tensor}, own).outputName('dki'), 'DKI')
+
+
+    def test_adc(self):
+        from dtiplayground.dmri.preprocessing.modules.MULTI_SHELL_Estimate.MULTI_SHELL_Estimate import MULTI_SHELL_Estimate
+        bvals = np.array([0, 0, 500, 500, 1500, 3000], dtype=float)
+        s0, adc = np.array([[1000.0, 250.0]]), np.array([[0.0008, 0.0021]])
+        data = s0[..., None] * np.exp(-bvals * adc[..., None])
+        fs0, fadc = MULTI_SHELL_Estimate.fitADC(data, bvals)
+        np.testing.assert_allclose(fs0, s0, rtol=1e-10)
+        np.testing.assert_allclose(fadc, adc, rtol=1e-10)
+        # a zero signal (background) gives finite values, as dwi2adc
+        self.assertTrue(np.isfinite(MULTI_SHELL_Estimate.fitADC(np.zeros((2, 6)), bvals)).all())
+
+
+    def test_models_of_the_tools(self):
+        m = self._module({}, {})
+        self.assertEqual(m.checkModel('dipy', 'dki'), 'dki')
+        self.assertEqual(m.checkModel('amico', 'noddi'), 'noddi')
+        self.assertEqual(m.checkModel('amico', 'dti'), 'noddi')     # protocols before 0.9.6
+        self.assertEqual(m.checkModel('mrtrix3', 'adc'), 'adc')
+        self.assertEqual(m.checkModel('mrtrix3', 'dki'), 'adc')
+        with self.assertRaisesRegex(ValueError, 'tool amico'):
+            m.checkModel('dipy', 'noddi')
+        with self.assertRaisesRegex(ValueError, 'tool mrtrix3'):
+            m.checkModel('dipy', 'adc')
+
+
 if __name__ == '__main__':
     unittest.main()

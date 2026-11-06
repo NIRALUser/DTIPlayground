@@ -17,7 +17,7 @@ protocol:
             description: Use FSL for Brainmasking
           - value: synthstrip
             caption: SynthStrip
-            description: SynthStrip deep learning brain extraction (FreeSurfer's mri_synthstrip if found, otherwise built in)
+            description: SynthStrip deep learning brain extraction (built in, torch; FreeSurfer's mri_synthstrip only if asked for or without torch)
           - value: hdbet
             caption: HD-BET
             description: HD-BET deep learning brain extraction of the average b0 (hd-bet command, e.g. installed in a separate Python environment)
@@ -44,6 +44,19 @@ protocol:
           - value: idwi
             caption: IDWI
             description: Geometric mean of baseline images. If no baseline is found then whole images will be used.
+      n4BiasCorrection:
+        type: boolean
+        caption: N4 bias field correction
+        default_value: false
+        description: N4 bias field correction (SimpleITK) of the image the mask is computed from (the average baseline, also the b0 input of SynthStrip), against an intensity inhomogeneity that makes the mask cut into the darker side of the brain; not applied to the AD input of SynthStrip (a diffusivity has no bias field). The corrected image and the field are written to the module folder (mask_input_n4*.nii.gz)
+        if : { "method" : "fsl,synthstrip,hdbet,medianOtsu" }
+      n4ShrinkFactor:
+        type: integer
+        caption: N4 shrink factor
+        default_value: 4
+        description: The bias field is estimated on the image shrunk by this factor (faster, the field being smooth) and applied at full resolution
+        if:
+            n4BiasCorrection : true
       betFractionalThreshold:
         type: float
         caption: BET Fractional Threshold
@@ -79,14 +92,14 @@ protocol:
         type: list
         caption: SynthStrip Implementation
         default_value: auto
-        description: FreeSurfer's mri_synthstrip or the built-in version (torch; the model weights are downloaded on first use)
+        description: The built-in SynthStrip (torch; the model weights are downloaded on first use) or FreeSurfer's mri_synthstrip; both give the same masks
         candidates:
           - value: auto
             caption: Auto
-            description: FreeSurfer's mri_synthstrip if found, otherwise the built-in version
+            description: The built-in version, or FreeSurfer's mri_synthstrip when torch isn't installed
           - value: freesurfer
             caption: FreeSurfer
-            description: FreeSurfer's mri_synthstrip (7.3+)
+            description: FreeSurfer's mri_synthstrip (7.3+), an external program
           - value: builtin
             caption: Built-in
             description: SynthStrip network run in dtiplayground (torch)
@@ -95,7 +108,7 @@ protocol:
         type: filepath-remote
         caption: FreeSurfer home or mri_synthstrip
         default_value: ''
-        description: FreeSurfer home directory or path of mri_synthstrip; if empty, $FREESURFER_HOME and the PATH are searched
+        description: FreeSurfer home directory or path of mri_synthstrip (synthstripImplementation freesurfer, or auto without torch); if empty, $FREESURFER_HOME and the PATH are searched
         if : { "method" : "synthstrip" }
       hdbetDevice:
         type: list

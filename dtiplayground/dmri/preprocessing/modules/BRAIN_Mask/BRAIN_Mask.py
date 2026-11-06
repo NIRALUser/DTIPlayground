@@ -44,6 +44,29 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             return True
         else: return False
 
+    def n4_enabled(self):
+        return bool(self.protocol.get('n4BiasCorrection', False))
+
+    def n4(self, volume, name, affine=None):
+        """N4 bias field correction of the 3D image the mask is computed from (protocol n4BiasCorrection); the
+        corrected image and the field are written to the module folder for review. *volume* unchanged without it."""
+        if not self.n4_enabled():
+            return volume
+        from dtiplayground.dmri.common import n4
+        affine = self.image.getAffineMatrixForNifti() if affine is None else affine
+        shrink = int(self.protocol.get('n4ShrinkFactor', 4) or 4)
+        logger("N4 bias field correction of the {} input (shrink factor {}) ...".format(name, shrink),prep.Color.PROCESS)
+        corrected, field = n4.n4_correct(volume, n4.spacing_of(affine), shrink_factor=shrink)
+        inside = volume > 0
+        if inside.any():
+            logger("N4 bias field: {:.2f} to {:.2f} (5th to 95th percentile in the image)".format(
+                   *np.percentile(field[inside], (5, 95))),prep.Color.INFO)
+        for array, filename, postfix in ((corrected, "mask_input_n4.nii.gz", 'Mask_input_N4'),
+                                         (field, "mask_input_n4_field.nii.gz", 'Mask_input_N4_field')):
+            path = Path(self.output_dir).joinpath(filename).__str__()
+            nibabel.save(nibabel.Nifti1Image(array.astype(np.float32), affine), path)
+        return corrected
+
     def mask_antspynet(self,params):
         import ants 
         import antspynet
@@ -124,6 +147,13 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             averaged_image = nibabel.Nifti1Image(averaged_image, affine=affine_matrix)
             print(averaged_path)
             nibabel.save(averaged_image, averaged_path)
+        if self.n4_enabled():
+            import glob
+            averaged_file = sorted(glob.glob(averaged_path + ".nii*"))[0]
+            averaged = nibabel.load(averaged_file)
+            corrected = self.n4(np.asarray(averaged.dataobj, dtype=np.float32), 'bet', averaged.affine)
+            averaged_path = input_image_base + "_averaged_n4"
+            nibabel.save(nibabel.Nifti1Image(corrected, averaged.affine), averaged_path + ".nii.gz")
         fractional_threshold=float(self.protocol.get('betFractionalThreshold', 0.5))
         if not 0 < fractional_threshold < 1:
             raise ValueError("betFractionalThreshold must be between 0 and 1 (exclusive): {}".format(fractional_threshold))
@@ -167,6 +197,11 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
     def write_mask_input(self, source, name, filename):
         image, description = self.mask_input(source, name)
         logger("{} input : {}".format(name, description),prep.Color.INFO)
+        if source == 'b0':
+            image = self.n4(image, name)
+        elif self.n4_enabled():
+            logger("N4 bias field correction not applied to the {} input {}: a diffusivity has no bias field (it is a "
+                   "ratio of the images)".format(name, source),prep.Color.INFO)
         input_path = Path(self.output_dir).joinpath(filename).__str__()
         nibabel.save(nibabel.Nifti1Image(image.astype(np.float32), self.image.getAffineMatrixForNifti()), input_path)
         return input_path
@@ -190,22 +225,29 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         output_mask_path = Path(self.output_dir).joinpath("mask.nii.gz").__str__()
         input_path = self.write_mask_input(source, 'SynthStrip', "synthstrip_input.nii.gz")
 
-        executable = None
-        if implementation in ('auto', 'freesurfer'):
-            executable = synthstrip.find_mri_synthstrip(self.protocol.get('synthstripPath'))
-            if executable is None and implementation == 'freesurfer':
-                raise Exception("FreeSurfer's mri_synthstrip not found (synthstripPath, $FREESURFER_HOME or the PATH)")
-        elif implementation != 'builtin':
+        ## the built-in SynthStrip (torch, in dtiplayground) gives the masks of FreeSurfer's mri_synthstrip (the same
+        ## network, weights and preprocessing): auto uses it, and FreeSurfer only without torch or when asked for
+        if implementation not in ('auto', 'freesurfer', 'builtin'):
             raise ValueError("Unknown synthstripImplementation: {} (auto, freesurfer or builtin)".format(implementation))
+        try:
+            import torch  # noqa: F401
+            have_torch = True
+        except ImportError:
+            have_torch = False
+        executable = None
+        if implementation == 'freesurfer' or (implementation == 'auto' and not have_torch):
+            executable = synthstrip.find_mri_synthstrip(self.protocol.get('synthstripPath'))
+            if executable is None:
+                raise Exception("FreeSurfer's mri_synthstrip not found (synthstripPath, $FREESURFER_HOME or the PATH)"
+                                + ("" if implementation == 'freesurfer' else
+                                   ", and the built-in SynthStrip needs torch (pip install torch)"))
         logger("SynthStrip (border {} mm{}) : {}".format(border, ', CSF excluded' if no_csf else '',
                executable if executable else 'built-in (torch)'),prep.Color.PROCESS)
         if executable:
             command, _ = synthstrip.run_mri_synthstrip(executable, input_path, output_mask_path, border, no_csf, self.num_threads)
             logger(' '.join(command),prep.Color.INFO)
         else:
-            try:
-                import torch
-            except ImportError:
+            if not have_torch:
                 raise Exception("The built-in SynthStrip needs torch (pip install torch), or install FreeSurfer (7.3+) and set synthstripPath")
             synthstrip.run_builtin(input_path, output_mask_path, border, no_csf, self.num_threads)
         logger("If you use SynthStrip, please cite: A Hoopes, JS Mora, AV Dalca, B Fischl, M Hoffmann, SynthStrip: "
@@ -245,8 +287,13 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
             baseline = np.arange(len(gradients))
         logger("dipy median_otsu (median radius {}, {} pass(es), dilation {}) on the average of {} volume(s)".format(
                radius, numpass, dilate, len(baseline)),prep.Color.PROCESS)
-        _, mask = median_otsu(self.image.images, vol_idx=baseline, median_radius=radius, numpass=numpass,
-                              dilate=dilate if dilate > 0 else None)
+        if self.n4_enabled():
+            ## median_otsu of the corrected average (the same as of the volumes vol_idx, which it averages)
+            average = self.n4(self.image.images[..., baseline].mean(axis=3), 'median Otsu')
+            _, mask = median_otsu(average, median_radius=radius, numpass=numpass, dilate=dilate if dilate > 0 else None)
+        else:
+            _, mask = median_otsu(self.image.images, vol_idx=baseline, median_radius=radius, numpass=numpass,
+                                  dilate=dilate if dilate > 0 else None)
         output_mask_path = Path(self.output_dir).joinpath("mask.nii.gz").__str__()
         nibabel.save(nibabel.Nifti1Image(mask.astype(np.uint8), self.image.getAffineMatrixForNifti()), output_mask_path)
         self.register_mask(output_mask_path)

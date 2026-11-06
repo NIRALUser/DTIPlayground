@@ -248,21 +248,13 @@ class BASELINE_Average(prep.modules.DTIPrepModule):
         elif self.image.image_type.lower()=='nifti':
             output_image_path=str(output_image_path.joinpath('output.nii.gz'))
         
-        output_filename=Path(self.computation_dir).joinpath('computations.yml')
-        if output_filename.exists() and not self.options['recompute']: 
-            ## pass recomputation
-            logger("Computing ommited",prep.Color.INFO)
-            pass
-        else: ##computed parameters doesn't exist or recompute is true
-            ## compute or recompute
-            logger("Computing ... ",prep.Color.PROCESS)
-            #self.image.deleteGradientsByOriginalIndex([49, 65, 97, 129, 145])#([0, 17, 49, 65, 97, 129, 145]) For test
-            new_image, excluded_original_indexes=baseline_average(self.image, opt=None ,
-                                                      averageInterpolationMethod=self.protocol['averageInterpolationMethod'],
-                                                      averageMethod=self.protocol['averageMethod'],
-                                                      b0Threshold=self.baseline_threshold,
-                                                      stopThreshold=self.protocol['stopThreshold'],
-                                                      maxIterations=self.protocol['maxIterations'])
+        logger("Computing ... ",prep.Color.PROCESS)
+        new_image, excluded_original_indexes=baseline_average(self.image, opt=None ,
+                                                  averageInterpolationMethod=self.protocol['averageInterpolationMethod'],
+                                                  averageMethod=self.protocol['averageMethod'],
+                                                  b0Threshold=self.baseline_threshold,
+                                                  stopThreshold=self.protocol['stopThreshold'],
+                                                  maxIterations=self.protocol['maxIterations'])
 
         if new_image is not None:
             self.image=new_image

@@ -319,16 +319,11 @@ class INTERLACE_Check(prep.modules.DTIPrepModule):
         ### Computation 
         output=None
         output_filename=Path(self.computation_dir).joinpath('computations.yml')
-        if output_filename.exists() and not self.options['recompute']:
-            logger("Recompute : {}".format(self.options['recompute']),prep.Color.INFO)
-            logger("There exists the result of interlacing computations",prep.Color.INFO)
-            output=yaml.safe_load(open(output_filename,'r'))
-            logger("Computed parameters are loaded : {}".format(str(output_filename)),prep.Color.OK)
-        else: 
-            ### actual computation for interlacing correlation and motions
-            logger("Computing interlace correlations and motions ...",prep.Color.PROCESS)
-            output=interlace_compute(self.image)
-            yaml.dump(output,open(output_filename,'w'))
+        # process() runs only when the result must be computed again (no result, changed settings, or a recomputed
+        # input), so the computations of a previous run (computations.yml) may be of another input: always compute
+        logger("Computing interlace correlations and motions ...",prep.Color.PROCESS)
+        output=interlace_compute(self.image)
+        yaml.dump(output,open(output_filename,'w'))
         ### Check for QC
         logger("Checking bad gradients ...",prep.Color.PROCESS)
         gradient_indexes_to_remove , interlacing_results= interlace_check( self.image,output,

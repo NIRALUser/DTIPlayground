@@ -24,7 +24,7 @@ import dtiplayground.dmri.preprocessing as prep
 import dtiplayground.dmri.common as common
 import dtiplayground.dmri.common.tools as tools
 import dtiplayground.dmri.common.fibers as fibers
-from dtiplayground.dmri.common.dwi import DWI
+from dtiplayground.dmri.common.dwi import DWI, write_tensor_nrrd
 
 color = common.Color
 
@@ -77,16 +77,26 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
             # brainmask = brainmask * dilated_mask
         else:
             logger("No reference tracts are set, whole brain tractography mode is set",color.INFO)
-        # get FA
-        
-        dti_model = dti.TensorModel(gradient_tab)
-        dti_fit = dti_model.fit(masked_data, mask=brainmask)
+        # tensor fit (FA for the white matter mask and the stopping criterion, peaks of the tensor method) on the
+        # shells of DTI_Estimate's fit: those up to maxBValue
+        use, description = self.fitVolumes(bvals)
+        logger("Tensor fit on {}".format(description),color.INFO)
+        self.result['output']['fit_volumes'] = description
+        tensor_gtab = gradient_table(numpy.asarray(bvals)[use], bvecs=numpy.asarray(bvecs)[use])
+        tensor_data = masked_data[..., use]
+        dti_model = dti.TensorModel(tensor_gtab)
+        dti_fit = dti_model.fit(tensor_data, mask=brainmask)
         fa = dti_fit.fa
 
-        # saving tensor file to nrrd
-        logger("Saving tensorfile..",color.PROCESS)
-        self.saveTensor(dti_fit)
-        logger("Tensor Saved",color.OK)
+        # the tensor is the DTI output only without DTI_Estimate's (dti_path, not this module's own of a previous run)
+        dti_path = self.global_variables.get('dti_path')
+        if dti_path and Path(dti_path).exists() and Path(dti_path).resolve().parent != Path(self.output_dir).resolve():
+            logger("The DTI output is the tensor of DTI_Estimate ({}); the tensor of the tracking is not written".format(
+                   dti_path),color.INFO)
+        else:
+            logger("Saving tensorfile..",color.PROCESS)
+            self.saveTensor(dti_fit)
+            logger("Tensor Saved",color.OK)
 
         # get WM mask
         if self.protocol['whiteMatterMaskThreshold'] == 'manual':
@@ -107,7 +117,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         
         # generate peaks
         if self.protocol['method'] == 'tensor':
-            peaks = self.GeneratePeaksTensor(masked_data, dti_model, mask=None)
+            peaks = self.GeneratePeaksTensor(tensor_data, dti_model, mask=None)
         elif self.protocol['method'] == 'csa':
             peaks = self.GeneratePeaksCSA(gradient_tab, masked_data, mask=None)
         elif self.protocol['method'] == 'opdt':
@@ -163,6 +173,18 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         colors = numpy.repeat(numpy.round(255 * orientation).astype(numpy.uint8), numpy.diff(offsets), axis=0)
         return fibers.FiberBundle(points, offsets, {'colors': colors})
 
+    def fitVolumes(self, bvals):
+        """Volumes of the tensor fit: qc_metrics.select_shells with the protocol maxBValue, else that of DTI_Estimate
+        (global variable dti_max_bvalue), else 1600, so that the tracking uses the tensor of the DTI maps."""
+        from dtiplayground.dmri.preprocessing import qc_metrics
+        limit = self.protocol.get('maxBValue')
+        if limit in (None, ''):
+            limit = self.global_variables.get('dti_max_bvalue', 1600)
+        use, description, warning = qc_metrics.select_shells(bvals, limit)
+        if warning:
+            logger(warning, color.WARNING)
+        return use, description
+
     @common.measure_time
     def saveTensor(self, fitted):
         ## convert 3x3 symmetric matrices to xx,xy,xz,yy,yz,zz vectors
@@ -182,17 +204,18 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
                     mat = quad_form[d1,d2,d3]
                     new_quadform[d1,d2,d3]=uppertriangle(mat)
 
-        # TODO : make nrrd file for new_quadform image volume (kind will be "3D-symmetric-matrix") , ref: http://teem.sourceforge.net/nrrd/format.html
         temp_dti_image = DWI()
         temp_dti_image.copyFrom(self.image, image=False, gradients=False)
         temp_dti_image.setImage(new_quadform,modality='DTI', kinds=['space','space','space','3D-symmetric-matrix'])
-
-        # print(self.image.information)
-        # print(temp_dti_image.information)
         dti_filename=Path(self.output_dir).joinpath('tensor.nrrd').__str__()
         sp_dir=self.getSourceImageInformation()['space']
         temp_dti_image.setSpaceDirection(target_space=sp_dir)
-        temp_dti_image.writeImage(dti_filename,dest_type='nrrd',dtype="float32")
+        write_tensor_nrrd(temp_dti_image, dti_filename)
+        ## the fit used the gradients in the frame of the voxel axes (nifti_gradient): rotate the components into the
+        ## space of the image (measurement frame identity), as the header says; before 0.9.6 they were written in the
+        ## voxel frame with the image's measurement frame, misoriented by the obliquity of the image
+        from dtiplayground.dmri.fiberprofile.analysis import flip_tensor
+        flip_tensor.reorient_tensor_file(dti_filename, dti_filename, 'voxel')
         self.addOutputFile(dti_filename, 'DTI')
         self.addGlobalVariable('dti_path',dti_filename)
 

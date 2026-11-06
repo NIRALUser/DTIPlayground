@@ -47,6 +47,36 @@ def shells(bvals, b0_threshold=50, b_range=50):
     return [int(round(np.mean(g))) for g in groups]
 
 
+def select_shells(bvals, limit=1600):
+    """Volumes of a tensor fit: the baselines and the shells whose b-value is at most *limit* (whole shells, by
+    their mean b-value; 0 or None: all), as (boolean array, description, warning or None). The shells above it bias
+    a tensor fit (the signal no longer decays mono-exponentially at high b-values). When no diffusion weighted shell
+    is at or below the limit, all the volumes are used, with a warning. Used by DTI_Estimate and
+    BRAIN_Tractography (protocol maxBValue)."""
+    bvals = np.asarray(bvals, dtype=float)
+    everything = np.ones(len(bvals), dtype=bool)
+    try:
+        limit = float(limit) if limit not in (None, '') else 0.0
+    except (TypeError, ValueError):
+        raise ValueError("maxBValue must be a number (0 or empty for all the shells): {}".format(limit))
+    b0_threshold = min(max(min(bvals), 50), 199)
+    shell_values = shells(bvals, b0_threshold)
+    shell = np.array(shell_of(bvals, shell_values, b0_threshold), dtype=float)
+    if limit <= 0:
+        return everything, "all {} volumes (shells {})".format(len(bvals), ", ".join(map(str, shell_values)) or "-"), None
+    use = (shell == 0) | (shell <= limit)
+    if not (use & (shell > 0)).any():
+        return (everything, "all {} volumes (no shell at or below maxBValue {:g})".format(len(bvals), limit),
+                "maxBValue {:g}: no diffusion weighted shell at or below it (shells {}), the tensor is fitted on all "
+                "the volumes".format(limit, ", ".join(map(str, shell_values))))
+    kept = sorted({int(x) for x in shell[use] if x > 0})
+    dropped = sorted({int(x) for x in shell[~use]})
+    description = "{} of {} volumes: baselines and shell(s) {}".format(int(use.sum()), len(bvals), ", ".join(map(str, kept)))
+    if dropped:
+        description += "; shell(s) {} above maxBValue {:g} left out".format(", ".join(map(str, dropped)), limit)
+    return use, description, None
+
+
 def shell_of(bvals, shell_values, b0_threshold=50):
     """Shell b-value of each volume (0 for the b=0 volumes)."""
     out = []

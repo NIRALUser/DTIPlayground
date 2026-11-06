@@ -818,3 +818,17 @@ class DWI:
         ## reindexing
 
 
+def write_tensor_nrrd(tensor_image, filename, kind='3D-symmetric-matrix'):
+    """Writes a DTI (a DWI whose image is x, y, z, 6: xx, xy, xz, yy, yz, zz) as a 3D-symmetric-matrix NRRD (or another
+    image of *kind*, e.g. the 15 components of a kurtosis tensor as 'list') with the components first, as teem,
+    3D Slicer and the NIRAL tools write it (sizes 6 x y z, space directions none + the voxel axes); the space, origin,
+    voxel axes and measurement frame are those of export_to_nrrd, without the centerings and thicknesses (those of the
+    axes of the DWI it was made from)."""
+    tensor_image.information['type'] = 'float32'
+    data, header = export_to_nrrd(tensor_image)  # x, y, z, 6
+    directions = [list(map(float, d)) for d in header['space directions'][:3]]
+    header = {k: v for k, v in header.items() if k not in ('centerings', 'thicknesses')}
+    header.update({'dimension': 4, 'sizes': [data.shape[3]] + list(data.shape[:3]),
+                   'kinds': [kind, 'space', 'space', 'space'],
+                   'space directions': [[np.nan] * 3] + directions})  # none (pynrrd: a row of NaN)
+    nrrd.write(filename, np.ascontiguousarray(np.moveaxis(data.astype(np.float32), 3, 0)), header=header)

@@ -30,6 +30,11 @@ protocol: #define protocol parameters here
         caption: Upper threshold
         default_value: 0.98
         description: Upper value of threshold to apply on FA
+    maxBValue:
+        type: float
+        caption: Maximum b-value of the tensor fit
+        default_value: null
+        description: The shells with a b-value above this are left out of the tensor fit of the tractography (FA of the white matter mask and of the stopping criterion, peaks of the tensor method); empty takes that of DTI_Estimate (1600 without it), so that the tracking uses the tensor of the DTI maps; 0 uses all the shells. The CSA and OPDT methods use all the shells
     method:
         type: list
         caption: Method

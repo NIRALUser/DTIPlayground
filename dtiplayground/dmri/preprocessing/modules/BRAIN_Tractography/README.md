@@ -12,6 +12,17 @@ BRAIN_Tractography.py is a code which helps to the treatment of the tracts obser
 
 - thresholdUp is a number with a default value of 0.98, it will be the Upper value of threshold to apply on FA
 
+- maxBValue (default empty): the shells with a b-value above it are left out of the tensor fit of the tractography
+  (the FA of the white matter mask and of the stopping criterion, the peaks of the tensor method); empty takes the
+  maxBValue of DTI_Estimate (1600 without DTI_Estimate), so that the tracking uses the tensor of the DTI maps; 0 uses
+  all the shells. The CSA and OPDT methods use all the shells
+
+- Tensor output: with DTI_Estimate in the protocol, its tensor is the DTI output (`<name>_DTI.nrrd`, global variable
+  `dti_path`) and the tensor of the tracking isn't written. Without it, the tensor of the tracking is (components
+  first, rotated into the space of the image). Before 0.9.6 the module always wrote its own tensor, which replaced the
+  one of DTI_Estimate as the DTI output, fitted on all the shells and with its components in the frame of the voxel
+  axes while the header gave the measurement frame of the image (misoriented by the obliquity of the image)
+
 - method is a list with a default value of tensor, it will choose the Method used to generate the peaks used to generate the streamlines between different methods like CSA model, OPDT model or DTI tensor model
 
 - shOrder is a number with a default value of 2, it will be the sh order used for peak generation model

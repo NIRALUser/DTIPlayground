@@ -15,20 +15,7 @@ from dipy.io.image import save_nifti
 FIT_QC_FILES = ('fit_qc.tsv', 'fit.tsv', 'fit_carpet.png') # summary, per volume, slice x volume correlation
 
 
-def write_tensor_nrrd(tensor_image, filename):
-    """Writes a DTI (a DWI whose image is x, y, z, 6: xx, xy, xz, yy, yz, zz) as a 3D-symmetric-matrix NRRD with the
-    components first, as teem, 3D Slicer and the NIRAL tools write it (sizes 6 x y z, space directions none + the
-    voxel axes); the space, origin, voxel axes and measurement frame are those the DWI class writes."""
-    import nrrd
-    from dtiplayground.dmri.common.dwi import export_to_nrrd
-    tensor_image.information['type'] = 'float32'
-    data, header = export_to_nrrd(tensor_image)  # x, y, z, 6
-    directions = [list(map(float, d)) for d in header['space directions'][:3]]
-    header = {k: v for k, v in header.items() if k not in ('centerings', 'thicknesses')}  # those of the DWI's axes
-    header.update({'dimension': 4, 'sizes': [data.shape[3]] + list(data.shape[:3]),
-                   'kinds': ['3D-symmetric-matrix', 'space', 'space', 'space'],
-                   'space directions': [[np.nan] * 3] + directions})  # none (pynrrd: a row of NaN)
-    nrrd.write(filename, np.ascontiguousarray(np.moveaxis(data.astype(np.float32), 3, 0)), header=header)
+from dtiplayground.dmri.common.dwi import write_tensor_nrrd  # noqa: E402  (kept importable from here)
 
 
 class DTI_Estimate(prep.modules.DTIPrepModule):
@@ -118,35 +105,15 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
 ### User defined methods
 
     def fitVolumes(self, gradients=None):
-        """Volumes of the tensor fit: the baselines and the shells whose b-value is at most the protocol maxBValue
-        (default 1600; 0 or empty: all), as a boolean array, with a description for the log. The shells above it
-        (multi-shell data) bias a tensor fit, the signal no longer decaying mono-exponentially at high b-values.
-        When no diffusion weighted shell is left, all volumes are used, with a warning."""
+        """Volumes of the tensor fit (qc_metrics.select_shells with the protocol maxBValue, default 1600), as a
+        boolean array, with a description for the log. The limit is passed on to BRAIN_Tractography (global variable
+        dti_max_bvalue), so that its tensor fit uses the same shells."""
         from dtiplayground.dmri.preprocessing import qc_metrics
         gradients = self.image.getGradients() if gradients is None else gradients
-        bvals = np.array([g['b_value'] for g in gradients], dtype=float)
-        everything = np.ones(len(bvals), dtype=bool)
         limit = self.protocol.get('maxBValue', 1600)
-        try:
-            limit = float(limit) if limit not in (None, '') else 0.0
-        except (TypeError, ValueError):
-            raise ValueError("maxBValue must be a number (0 or empty for all the shells): {}".format(limit))
-        b0_threshold = min(max(min(bvals), 50), 199)
-        shell_values = qc_metrics.shells(bvals, b0_threshold)
-        shell = np.array(qc_metrics.shell_of(bvals, shell_values, b0_threshold), dtype=float)
-        if limit <= 0:
-            return everything, "all {} volumes (shells {})".format(len(bvals), ", ".join(map(str, shell_values)) or "-")
-        use = (shell == 0) | (shell <= limit)
-        dropped = sorted({int(s) for s in shell[~use]})
-        if not (use & (shell > 0)).any():
-            logger("maxBValue {:g}: no diffusion weighted shell at or below it (shells {}), the tensor is fitted on all "
-                   "the volumes".format(limit, ", ".join(map(str, shell_values))), prep.Color.WARNING)
-            return everything, "all {} volumes (no shell at or below maxBValue {:g})".format(len(bvals), limit)
-        kept = sorted({int(s) for s in shell[use] if s > 0})
-        description = "{} of {} volumes: baselines and shell(s) {}".format(int(use.sum()), len(bvals),
-                                                                           ", ".join(map(str, kept)))
-        if dropped:
-            description += "; shell(s) {} above maxBValue {:g} left out".format(", ".join(map(str, dropped)), limit)
+        use, description, warning = qc_metrics.select_shells([g['b_value'] for g in gradients], limit)
+        if warning:
+            logger(warning, prep.Color.WARNING)
         return use, description
 
     def runDTI(self,method, optimizationMethod, correctionMethod):
@@ -229,29 +196,31 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         write_tensor_nrrd(temp_dti_image, dti_filename)
         self.addOutputFile(dti_filename, 'DTI')
         self.addGlobalVariable('dti_path',dti_filename)
-        # retrieve outputs
-        evals = fitted.evals
-        evecs = fitted.evecs
+        self.addGlobalVariable('dti_max_bvalue', self.protocol.get('maxBValue', 1600))
+        self.writeScalarMaps(fitted.evals, fitted.evecs, affine)
+        return None
+
+    def writeScalarMaps(self, evals, evecs, affine):
+        """The maps of the tensor (eigenvalues, eigenvectors, FA, colour FA, MD, AD, RD) as tensor_<map>.nii.gz,
+        outputs DTI_<MAP>; *evals* (x, y, z, 3) in decreasing order, *evecs* (x, y, z, 3, 3) with the eigenvectors as
+        columns, as dipy's TensorFit."""
+        evals = np.nan_to_num(np.asarray(evals, dtype=np.float64))
+        evecs = np.nan_to_num(np.asarray(evecs, dtype=np.float64))
+        fa = np.nan_to_num(dti.fractional_anisotropy(evals))
         scalarData={
             'eigenval': evals,
             'eigenvec': evecs,
-            'fa': fitted.fa,
-            'cfa': dti.color_fa(fitted.fa,evecs),
-            'md': fitted.md,
-            'ad': fitted.ad,
-            'rd': fitted.rd    
+            'fa': fa,
+            'cfa': dti.color_fa(fa, evecs),
+            'md': dti.mean_diffusivity(evals),
+            'ad': dti.axial_diffusivity(evals),
+            'rd': dti.radial_diffusivity(evals)
         }
-        # sphere = dpd.default_sphere
-
-        # saving outputs
         for scalar, val in scalarData.items():
             output_tensor_path = Path(self.output_dir).joinpath('tensor_{}.nii.gz'.format(scalar)).__str__()
-            val[np.isnan(val)] = 0
-            num_type=np.float32
-            save_nifti(output_tensor_path, val.astype(num_type), affine)
+            val = np.nan_to_num(np.asarray(val))
+            save_nifti(output_tensor_path, val.astype(np.float32), affine)
             self.addOutputFile(output_tensor_path, 'DTI_{}'.format(scalar.upper()))
-
-        return None
 
     @measure_time
     def runDTI_dtiestim(self, optimizationMethod, correctionMethod):
@@ -283,6 +252,14 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         temp_dti_image.writeImage(str(input_image_path),dest_type='nrrd')
         options = [ '-m',fitMethod,
                     '--correction', correctionMethod]
+        ## the brain mask of BRAIN_Mask, as the dipy method uses it: the only mask (-t 0: no additional threshold of
+        ## the baseline); without one, dtiestim masks with an Otsu threshold of the baseline
+        mask_path = self.global_vars.get('mask_path')
+        if mask_path and Path(mask_path).exists():
+            options += ['-M', str(mask_path), '-t', '0']
+            logger('Mask file found : {} (dtiestim -M, no baseline threshold)'.format(mask_path),prep.Color.OK)
+        else:
+            logger('No brain mask (BRAIN_Mask): dtiestim masks the image with an Otsu threshold of the baseline',prep.Color.WARNING)
 
         dtiestim.estimate(input_image_path, output_tensor_path,options)
         ## dtiestim writes the components in the frame of the voxel axes with a header that implies the space of the
@@ -292,4 +269,18 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         logger("Tensor components rotated from the voxel frame into the space of the image",prep.Color.INFO)
         self.addOutputFile(output_tensor_path, 'DTI')
         self.addGlobalVariable('dti_path',output_tensor_path)
+        self.addGlobalVariable('dti_max_bvalue', self.protocol.get('maxBValue', 1600))
+        ## the maps (FA, MD, AD, RD, eigenvalues, eigenvectors and colour FA, in the space of the image) from the tensor,
+        ## as the dipy method writes them
+        import nrrd
+        from dtiplayground.dmri.fiberprofile.analysis.flip_tensor import tensor_axis
+        components, header = nrrd.read(output_tensor_path)
+        axis, kind = tensor_axis(components, header)
+        components = np.moveaxis(components, axis, -1).astype(np.float64)
+        if components.shape[-1] == 7:  # 3D-masked-symmetric-matrix: confidence first
+            components = components[..., 1:]
+        params = dti.eig_from_lo_tri(components[..., [0, 1, 3, 2, 4, 5]])  # lower triangular: xx, xy, yy, xz, yz, zz
+        evals, evecs = params[..., :3], params[..., 3:].reshape(params.shape[:-1] + (3, 3))
+        logger("Tensor maps (FA, MD, AD, RD, eigenvalues, eigenvectors, colour FA) computed from the tensor",prep.Color.INFO)
+        self.writeScalarMaps(evals, evecs, self.image.getAffineMatrixForNifti())
         return None

@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-11-06 (v0.9.1)
+- dmriprep - DTI_Register: `ageFallback` (and the global variable `age_fallback`) is in `ageUnits`, months by default, as the ages of `ageCSV` and as `--age-fallback` of `dmrifiberprofile` in `--age-units`: `-g age_units years age_fallback 2` is 24 months. In 0.9.0 it was always in months; a protocol with `ageUnits` other than months and an `ageFallback` gives another age now. An unknown `ageUnits` ignores the fallback with a warning. `age` and `ageRegex` are still in months
+
 ##### 2026-11-06 (v0.9.0)
 - **Python 3.12 and newer**: every pipeline (`dmriprep`, `dmrifiberprofile`, the `dmriplayground` web app) stopped at its first module with `AttributeError: 'FileFinder' object has no attribute 'find_module'`, the module loader using a function Python 3.12 removed. This includes the 0.8.32 Docker image (Python 3.12), which could not process data: use 0.9.0. Installations on Python 3.11 weren't affected
 - dmriprep: when the result of a module is reused (rerun without `--overwrite`), its files are copied to the output folder again (`<name>_DTI.nrrd`, the maps, the tractogram, ...); before, they were only copied when the module ran, so a deleted or moved output folder came back without them. The list of files is kept in the module's `result.yml`, relative to its folder; results written by older versions don't have it, and their files are copied again only after the module runs once more

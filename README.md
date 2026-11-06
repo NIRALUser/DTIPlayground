@@ -18,7 +18,7 @@ reference page for every module and option of dmriprep and dmrifiberprofile. It 
 
 ## Installation
 
-Python 3.9 - 3.12 is required (3.11 recommended). On Windows, use WSL2 with a Linux Python.
+Python 3.11 or newer is required (3.11 recommended). On Windows, use WSL2 with a Linux Python.
 
 ### Using pip
 
@@ -431,15 +431,15 @@ Execute.
 
 ## Requirements
 
-- Python 3.9 - 3.12 and its development package (`python-dev` / `python-devel`)
+- Python 3.11 or newer (dipy 1.12 needs 3.11) and its development package (`python-dev` / `python-devel`)
 - FSL >= 6.0 and DTIPlaygroundTools, installed with `dmriplayground install-tools` (see
   [FSL and DTIPlaygroundTools](#fsl-and-dtiplaygroundtools))
 - Optionally MRtrix3, for the `mrtrix3` option of MULTI_SHELL_Estimate
 
 The Python dependencies are installed by pip. They are declared in `setup.py`, and `requirements.txt` pins the exact
-versions the releases are tested with (currently numpy 1.26, dipy 1.9, nibabel 5.2, pandas 2.2, pynrrd 1.0, and
-SimpleITK, VTK, fury, torch, matplotlib, scikit-image, scikit-learn, scipy, dmri-amico, flask and the report
-libraries). Consult those two files rather than this list. numpy stays below 2.x.
+versions the releases are tested with (currently numpy 2.4, dipy 1.12, nibabel 5.4, pandas 3.1, pynrrd 1.1, and
+SimpleITK, VTK, torch, matplotlib, scikit-image, scikit-learn, scipy, dmri-amico, flask and the report libraries).
+Consult those two files rather than this list.
 
 ## Contributors
 

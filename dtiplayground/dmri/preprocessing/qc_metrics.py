@@ -159,7 +159,7 @@ def tensor_fit(data, bvals, bvecs, mask, b0_threshold=50, slice_axis=2, chunk=20
     import dipy.reconst.dti as dti
     from dipy.core.gradients import gradient_table
     bvals = np.asarray(bvals, dtype=float)
-    gtab = gradient_table(bvals, np.asarray(bvecs, dtype=float), b0_threshold=b0_threshold)
+    gtab = gradient_table(bvals, bvecs=np.asarray(bvecs, dtype=float), b0_threshold=b0_threshold)
     model = dti.TensorModel(gtab, fit_method='WLS', return_S0_hat=True)
     mask = np.asarray(mask) > 0
     coords = np.nonzero(mask)
@@ -418,7 +418,7 @@ def fiber_coherence(data, bvals, bvecs, mask, spacing=None, fa_min=0.3, b0_thres
     spacing = np.ones(3) if spacing is None else np.abs(np.asarray(spacing, dtype=float)).ravel()
     if spacing.shape != (3,) or not np.all(np.isfinite(spacing) & (spacing > 0)):
         spacing = np.ones(3)
-    gtab = gradient_table(bvals, bvecs, b0_threshold=b0_threshold)
+    gtab = gradient_table(bvals, bvecs=bvecs, b0_threshold=b0_threshold)
     fit = dti.TensorModel(gtab, fit_method='WLS').fit(np.asarray(data)[mask].astype(np.float64))
     fa = np.zeros(mask.shape)
     fa[mask] = np.nan_to_num(fit.fa)

@@ -115,9 +115,9 @@ class EDDYMOTION_Correct(prep.modules.DTIPrepModule):
         with open(os.path.abspath(self.output_dir) + '/report.md', 'a') as f:
             path_rms = self.output_dir + "/output_eddied.eddy_movement_rms"
             data_rms = pandas.read_csv(path_rms, sep = '  ', engine = 'python', usecols = [1])
-            rmsLargerThan1 = data_rms[data_rms > 1.0].count()[0]
-            rmsLargerThan2 = data_rms[data_rms > 2.0].count()[0]
-            rmsLargerThan3 = data_rms[data_rms > 3.0].count()[0]
+            rmsLargerThan1 = data_rms[data_rms > 1.0].count().iloc[0]
+            rmsLargerThan2 = data_rms[data_rms > 2.0].count().iloc[0]
+            rmsLargerThan3 = data_rms[data_rms > 3.0].count().iloc[0]
             ## second column of eddy_movement_rms: RMS movement relative to the previous volume
             f.write('* ' + str(rmsLargerThan1) + " gradients with RMS movement relative to the previous volume > 1 mm\n")
             f.write('* ' + str(rmsLargerThan2) + " gradients with RMS movement relative to the previous volume > 2 mm\n")

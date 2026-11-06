@@ -13,7 +13,9 @@ before any interpolation (EDDYMOTION_Correct, SUSCEPTIBILITY_Correct, BASELINE_A
 - patchRadius (MP-PCA): patch radius in voxels (2: 5x5x5 patches). 0 (default) chooses the smallest patch with at
   least as many voxels as there are volumes.
 - patch2selfModel (Patch2Self): regression model, `ols` (default), `ridge` or `lasso`. Patch2Self treats b-values up to
-  50 as b=0 volumes (as QSIPrep) and denoises them too.
+  50 as b=0 volumes (as QSIPrep) and denoises them too. Since dtiplayground uses dipy 1.12 (instead of 1.9), Patch2Self
+  is dipy's version 3 of the method (the default of dipy 1.12), whose results differ from those of the earlier
+  version; MP-PCA is unchanged.
 
 ##### Outputs
 

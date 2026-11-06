@@ -232,7 +232,7 @@ def _load_nifti(filename,bvecs_file=None,bvals_file=None):
         'type': str(header.get_data_dtype()),
         'endian' : endian,
         'original_centerings' : ['cell','cell','cell','???'][:image_dim],
-        'thicknesses' : np.array([np.NAN,np.NAN,np.linalg.norm(space_directions[2]),np.NAN]).tolist()[:image_dim],
+        'thicknesses' : np.array([np.nan,np.nan,np.linalg.norm(space_directions[2]),np.nan]).tolist()[:image_dim],
         'modality': None
     }
 
@@ -267,7 +267,7 @@ def export_to_nrrd(image): #image : DWI
     
     space_directions=info['space_directions']
     if image.information['dimension']>3:
-        space_directions.append([np.NAN,np.NAN,np.NAN])
+        space_directions.append([np.nan,np.nan,np.nan])
         space_directions_grad_axis=space_directions[grad_axis]
         space_directions=np.insert(space_directions,
                                     grad_axis_original,

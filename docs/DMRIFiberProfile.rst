@@ -37,7 +37,7 @@ $ dmrifiberprofile run -i INPUT_DATASHEET -p OUTPUT_DIR/protocols.yml
 CLI Mode (Linux/Windows-WSL)
 ================================
 
-For Windows users, install WSL2 and linux packages with python 3.9 - 3.12 (3.11 recommended).
+For Windows users, install WSL2 and linux packages with python 3.11 or newer (3.11 recommended).
 
 1. init - Initialize configuration (Default: `$HOME/.niral-dti/dmrifiberprofile-<version>`)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

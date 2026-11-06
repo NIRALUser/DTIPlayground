@@ -137,9 +137,9 @@ class MULTI_SHELL_Estimate(prep.modules.DTIPrepModule):
         b0=min(bvals)
         bvecs= np.array(list(map(lambda x: x['unit_gradient'], self.image.getGradients())))
         if model != 'ivim':
-            gtab = gradient_table(bvals,bvecs,b0_threshold=min(max(b0,50),199))
+            gtab = gradient_table(bvals,bvecs=bvecs,b0_threshold=min(max(b0,50),199))
         else:
-            gtab = gradient_table(bvals,bvecs,b0_threshold=0)
+            gtab = gradient_table(bvals,bvecs=bvecs,b0_threshold=0)
         logger("Affine Matrix (RAS) : \n{}".format(affine),prep.Color.INFO)
         logger("Shells (b-values) : {}".format(sorted(set(np.round(bvals,-1).astype(int).tolist()))),prep.Color.INFO)
 
@@ -162,18 +162,18 @@ class MULTI_SHELL_Estimate(prep.modules.DTIPrepModule):
         # fitting and estimation of scalars
         logger("Running with {}, {}".format(fitMethod, kwargs),prep.Color.PROCESS)
         if model == 'dti':
-            fitted = dti.TensorModel(gtab,fit_method=fitMethod,**kwargs).fit(data,mask)
+            fitted = dti.TensorModel(gtab,fit_method=fitMethod,**kwargs).fit(data,mask=mask)
         elif model == 'dki':
-            fitted = dki.DiffusionKurtosisModel(gtab,fit_method=fitMethod).fit(data,mask)
+            fitted = dki.DiffusionKurtosisModel(gtab,fit_method=fitMethod).fit(data,mask=mask)
         elif model == 'msdki':
-            fitted = msdki.MeanDiffusionKurtosisModel(gtab).fit(data,mask)
+            fitted = msdki.MeanDiffusionKurtosisModel(gtab).fit(data,mask=mask)
             ## the diffusion and kurtosis tensors come from the full DKI model
-            fitted_dki = dki.DiffusionKurtosisModel(gtab,fit_method=fitMethod).fit(data,mask)
+            fitted_dki = dki.DiffusionKurtosisModel(gtab,fit_method=fitMethod).fit(data,mask=mask)
         elif model == 'fwdti':
-            fitted = fwdti.FreeWaterTensorModel(gtab,fit_method=fitMethod).fit(data,mask)
+            fitted = fwdti.FreeWaterTensorModel(gtab,fit_method=fitMethod).fit(data,mask=mask)
         elif model == 'ivim':
             split_options = optimizationMethod.split(',')
-            fitted = ivim.IvimModelTRR(gtab, split_b_D=float(split_options[0]), split_b_S0=float(split_options[1])).fit(data,mask)
+            fitted = ivim.IvimModelTRR(gtab, split_b_D=float(split_options[0]), split_b_S0=float(split_options[1])).fit(data,mask=mask)
         else:
             raise Exception("Unknown model : {}".format(model))
         logger("Fitting completed",prep.Color.OK)

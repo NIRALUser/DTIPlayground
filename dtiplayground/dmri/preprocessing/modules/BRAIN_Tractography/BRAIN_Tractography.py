@@ -7,11 +7,8 @@ import copy
 import traceback 
 
 from dipy.core.gradients import gradient_table
-from dipy.data import load_nifti, get_sphere, default_sphere
+from dipy.data import get_sphere, default_sphere
 from dipy.direction import peaks_from_model
-from dipy.io.gradients import read_bvals_bvecs
-from dipy.io.stateful_tractogram import Space, StatefulTractogram
-from dipy.io.streamline import save_vtk
 from dipy.reconst import dti
 from dipy.reconst.shm import CsaOdfModel, OpdtModel
 from dipy.segment.mask import median_otsu
@@ -19,18 +16,7 @@ from dipy.tracking import utils
 from dipy.tracking.local_tracking import LocalTracking 
 from dipy.tracking.stopping_criterion import ThresholdStoppingCriterion
 from dipy.tracking.streamline import Streamlines
-from dipy.io.vtk import save_vtk_streamlines, load_vtk_streamlines
-
-#dipy package conditional importing
-import importlib
-from packaging import version
-from importlib.metadata import version as package_version ## pkg_resources is not available in newer python/setuptools
-importlib.import_module("dipy")
-dipy_version = package_version("dipy")
-if version.parse(dipy_version) >= version.parse("1.7"):
-    from dipy.tracking.metrics import length
-else:
-    from dipy.tracking.benchmarks.bench_streamline import length
+from dipy.tracking.metrics import length
 
 from pathlib import Path
 
@@ -78,7 +64,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         # affine=img.affine
         bvecs = [x['nifti_gradient'] for x in self.image.getGradients()]
         bvals = [x['b_value'] for x in self.image.getGradients()]
-        gradient_tab = gradient_table(bvals,bvecs)
+        gradient_tab = gradient_table(bvals,bvecs=bvecs)
 
 ## new code ends
 
@@ -151,8 +137,9 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
         # save_vtk(sft, tract_path, bbox_valid_check=False)
         logger("{} Streamlines is being saved...".format(len(streamlines)),color.PROCESS)
         try:
-            save_vtk_streamlines(streamlines, tract_path, to_lps=False, binary=False)
-            save_vtk_streamlines(streamlines, tract_path_vtp, to_lps=False, binary=False)
+            bundle = self.StreamlinesToFiberBundle(streamlines)
+            fibers.write_fibers(bundle, tract_path, binary=False)
+            fibers.write_fibers(bundle, tract_path_vtp, binary=True)
             self.addOutputFile(tract_path, "tractogram")
             self.addOutputFile(tract_path_vtp, "tractogram")
         except Exception as e:
@@ -162,6 +149,19 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
         self.result['output']['success']=True
         return self.result
+
+    @staticmethod
+    def StreamlinesToFiberBundle(streamlines):
+        ## streamlines are in world (RAS) coordinates; 'colors' is the orientation color of each fiber (RGB of the
+        ## direction between its end points), the coloring of the tract files dipy wrote before
+        lines = [numpy.asarray(s, dtype=numpy.float64) for s in streamlines]
+        offsets = numpy.concatenate([[0], numpy.cumsum([len(s) for s in lines])]).astype(numpy.int64)
+        points = numpy.concatenate(lines) if lines else numpy.zeros((0, 3))
+        directions = numpy.array([s[-1] - s[0] for s in lines]).reshape(-1, 3)
+        norms = numpy.linalg.norm(directions, axis=1, keepdims=True)
+        orientation = numpy.abs(directions) / numpy.where(norms > 0, norms, 1)
+        colors = numpy.repeat(numpy.round(255 * orientation).astype(numpy.uint8), numpy.diff(offsets), axis=0)
+        return fibers.FiberBundle(points, offsets, {'colors': colors})
 
     @common.measure_time
     def saveTensor(self, fitted):
@@ -228,7 +228,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
     @common.measure_time
     def GeneratePeaksTensor(self, masked_data, dti_model,mask=None):
-        sphere = get_sphere('symmetric362')
+        sphere = get_sphere(name='symmetric362')
         peaks = peaks_from_model(model=dti_model,
             data=masked_data,
             sphere=sphere,
@@ -240,7 +240,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
     @common.measure_time
     def GeneratePeaksCSA(self, gtab, masked_data, mask=None):
-        csa_model = CsaOdfModel(gtab, sh_order=2)#self.protocol['shOrder'])
+        csa_model = CsaOdfModel(gtab, sh_order_max=2)#self.protocol['shOrder'])
         peaks = peaks_from_model(model=csa_model,
             data=masked_data,
             sphere=default_sphere,
@@ -251,7 +251,7 @@ class BRAIN_Tractography(prep.modules.DTIPrepModule):
 
     @common.measure_time
     def GeneratePeaksOPDT(self, gtab, masked_data, mask=None):
-        opdt_model = OpdtModel(gtab, sh_order=2)#self.protocol['shOrder'])
+        opdt_model = OpdtModel(gtab, sh_order_max=2)#self.protocol['shOrder'])
         peaks = peaks_from_model(opdt_model, 
             data=masked_data,
             sphere=default_sphere,

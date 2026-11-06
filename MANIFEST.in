@@ -1,0 +1,2 @@
+## setup.py reads README.md (long description); setuptools adds only one README to the sdist by itself
+include README.md

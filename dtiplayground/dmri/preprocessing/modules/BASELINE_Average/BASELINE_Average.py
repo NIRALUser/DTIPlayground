@@ -182,8 +182,8 @@ def rigid_3d(static,moving,
              sampling_prop=None):
     ## Make affine map
     identity=np.eye(4)
-    affine_map=AffineMap(identity,static.shape, affine_static,
-                                  moving.shape, affine_static)
+    affine_map=AffineMap(identity,domain_grid_shape=static.shape, domain_grid2world=affine_static,
+                                  codomain_grid_shape=moving.shape, codomain_grid2world=affine_static)
 
     ## Resample moving image from affine (but same in a volume)
     resampled=affine_map.transform(moving)
@@ -193,7 +193,7 @@ def rigid_3d(static,moving,
     transformed=c_of_mass.transform(moving)
 
     ## registration preparation
-    metric= MutualInformationMetric(nbins,sampling_prop)
+    metric= MutualInformationMetric(nbins=nbins,sampling_proportion=sampling_prop)
     affreg= AffineRegistration(metric=metric, 
                                level_iters=level_iters, 
                                sigmas=sigmas, 
@@ -208,7 +208,7 @@ def rigid_3d(static,moving,
                                 moving, 
                                 transform, 
                                 params0, 
-                                affine_static,affine_moving, 
+                                static_grid2world=affine_static,moving_grid2world=affine_moving, 
                                 starting_affine=starting_affine)
     transformed = translation.transform(moving)
 
@@ -216,7 +216,7 @@ def rigid_3d(static,moving,
     transform=RigidTransform3D()
     params0=None
     starting_affine=translation.affine
-    rigid=affreg.optimize(static,moving,transform,params0,affine_static,affine_moving,starting_affine=starting_affine)
+    rigid=affreg.optimize(static,moving,transform,params0,static_grid2world=affine_static,moving_grid2world=affine_moving,starting_affine=starting_affine)
     transformed = rigid.transform(moving)
 
     return transformed, rigid.affine 

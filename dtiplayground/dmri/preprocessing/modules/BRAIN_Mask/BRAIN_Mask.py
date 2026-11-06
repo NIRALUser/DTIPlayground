@@ -159,7 +159,7 @@ class BRAIN_Mask(prep.modules.DTIPrepModule):
         use = baseline | (bvals <= 1500)
         if use.sum() == baseline.sum():
             use = np.ones(len(bvals), dtype=bool)
-        gtab = gradient_table(bvals[use], bvecs[use], b0_threshold=max(float(self.baseline_threshold), float(bvals[baseline].max())))
+        gtab = gradient_table(bvals[use], bvecs=bvecs[use], b0_threshold=max(float(self.baseline_threshold), float(bvals[baseline].max())))
         fitted = dti.TensorModel(gtab, fit_method='WLS').fit(self.image.images[..., use])
         ad = np.clip(np.nan_to_num(fitted.ad), 0, None)
         return ad, "axial diffusivity of a DTI fit (WLS, {} volumes, b <= {:g})".format(int(use.sum()), bvals[use].max())

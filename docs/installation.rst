@@ -1,7 +1,7 @@
 Installation & Quickstart
 ============================
 
-We recommend users to make a virtual environment first using python 3.9 - 3.12 (3.11 recommended)
+We recommend users to make a virtual environment first using python 3.11 or newer (3.11 recommended)
 
 For Windows users, install WSL and linux distribution (tested with ubuntu 20.04, Centos7).
 
@@ -11,7 +11,7 @@ For Windows users, install WSL and linux distribution (tested with ubuntu 20.04,
 Prerequisite
 ~~~~~~~~~~~~~~~~~~~~~
 
-* Python 3.9 - 3.12 or conda environment is required
+* Python 3.11 or newer or conda environment is required
 
 Install Using PIP (Linux/Windows WSL)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

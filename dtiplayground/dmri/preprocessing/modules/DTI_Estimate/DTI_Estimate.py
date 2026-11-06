@@ -119,7 +119,7 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         bvals= np.array(list(map(lambda x: x['b_value'], self.image.getGradients())))
         b0=min(bvals)
         bvecs= np.array(list(map(lambda x: x['unit_gradient'], self.image.getGradients())))
-        gtab = gradient_table(bvals,bvecs,b0_threshold=min(max(b0,50),199))
+        gtab = gradient_table(bvals,bvecs=bvecs,b0_threshold=min(max(b0,50),199))
         logger("Affine Matrix (RAS) : \n{}".format(affine),prep.Color.INFO)
         # option parse
         optionmap = { 'lls' : 'LS',
@@ -153,7 +153,7 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         logger("Running with {}, {}".format(fitMethod, kwargs),prep.Color.PROCESS)
         #fitted = dti_fit.fit(data) ## dti_fit.fit(data, mask) mask array (boolean)
         try:
-            fitted = dti_fit.fit(data,mask)
+            fitted = dti_fit.fit(data,mask=mask)
             logger("Fitting completed",prep.Color.OK)
         except ValueError as e:
             logger("Mask is not the same shape as data.",prep.Color.ERROR)

@@ -7,18 +7,18 @@ infant cohort, in phases: every method imputing a scan from its own observed val
 from its deviations from the age-bin norm (phase 2, 2026-10-16), with a population model of the normative cohort
 (phase 3, 2026-10-16), and with continuous age norms and a second cohort pooled with a batch correction (phase 3b,
 2026-10-22), with a graph U-Net after CONFETTI (phase 4, 2026-10-28), and a functa model, which was not adopted
-(phase 5, 2026-11-05). The results set the defaults of the command. `Phases 1-3 with the phase-4 protocol`_
+(phase 5, 2026-11-06). The results set the defaults of the command. `Phases 1-3 with the phase-4 protocol`_
 compares all phases on the same scans.
 
 Phase 5: functa (not adopted)
 -----------------------------
 
-Phase 5 (2026-11-04 to 2026-11-05) tried a functa model (Dupont et al. 2022; MedFuncta): one SIREN shared by the
+Phase 5 (2026-11-04 to 2026-11-06) tried a functa model (Dupont et al. 2022; MedFuncta): one SIREN shared by the
 scans of the normative cohort, modulated per scan by shifts from a latent vector that a few meta-learned gradient
 steps fit to the scan's observed values, meta-trained to predict values hidden in the validation patterns
-(``functa.py``, an unwired prototype). It is not competitive: over 5 rounds and 60 configurations its best error is
-0.702 of the age-bin mean's, against 0.654 for the hybrid graph U-Net and 0.720 for the population model alone, so
-it was not validated with 3 seeds and is not a method of ``impute-profiles``.
+(``functa.py``, an unwired prototype). It is not competitive: over 6 rounds and 72 configurations, also on the fiber
+graph, its best error is 0.702 of the age-bin mean's, against 0.654 for the hybrid graph U-Net and 0.720 for the
+population model alone, so it was not validated with 3 seeds and is not a method of ``impute-profiles``.
 
 The numbers are from a quick held-out screen on the 7 measures (30 test subjects, 2 rounds of hidden values; the
 mean over the four patterns, relative to the age-bin mean): on the deviations from the age-bin norm, and as a hybrid
@@ -27,16 +27,17 @@ correcting the population prediction (cross-fitted by subject, as the graph U-Ne
 .. table::
    :class: longtable
 
-   ======  ===============================================================================  ======================  ===========
-   round   change                                                                           best on the deviations  best hybrid
-   ======  ===============================================================================  ======================  ===========
-   1       functa as planned: 5 inner steps, step size and modulation scale 0.01            0.790                   0.716
-   2       inner step size 1, modulation scale 0.1                                          0.882                   0.712
-   3       10-20 inner steps, step size and scale 0.03, up to 200 Adam steps at prediction  0.749                   0.703
-   4       an amortized set encoder for the start of the latent                             0.754                   0.708
-   grid    depth 2-4 x width 64-256 x latent 16-128 (54 trainings)                          0.749                   0.704
-   larger  6-8 x 512, latent 256-512, 60 epochs                                             0.736                   0.702
-   ======  ===============================================================================  ======================  ===========
+   ======  =====================================================================================  ======================  ===========
+   round   change                                                                                 best on the deviations  best hybrid
+   ======  =====================================================================================  ======================  ===========
+   1       functa as planned: 5 inner steps, step size and modulation scale 0.01                  0.790                   0.716
+   2       inner step size 1, modulation scale 0.1                                                0.882                   0.712
+   3       10-20 inner steps, step size and scale 0.03, up to 200 Adam steps at prediction        0.749                   0.703
+   4       an amortized set encoder for the start of the latent                                   0.754                   0.708
+   grid    depth 2-4 x width 64-256 x latent 16-128 (54 trainings)                                0.749                   0.704
+   larger  6-8 x 512, latent 256-512, 60 epochs                                                   0.736                   0.702
+   graph   Laplacian-eigenvector inputs, a vector per location, a graph-convolution decoder (12)  0.772                   0.708
+   ======  =====================================================================================  ======================  ===========
 
 The best hybrid against the references on the same split:
 
@@ -63,6 +64,14 @@ The best hybrid against the references on the same split:
   structure of the population model (a weight per location) or of the graph U-Net (each location's own input). As a
   hybrid it adds at most 0.018 to the population prediction, and nothing for regions or a missing measure, where
   the graph U-Net gains most.
+- **On the fiber graph** (the graph of the U-Net) it does not help either: as hybrids 0.708-0.710 with graph
+  coordinates (32-64 eigenvectors of the graph Laplacian, with or without xyz) or a learned 32-feature vector per
+  location (with or without smoothing over the graph), 0.718 with a graph-convolution decoder shifted by the latent;
+  on the deviations 0.772-0.813, worse than with xyz. The vector per location does not recover the population model
+  (0.786 against 0.720), although a linear version of it would be one: fitting it through gradient steps on a latent
+  does much worse than the population model's exact solution. The graph decoder, with the U-Net's graph and
+  convolutions but the scan given only as a fitted latent, is the worst variant: the U-Net's strength is that it
+  reads the observed values directly.
 
 Phase 4: summary
 ----------------

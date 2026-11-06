@@ -4,10 +4,20 @@ import dtiplayground.dmri.common as common
 import yaml, inspect
 from pathlib import Path 
 import pkgutil,sys, copy
+import importlib.util
 import os
 import markdown
 
 logger=common.logger.write
+
+def _exec_module(finder, name):
+    """Load (or reload) module *name* from *finder*: a fresh execution, as the old find_module().load_module()
+    did, which Python 3.12 removed."""
+    spec = finder.find_spec(name)
+    md = importlib.util.module_from_spec(spec)
+    sys.modules[name] = md
+    spec.loader.exec_module(md)
+    return md
 
 @common.measure_time
 def _load_modules(system_module_paths=[],user_module_paths=[],module_names=None, **options):
@@ -40,11 +50,11 @@ def _load_modules_from_paths(user_module_paths: list,module_names=None, **option
                 if p.name.split('.')[0] in module_names:
                     if len(p.name.split('.'))==1:
                         logger("Loading module : {}".format(p.name),common.Color.OK)
-                    mods.append(p.module_finder.find_module(p.name).load_module(p.name))
+                    mods.append(_exec_module(p.module_finder, p.name))
             else:
                 if len(p.name.split('.'))==1:
                     logger("Loading module : {}".format(p.name),common.Color.OK)
-                mods.append(p.module_finder.find_module(p.name).load_module(p.name))
+                mods.append(_exec_module(p.module_finder, p.name))
                     
         mod_filtered=list(filter(lambda x: len(x.__name__.split('.'))==2 and x.__name__.split('.')[0]==x.__name__.split('.')[1] ,mods))
         

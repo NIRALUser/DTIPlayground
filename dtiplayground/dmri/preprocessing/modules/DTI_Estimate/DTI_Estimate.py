@@ -15,6 +15,22 @@ from dipy.io.image import save_nifti
 FIT_QC_FILES = ('fit_qc.tsv', 'fit.tsv', 'fit_carpet.png') # summary, per volume, slice x volume correlation
 
 
+def write_tensor_nrrd(tensor_image, filename):
+    """Writes a DTI (a DWI whose image is x, y, z, 6: xx, xy, xz, yy, yz, zz) as a 3D-symmetric-matrix NRRD with the
+    components first, as teem, 3D Slicer and the NIRAL tools write it (sizes 6 x y z, space directions none + the
+    voxel axes); the space, origin, voxel axes and measurement frame are those the DWI class writes."""
+    import nrrd
+    from dtiplayground.dmri.common.dwi import export_to_nrrd
+    tensor_image.information['type'] = 'float32'
+    data, header = export_to_nrrd(tensor_image)  # x, y, z, 6
+    directions = [list(map(float, d)) for d in header['space directions'][:3]]
+    header = {k: v for k, v in header.items() if k not in ('centerings', 'thicknesses')}  # those of the DWI's axes
+    header.update({'dimension': 4, 'sizes': [data.shape[3]] + list(data.shape[:3]),
+                   'kinds': ['3D-symmetric-matrix', 'space', 'space', 'space'],
+                   'space directions': [[np.nan] * 3] + directions})  # none (pynrrd: a row of NaN)
+    nrrd.write(filename, np.ascontiguousarray(np.moveaxis(data.astype(np.float32), 3, 0)), header=header)
+
+
 class DTI_Estimate(prep.modules.DTIPrepModule):
     def __init__(self,config_dir,*args,**kwargs):
         super().__init__(config_dir,*args,**kwargs)
@@ -67,10 +83,12 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         try:
             if not all(p.exists() for p in paths):
                 logger("Tensor fit QC ...", prep.Color.PROCESS)
-                gradients = self.image.getGradients()
+                ## the volumes of the fit (maxBValue): the shells left out would look poorly fitted
+                use, _ = self.fitVolumes()
+                gradients = [g for g, u in zip(self.image.getGradients(), use) if u]
                 bvals = np.array([g['b_value'] for g in gradients], dtype=float)
                 bvecs = np.array([g['unit_gradient'] for g in gradients], dtype=float)
-                data = self.image.images
+                data = self.image.images[..., use]
                 mask = None
                 mask_path = self.result['output'].get('global_variables', {}).get('mask_path')
                 if mask_path and Path(mask_path).exists():
@@ -99,6 +117,38 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
 
 ### User defined methods
 
+    def fitVolumes(self, gradients=None):
+        """Volumes of the tensor fit: the baselines and the shells whose b-value is at most the protocol maxBValue
+        (default 1600; 0 or empty: all), as a boolean array, with a description for the log. The shells above it
+        (multi-shell data) bias a tensor fit, the signal no longer decaying mono-exponentially at high b-values.
+        When no diffusion weighted shell is left, all volumes are used, with a warning."""
+        from dtiplayground.dmri.preprocessing import qc_metrics
+        gradients = self.image.getGradients() if gradients is None else gradients
+        bvals = np.array([g['b_value'] for g in gradients], dtype=float)
+        everything = np.ones(len(bvals), dtype=bool)
+        limit = self.protocol.get('maxBValue', 1600)
+        try:
+            limit = float(limit) if limit not in (None, '') else 0.0
+        except (TypeError, ValueError):
+            raise ValueError("maxBValue must be a number (0 or empty for all the shells): {}".format(limit))
+        b0_threshold = min(max(min(bvals), 50), 199)
+        shell_values = qc_metrics.shells(bvals, b0_threshold)
+        shell = np.array(qc_metrics.shell_of(bvals, shell_values, b0_threshold), dtype=float)
+        if limit <= 0:
+            return everything, "all {} volumes (shells {})".format(len(bvals), ", ".join(map(str, shell_values)) or "-")
+        use = (shell == 0) | (shell <= limit)
+        dropped = sorted({int(s) for s in shell[~use]})
+        if not (use & (shell > 0)).any():
+            logger("maxBValue {:g}: no diffusion weighted shell at or below it (shells {}), the tensor is fitted on all "
+                   "the volumes".format(limit, ", ".join(map(str, shell_values))), prep.Color.WARNING)
+            return everything, "all {} volumes (no shell at or below maxBValue {:g})".format(len(bvals), limit)
+        kept = sorted({int(s) for s in shell[use] if s > 0})
+        description = "{} of {} volumes: baselines and shell(s) {}".format(int(use.sum()), len(bvals),
+                                                                           ", ".join(map(str, kept)))
+        if dropped:
+            description += "; shell(s) {} above maxBValue {:g} left out".format(", ".join(map(str, dropped)), limit)
+        return use, description
+
     def runDTI(self,method, optimizationMethod, correctionMethod):
         res = None
         if method.lower() == 'dipy':
@@ -114,11 +164,14 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
     def runDTI_DIPY(self, optimizationMethod):
         
         # data prep for dipy
-        data = self.image.images
+        use, description = self.fitVolumes()
+        logger("Tensor fit on {}".format(description),prep.Color.INFO)
+        self.result['output']['fit_volumes'] = description
+        data = self.image.images[..., use]
         affine = self.image.getAffineMatrixForNifti()
-        bvals= np.array(list(map(lambda x: x['b_value'], self.image.getGradients())))
+        bvals= np.array(list(map(lambda x: x['b_value'], self.image.getGradients())))[use]
         b0=min(bvals)
-        bvecs= np.array(list(map(lambda x: x['unit_gradient'], self.image.getGradients())))
+        bvecs= np.array(list(map(lambda x: x['unit_gradient'], self.image.getGradients())))[use]
         gtab = gradient_table(bvals,bvecs=bvecs,b0_threshold=min(max(b0,50),199))
         logger("Affine Matrix (RAS) : \n{}".format(affine),prep.Color.INFO)
         # option parse
@@ -167,14 +220,13 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
         new_quadform = np.stack([quad_form[...,i,j] for i,j in [(0,0),(0,1),(0,2),(1,1),(1,2),(2,2)]], axis=-1)
         new_quadform[np.isnan(new_quadform)] = 0
 
-        # TODO : make nrrd file for new_quadform image volume (kind will be "3D-symmetric-matrix") , ref: http://teem.sourceforge.net/nrrd/format.html
         temp_dti_image = DWI()
         temp_dti_image.copyFrom(self.image, image=False, gradients=False)
         temp_dti_image.setImage(new_quadform,modality='DTI', kinds=['space','space','space','3D-symmetric-matrix'])
         dti_filename=Path(self.output_dir).joinpath('tensor.nrrd').__str__()
         sp_dir=self.getSourceImageInformation()['space']
         temp_dti_image.setSpaceDirection(target_space=sp_dir)
-        temp_dti_image.writeImage(dti_filename,dest_type='nrrd',dtype="float32")
+        write_tensor_nrrd(temp_dti_image, dti_filename)
         self.addOutputFile(dti_filename, 'DTI')
         self.addGlobalVariable('dti_path',dti_filename)
         # retrieve outputs
@@ -218,6 +270,11 @@ class DTI_Estimate(prep.modules.DTIPrepModule):
 
         temp_dti_image = DWI()
         temp_dti_image.copyFrom(self.image, image=True, gradients=True)
+        use, description = self.fitVolumes()
+        logger("Tensor fit on {}".format(description),prep.Color.INFO)
+        self.result['output']['fit_volumes'] = description
+        if not use.all():
+            temp_dti_image.deleteGradients([i for i in range(len(use)) if not use[i]])
         dtiestim=tools.DTIEstim(self.software_info['dtiestim']['path'])
         input_image_path = Path(self.output_dir).joinpath('input.nrrd').__str__()
         output_tensor_path = Path(self.output_dir).joinpath('tensor.nrrd').__str__()

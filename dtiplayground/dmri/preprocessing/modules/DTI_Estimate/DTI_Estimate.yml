@@ -63,6 +63,11 @@ protocol:
           - value: none
             caption: None (dtiestim only)
             description: None (dtiestim only)
+      maxBValue:
+        type: float
+        caption: Maximum b-value
+        default_value: 1600
+        description: The shells with a b-value above this are left out of the tensor fit (and of its QC), as they bias the tensor (the signal no longer decays mono-exponentially at high b-values); 0 or empty uses all the shells. When no diffusion weighted shell is at or below it, all the volumes are used. The output image keeps all the shells
 
 
 

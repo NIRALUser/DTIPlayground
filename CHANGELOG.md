@@ -3,6 +3,10 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### 2026-11-06 (v0.9.4)
+- dmrifiberprofile qc-registration / qc-profiles, batches: a batch table (`--batch-column`) can have a row per scan, with the same subject and session and different batches, for a session with two scans from different scanners or protocols (two prefixes). Before, the last of those rows gave the batch of both scans. Now each scan gets the row whose values, in the columns where the rows differ (an acquisition, protocol or scan column, or the batch itself), appear in its name as whole words: the file name of its FA map for qc-registration, the column name of the profile for qc-profiles. A scan that matches no row, or rows of different batches, gets `--batch-regex` if given, else no batch, with a warning naming it; the log says which column told the scans apart
+- dmrifiberprofile qc-registration: the log counts scans, not sessions ("QC on 28 scans (14 sessions)", "1/28 scans flagged")
+
 ##### 2026-11-06 (v0.9.3)
 - dmrifiberprofile qc-registration: the log line of each scored session names its batch (with `--batch-column` / `--batch-regex`) and, with `--batch-correct`, the shift its maps got: that of its own batch, that of the cohort (a batch with fewer than `--batch-min-scans` scans in its age bin), or none
 

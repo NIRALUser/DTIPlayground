@@ -244,7 +244,26 @@ class DTIPlaygroundModule: #base class
         return True , None
 
     def addOutputFile(self, src_filename, postfix):
-        self.output_files.append({'source': src_filename, 'postfix': postfix})
+        entry = {'source': str(src_filename), 'postfix': postfix}
+        if entry not in self.output_files: # makeReport runs again when a result is reused
+            self.output_files.append(entry)
+
+    def storeOutputFiles(self):
+        """Keeps the output files in the result (result.yml), relative to the module folder so that a moved output
+        folder still works: a reused result copies them to the output folder again (restoreOutputFiles)."""
+        self.result['output']['output_files'] = [
+            {'source': os.path.relpath(os.path.abspath(f['source']), os.path.abspath(self.output_dir)), 'postfix': f['postfix']}
+            for f in self.output_files]
+
+    def restoreOutputFiles(self):
+        """The output files of a reused result (written by storeOutputFiles; results of versions before 0.8.33 have
+        none, their files aren't copied again)."""
+        for f in self.result['output'].get('output_files') or []:
+            source = Path(self.output_dir).joinpath(f['source']).resolve()
+            if source.exists():
+                self.addOutputFile(str(source), f['postfix'])
+            else:
+                logger("Output file {} of the previous result is missing, not copied".format(source), common.Color.WARNING)
 
     def addGlobalVariable(self, key, value):
         self.result['output']['global_variables'][key]=value
@@ -386,6 +405,9 @@ class DTIPlaygroundModule: #base class
 
         self.result['output']['success']=True
         self.result['output']['image_information']=self.image.information
+        if not self.output_files: # a reused result: process() didn't run
+            self.restoreOutputFiles()
+        self.storeOutputFiles()
         outstr=yaml.safe_dump(self.result)
         with open(str(Path(self.output_dir).joinpath('result.yml')),'w') as f:
             yaml.safe_dump(self.result,f)

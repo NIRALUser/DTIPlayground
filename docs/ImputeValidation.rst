@@ -6,9 +6,109 @@ This page documents the validation of ``dmrifiberprofile impute-profiles`` with 
 infant cohort, in phases: every method imputing a scan from its own observed values (phase 1, 2026-10-15),
 from its deviations from the age-bin norm (phase 2, 2026-10-16), with a population model of the normative cohort
 (phase 3, 2026-10-16), and with continuous age norms and a second cohort pooled with a batch correction (phase 3b,
-2026-10-22), with a graph U-Net after CONFETTI (phase 4, 2026-10-28), and a functa model, which was not adopted
-(phase 5, 2026-11-06). The results set the defaults of the command. `Phases 1-3 with the phase-4 protocol`_
+2026-10-22), with a graph U-Net after CONFETTI (phase 4, 2026-10-28), a functa model, which was not adopted
+(phase 5, 2026-11-06), and a transformer blended with the default (phase 6, 2026-11-07). The results set the defaults of the command. `Phases 1-3 with the phase-4 protocol`_
 compares all phases on the same scans.
+
+Phase 6: transformer and ensembles
+----------------------------------
+
+Phase 6 (2026-11-06 to 2026-11-07) tried six ideas on the 7 measures (FA, MD, RD, AD, NDI, ODI, FWF) and changed the
+default: every value imputed by the default (population model + SIREN on its residuals within 4 mm) is blended with
+the prediction of a **transformer** of the deviations (``--ensemble transformer``), with weights per metric and
+distance to the nearest observed value (``--ensemble-weights table``), the transformer trained for 400 epochs. Over
+3 seeds x 54 scans this has about 7.5% less error than the default of 0.9.5 (0.567 of the age-bin mean's against
+0.614), and 12% less (0.538) when a reference cohort (HBCD) is added to the training of the transformer
+(``--transformer-reference-dir``, opt-in).
+
+.. table::
+   :class: longtable
+
+   ====================================================================  =======  =====  =======  =============  ======  ============  ===========
+   setting (3 seeds x 54 scans)                                          overall  gap    end gap  whole profile  region  whole tensor  whole NODDI
+   ====================================================================  =======  =====  =======  =============  ======  ============  ===========
+   default + transformer trained with HBCD, weight table                 0.538    0.397  0.479    0.601          0.676   0.426         0.644
+   default + transformer (400 epochs), weight table (**new default**)    0.567    0.417  0.504    0.636          0.712   0.422         0.621
+   default + transformer (200 epochs), fixed weights 0.25 / 0.75         0.582    0.424  0.518    0.658          0.729   0.460         0.643
+   SIREN near + graph U-Net beyond (phase 4)                             0.610    0.436  0.550    0.697          0.757   0.530         0.703
+   default of 0.9.5 (population + SIREN)                                 0.614    0.440  0.552    0.697          0.766   0.696         0.798
+   transformer alone (200 epochs)                                        0.654    0.547  0.627    0.704          0.738   0.446         0.636
+   graph U-Net alone                                                     0.673    0.596  0.686    0.676          0.735   0.530         0.703
+   ====================================================================  =======  =====  =======  =============  ======  ============  ===========
+
+The weight-table rows are cross-fitted by subject (5 folds: the weights of a scan fitted without its subject) on the
+cells of the validation, scored as the validation (completed errors, relative to the age-bin mean, the mean over
+pattern, metric and age bin); the others are the validation's own results. Paired per scan, the fixed blend was
+0.947 of the default of 0.9.5's error (better on all 162 scan x seed pairs), the table with 400 epochs 0.975 of the
+fixed blend's and the table with HBCD about 0.93 (better on 95%).
+
+Phase 6: what was tried
+-----------------------
+
+- **Ensembles** (``--validate``, ``ensemble`` settings): the default blended with a model of the deviations, with a
+  weight of the model within 4 mm of an observed value and beyond, or by the inverse variances. Fixed weights 0.25 /
+  0.75 were best (with the graph U-Net 0.594, with the transformer 0.582); precision weights were worse (0.605, 0.588),
+  as the SD of a SIREN value is that of the population model, an upper bound next to an observed value.
+- **Acquisition correction** (``--acquisition-correction yes``): the offset of each acquisition from the most common
+  one (``_acq-<label>`` in the scan name), fitted on the deviations with a random intercept per subject so that the
+  subjects scanned with both acquisitions inform it (BCP: ``shells06select`` against ``dir79select``, FA +0.42, AD
+  +0.47, NDI +0.52, ODI -0.27 SD). Imputing the corrected values changed nothing (paired 1.001, p = 0.45): the
+  offset is the same over a scan, and the scan's own observed values and the population prediction already carry it.
+  Off by default.
+- **Age-dependent population model** (``--validate-population-age-bandwidth``): a model per age bin, the scans
+  weighted by a Gaussian kernel of the log age (weighted EM). Worse than one model of all ages at every bandwidth
+  (0.720-0.755 against 0.720 on the quick screen); not adopted.
+- **Partial-observation VAE** (MIWAE): a set encoder of the observed cells, a decoder with a last layer per location.
+  0.730 as a hybrid, 0.807 on the deviations (quick screen; hybrid graph U-Net 0.654); not adopted.
+- **Transformer** (``amortized.py``): a masked autoencoder over tokens of 8 consecutive locations of a tract (about
+  700 tokens), global attention, a head per location with mean and log variance, trained on the validation patterns
+  and correcting the population prediction (cross-fitted by subject), as the graph U-Net. On the quick screen 0.648
+  (192 features, 6 layers; 128 x 4: 0.655; patches of 6: 0.659; on the deviations only: 0.663), the first model to
+  beat the hybrid graph U-Net (0.654). In the 3-seed validation alone 0.654 against 0.673, a missing measure 10-16%
+  better.
+- **Smarter blending**: the cells of the validation written with ``--validate-dump-dir``, the weights fitted offline
+  per metric and distance band, each cell weighted as the score counts it (1 / the squared error of the age-bin mean
+  of its pattern, metric and age bin; without it the large errors of whole profiles dominate). The weights rise from
+  0.2-0.3 next to an observed value to 0.6 at 3-4 mm, 0.6-0.7 beyond and up to 0.98 for a missing measure. A
+  gradient-boosted weight per cell and calibrated precision weights were about as good as the table.
+- **More from the transformer**, seed 0 first (paired against the fixed blend): 400 epochs 0.987 (better on 87%),
+  confirmed over 3 seeds (0.988); 3 networks averaged 0.999; the distance to the nearest observed value as an input
+  1.000 and the age and acquisition as inputs 1.000 (``--validate-transformer-inputs``, ``-members``). Training on
+  BCP pooled with HBCD (2,293 scans, tensor and NODDI measures, batch-corrected to BCP; ``--validate-batches BCP``)
+  made the transformer alone 8% better (0.580 against 0.632 with 400 epochs on BCP), but pooling the population
+  model too made the default worse (0.626 against 0.614). Hence ``--transformer-reference-dir``: the reference
+  trains the transformer only.
+
+The built-in weight tables (``ENSEMBLE_TABLES``, fitted on all cells of the 3 seeds), the weight of the transformer:
+
+.. table::
+   :class: longtable
+
+   ======  =========  ======  ======  ======  ======  ======  ======  =======  ======  ==========
+   table   metric     0-0.5   0.5-1   1-2     2-3     3-4     4-6     6-10     10-20   >20 / none
+   ======  =========  ======  ======  ======  ======  ======  ======  =======  ======  ==========
+   cohort  FA         0.27    0.31    0.40    0.51    0.61    0.62    0.65     0.62    0.75 / 0.98
+   cohort  MD         0.19    0.24    0.36    0.51    0.60    0.58    0.61     0.70    0.79 / 0.97
+   cohort  NDI        0.16    0.24    0.36    0.49    0.61    0.70    0.68     0.70    0.87 / 0.82
+   ref.    FA         0.30    0.44    0.57    0.67    0.71    0.69    0.72     0.66    0.69 / 0.91
+   ref.    MD         0.31    0.36    0.48    0.62    0.67    0.64    0.61     0.61    0.59 / 0.87
+   ref.    NDI        0.25    0.38    0.51    0.65    0.72    0.69    0.65     0.63    0.65 / 0.58
+   ======  =========  ======  ======  ======  ======  ======  ======  =======  ======  ==========
+
+(mm to the nearest observed value of the metric: 0-4 the cells SIREN fills, beyond 4 those of the fallback; none: a
+metric the scan has no observed value of. RD, AD, ODI and FWF in ``impute_profiles.py``.) The transformer trained
+with the reference is better, so it gets more weight next to observed values.
+
+Phase 6: reproducing
+--------------------
+
+The runs are in ``testProfiles/ImputeValidation/v14`` (quick screens, ``screen.py``) and ``v15`` (3 seeds, the
+protocol of phase 4: 20 scans per age bin capped at half, 3 rounds, whole tensor and NODDI measures, 5 folds by
+subject): ``E_s*`` (ensembles with the graph U-Net), ``Q_s*`` (acquisition correction), ``T_s*`` (transformer and its
+ensembles), ``R1_s0`` (inputs), ``R2_s0`` (members), ``R3_s*`` (400 epochs) and ``P_s*`` (BCP + HBCD), with the cells
+in ``dump_*``. ``analyse.py`` and ``screen6.py`` compare the validation results, ``cross.py`` / ``cross_summary.py``
+blend the default of one run with the model of another on the same hidden cells (identical across runs),
+``weights_table.py`` fits the built-in tables and their cross-fitted scores.
 
 Phase 5: functa (not adopted)
 -----------------------------

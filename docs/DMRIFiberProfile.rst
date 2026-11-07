@@ -626,8 +626,54 @@ The methods (``--method``):
     ``--fallback graph-unet`` with the default (SIREN on the residuals from the population prediction within 4 mm),
     it fills the rest instead of the population model: in the validation on FA, MD, RD, AD, NDI, ODI and FWF, 0.7%
     less error overall, a quarter less when the four tensor metrics are missing and 13% less when the NODDI metrics
-    are. ``--fallback population`` stays the default, as it needs no training; prefer ``graph-unet`` for cohorts
-    where whole measures are missing.
+    are. The ``transformer`` below was better in every pattern of missing values.
+
+``transformer``
+    A transformer of the deviations, trained like ``graph-unet`` (the same hidden values, a population model
+    prediction it corrects, ``--transformer-hybrid`` default 80 components; 0: the deviations only). Each token is a
+    patch of ``--transformer-patch`` (8) consecutive locations of a tract, with their positions, observed deviations
+    and the population prediction; ``--transformer-layers`` (6) layers of attention over all the tokens of a scan
+    (``--transformer-width`` 192 features, a head per 32) relate every tract to every other, and a head per location
+    gives the deviation and its SD. ``--transformer-epochs`` (400, 200 with a reference cohort; the epoch with the
+    smallest error on held-out subjects is kept), ``--transformer-lr`` (1e-3). Training takes about 20 minutes on a
+    GPU for 400 scans (hours on a CPU); ``--fit-transformer-model model.pt`` saves it and ``--transformer-model
+    model.pt`` imputes another cohort with the same tracts, arc lengths and metrics with it. Alone it imputed 3%
+    better overall than ``graph-unet`` (200 epochs; 400 epochs were 1% better again), and a whole measure the scan
+    lacks 10-16% better. It is used by default through ``--ensemble`` (below), and can also be the method or
+    ``--fallback``. Extra inputs (the distance to the nearest observed value, the age, the acquisition) and averaging
+    several networks did not impute better in the validation.
+
+    ``--transformer-reference-dir`` (opt-in) adds the profiles of a reference cohort, e.g. a large normative study on
+    the same tracts and arc lengths, to the training of the transformer only. The reference is corrected to the
+    profiles by the batch correction at the same age (``--batch-*``; its ages from
+    ``--transformer-reference-age-csv``), the transformer is trained on both with the norm of their pooled age bins,
+    and the norm, the population model and SIREN stay those of the profiles. In the validation on BCP with HBCD as
+    the reference (2,293 scans, 200 epochs, about an hour on a GPU), the transformer alone was 8% better and the
+    blend 5% better (0.538 of the age bin mean overall, against 0.567) than with the transformer trained on BCP
+    alone. Pooling the population model with the reference
+    instead made the imputation worse.
+
+``--ensemble`` (default ``transformer`` with a prior and ``--norm population``, else ``none``) blends every imputed
+value with the prediction of that model: the value becomes (1 - w) x value + w x prediction. ``--ensemble-weights``
+sets w:
+
+- ``table`` (default): a weight per metric and band of the distance to the nearest observed value of the metric,
+  for the cells the method filled (0-0.5, 0.5-1, 1-2, 2-3, 3-4 mm), those of ``--fallback`` (4-6, 6-10, 10-20, beyond
+  20 mm) and a metric the scan has no observed value of. The built-in tables were fitted on the validation, one for
+  a transformer trained on the profiles and one for a transformer trained with ``--transformer-reference-dir``; the
+  weight of the transformer grows from about 0.2-0.3 next to an observed value to 0.6-0.7 beyond 4 mm and 0.6-0.98
+  for a missing measure. A metric not in the table (the free water tensor) gets the mean of the others.
+- ``fit``: the table fitted in the run itself, on the profiles of the transformer's held-out subjects (about a
+  tenth; at least 10 scans) with values hidden as in the validation, the population model refitted without them
+  (a few minutes more); a band with fewer than 200 hidden cells keeps the built-in weight. Written to
+  ``ensemble_weights.csv`` and saved with ``--fit-transformer-model``, so a saved ``--transformer-model`` blends with
+  its own weights.
+- ``NEAR,BEYOND``: fixed weights on the cells the method filled within ``--max-distance`` and on the others
+  (``0.25,0.75`` was the first default), or a CSV file in the format of ``ensemble_weights.csv``.
+
+The SD of a blended value combines the two SDs with the same weights. The blend needs ``--axis-dir`` (without it, the default is left out
+with a warning) and the training above, or a saved ``--transformer-model``; ``--ensemble graph-unet`` blends with the
+graph U-Net instead (with ``--fallback graph-unet`` or ``--graph-model``).
 
 With a prior, ``--norm`` sets what the deviations of ``--relative-to-prior`` are from:
 
@@ -655,7 +701,14 @@ regions) in the validation on a normative infant cohort (`Validation of impute-p
 
 - with ``--prior-stats-dir`` (or ``--model``): ``siren`` on the deviations from the population prediction
   (``--norm population``; ``xyz``, ``--omega0 10``, ``--epochs 500``) within ``--max-distance`` 4 mm of an observed
-  value, and ``--fallback population`` (80 components) beyond. Its error was 37% of that of the age bin mean for
+  value and ``--fallback population`` (80 components) beyond, blended with the ``transformer`` (``--ensemble``,
+  400 epochs, the weights of the built-in table). In the validation on FA, MD, RD, AD, NDI, ODI and FWF (3 x 54
+  scans), the blend had about 7.5% less error than the same settings without it: gaps 0.42 of the age bin mean instead of
+  0.44, missing ends 0.50 instead of 0.55, whole profiles 0.64 instead of 0.70, regions 0.71 instead of 0.77, the four
+  tensor metrics missing 0.42 instead of 0.70 and the NODDI metrics 0.62 instead of 0.80 (the first release of the
+  blend, 200 epochs and fixed weights 0.25 / 0.75: 5.3% less error). With HBCD as ``--transformer-reference-dir``,
+  12% less error (0.54 of the age bin mean overall, against 0.61). ``--ensemble none`` (the default of 0.9.5) needs no
+  training. Without the blend, the error was 37% of that of the age bin mean for
   gaps inside profiles, 51% for missing ends, 64% for whole profiles, 68% for a region of rejected tracts and 59%
   for a whole measure the scan lacks (the free water tensor or NODDI metrics), 11% lower overall than ``siren`` on the
   deviations from the age bin norm (``--norm age-bin``, the default of 0.8.20), which can't impute a missing
@@ -688,7 +741,7 @@ Next to the tables, ``--report-dir`` (default ``<out-dir>_report``) holds:
   ``gap`` for missing values inside the profile), ``n_imputed``, ``n_left``, ``methods``,
   ``max_distance_mm`` (the largest distance from an imputed cell to an observed position), ``mean_sd`` (the mean SD
   of the values imputed with the population model) and ``left_reason``
-- ``sd/``: with the population model (or ``graph-unet``), the tables again with the SD of each value imputed with
+- ``sd/``: with the population model (or ``graph-unet``, ``transformer``), the tables again with the SD of each value imputed with
   it (blank elsewhere). For a value imputed from the residuals (``--norm population``), the SD is that of the model
   alone, an upper bound where the neighbours were close
 - ``imputation_settings.json``: the options of the run
@@ -833,7 +886,12 @@ the residuals from its prediction imputed by ``--validate-population-local`` (de
 their own norm (``--validate-prior cohort``). ``graph-unet`` (in ``--validate-methods``) is fitted the same way, for
 each of ``--validate-graph-levels`` (4), ``--validate-graph-hidden`` (128), ``--validate-graph-convs`` (1) and
 ``--validate-graph-hybrid`` (80; 0: on the deviations only), alone and with the local residual methods; the setting
-``<population> + <local>, <graph-unet> beyond`` is the default with ``--fallback graph-unet``.
+``<population> + <local>, <graph-unet> beyond`` is the default with ``--fallback graph-unet``. ``transformer`` (in
+``--validate-methods``) is compared the same way with the settings of ``--validate-transformer-patch`` (8),
+``--validate-transformer-width`` (128), ``--validate-transformer-layers`` (4) and ``--validate-transformer-hybrid``
+(80). Each model of the deviations is also blended with the first population-and-local setting: ``ensemble``
+settings ``graph near a beyond b`` (weight a within ``--max-distance``, b beyond; the default is near 0.25 beyond
+0.75 with the transformer) and ``precision`` (each value weighted by the inverse of its SD squared).
 ``--validate-age-norms`` (default ``bins``) compares the settings on a norm with each age norm, ``spline`` for each of
 ``--validate-spline-df`` x ``--validate-spline-sd-df`` and ``kernel`` for each ``--validate-kernel-bandwidth``; a
 continuous norm is fitted per fold without the fold's subjects, and the errors stay relative to the age bin mean. With

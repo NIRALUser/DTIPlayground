@@ -673,6 +673,205 @@ class TestGraphUNet(unittest.TestCase):
             s = pd.read_csv(Path(str(out) + '_report') / 'validation' / 'validation_summary.csv')
             self.assertTrue({'graph-unet L2 h8 x1', 'graph-unet on population q=1 L2 h8 x1',
                              'population q=1 isotropic + knn k=1, graph-unet L2 h8 x1 beyond'} <= set(s['setting']))
+            ens = set(s.loc[s['method'] == 'ensemble', 'setting'])
+            self.assertIn('precision: population q=1 isotropic + knn k=1, graph-unet L2 h8 x1', ens)
+            self.assertEqual(len(ens), 2 * (2 + len(ip.ENSEMBLE_WEIGHTS)))  # 2 graph settings: precision, table
+
+
+class TestAcquisition(unittest.TestCase):
+
+    def test_shift_recovered_within_subjects(self):
+        # 24 subjects; a subject effect, acquisition B adds 0.05 FA; subjects 0-7 scanned with both acquisitions,
+        # 8-15 with A only, 16-23 with B only (B subjects also have a higher subject effect: a between-subject
+        # comparison alone would mistake it for the acquisition)
+        scans, info = [], {}
+        for i in range(24):
+            acqs = ['A', 'B'] if i < 8 else (['A'] if i < 16 else ['B'])
+            for a in acqs:
+                name = 'sub-{:02d}_ses-012m_acq-{}_dwi'.format(i, a)
+                scans.append(name)
+                info[name] = (i, a)
+
+        def value(metric, tract, s):
+            i, a = info[scans[s]]
+            unit = 1.0 if metric == 'fa' else 0.002
+            subj = 0.02 * ((i * 7) % 5 - 2) + (0.03 if i >= 16 else 0.0)
+            return np.full(len(ARCS), unit * (LEVEL[tract] + subj + (0.05 if a == 'B' else 0.0)))
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = make_dataset(tmp, scans=scans, value=value)
+            cohort = ip.Cohort(ip.read_tables(str(prof)), None)
+            labels = ip.scan_acquisitions(cohort)
+            self.assertEqual(sorted(set(labels)), ['A', 'B'])
+            acq = ip.AcquisitionCorrection.fit(cohort, ip.scan_ages(cohort), labels, ip.bins_from_spec(ip.DEFAULT_BINS),
+                                               min_n=5)
+            self.assertEqual(acq.info['subjects_with_several'], 8)
+            fixed = acq.apply(cohort.values)
+            m, p = cohort.metrics.index('fa'), cohort.slices['T_a'].start
+            for i in range(8):  # the same subject reads the same with both acquisitions
+                a = cohort.scans.index('sub-{:02d}_ses-012m_acq-A_dwi'.format(i))
+                b = cohort.scans.index('sub-{:02d}_ses-012m_acq-B_dwi'.format(i))
+                self.assertAlmostEqual(float(fixed[b, p, m]), float(fixed[a, p, m]), delta=0.01)
+            back = acq.apply(fixed, inverse=True)
+            self.assertTrue(np.allclose(back, cohort.values, equal_nan=True, atol=1e-6))
+
+
+class TestPhase6Models(unittest.TestCase):
+
+    def test_weighted_ppca(self):
+        rng = np.random.default_rng(0)
+        W = rng.normal(size=(60, 2))
+        Z = rng.normal(size=(80, 2)) @ W.T + 0.05 * rng.normal(size=(80, 60))
+        a = ip.fit_ppca(Z, 2, device='cpu')
+        b = ip.fit_ppca(Z, 2, device='cpu', weights=np.ones(80))
+        self.assertTrue(np.allclose(a[0], b[0], atol=1e-4))
+        c = ip.fit_ppca(Z, 2, device='cpu', weights=np.r_[np.ones(40), np.zeros(40)])  # the first half only
+        d = ip.fit_ppca(Z[:40], 2, device='cpu')
+        self.assertTrue(np.allclose(c[0], d[0], atol=1e-3))
+
+    def test_age_population_and_transformer_in_the_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp, metrics=('fa', 'md', 'NDI'))
+            out = Path(tmp) / 'Imp'
+            ip.run(args_for(prof, axes, out, validate=True, validate_scans=12, validate_whole_fraction=0.4,
+                            validate_gap_fraction=0.5, validate_region_mm='2,3',
+                            validate_methods='prior-mean,population,transformer', validate_components='1',
+                            validate_noise='isotropic', validate_folds=3, validate_population_local='knn',
+                            validate_k='1', validate_measure_families='noddi',
+                            validate_population_age_bandwidth='1', validate_transformer_patch='2',
+                            validate_transformer_width='32', validate_transformer_layers='1',
+                            validate_transformer_hybrid='0,1', transformer_epochs=2, min_scans=5, device='cpu',
+                            validate_transformer_inputs=';dist+age', validate_transformer_members='1,2',
+                            validate_dump_dir=str(Path(tmp) / 'dump'), no_plots=True))
+            s = pd.read_csv(Path(str(out) + '_report') / 'validation' / 'validation_summary.csv')
+            settings = set(s['setting'])
+            self.assertIn('population q=1 isotropic age h=1', settings)
+            self.assertIn('transformer patch2 d32 L1', settings)
+            self.assertIn('transformer on population q=1 patch2 d32 L1 +dist+age x2', settings)
+            dumps = sorted((Path(tmp) / 'dump').glob('*.npz'))
+            self.assertTrue(dumps)
+            d = np.load(dumps[0])
+            self.assertTrue(np.isfinite(d['truth']).all() and len(d['truth']) == len(d['model_pred']))
+            self.assertIn('population q=1 isotropic + knn k=1, transformer on population q=1 patch2 d32 L1 beyond',
+                          settings)
+            self.assertTrue((s.loc[s['method'] == 'transformer', 'coverage'] > 0).all())
+
+
+class TestEnsemble(unittest.TestCase):
+
+    T = dict(transformer_epochs=2, transformer_width=32, transformer_layers=1, transformer_patch=2,
+             transformer_hybrid=1, components=1, device='cpu')
+
+    def test_default_blends_with_a_transformer_and_it_is_saved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for tract in LEVEL:  # scan 4 has no md at all
+                drop(prof / tract / '{}_md.csv'.format(tract), AGED[4])
+            out, model = Path(tmp) / 'ens', Path(tmp) / 't.pt'
+            args = args_for(prof, axes, out, prior_stats_dir=prof, method='knn', fit_transformer_model=model, **self.T)
+            self.assertEqual(ip.run(args), 0)
+            self.assertEqual(args.ensemble, 'transformer')  # the default with a prior
+            blended = pd.read_csv(out / 'T_c' / 'T_c_md.csv', index_col=0)[AGED[4]]
+            self.assertTrue(np.isfinite(blended).all())
+            plain = Path(tmp) / 'plain'
+            self.assertEqual(ip.run(args_for(prof, axes, plain, prior_stats_dir=prof, method='knn', ensemble='none',
+                                             components=1, device='cpu')), 0)
+            alone = pd.read_csv(plain / 'T_c' / 'T_c_md.csv', index_col=0)[AGED[4]]
+            self.assertFalse(np.allclose(blended, alone))  # the transformer prediction is blended in
+            import torch
+            torch.load(model, weights_only=True)  # tensors and plain values only
+            again = Path(tmp) / 'again'
+            self.assertEqual(ip.run(args_for(prof, axes, again, prior_stats_dir=prof, method='knn',
+                                             transformer_model=model, components=1, device='cpu')), 0)
+            self.assertTrue(np.allclose(pd.read_csv(again / 'T_c' / 'T_c_md.csv', index_col=0)[AGED[4]], blended,
+                                        rtol=1e-4))
+
+    def test_transformer_as_method_and_weights(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            drop(prof / 'T_b' / 'T_b_fa.csv', AGED[5])
+            out = Path(tmp) / 't'
+            self.assertEqual(ip.run(args_for(prof, axes, out, prior_stats_dir=prof, method='transformer',
+                                             fallback='none', ensemble='none', **self.T)), 0)
+            self.assertTrue(np.isfinite(pd.read_csv(out / 'T_b' / 'T_b_fa.csv', index_col=0)[AGED[5]]).all())
+            summary = pd.read_csv(Path(str(out) + '_report') / 'imputation_summary.csv')
+            self.assertTrue((summary['methods'] == 'transformer').all())
+            self.assertEqual(ip.run(args_for(prof, axes, Path(tmp) / 'bad', prior_stats_dir=prof, method='knn',
+                                             ensemble_weights='0.5', **self.T)), 1)
+
+
+class TestEnsembleWeights(unittest.TestCase):
+
+    def test_table_bands_fixed_and_csv(self):
+        w = ip.EnsembleWeights.parse('table', 'cohort')
+        near = np.array([[True, True], [False, False], [False, False], [True, False]])
+        dist = np.array([[0.2, 3.5], [5.0, 25.0], [np.inf, np.inf], [1.5, 12.0]])
+        got = w.of(['fa', 'FWFA'], near, dist)
+        fa, mean = ip.ENSEMBLE_TABLES['cohort']['fa'], np.mean(list(ip.ENSEMBLE_TABLES['cohort'].values()), axis=0)
+        self.assertEqual(got[:, 0].tolist(), [fa[0], fa[5], fa[9], fa[2]])
+        self.assertTrue(np.allclose(got[:, 1], [mean[4], mean[8], mean[9], mean[7]]))  # not in the table: the mean
+        self.assertEqual(ip.EnsembleWeights.parse('0.2,0.8').of(['fa'], near[:, :1], dist[:, :1])[:, 0].tolist(),
+                         [0.2, 0.8, 0.8, 0.2])
+        self.assertNotEqual(ip.EnsembleWeights.parse('table', 'reference').row('fa').tolist(), fa)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / 'w.csv')
+            w.frame().to_csv(path, index=False)
+            self.assertEqual(ip.EnsembleWeights.parse(path).row('md').tolist(), ip.ENSEMBLE_TABLES['cohort']['md'])
+        for bad in ('0.5', '1.5,0.2', 'nothing'):
+            with self.assertRaises(ValueError):
+                ip.EnsembleWeights.parse(bad)
+
+    def test_reference_cohort_trains_the_transformer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            drop(prof / 'T_b' / 'T_b_fa.csv', AGED[5])
+            ref_scans = ['sub-r{:02d}_ses-{:03d}m_dwi'.format(i, age)
+                         for i, age in enumerate([1, 2, 4, 6, 9, 15, 30, 45])]
+            ref, _ = make_dataset(Path(tmp) / 'ref', scans=ref_scans, metrics=('fa', 'md'),
+                                  value=lambda m, t, s: leveled(m, t, s) * 1.1)
+            out = Path(tmp) / 'out'
+            args = args_for(prof, axes, out, prior_stats_dir=prof, method='knn', transformer_epochs=2,
+                            transformer_width=32, transformer_layers=1, transformer_patch=2, transformer_hybrid=1,
+                            components=1, device='cpu', fit_transformer_model=Path(tmp) / 't.pt',
+                            ensemble_weights='fit')
+            args.transformer_reference_dir = [str(ref)]
+            with self.assertLogs('impute', level='INFO') as logs:
+                self.assertEqual(ip.run(args), 0)
+            text = '\n'.join(logs.output)
+            self.assertIn('Reference profiles for the transformer: 8 scans', text)
+            self.assertIn('held-out scans of the profiles (at least 10 needed)', text)  # too few: the table
+            self.assertIn('the built-in table (reference)', text)
+            self.assertTrue(np.isfinite(pd.read_csv(out / 'T_b' / 'T_b_fa.csv', index_col=0)[AGED[5]]).all())
+            import torch
+            d = torch.load(Path(tmp) / 't.pt', weights_only=True)
+            self.assertEqual(d['cfg']['reference'], 8)
+            bad = Path(tmp) / 'bad'
+            args = args_for(prof, axes, bad, prior_stats_dir=prof, method='knn', transformer_epochs=1, device='cpu',
+                            components=1)
+            args.transformer_reference_dir = [str(prof)]  # the same scans
+            self.assertEqual(ip.run(args), 1)
+
+    def test_weights_fitted_on_held_out_scans(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scans = ['sub-{:02d}_ses-{:03d}m_dwi'.format(i, age) for i, age in
+                     enumerate([1, 2, 3, 2, 1, 3, 5, 6, 8, 7, 5, 9, 12, 20, 30, 40, 50, 60, 15, 25, 35, 45, 55, 18])]
+            prof, axes = make_dataset(tmp, scans=scans, value=lambda m, t, s: leveled(m, t, s)
+                                      + (0.01 if m == 'fa' else 2e-5) * np.sin(np.arange(len(ARCS)) + s))
+            cohort = ip.Cohort(ip.read_tables(str(prof)), ip.read_axes(str(axes), list(LEVEL)))
+            args = args_for(prof, axes, Path(tmp) / 'o', components=1, device='cpu', epochs=20)
+            ip.resolve_defaults(args)
+            args.max_distance = 4.0
+            prior = ip.Prior.from_cohort(cohort, ip.bins_from_spec(ip.DEFAULT_BINS), ip.scan_ages(cohort))
+
+            class Fake:  # a model of the deviations: the age bin mean
+                info = {'holdout_subjects': [ip.subject_of(x) for x in scans[:12]]}
+
+                def impute(self, Y, norm):
+                    return norm[0].copy(), norm[1].copy()
+            base = ip.EnsembleWeights.parse('table', 'cohort')
+            w = ip.fit_ensemble_weights(cohort, prior, Fake(), args, ip.opts_of(args), base)
+            self.assertIn('12 held-out scans', w.source)
+            self.assertEqual(set(w.table), {'fa', 'md'})
+            self.assertTrue(all(0.0 <= x <= 1.0 for r in w.table.values() for x in r))
 
 
 class TestReviewFixes(unittest.TestCase):

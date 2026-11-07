@@ -58,10 +58,41 @@ import pandas as pd
 
 log = logging.getLogger("impute")
 
-METHODS = ("arc-linear", "linear", "knn", "siren", "prior-mean", "population", "graph-unet")
+METHODS = ("arc-linear", "linear", "knn", "siren", "prior-mean", "population", "graph-unet", "transformer")
 SPATIAL = ("linear", "knn", "siren")  # methods that need the 3-D positions (--axis-dir)
-BY_NORM = ("prior-mean", "population", "graph-unet")  # methods on the norm, also for a metric a scan lacks entirely
-MODELS = ("population", "graph-unet")  # models of the deviations of a normative cohort
+# methods on the norm, also for a metric a scan lacks entirely
+BY_NORM = ("prior-mean", "population", "graph-unet", "transformer")
+MODELS = ("population", "graph-unet", "transformer")  # models of the deviations of a normative cohort
+VALIDATION_MODELS = ()  # models of the deviations compared by --validate only
+ENSEMBLES = ("transformer", "graph-unet", "none")  # --ensemble: the model blended with the imputed values
+# --ensemble-weights table: the weight of the model per metric and band of the distance to the nearest observed value
+# of the metric: cells the method (SIREN) fills at 0-0.5, 0.5-1, 1-2, 2-3, 3-4 mm, cells the fallback fills at 4-6,
+# 6-10, 10-20, >20 mm, and a metric the scan has no observed value of. Fitted on the validation (BCP, 3 x 54 scans,
+# phase 6; each pattern, metric and age bin weighted as in the score): "cohort" for a transformer trained on the
+# cohort (400 epochs), "reference" for one trained with --transformer-reference-dir (BCP + HBCD)
+ENSEMBLE_NEAR_MM = (0.0, 0.5, 1.0, 2.0, 3.0)
+ENSEMBLE_FAR_MM = (4.0, 6.0, 10.0, 20.0)
+ENSEMBLE_COLUMNS = ("near_0", "near_0.5", "near_1", "near_2", "near_3", "beyond_4", "beyond_6", "beyond_10",
+                    "beyond_20", "unobserved")
+ENSEMBLE_TABLES = {
+    "cohort": {"fa": [0.27, 0.31, 0.4, 0.51, 0.61, 0.62, 0.65, 0.62, 0.75, 0.98],
+               "md": [0.19, 0.24, 0.36, 0.51, 0.6, 0.58, 0.61, 0.7, 0.79, 0.97],
+               "rd": [0.23, 0.26, 0.36, 0.5, 0.59, 0.57, 0.61, 0.66, 0.85, 0.98],
+               "ad": [0.23, 0.31, 0.43, 0.56, 0.68, 0.65, 0.71, 0.71, 0.73, 0.96],
+               "NDI": [0.16, 0.24, 0.36, 0.49, 0.61, 0.7, 0.68, 0.7, 0.87, 0.82],
+               "ODI": [0.25, 0.31, 0.46, 0.58, 0.67, 0.68, 0.7, 0.66, 0.8, 0.96],
+               "FWF": [0.2, 0.26, 0.41, 0.47, 0.64, 0.72, 0.7, 0.73, 0.87, 0.93]},
+    "reference": {"fa": [0.3, 0.44, 0.57, 0.67, 0.71, 0.69, 0.72, 0.66, 0.69, 0.91],
+                  "md": [0.31, 0.36, 0.48, 0.62, 0.67, 0.64, 0.61, 0.61, 0.59, 0.87],
+                  "rd": [0.32, 0.38, 0.5, 0.64, 0.69, 0.68, 0.67, 0.64, 0.65, 0.9],
+                  "ad": [0.34, 0.46, 0.57, 0.68, 0.74, 0.68, 0.68, 0.65, 0.59, 0.86],
+                  "NDI": [0.25, 0.38, 0.51, 0.65, 0.72, 0.69, 0.65, 0.63, 0.65, 0.58],
+                  "ODI": [0.34, 0.47, 0.61, 0.72, 0.75, 0.71, 0.75, 0.68, 0.66, 0.81],
+                  "FWF": [0.31, 0.37, 0.46, 0.55, 0.66, 0.56, 0.54, 0.52, 0.59, 0.63]}}
+ENSEMBLE_FIT_MIN_CELLS = 200  # --ensemble-weights fit: a band of a metric with fewer hidden cells keeps the table
+# validation: weights of the graph-unet prediction in the ensembles with population + local, (within --max-distance
+# of an observed value, beyond)
+ENSEMBLE_WEIGHTS = ((0.25, 0.5), (0.25, 0.75), (0.5, 0.5), (0.0, 0.5), (0.0, 0.75))
 DEFAULT_BINS = "0-3,4-9,10-60"  # as qc-profiles --bins
 SIREN_INPUTS = ("xyz", "xyz+arc", "xyz+tract")
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF", "FW_FA", "FW_MD", "FW_RD", "FW_AD"]
@@ -1152,6 +1183,128 @@ class BatchCorrection:
         return pd.DataFrame(rows)
 
 
+ACQ_REGEX = r"_acq-([^_]+)"  # the acquisition in the scan names (BIDS acq- entity)
+
+
+def scan_acquisitions(cohort, regex=ACQ_REGEX):
+    """The acquisition label of every scan (group 1 of *regex* in its name), or None."""
+    pat = re.compile(regex)
+    out = []
+    for scan in cohort.scans:
+        m = pat.search(scan)
+        out.append(m.group(1) if m else None)
+    return out
+
+
+class AcquisitionCorrection:
+    """Shift of every acquisition of one cohort to its reference acquisition at every cell (position and metric),
+    estimated on the deviations from the age bin norm with a random intercept per subject:
+    z = delta[acquisition] + u[subject] + e, u ~ N(0, s_u^2), e ~ N(0, s_e^2) per metric, fitted by alternating the
+    subject effects (best linear unbiased predictions, shrunk by s_e^2 / s_u^2) and the acquisition means. A subject
+    scanned with two acquisitions (at one session or at different ones) compares them within the subject, so the shift
+    is not confounded with who was scanned with which. The values of a scan of acquisition a in age bin b move by
+    -delta[a] * SD_b; cells where an acquisition has fewer than min_n values are left as they are."""
+
+    def __init__(self, labels, names, reference, delta, sd, scan_bin, info):
+        self.labels, self.names, self.reference = labels, names, reference
+        self.delta, self.sd, self.scan_bin, self.info = delta, sd, scan_bin, info
+
+    @classmethod
+    def fit(cls, cohort, ages, labels, bins, exclude=(), iterations=30, min_n=10):
+        drop = set(exclude)
+        prior = Prior.from_cohort(cohort, bins, [a if (s not in drop and labels[s] is not None) else None
+                                                 for s, a in enumerate(ages)])
+        scans = [s for s in range(len(cohort.scans)) if prior.scan_bin[s] >= 0 and s not in drop
+                 and labels[s] is not None]
+        names = sorted({labels[s] for s in scans})
+        counts = {a: sum(labels[s] == a for s in scans) for a in names}
+        reference = max(names, key=lambda a: counts[a])
+        P, M = cohort.n_positions, len(cohort.metrics)
+        mean = np.stack([prior.bin_norm(b)[0] for b in range(len(bins))])
+        sd = np.stack([prior.bin_norm(b)[1] for b in range(len(bins))])
+        Z = np.stack([(cohort.values[s] - mean[prior.scan_bin[s]]) / sd[prior.scan_bin[s]] for s in scans])
+        Z = np.where(cohort.valid[None], Z, np.nan).reshape(len(scans), -1)
+        O = ~np.isnan(Z)
+        Zf = np.nan_to_num(Z)
+        a_of = np.asarray([names.index(labels[s]) for s in scans])
+        subj = [subject_of(cohort.scans[s]) for s in scans]
+        su = sorted(set(subj))
+        s_of = np.asarray([su.index(x) for x in subj])
+        A, S = np.eye(len(names))[a_of], np.eye(len(su))[s_of]  # scans x acquisitions, scans x subjects
+        metric = np.tile(np.arange(M), P)
+        lam = np.ones(M)
+        delta = np.zeros((len(names), P * M))
+        u = np.zeros((len(su), P * M))
+        for _ in range(iterations):
+            R = (Zf - delta[a_of]) * O
+            u = (S.T @ R) / ((S.T @ O) + lam[metric][None])
+            R = (Zf - u[s_of]) * O
+            n_a = A.T @ O
+            delta = np.where(n_a > 0, (A.T @ R) / np.maximum(n_a, 1), 0.0)
+            e = (Zf - delta[a_of] - u[s_of]) * O
+            for m in range(M):
+                cols = metric == m
+                s_e2 = (e[:, cols] ** 2).sum() / max(O[:, cols].sum(), 1)
+                n_s = (S.T @ O[:, cols]) > 0
+                s_u2 = max((u[:, cols][n_s] ** 2).mean() if n_s.any() else 0.0, 1e-6)
+                lam[m] = s_e2 / s_u2
+        n_a = A.T @ O
+        delta = delta - delta[names.index(reference)][None]
+        delta = np.where(n_a >= min_n, delta, 0.0)
+        delta[names.index(reference)] = 0.0
+        pairs = sum(len({labels[scans[i]] for i in np.flatnonzero(s_of == k)}) > 1 for k in range(len(su)))
+        info = {"reference": reference, "counts": counts, "subjects_with_several": int(pairs),
+                "scans": len(scans), "shrinkage": {cohort.metrics[m]: round(float(lam[m]), 3) for m in range(M)}}
+        return cls(labels, names, reference, delta.reshape(len(names), P, M), sd, prior.scan_bin, info)
+
+    def apply(self, values, inverse=False):
+        """*values* (scans x positions x metrics) of each scan's acquisition moved to the reference one (or back)."""
+        out = values.copy()
+        for s, a in enumerate(self.labels):
+            b = self.scan_bin[s]
+            if a is None or b < 0 or a not in self.names:
+                continue
+            shift = self.delta[self.names.index(a)] * self.sd[b]
+            out[s] = out[s] + (shift if inverse else -shift)
+        return out
+
+    def table(self, cohort):
+        """Per acquisition and metric: scans and the median and 10th-90th percentile shift (in SDs)."""
+        rows = []
+        for i, a in enumerate(self.names):
+            for m, metric in enumerate(cohort.metrics):
+                d = self.delta[i][:, m][cohort.valid[:, m]]
+                rows.append({"acquisition": a, "reference": self.reference, "metric": metric,
+                             "scans": self.info["counts"][a], "shift_sd": float(np.median(d)),
+                             "shift_sd_p10": float(np.percentile(d, 10)), "shift_sd_p90": float(np.percentile(d, 90))})
+        return pd.DataFrame(rows)
+
+
+def correct_acquisitions(cohort, args, ages, exclude=(), report_dir=None):
+    """Fit the acquisition correction (--acquisition-correction yes), move the cohort's values to the reference
+    acquisition and write acquisition_correction.csv to *report_dir*. Returns it, or None."""
+    if args.acquisition_correction != "yes":
+        return None
+    labels = scan_acquisitions(cohort, args.acquisition_regex)
+    if len({x for x in labels if x is not None}) < 2:
+        log.warning("--acquisition-correction: fewer than 2 acquisitions in the scan names (%s): nothing to correct",
+                    args.acquisition_regex)
+        return None
+    t0 = time.time()
+    acq = AcquisitionCorrection.fit(cohort, ages, labels, bins_from_spec(args.bins), exclude)
+    cohort.values = acq.apply(cohort.values).astype(cohort.values.dtype)
+    table = acq.table(cohort)
+    log.info("Acquisition correction to %s (random intercept per subject; %d scans, %d subjects with several "
+             "acquisitions, %.0f s): median shift %s", acq.reference, acq.info["scans"],
+             acq.info["subjects_with_several"], time.time() - t0, ", ".join(
+                 "{} {} {:+.2f} SD".format(r.acquisition, r.metric, r.shift_sd) for r in table.itertuples()
+                 if r.acquisition != acq.reference))
+    if report_dir:
+        os.makedirs(report_dir, exist_ok=True)
+        table.to_csv(os.path.join(report_dir, "acquisition_correction.csv"), index=False)
+    return acq
+
+
 def correct_batches(cohort, args, ages, exclude=(), report_dir=None):
     """Fit the batch correction of *cohort* (several batches, --batch-correction shift-scale), put its values in the
     units of the reference batch and write batch_correction.csv to *report_dir*. Returns the BatchCorrection (None
@@ -1186,12 +1339,13 @@ def correct_batches(cohort, args, ages, exclude=(), report_dir=None):
 
 ### population model: probabilistic PCA of the deviations from the norm
 
-def fit_ppca(Z, q, noise="isotropic", groups=None, max_iter=300, tol=1e-6, device="auto", ridge=1.0):
+def fit_ppca(Z, q, noise="isotropic", groups=None, max_iter=300, tol=1e-6, device="auto", ridge=1.0, weights=None):
     """Probabilistic PCA with missing values (EM with the exact posterior of every row, Tipping & Bishop 1999; Ilin &
     Raiko 2010): z = mu + W x + e, x ~ N(0, I_q), e ~ N(0, diag(psi)), on the observed cells of *Z* (rows x cells,
     NaN missing). *noise*: one psi for all cells ('isotropic'), one per group of cells (*groups*, e.g. the metric:
     'metric') or one per cell ('diagonal'). *ridge*: a prior on the rows of W (as that many pseudo-observations of
-    x = 0), for the cells observed in few rows. Returns (mu, W, psi, info)."""
+    x = 0), for the cells observed in few rows. *weights*: of every row in the M-step (e.g. by age; default 1).
+    Returns (mu, W, psi, info)."""
     import torch
     dev = pick_device(device)
     if dev == "mps":  # no float64 on mps
@@ -1199,12 +1353,15 @@ def fit_ppca(Z, q, noise="isotropic", groups=None, max_iter=300, tol=1e-6, devic
     O = torch.as_tensor(~np.isnan(Z), dtype=torch.float32, device=dev)
     Y = torch.as_tensor(np.nan_to_num(Z), dtype=torch.float32, device=dev)
     N, D = Y.shape
+    w = torch.ones(N, device=dev) if weights is None else torch.as_tensor(np.asarray(weights), dtype=torch.float32,
+                                                                           device=dev)
+    Ow = O * w[:, None]  # the observed cells, weighted by row
     if q > min(N - 1, D):
         log.warning("population: %d components, fewer than the %d asked: at most the number of scans fitted - 1",
                     max(1, min(N - 1, D)), q)
         q = max(1, min(N - 1, D))
-    nj = O.sum(0).clamp_min(1.0)
-    n_obs = float(O.sum())
+    nj = Ow.sum(0).clamp_min(1e-6)
+    n_obs = float(Ow.sum())
     if groups is not None:
         g = torch.as_tensor(np.asarray(groups), dtype=torch.long, device=dev)
         n_groups = int(g.max()) + 1
@@ -1216,18 +1373,18 @@ def fit_ppca(Z, q, noise="isotropic", groups=None, max_iter=300, tol=1e-6, devic
             p = torch.full((D,), float(ss.sum()) / n_obs, device=dev)
         elif noise == "metric":
             num = torch.zeros(n_groups, device=dev).index_add_(0, g, ss)
-            den = torch.zeros(n_groups, device=dev).index_add_(0, g, O.sum(0))
+            den = torch.zeros(n_groups, device=dev).index_add_(0, g, Ow.sum(0))
             p = (num / den.clamp_min(1.0))[g]
         else:
             p = ss / nj
         return p.clamp_min(1e-4)
 
     # start: PCA of the centered data, missing cells at the mean
-    mu = Y.sum(0) / nj
+    mu = (Y * w[:, None]).sum(0) / nj
     Yc = (Y - mu) * O
     U, S, Vh = torch.linalg.svd(Yc, full_matrices=False)
     W = (Vh[:q].T * (S[:q] / math.sqrt(N))).contiguous()
-    psi = pool((((Yc - (U[:, :q] * S[:q]) @ Vh[:q]) * O) ** 2).sum(0))
+    psi = pool(((((Yc - (U[:, :q] * S[:q]) @ Vh[:q]) * O) ** 2) * w[:, None]).sum(0))
     eye = torch.eye(q, dtype=torch.float64, device=dev)
     prev, ll, it = -np.inf, -np.inf, 0
     for it in range(1, max_iter + 1):
@@ -1262,13 +1419,13 @@ def fit_ppca(Z, q, noise="isotropic", groups=None, max_iter=300, tol=1e-6, devic
         W_new, mu_new, ss = torch.empty_like(W), torch.empty_like(mu), torch.empty_like(mu)
         for a in range(0, D, chunk):
             c = slice(a, a + chunk)
-            A = (O[:, c].T @ C).double().reshape(-1, q1, q1) + reg
-            b = (Y[:, c].T @ xtf).double()
+            A = (Ow[:, c].T @ C).double().reshape(-1, q1, q1) + reg
+            b = ((Y[:, c] * w[:, None]).T @ xtf).double()
             sol = torch.linalg.solve(A, b[:, :, None])[:, :, 0].float()
             W_new[c], mu_new[c] = sol[:, :q], sol[:, q]
             R = (Y[:, c] - xtf @ sol.T) * O[:, c]
-            t2 = ((sol[:, :q, None] * sol[:, None, :q]).reshape(-1, q * q) * (O[:, c].T @ Sf)).sum(1)
-            ss[c] = (R ** 2).sum(0) + t2
+            t2 = ((sol[:, :q, None] * sol[:, None, :q]).reshape(-1, q * q) * (Ow[:, c].T @ Sf)).sum(1)
+            ss[c] = (R ** 2 * w[:, None]).sum(0) + t2
         W, mu, psi = W_new, mu_new, pool(ss)
     Wn = W.double().cpu().numpy()
     signal = float(np.sum(Wn ** 2))
@@ -1339,10 +1496,10 @@ class Population:
 
     @classmethod
     def fit(cls, cohort, prior, scans, q, noise="isotropic", max_iter=300, tol=1e-6, device="auto", min_scans=10,
-            sd_folds=5):
+            sd_folds=5, weights=None, cells=None):
         """Fit on the deviations of the scans *scans* (indices) from the norm of their age bin (*prior*); the cells
-        observed in at least *min_scans* of them. *sd_folds*: folds (by subject) of the calibration of the SDs per
-        metric (ppca_sd_scale; 0: none)."""
+        observed in at least *min_scans* of them (or the flat cell indices *cells*). *sd_folds*: folds (by subject)
+        of the calibration of the SDs per metric (ppca_sd_scale; 0: none). *weights*: of every scan in the fit."""
         Z = np.full((len(scans), cohort.n_positions, len(cohort.metrics)), np.nan)
         for i, s in enumerate(scans):
             nrm = prior.norm(s)
@@ -1351,8 +1508,9 @@ class Population:
         if not len(scans):
             raise ValueError("no scan to fit the population model on (scans with an age bin)")
         Z = Z.reshape(len(scans), -1)
-        keep = cohort.valid.reshape(-1) & ((~np.isnan(Z)).sum(axis=0) >= min_scans)
-        cells = np.flatnonzero(keep)
+        if cells is None:
+            keep = cohort.valid.reshape(-1) & ((~np.isnan(Z)).sum(axis=0) >= min_scans)
+            cells = np.flatnonzero(keep)
         p, m = np.unravel_index(cells, cohort.valid.shape)
         if not len(cells):
             raise TooFewScans("no cell is observed in --min-scans {} of the {} scans with an age bin".format(
@@ -1360,7 +1518,8 @@ class Population:
         Zk = Z[:, cells]
         rows = np.flatnonzero((~np.isnan(Zk)).any(axis=1))
         Zk = Zk[rows]
-        mu, W, psi, info = fit_ppca(Zk, q, noise, m, max_iter, tol, device)
+        mu, W, psi, info = fit_ppca(Zk, q, noise, m, max_iter, tol, device,
+                                    weights=None if weights is None else np.asarray(weights, dtype=float)[rows])
         scale = np.ones(len(cells))
         if sd_folds and sd_folds > 1:
             data = argparse.Namespace(values=Zk, tracts=cohort.tract_of[p])
@@ -1448,6 +1607,53 @@ class Population:
                    json.loads(str(d["info"])), d["sd_scale"] if "sd_scale" in d.files else None)
 
 
+class AgePopulation:
+    """Population models whose covariance changes with the age: one PPCA per age bin, fitted on all the scans with
+    weights by a Gaussian kernel in log(age + 1 month) around the bin's median age (*bandwidth*), on the cells and
+    with the SD calibration of a global model; a scan is imputed with the model of its age bin."""
+
+    method = "population"
+    needs_age = True
+
+    def __init__(self, models, bins, info):
+        self.models, self.bins, self.info = models, bins, info
+
+    @classmethod
+    def fit(cls, cohort, prior, scans, q, noise, bandwidth, ages, max_iter=300, device="auto", min_scans=10,
+            sd_folds=5):
+        base = Population.fit(cohort, prior, scans, q, noise, max_iter, device=device, min_scans=min_scans,
+                              sd_folds=sd_folds)
+        cells = np.ravel_multi_index((base.p, base.m), cohort.valid.shape)
+        t = np.log(np.asarray([ages[s] if ages[s] is not None else np.nan for s in scans], dtype=float) + 1.0)
+        b_of = np.asarray([prior.scan_bin[s] for s in scans])
+        models, centers = [], []
+        for b in range(len(prior.bins)):
+            if not (b_of == b).any():
+                models.append(base)
+                centers.append(None)
+                continue
+            c = float(np.nanmedian(t[b_of == b]))
+            w = np.exp(-0.5 * ((t - c) / bandwidth) ** 2)
+            w = np.where(np.isfinite(w), w, 0.0)
+            mdl = Population.fit(cohort, prior, scans, q, noise, max_iter, device=device, min_scans=min_scans,
+                                 sd_folds=0, weights=w / w.max(), cells=cells)
+            mdl.sd_scale = base.sd_scale
+            models.append(mdl)
+            centers.append(round(float(np.exp(c) - 1.0), 2))
+        info = dict(base.info, bandwidth=bandwidth, centers_months=centers)
+        return cls(models, prior.bins, info)
+
+    def model_of(self, age):
+        b = scan_bins([age], self.bins)[0] if age is not None else -1
+        return self.models[b] if b >= 0 else self.models[0]
+
+    def predict(self, z, age=None):
+        return self.model_of(age).predict(z)
+
+    def impute(self, Y, norm, age=None):
+        return self.model_of(age).impute(Y, norm)
+
+
 ### imputation of one scan
 
 def impute_scan(Y, cohort, method, opts, cache=None, features=None, device=None, norm=None, relative=False):
@@ -1515,10 +1721,12 @@ def too_many_missing(cohort, Y, max_share, s=None):
 ### imputation of a cohort
 
 def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0.5, device="auto", log_every=25,
-                  prior=None, max_missing_tracts=None, model=None, graph_model=None):
+                  prior=None, max_missing_tracts=None, model=None, graph_model=None, models=None, ensemble=None):
     """Impute every scan; a scan missing more than a share *max_missing_tracts* of its tracts is left as it is.
     *model*: the Population of the method population (bound to *cohort*); *graph_model*: the GraphUNetModel of the
-    method graph-unet. Returns (imputed values scans x positions
+    method graph-unet; *models*: {method: model} of the other models (transformer); *ensemble*: (model,
+    EnsembleWeights) blended with every imputed value, by the cell's distance to the nearest observed value and
+    whether the first method filled it (--ensemble). Returns (imputed values scans x positions
     x metrics (NaN: not imputed), method index per cell (-1: none), distances to the nearest observed position,
     reasons {(scan, metric): text} for skipped ones, SDs of the values population imputed (NaN elsewhere))."""
     opts = dict(opts or {})
@@ -1532,8 +1740,12 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
     by_population = relative and opts.get("norm") == "population" and not set(methods) <= set(BY_NORM)
     if ("population" in methods or by_population) and model is None:
         raise ValueError("population and --norm population need a population model")
-    if "graph-unet" in methods and graph_model is None:
-        raise ValueError("graph-unet needs a graph U-Net model")
+    models = dict(models or {})
+    if graph_model is not None:
+        models["graph-unet"] = graph_model
+    for mth in methods:
+        if mth in MODELS and mth != "population" and mth not in models:
+            raise ValueError("{} needs a fitted or saved model".format(mth))
     features = dev = None
     if "siren" in methods:
         dev = pick_device(device)
@@ -1573,8 +1785,8 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
         dists[s] = np.minimum(dist, np.finfo(np.float32).max)
         cache = {}
         pop = None if model is None or norm is None else model.impute(Y, norm)
-        gpop = None if graph_model is None or norm is None or "graph-unet" not in methods else \
-            graph_model.impute(Y, norm)
+        extra = {} if norm is None else {mth: model_impute(models[mth], Y, norm, s) for mth in methods
+                                         if mth in models}
         # --norm population: the deviations are those from the population prediction of the scan, with its SD; the
         # cells outside the model (observed in fewer than --min-scans scans of its fit) keep the age bin norm
         rnorm = norm
@@ -1584,7 +1796,7 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
         for mth in methods:  # a fallback imputes from the observed values too, not from those of the first method
             sd = None
             if mth in MODELS:
-                p = pop if mth == "population" else gpop
+                p = pop if mth == "population" else extra.get(mth)
                 pred, sd = (np.full(Y.shape, np.nan),) * 2 if p is None else p
                 if norm is not None:  # outside the model: the age bin mean, as prior-mean
                     out = np.isnan(pred) & valid
@@ -1602,6 +1814,15 @@ def impute_cohort(cohort, method="knn", fallback=None, opts=None, min_observed=0
             used[s][new] = METHODS.index(mth)
             if sd is not None:
                 sds[s][new] = sd[new]
+        if ensemble is not None and norm is not None:  # blend with the ensemble model's prediction
+            emodel, weights = ensemble
+            em, esd = model_impute(emodel, Y, norm, s)
+            done = (used[s] >= 0) & ~np.isnan(em) & ~np.isnan(imputed[s])
+            near = done & (used[s] == METHODS.index(method)) & (method in SPATIAL)
+            w = weights.of(cohort.metrics, near, dist)
+            base_sd = np.where(np.isnan(sds[s]), esd, sds[s])
+            imputed[s] = np.where(done, (1 - w) * imputed[s] + w * em, imputed[s])
+            sds[s] = np.where(done, np.sqrt((1 - w) * base_sd ** 2 + w * esd ** 2), sds[s])
         if log_every and (s + 1) % log_every == 0:
             log.info("  ... %d/%d scans (%.0f s)", s + 1, len(cohort.scans), time.time() - t0)
     return imputed, used, dists, skipped, sds
@@ -1850,8 +2071,19 @@ def population_configs(args, cohort=None):
         for x in noises:
             if x not in NOISE:
                 raise ValueError("unknown --validate-noise {} ({})".format(x, ", ".join(NOISE)))
+        bandwidths = parse_list(args.validate_population_age_bandwidth, float) \
+            if args.validate_population_age_bandwidth else []
+        if bandwidths and cohort is not None:
+            p_ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
+                               getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                               getattr(args, "age_fallback", None))
         for q in parse_list(args.validate_components, int):
             for x in noises:
+                for h in (bandwidths if cohort is not None else []):
+                    out.append(("population q={} {} age h={:g}".format(q, x, h),
+                                lambda c, pr, sc, dev, q=q, x=x, h=h: AgePopulation.fit(
+                                    c, pr, sc, q, x, h, p_ages, args.max_iter, device=dev, min_scans=args.min_scans,
+                                    sd_folds=args.sd_calibration_folds)))
                 out.append(("population q={} {}".format(q, x),
                             lambda c, pr, sc, dev, q=q, x=x: Population.fit(c, pr, sc, q, x, args.max_iter, device=dev,
                                                                             min_scans=args.min_scans,
@@ -1870,6 +2102,28 @@ def population_configs(args, cohort=None):
                                     lambda co, pr, sc, dev, L=L, h=h, c=c, q=q: gu.GraphUNetModel.fit(
                                         co, pr, sc, graph, masker, L, h, c, args.graph_epochs, lr=args.graph_lr,
                                         seed=args.seed, device=dev, hybrid=q, min_scans=args.min_scans)))
+    if "transformer" in methods and cohort is not None:
+        from dtiplayground.dmri.fiberprofile.analysis import amortized as am
+        t_inputs = [x.strip() for x in args.validate_transformer_inputs.split(";")]
+        t_ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
+                           getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                           getattr(args, "age_fallback", None)) if any(t_inputs) else None
+        for patch in parse_list(args.validate_transformer_patch, int):
+            for width in parse_list(args.validate_transformer_width, int):
+                for layers in parse_list(args.validate_transformer_layers, int):
+                    for q in parse_list(args.validate_transformer_hybrid, int):
+                        for inp in t_inputs:
+                            for k in parse_list(args.validate_transformer_members, int):
+                                name = "transformer{} patch{} d{} L{}{}{}".format(
+                                    " on population q={}".format(q) if q else "", patch, width, layers,
+                                    " +" + inp.replace(",", "+") if inp else "", " x{}".format(k) if k > 1 else "")
+                                out.append((name, lambda co, pr, sc, dev, patch=patch, width=width, layers=layers,
+                                            q=q, inp=inp, k=k: am.AmortizedModel.fit(
+                                                co, pr, sc, training_masker(co, args), "transformer", hybrid=q,
+                                                patch=patch, d_model=width, layers=layers, heads=max(1, width // 32),
+                                                epochs=args.transformer_epochs, lr=args.transformer_lr,
+                                                seed=args.seed, device=dev, min_scans=args.min_scans, inputs=inp,
+                                                members=k, ages=t_ages)))
     return out
 
 
@@ -1987,8 +2241,9 @@ def validation_configs(args):
     """The method settings to compare: (name, method, opts) and, for siren, the checkpoints (epochs)."""
     methods = [m.strip() for m in args.validate_methods.split(",") if m.strip()]
     for m in methods:
-        if m not in METHODS:
-            raise ValueError("unknown method {} in --validate-methods ({})".format(m, ", ".join(METHODS)))
+        if m not in METHODS + VALIDATION_MODELS:
+            raise ValueError("unknown method {} in --validate-methods ({})".format(m, ", ".join(
+                METHODS + VALIDATION_MODELS)))
     configs = []
     base = {"max_gap": args.max_gap, "max_distance": args.max_distance, "weights": args.knn_weights}
     if "arc-linear" in methods:  # every hidden gap, so it is compared on the same gaps as the others
@@ -2076,6 +2331,23 @@ def parse_list(text, kind):
     return [kind(x) for x in str(text).split(",") if x.strip()]
 
 
+def dump_cells(out, scan, age_bin, pattern, truth, norm, dist, lname, gname, base, is_near, psd, gp, gsd, measure):
+    """--validate-dump-dir: the hidden cells of one pass with the inputs of an ensemble (npz, appended per call)."""
+    os.makedirs(out, exist_ok=True)
+    cells = np.argwhere(~np.isnan(truth))
+    if not len(cells):
+        return
+    pi, mi = cells[:, 0], cells[:, 1]
+    dump_cells.count = getattr(dump_cells, "count", 0) + 1
+    np.savez_compressed(os.path.join(out, "{:06d}.npz".format(dump_cells.count)),
+                        scan=str(scan), age_bin=str(age_bin), model=str(gname), local=str(lname),
+                        measure=bool(measure), position=pi.astype(np.int32), metric=mi.astype(np.int16),
+                        pattern=pattern[pi] if not measure else np.full(len(pi), "whole measure"),
+                        truth=truth[pi, mi], mean=norm[0][pi, mi], sd=norm[1][pi, mi], dist=dist[pi, mi],
+                        base=base[pi, mi], near=is_near[pi, mi], base_sd=psd[pi, mi], model_pred=gp[pi, mi],
+                        model_sd=gsd[pi, mi])
+
+
 def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev, args, loc_sd, acc, by_loc, by_dist,
                   totals=None, norm=None, age_bin="", metrics=None, models=(), calib=None, local=(), variants=None,
                   age=None, by_age=None, scan=None, by_scan=None):
@@ -2120,14 +2392,19 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
             preds[key] = limit(p, Ym, cohort, dist, args.max_distance, spatial=method in SPATIAL)
             if method == "prior-mean":
                 sds[key] = vnorm[1]
-    near, beyond = {}, {}  # population + local within --max-distance; the graph-unet models' predictions
+    near, beyond, models_of = {}, {}, {}  # population + local within --max-distance; the other models' predictions
     for name, model, mnorm in [m for _, _, vm in variants for m in vm]:
         if mnorm is None:
             continue
-        p, sd = model.impute(Ym, mnorm)
+        if getattr(model, "needs_age", False):
+            p, sd = model.impute(Ym, mnorm, age=age, scan=scan) if hasattr(model, "nets") else \
+                model.impute(Ym, mnorm, age=age)
+        else:
+            p, sd = model.impute(Ym, mnorm)
         kind = getattr(model, "method", "population")
-        if kind == "graph-unet":
+        if kind != "population":  # a model to combine with population + local (beyond, ensembles)
             beyond[name] = (limit(p, Ym, cohort, dist, None, spatial=False), sd)
+            models_of[name] = model
         key = (kind, name, "", np.nan, np.nan, np.nan)
         pop = limit(p, Ym, cohort, dist, None, spatial=False)
         preds[key] = pop
@@ -2153,12 +2430,40 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
     # population + local within --max-distance, a graph-unet model beyond (as --fallback)
     for lname, (pr, psd, pop, own) in near.items():
         for gname, (gp, gsd) in beyond.items():
-            ckey = ("population+local+graph-unet", "{}, {} beyond".format(lname, gname), "", np.nan, np.nan, np.nan)
+            ckey = ("population+local+model", "{}, {} beyond".format(lname, gname), "", np.nan, np.nan, np.nan)
             if own:
                 preds[ckey], sds[ckey] = gp, gsd
                 continue
             preds[ckey] = np.where(np.isnan(pr), gp, pr)
             sds[ckey] = np.where(np.isnan(pr), gsd, psd)
+    # ensembles of population + local (within --max-distance, the population prediction beyond) and a graph-unet
+    # model: each cell weighted by the inverse variances of the two (precision), or with fixed weights of the graph
+    # model near observed values (within --max-distance) and beyond
+    for lname, (pr, psd, pop, own) in near.items():
+        base = pop if own else np.where(np.isnan(pr), pop, pr)
+        is_near = np.zeros(base.shape, dtype=bool) if own else ~np.isnan(pr)
+        for gname, (gp, gsd) in beyond.items():
+            ok = ~np.isnan(gp) & ~np.isnan(base)
+            wp = np.where(ok, 1.0 / np.maximum(psd, 1e-12) ** 2, 1.0)
+            wg = np.where(ok, 1.0 / np.maximum(gsd, 1e-12) ** 2, 0.0)
+            ekey = ("ensemble", "precision: {}, {}".format(lname, gname), "", np.nan, np.nan, np.nan)
+            preds[ekey] = np.where(ok, (wp * base + wg * gp) / (wp + wg), base)
+            sds[ekey] = np.where(ok, 1.0 / np.sqrt(wp + wg), psd)
+            if getattr(args, "validate_dump_dir", None) and norm is not None:
+                dump_cells(args.validate_dump_dir, scan, age_bin, pattern, truth, norm, dist, lname, gname, base,
+                           is_near, psd, gp, gsd, metrics is not None)
+            ew = EnsembleWeights.parse("table", "reference" if (getattr(models_of.get(gname), "cfg", None) or {})
+                                       .get("reference") else "cohort")
+            w = ew.of(cohort.metrics, is_near, dist)
+            ekey = ("ensemble", "table: {}, {}".format(lname, gname), "", np.nan, np.nan, np.nan)
+            preds[ekey] = np.where(ok, (1 - w) * base + w * gp, base)
+            sds[ekey] = np.where(ok, np.sqrt((1 - w) * psd ** 2 + w * gsd ** 2), psd)
+            for a_near, a_far in ENSEMBLE_WEIGHTS:
+                ekey = ("ensemble", "graph near {:g} beyond {:g}: {}, {}".format(a_near, a_far, lname, gname), "",
+                        np.nan, np.nan, np.nan)
+                w = np.where(is_near, a_near, a_far)
+                preds[ekey] = np.where(ok, (1 - w) * base + w * gp, base)
+                sds[ekey] = np.where(ok, np.sqrt((1 - w) * psd ** 2 + w * gsd ** 2), psd)
     for inputs, omega0, seed, rel in siren:
         for suffix, vnorm, _ in (variants if rel else [("", None, ())]):
             if rel and vnorm is None:
@@ -2401,7 +2706,14 @@ def validate(cohort, args):
         if bins is None:
             raise ValueError("--validate-scans-per-bin needs ages")
         sample = []
+        only = None if not getattr(args, "validate_batches", None) else \
+            {x.strip() for x in args.validate_batches.split(",")}
+        if only and not only & set(cohort.batches):
+            raise ValueError("--validate-batches: none of {} among the batches {}".format(
+                ", ".join(sorted(only)), ", ".join(cohort.batches)))
         for i in range(len(cohort.batches)):
+            if only and cohort.batches[i] not in only:
+                continue
             for b in range(len(bins)):
                 pool = eligible[(scan_bin[eligible] == b) & (cohort.scan_batch[eligible] == i)]
                 draw = rng if i == 0 else np.random.default_rng([args.validate_seed, i])  # the first: as on its own
@@ -2437,6 +2749,13 @@ def validate(cohort, args):
                   getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
                   getattr(args, "age_fallback", None)), held, out)
         prior = validation_prior(cohort, args, configs, siren)
+    if args.acquisition_correction == "yes":  # fitted without the validated subjects; errors are shift-invariant
+        held = sorted({o for s in sample for o in subject_scans[subject_of(cohort.scans[s])]})
+        if correct_acquisitions(cohort, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
+                                                        args.age_column,
+                                getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                                getattr(args, "age_fallback", None)), held, out) is not None:
+            prior = validation_prior(cohort, args, configs, siren)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         loc_sd = np.nanstd(cohort.values, axis=0)  # between-scan SD per position and metric (normalizes the errors)
@@ -2952,6 +3271,14 @@ def add_parser(subparsers):
     b.add_argument("--batch-sd-df", type=int, default=2,
                    help="Degrees of freedom of the age curve of the variance the residuals are scaled by before their "
                         "SDs are compared (0: constant; default: 2)")
+    aq = p.add_argument_group("acquisitions (several acquisitions within one cohort)")
+    aq.add_argument("--acquisition-correction", default="no", choices=("yes", "no"),
+                    help="Move every acquisition of the cohort to the most common one at every location and metric "
+                         "before imputing (and back after): the shift of the deviations from the age bin norm, with "
+                         "a random intercept per subject, so subjects scanned with several acquisitions compare them "
+                         "within the subject (default: no)")
+    aq.add_argument("--acquisition-regex", default=ACQ_REGEX,
+                    help="Pattern of the acquisition in a scan name, group 1 (default: %(default)s)")
     g = p.add_argument_group("population model (probabilistic PCA of the deviations from the norm)")
     g.add_argument("--model", default=None, metavar="FILE",
                    help="population: a model fitted on a normative cohort (--fit-model); it carries the norm it was "
@@ -2996,6 +3323,58 @@ def add_parser(subparsers):
                     help="graph-unet: a network fitted on a normative cohort (--fit-graph-model), on the same tracts "
                          "and arc lengths (default: fit on the profiles themselves)")
     gu.add_argument("--graph-lr", type=float, default=1e-3, help="graph-unet: AdamW learning rate (default: 1e-3)")
+    tf = p.add_argument_group("transformer (amortized.py) and the ensemble")
+    tf.add_argument("--ensemble", default=None, choices=ENSEMBLES,
+                    help="Blend every imputed value with the prediction of this model of the deviations, by "
+                         "--ensemble-weights (default: transformer with --prior-stats-dir or --model and --norm "
+                         "population, else none)")
+    tf.add_argument("--ensemble-weights", default="table",
+                    help="--ensemble: the weight of the model per cell. table: the built-in weights per metric and "
+                         "distance to the nearest observed value, fitted on the validation (for a transformer trained "
+                         "on the profiles or with --transformer-reference-dir); fit: fitted in this run on the "
+                         "transformer's held-out subjects (a few minutes more; written to ensemble_weights.csv and "
+                         "saved with --fit-transformer-model); NEAR,BEYOND: fixed weights within --max-distance and "
+                         "beyond (0.25,0.75: the default of the first transformer release); or a CSV like "
+                         "ensemble_weights.csv (default: table)")
+    tf.add_argument("--transformer-reference-dir", nargs="+", default=None, metavar="DIR",
+                    help="transformer: profiles of a reference cohort (e.g. a large normative study) that train the "
+                         "transformer with the profiles, corrected to them by the batch correction (--batch-*); the "
+                         "norm, the population model and SIREN stay those of the profiles. Same tracts and arc "
+                         "lengths; their ages from --transformer-reference-age-csv (default: none)")
+    tf.add_argument("--transformer-reference-age-csv", default=None, metavar="CSV",
+                    help="the ages of the reference scans, as --age-csv (default: --age-csv)")
+    tf.add_argument("--transformer-patch", type=int, default=8,
+                    help="transformer: consecutive locations of a tract per token (default: 8)")
+    tf.add_argument("--transformer-width", type=int, default=192, help="transformer: token features (default: 192)")
+    tf.add_argument("--transformer-layers", type=int, default=6, help="transformer: attention layers (default: 6)")
+    tf.add_argument("--transformer-hybrid", type=int, default=80,
+                    help="transformer: components of the population model whose prediction is an input the "
+                         "network corrects; 0: the deviations only (default: 80)")
+    tf.add_argument("--fit-transformer-model", default=None, metavar="FILE",
+                    help="transformer: save the network fitted on the profiles (.pt), e.g. to impute another cohort")
+    tf.add_argument("--transformer-model", default=None, metavar="FILE",
+                    help="transformer: a network fitted on a normative cohort (--fit-transformer-model), on the same "
+                         "tracts, arc lengths and metrics (default: fit on the profiles themselves)")
+    tf.add_argument("--transformer-epochs", type=int, default=None,
+                    help="transformer: training epochs (default: 400; 200 with --transformer-reference-dir)")
+    tf.add_argument("--transformer-lr", type=float, default=1e-3,
+                    help="transformer: AdamW learning rate (default: 1e-3)")
+    tf.add_argument("--validate-transformer-patch", default="8",
+                    help="transformer: consecutive locations of a tract per token (default: 8)")
+    tf.add_argument("--validate-transformer-width", default="128", help="transformer: token features (default: 128)")
+    tf.add_argument("--validate-transformer-layers", default="4", help="transformer: attention layers (default: 4)")
+    tf.add_argument("--validate-transformer-hybrid", default="80",
+                    help="transformer: 0, or the components of a population model whose prediction is an input the "
+                         "network corrects (default: 80)")
+    tf.add_argument("--validate-transformer-inputs", default="",
+                    help="transformer: ';'-separated sets of extra inputs, each of dist, age, acq, batch joined by "
+                         "'+' (e.g. ';dist;dist+age+acq'; empty: none; default: none)")
+    tf.add_argument("--validate-transformer-members", default="1",
+                    help="transformer: the numbers of networks (different seeds) averaged (default: 1)")
+    tf.add_argument("--validate-dump-dir", default=None, metavar="DIR",
+                    help="validation: write the hidden cells of every scan with the ensemble inputs (the default's "
+                         "and each model's prediction and SD, the distance, the truth and the norm) to DIR (npz), to "
+                         "fit blend weights offline")
     gu.add_argument("--validate-graph-levels", default="4",
                     help="graph-unet: resolution levels of the U-Net, level L keeping every 2**L-th location "
                          "(default: 4)")
@@ -3012,6 +3391,9 @@ def add_parser(subparsers):
     v.add_argument("--validate-scans-per-bin", type=int, default=0,
                    help="Instead of --validate-scans: number of scans of each age bin (of the prior or --bins), so "
                         "every age is represented; 0: off (default: 0)")
+    v.add_argument("--validate-batches", default=None,
+                   help="With several --profiles-dir: validate only the scans of these batches (comma-separated "
+                        "names); the others still train the models (default: all)")
     v.add_argument("--validate-max-share", type=float, default=0.5,
                    help="--validate-scans-per-bin: at most this share of the eligible scans of an age bin (and batch), "
                         "so the norm and the models of a small bin keep enough scans (default: 0.5)")
@@ -3037,6 +3419,9 @@ def add_parser(subparsers):
                    help="Methods to compare (default: all)")
     v.add_argument("--validate-components", default="5,10,20,40,80",
                    help="population: numbers of components (default: 5,10,20,40,80)")
+    v.add_argument("--validate-population-age-bandwidth", default="",
+                   help="population: also an age-dependent model per age bin for each of these bandwidths (in "
+                        "log(age + 1 month); e.g. 0.5,1): fitted with weights by the age (default: none)")
     v.add_argument("--validate-noise", default=",".join(NOISE), help="population: noise models (default: all)")
     v.add_argument("--validate-folds", type=int, default=5,
                    help="population: the validated scans are split by subject into this many folds; the model of a "
@@ -3095,16 +3480,257 @@ def add_parser(subparsers):
 # documentation): on the deviations from the population prediction or from the age bin norm (with a prior), and on the
 # scan's own values (without)
 DEFAULTS = {"population": {"method": "siren", "fallback": "population", "k": 20, "arc_ends": "constant",
-                           "siren_inputs": "xyz", "epochs": 500, "omega0": 10.0, "max_distance": 4.0},
+                           "siren_inputs": "xyz", "epochs": 500, "omega0": 10.0, "max_distance": 4.0,
+                           "ensemble": "transformer"},
             "age-bin": {"method": "siren", "fallback": "prior-mean", "k": 20, "arc_ends": "constant",
-                        "siren_inputs": "xyz", "epochs": 500, "omega0": 10.0, "max_distance": 20.0},
+                        "siren_inputs": "xyz", "epochs": 500, "omega0": 10.0, "max_distance": 20.0,
+                        "ensemble": "none"},
             "values": {"method": "arc-linear", "fallback": "none", "k": 1, "arc_ends": "none",
-                       "siren_inputs": "xyz+tract", "epochs": 1000, "omega0": 30.0, "max_distance": 10.0}}
+                       "siren_inputs": "xyz+tract", "epochs": 1000, "omega0": 30.0, "max_distance": 10.0,
+                       "ensemble": "none"}}
 
 
 def kernel_bandwidth(text):
     """--kernel-bandwidth: 'cv' or a number."""
     return "cv" if str(text).strip() == "cv" else float(text)
+
+
+class EnsembleWeights:
+    """The weight of the --ensemble model per cell: fixed (near, beyond), or a table {metric: 10 weights} over the
+    bands of ENSEMBLE_COLUMNS (a metric not in it: the mean of its metrics)."""
+
+    def __init__(self, near=None, beyond=None, table=None, source=""):
+        self.near, self.beyond, self.table, self.source = near, beyond, table, source
+
+    @classmethod
+    def parse(cls, spec, kind="cohort"):
+        """--ensemble-weights: 'table' (ENSEMBLE_TABLES[kind]), 'NEAR,BEYOND' or a CSV of a table."""
+        spec = str(spec).strip()
+        if spec in ("table", "fit"):
+            return cls(table={m: list(w) for m, w in ENSEMBLE_TABLES[kind].items()},
+                       source="the built-in table ({})".format(kind))
+        if os.path.isfile(spec):
+            t = pd.read_csv(spec)
+            if "metric" not in t.columns or not set(ENSEMBLE_COLUMNS) <= set(t.columns):
+                raise ValueError("--ensemble-weights {}: columns metric, {}".format(spec, ", ".join(ENSEMBLE_COLUMNS)))
+            return cls(table={str(r["metric"]): [float(r[c]) for c in ENSEMBLE_COLUMNS] for _, r in t.iterrows()},
+                       source=spec)
+        try:
+            w = [float(x) for x in spec.split(",")]
+        except ValueError:
+            w = []
+        if len(w) != 2 or not all(0.0 <= x <= 1.0 for x in w):
+            raise ValueError("--ensemble-weights: table, fit, two weights in 0..1 (near, beyond) or a CSV file, not "
+                             "{}".format(spec))
+        return cls(near=w[0], beyond=w[1], source="fixed")
+
+    def describe(self):
+        if self.table is None:
+            return "weight {:g} within --max-distance of an observed value (the cells the method fills), {:g} " \
+                   "beyond".format(self.near, self.beyond)
+        return "weights per metric and distance from {}".format(self.source)
+
+    def row(self, metric):
+        if metric in self.table:
+            return np.asarray(self.table[metric], dtype=float)
+        return np.mean([self.table[m] for m in self.table], axis=0)
+
+    def of(self, metrics, near, dist):
+        """(positions x metrics) weights: *near* the cells the method filled, *dist* the distance to the nearest
+        observed value of the metric (inf: none)."""
+        if self.table is None:
+            return np.where(near, self.near, self.beyond)
+        d = np.where(np.isfinite(dist), dist, 0.0)
+        band = np.where(near, np.clip(np.searchsorted(ENSEMBLE_NEAR_MM, d, side="right") - 1, 0, 4),
+                        5 + np.clip(np.searchsorted(ENSEMBLE_FAR_MM, d, side="right") - 1, 0, 3))
+        band = np.where(np.isfinite(dist), band, 9)
+        rows = np.stack([self.row(m) for m in metrics])  # metrics x 10
+        return rows[np.arange(len(metrics))[None, :], band]
+
+    def frame(self):
+        if self.table is None:
+            return pd.DataFrame([{"near": self.near, "beyond": self.beyond}])
+        return pd.DataFrame([{"metric": m, **dict(zip(ENSEMBLE_COLUMNS, w))} for m, w in self.table.items()])
+
+
+class ReferenceModel:
+    """A model of the deviations trained on the cohort pooled with reference profiles (--transformer-reference-dir):
+    a scan of the cohort is imputed with its norm in the pooled cohort, the norm the model was trained on."""
+    takes_scan = True
+
+    def __init__(self, model, prior, index):
+        self.model, self.prior, self.index = model, prior, index  # index: cohort scan -> pooled scan
+
+    def __getattr__(self, name):
+        return getattr(self.model, name)
+
+    def __setattr__(self, name, value):
+        if name in ("model", "prior", "index"):
+            object.__setattr__(self, name, value)
+        else:
+            setattr(self.model, name, value)
+
+    def impute(self, Y, norm, scan=None):
+        pn = None if scan is None else self.prior.norm(self.index[scan])
+        return self.model.impute(Y, norm if pn is None else pn)
+
+
+def model_impute(model, Y, norm, s=None):
+    """The prediction (mean, SD) of a model of the deviations for scan index *s*."""
+    if getattr(model, "takes_scan", False):
+        return model.impute(Y, norm, scan=s)
+    return model.impute(Y, norm)
+
+
+def reference_cohort(cohort, tables, axes, args, ages, bins):
+    """The cohort pooled with the profiles of --transformer-reference-dir (on the cohort's tracts and metrics), the
+    reference batch-corrected to the cohort at the same age; its norm of the age bins *bins*. Returns (pooled cohort,
+    its Prior, cohort scan -> pooled scan, number of reference scans)."""
+    import copy
+    import types
+    dirs = args.transformer_reference_dir
+    ref = read_batches(dirs, ["reference{}".format(i) for i in range(len(dirs))] if len(dirs) > 1 else None)
+    ref = [t for t in ref if t.tract in set(cohort.tracts) and t.metric in set(cohort.metrics)]
+    if not ref:
+        raise ValueError("--transformer-reference-dir: no table of the tracts and metrics of the profiles")
+    for t in ref:
+        t.batch = "reference"
+    own = []
+    for t in tables:
+        t = copy.copy(t)
+        t.batch = "cohort"
+        own.append(t)
+    both = set(cohort.scans) & {x for t in ref for x in t.scans}
+    if both:
+        raise ValueError("--transformer-reference-dir: {} scan(s) are also in the profiles (e.g. {})".format(
+            len(both), sorted(both)[0]))
+    pooled = Cohort(own + ref, axes)
+    if pooled.n_positions != cohort.n_positions or not np.allclose(pooled.arcs, cohort.arcs) or \
+            pooled.metrics != cohort.metrics:
+        raise ValueError("--transformer-reference-dir: the reference profiles must have the arc lengths of the "
+                         "profiles' tracts")
+    at = {n: i for i, n in enumerate(pooled.scans)}
+    index = np.asarray([at[n] for n in cohort.scans], dtype=np.int64)
+    pooled.values[index] = cohort.values  # the cohort as it is imputed (after its own corrections)
+    ref_scans = [n for n in pooled.scans if pooled.scan_batch[at[n]] == pooled.batches.index("reference")]
+    ref_ages = scan_ages(types.SimpleNamespace(scans=ref_scans), args.transformer_reference_age_csv or args.age_csv,
+                         args.age_units, args.age_regex, args.age_column, getattr(args, "age_subject_column", None),
+                         getattr(args, "age_session_column", None), getattr(args, "age_fallback", None))
+    pooled_ages = [None] * len(pooled.scans)
+    for s, i in enumerate(index):
+        pooled_ages[i] = ages[s]
+    for n, a in zip(ref_scans, ref_ages):
+        pooled_ages[at[n]] = a
+    t0 = time.time()
+    corr = BatchCorrection.fit(pooled, pooled_ages, pooled.batches.index("cohort"), args.batch_df, args.batch_sd_df,
+                               args.age_offset, (), shift=args.batch_shift,
+                               limits=batch_scale_limits(args.batch_scale_limit, pooled.metrics),
+                               robust=args.batch_robust == "yes")
+    pooled.values = corr.apply(pooled.values, pooled_ages, pooled.scan_batch)
+    table = corr.table(pooled)
+    log.info("Reference profiles for the transformer: %d scans (%d with an age) of %s, corrected to the profiles "
+             "(%.0f s; median shift %s)", len(ref_scans), sum(a is not None for a in ref_ages), ", ".join(dirs),
+             time.time() - t0, ", ".join("{} {:+.2f} SD".format(r.metric, r.shift_sd) for r in table.itertuples()))
+    prior = Prior.from_cohort(pooled, bins, pooled_ages)
+    return pooled, prior, index, len(ref_scans)
+
+
+def fit_ensemble_weights(cohort, prior, transformer, args, opts, base):
+    """--ensemble-weights fit: the table of weights fitted on the transformer's held-out subjects of the cohort, with
+    values hidden as in the validation (2 rounds), the default (population model fitted without them, SIREN on its
+    residuals within --max-distance) against the transformer; bands with fewer than ENSEMBLE_FIT_MIN_CELLS cells keep
+    the weights of *base*. Returns the EnsembleWeights, or *base* with too few held-out scans."""
+    held = set(transformer.info.get("holdout_subjects", []))
+    eligible = [s for s in range(len(cohort.scans)) if prior.scan_bin[s] >= 0 and
+                (args.max_missing_tracts is None or not too_many_missing(cohort, cohort.scan(s),
+                                                                         args.max_missing_tracts, s))]
+    scans = [s for s in eligible if subject_of(cohort.scans[s]) in held]
+    if len(scans) < 10:
+        log.warning("--ensemble-weights fit: %d held-out scans of the profiles (at least 10 needed); using %s",
+                    len(scans), base.source)
+        return base
+    t0 = time.time()
+    pop = Population.fit(cohort, prior, [s for s in eligible if s not in set(scans)], args.components, args.noise,
+                         args.max_iter, device=args.device, min_scans=args.min_scans, sd_folds=0)
+    dev = pick_device(args.device)
+    features = siren_features(cohort, args.siren_inputs)
+    gap_mm, end_mm = tuple(parse_list(args.validate_gap_mm, float)), tuple(parse_list(args.validate_end_gap_mm, float))
+    region_mm = tuple(parse_list(args.validate_region_mm, float))
+    families = [x.strip() for x in args.validate_measure_families.split(",") if x.strip() in FAMILIES]
+    rng = np.random.default_rng(args.seed + 7)
+    rows = []
+    for s in scans:
+        Y = cohort.scan(s)
+        norm = prior.norm(s, Y)
+        if norm is None:
+            continue
+        for _ in range(2):
+            passes = [(hide(cohort, Y, rng, args.validate_gap_fraction, gap_mm, args.validate_whole_fraction,
+                            args.validate_end_gap_fraction, end_mm), None)]
+            if args.validate_region_count > 0:
+                passes.append((hide_region(cohort, Y, rng, region_mm, args.validate_region_count), None))
+            if families:
+                passes.append(hide_measure(cohort, Y, rng, families))
+            for hidden, metrics in passes:
+                if not hidden:
+                    continue
+                hp = np.zeros(cohort.n_positions, dtype=bool)
+                hp[list(hidden)] = True
+                hm = np.zeros(len(cohort.metrics), dtype=bool)
+                hm[slice(None) if metrics is None else list(metrics)] = True
+                Ym = Y.copy()
+                Ym[np.ix_(hp, hm)] = np.nan
+                truth = np.where(hp[:, None] & hm[None, :] & ~np.isnan(Y) & cohort.valid, Y, np.nan)
+                p, sd = pop.impute(Ym, norm)
+                out = np.isnan(p)
+                p, sd = np.where(out, norm[0], p), np.where(out, norm[1], sd)
+                dist = nearest_observed(cohort.points, Ym, cohort.valid)
+                pr = impute_scan(Ym, cohort, "siren", opts, None, features, dev, (p, sd), True)
+                pr = limit(pr, Ym, cohort, dist, args.max_distance, spatial=True)
+                gp, _ = model_impute(transformer, Ym, norm, s)
+                cells = np.argwhere(~np.isnan(truth) & ~np.isnan(gp))
+                pi, mi = cells[:, 0], cells[:, 1]
+                pattern = np.array([hidden.get(x, "") for x in pi])
+                rows.append(pd.DataFrame({
+                    "metric": mi, "pattern": pattern, "bin": prior.scan_bin[s],
+                    "t": (truth - norm[0])[pi, mi] / norm[1][pi, mi],
+                    "b": (np.where(np.isnan(pr), p, pr) - norm[0])[pi, mi] / norm[1][pi, mi],
+                    "g": (gp - norm[0])[pi, mi] / norm[1][pi, mi], "near": ~np.isnan(pr[pi, mi]),
+                    "dist": dist[pi, mi]}))
+    df = pd.concat(rows, ignore_index=True)
+    df = df[np.isfinite(df.t) & np.isfinite(df.b) & np.isfinite(df.g)]
+    # every pattern, metric and age bin counts alike (as in the score): each cell by 1 / the squared error of the norm
+    cw = 1.0 / (df.t ** 2).groupby([df.pattern, df.metric, df["bin"]]).transform("mean").clip(lower=1e-6)
+    near = df.near.to_numpy()
+    probe = EnsembleWeights(table={m: list(range(10)) for m in cohort.metrics})
+    band = np.zeros(len(df), dtype=int)
+    for m in range(len(cohort.metrics)):
+        sel = df.metric.to_numpy() == m
+        band[sel] = probe.of([cohort.metrics[m]], near[sel][:, None], df.dist.to_numpy()[sel][:, None])[:, 0]
+    key = df.metric.to_numpy() * 10 + band
+    num = (cw * (df.t - df.b) * (df.g - df.b)).groupby(key).sum()
+    den = (cw * (df.g - df.b) ** 2).groupby(key).sum()
+    count = pd.Series(1, index=df.index).groupby(key).sum()
+    table = {}
+    for m, metric in enumerate(cohort.metrics):
+        w = list(base.row(metric))
+        for b in range(10):
+            k = m * 10 + b
+            if count.get(k, 0) >= ENSEMBLE_FIT_MIN_CELLS:
+                w[b] = round(float(np.clip(num[k] / max(den[k], 1e-12), 0.0, 1.0)), 3)
+        table[metric] = w
+    log.info("Ensemble weights fitted on %d held-out scans (%d hidden cells, %.0f s)", len(scans), len(df),
+             time.time() - t0)
+    return EnsembleWeights(table=table, source="{} held-out scans of the profiles".format(len(scans)))
+
+
+def opts_of(args):
+    """The options of the imputation methods (impute_scan, impute_cohort)."""
+    return {"k": args.k, "weights": args.knn_weights, "max_distance": args.max_distance, "max_gap": args.max_gap,
+            "ends": args.arc_ends, "relative": args.relative_to_prior, "norm": args.norm,
+            "seed": args.seed, "siren_inputs": args.siren_inputs,
+            "siren": {"epochs": args.epochs, "omega0": args.omega0, "hidden": args.hidden_width,
+                      "hidden_layers": args.hidden_layers, "lr": args.lr}}
 
 
 def resolve_defaults(args):
@@ -3118,9 +3744,13 @@ def resolve_defaults(args):
         args.age_norm = "bins"  # the statistics of qc-profiles are per age bin
     mode = args.norm if args.relative_to_prior else "values"
     defaults = list(DEFAULTS[mode].items()) + list(POPULATION_DEFAULTS.items()) + list(AGE_NORM_DEFAULTS.items())
+    args.defaulted = sorted(set(getattr(args, "defaulted", ())) | {name for name, _ in defaults
+                                                                   if getattr(args, name, None) is None})
     for name, value in defaults:
         if getattr(args, name, None) is None:
             setattr(args, name, value)
+    if getattr(args, "transformer_epochs", 0) is None:  # as validated: 400, or 200 on the pooled (larger) cohort
+        args.transformer_epochs = 200 if getattr(args, "transformer_reference_dir", None) else 400
     return args
 
 
@@ -3163,6 +3793,10 @@ def run(args):
                                                        args.age_column,
                   getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
                   getattr(args, "age_fallback", None)), report_dir=args.report_dir)
+    acq = correct_acquisitions(cohort, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
+                                                       args.age_column,
+                               getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
+                               getattr(args, "age_fallback", None)), report_dir=args.report_dir)
     spatial = [m for m in (args.method, args.fallback) if m in SPATIAL + ("graph-unet",)]
     if spatial and axes is None:
         log.error("--axis-dir is needed for %s", ", ".join(spatial))
@@ -3233,11 +3867,13 @@ def run(args):
                 return 1
             # a small cohort (e.g. a clinical group) against a normative prior: the age bin norm, as before 0.8.21
             log.warning("The population model can't be fitted on these profiles (%s): imputing on the age bin norm "
-                        "instead (--norm age-bin, --fallback prior-mean). For a small cohort, fit the model on a "
-                        "normative cohort (--fit-model) and impute with it (--model)", e)
+                        "instead (--norm age-bin, --fallback prior-mean, no ensemble). For a small cohort, fit the "
+                        "model on a normative cohort (--fit-model) and impute with it (--model)", e)
             args.norm = "age-bin"
             if args.fallback == "population":
                 args.fallback = "prior-mean"
+            if "ensemble" in getattr(args, "defaulted", ()):
+                args.ensemble = "none"  # as the defaults of --norm age-bin
             population = False
     if fitted:
         log.info("Population model: %d components, %s noise, fitted on %d scans and %d cells in %d EM iterations "
@@ -3275,18 +3911,98 @@ def run(args):
             if args.fit_graph_model:
                 graph_model.save(args.fit_graph_model)
                 log.info("Saved the graph U-Net to %s", args.fit_graph_model)
+    if args.ensemble != "none" and "ensemble" in getattr(args, "defaulted", ()) and axes is None:
+        log.warning("--ensemble %s (the default) needs the tract axes (--axis-dir): the imputed values are not "
+                    "blended (--ensemble none)", args.ensemble)
+        args.ensemble = "none"
+    transformer = None
+    if "transformer" in (args.method, args.fallback, args.ensemble) or args.fit_transformer_model:
+        from dtiplayground.dmri.fiberprofile.analysis import amortized as am
+        if args.transformer_model:
+            transformer = am.AmortizedModel.load(args.transformer_model, cohort, args.device)
+            log.info("Transformer %s: %s", args.transformer_model, am.describe(transformer.cfg))
+            if args.transformer_reference_dir:
+                log.warning("--transformer-reference-dir is not used: the transformer is the saved %s",
+                            args.transformer_model)
+        else:
+            if prior is None:
+                log.error("transformer needs the norm of the profiles (ages) or --prior-stats-dir")
+                return 1
+            if axes is None:
+                log.error("--axis-dir is needed for the transformer")
+                return 1
+            dev = pick_device(args.device)
+            if dev == "cpu":
+                log.warning("transformer: no GPU; fitting it on the CPU takes hours (--ensemble none, or a saved "
+                            "--transformer-model, avoid it)")
+            t_cohort, t_prior, t_index, n_ref = cohort, prior, None, 0
+            if args.transformer_reference_dir:
+                try:
+                    t_cohort, t_prior, t_index, n_ref = reference_cohort(
+                        cohort, tables, axes, args, scan_ages(cohort, args.age_csv, args.age_units, args.age_regex,
+                                                              args.age_column,
+                                                              getattr(args, "age_subject_column", None),
+                                                              getattr(args, "age_session_column", None),
+                                                              getattr(args, "age_fallback", None)), prior.bins)
+                except ValueError as e:
+                    log.error("%s", e)
+                    return 1
+            scans = [s for s in range(len(t_cohort.scans)) if t_prior.scan_bin[s] >= 0]
+            if args.max_missing_tracts is not None:
+                scans = [s for s in scans
+                         if not too_many_missing(t_cohort, t_cohort.scan(s), args.max_missing_tracts, s)]
+            transformer = am.AmortizedModel.fit(t_cohort, t_prior, scans, training_masker(t_cohort, args),
+                                                "transformer", hybrid=args.transformer_hybrid,
+                                                patch=args.transformer_patch, d_model=args.transformer_width,
+                                                layers=args.transformer_layers,
+                                                heads=max(1, args.transformer_width // 32),
+                                                epochs=args.transformer_epochs, lr=args.transformer_lr,
+                                                seed=args.seed, device=dev, min_scans=args.min_scans)
+            transformer.cfg["reference"] = transformer.info["reference"] = int(n_ref)
+            if t_index is not None:
+                transformer.bind(cohort)  # predicts the scans of the profiles (same locations)
+                transformer = ReferenceModel(transformer, t_prior, t_index)
+    ensemble = None
+    if args.ensemble != "none":
+        ens_model = transformer if args.ensemble == "transformer" else graph_model
+        if ens_model is None and args.ensemble == "graph-unet":
+            log.error("--ensemble graph-unet needs --fallback graph-unet or a --graph-model")
+            return 1
+        kind = "reference" if args.ensemble == "transformer" and ens_model.cfg.get("reference") else "cohort"
+        try:
+            weights = EnsembleWeights.parse(args.ensemble_weights, kind)
+        except ValueError as e:
+            log.error("%s", e)
+            return 1
+        saved = getattr(ens_model, "ensemble_table", None)
+        if saved and str(args.ensemble_weights).strip() == "table":  # weights fitted with the saved transformer
+            weights = EnsembleWeights(table=saved, source="the transformer {}".format(args.transformer_model))
+        if str(args.ensemble_weights).strip() == "fit":
+            if args.ensemble != "transformer" or args.transformer_model:
+                log.error("--ensemble-weights fit: with --ensemble transformer trained in this run (not a saved "
+                          "--transformer-model)")
+                return 1
+            weights = fit_ensemble_weights(cohort, prior, ens_model, args, opts_of(args), weights)
+            ens_model.ensemble_table = weights.table
+            os.makedirs(args.report_dir, exist_ok=True)
+            weights.frame().to_csv(os.path.join(args.report_dir, "ensemble_weights.csv"), index=False)
+        ensemble = (ens_model, weights)
+        log.info("Ensemble: every imputed value blended with the %s prediction, %s", args.ensemble,
+                 weights.describe())
+    if transformer is not None and args.fit_transformer_model and not args.transformer_model:
+        log.info("Saved the transformer to %s", transformer.save(args.fit_transformer_model))
     missing = int((np.isnan(cohort.values) & cohort.batch_valid[cohort.scan_batch]).sum())
     log.info("%d missing cells (blank, or whole profiles of scans absent from a table)", missing)
-    opts = {"k": args.k, "weights": args.knn_weights, "max_distance": args.max_distance, "max_gap": args.max_gap,
-            "ends": args.arc_ends, "relative": args.relative_to_prior, "norm": args.norm,
-            "seed": args.seed, "siren_inputs": args.siren_inputs,
-            "siren": {"epochs": args.epochs, "omega0": args.omega0, "hidden": args.hidden_width,
-                      "hidden_layers": args.hidden_layers, "lr": args.lr}}
+    opts = opts_of(args)
     fallback = None if args.fallback == "none" else args.fallback
     imputed, used, dists, skipped, sds = impute_cohort(cohort, args.method, fallback, opts, args.min_observed,
                                                        args.device, prior=prior,
                                                        max_missing_tracts=args.max_missing_tracts, model=model,
-                                                       graph_model=graph_model)
+                                                       graph_model=graph_model,
+                                                       models={} if transformer is None else
+                                                       {"transformer": transformer}, ensemble=ensemble)
+    if acq is not None:  # back to each scan's own acquisition (a shift: the SDs stay)
+        imputed = acq.apply(imputed, inverse=True)
     if corr is not None:  # back to the units of each scan's own batch
         ages = scan_ages(cohort, args.age_csv, args.age_units, args.age_regex, args.age_column,
                   getattr(args, "age_subject_column", None), getattr(args, "age_session_column", None),
@@ -3295,9 +4011,9 @@ def run(args):
         imputed = corr.apply(imputed, ages, cohort.scan_batch, inverse=True)
         sds = corr.apply(sds, ages, cohort.scan_batch, inverse=True, sd=True, at=(harmonized, imputed))
     n = write_tables(cohort, imputed, args.out_dir, os.path.join(args.report_dir, "masks"), args.value_format)
-    if population or graph_model is not None:
+    if population or graph_model is not None or transformer is not None:
         write_values(cohort, sds, os.path.join(args.report_dir, "sd"), args.value_format)
-        log.info("SDs of the values imputed by %s in %s/", "population" if graph_model is None else "population and graph-unet",
+        log.info("SDs of the values imputed by the models of the deviations in %s/",
                  os.path.join(args.report_dir, "sd"))
     summary = summary_rows(cohort, imputed, used, dists, skipped, sds)
     os.makedirs(args.report_dir, exist_ok=True)

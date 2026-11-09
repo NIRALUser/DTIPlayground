@@ -1,2 +1,4 @@
 ## setup.py reads README.md (long description); setuptools adds only one README to the sdist by itself
 include README.md
+## the manuscripts in papers/ are not part of the package
+prune papers

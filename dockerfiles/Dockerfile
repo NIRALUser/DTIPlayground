@@ -20,7 +20,7 @@ RUN python3 -m venv /opt/dtiplayground
 ENV PATH=/opt/dtiplayground/bin:$PATH
 RUN pip install --upgrade pip packaging
 ## dependency pins match requirements.txt
-RUN pip install --upgrade dtiplayground==0.9.8 numpy==2.4.6 dipy==1.12.1 nibabel==5.4.2 pandas==3.1.1 pynrrd==1.1.3
+RUN pip install --upgrade dtiplayground==0.9.9 numpy==2.4.6 dipy==1.12.1 nibabel==5.4.2 pandas==3.1.1 pynrrd==1.1.3
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 RUN chmod 777 -R /root
 EXPOSE 6543

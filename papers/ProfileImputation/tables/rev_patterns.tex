@@ -1,0 +1,14 @@
+\begin{tabular}{lcccc}
+\toprule
+Contrast (compared vs reference) & Whole profile & Region & Interior gap & End gap \\
+\midrule
+PPCA + kNN vs PPCA + SIREN & 0.965 [0.960, 0.969] & 0.981 [0.978, 0.983] & 1.325 [1.303, 1.348] & 1.187 [1.163, 1.211] \\
+PPCA alone vs PPCA + SIREN & 1.026 [1.017, 1.036] & 0.990 [0.986, 0.994] & 1.608 [1.576, 1.642] & 1.406 [1.368, 1.441] \\
+Transformer (400) vs PPCA + SIREN & 0.994 [0.983, 1.006] & 0.955 [0.947, 0.963] & 1.185 [1.160, 1.210] & 1.026 [0.995, 1.058] \\
+U-Net vs PPCA + SIREN & 0.963 [0.953, 0.974] & 0.956 [0.948, 0.963] & 1.370 [1.341, 1.403] & 1.217 [1.187, 1.246] \\
+Released default vs PPCA + SIREN & 0.915 [0.908, 0.922] & 0.929 [0.923, 0.934] & 0.952 [0.940, 0.964] & 0.907 [0.892, 0.922] \\
+Released default vs PPCA + kNN & 0.949 [0.942, 0.956] & 0.947 [0.941, 0.953] & 0.718 [0.705, 0.732] & 0.764 [0.750, 0.778] \\
+Released default vs PPCA alone & 0.892 [0.884, 0.900] & 0.939 [0.933, 0.944] & 0.592 [0.581, 0.604] & 0.645 [0.631, 0.660] \\
+HBCD-reference blend vs released default & 0.950 [0.939, 0.960] & 0.956 [0.945, 0.966] & 0.954 [0.944, 0.965] & 0.943 [0.932, 0.956] \\
+\bottomrule
+\end{tabular}

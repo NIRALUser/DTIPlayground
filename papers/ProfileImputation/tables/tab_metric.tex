@@ -1,0 +1,21 @@
+\begin{tabular}{lccccccc}
+\toprule
+Setting & FA & MD & RD & AD & NDI & ODI & FWF \\
+\midrule
+Age-bin mean: absolute RMSE$^{\ddagger}$ & 46.3 & 102.6 & 101.6 & 125.8 & 65.5 & 51.8 & 56.2 \\
+\midrule
+Phase 2: SIREN on deviations & 0.688 & 0.638 & 0.628 & 0.714 & 0.613 & 0.768 & 0.769 \\
+PPCA alone & 0.784 & 0.657 & 0.652 & 0.756 & 0.659 & 0.818 & 0.808 \\
+PPCA + SIREN & 0.663 & 0.533 & 0.533 & 0.639 & 0.535 & 0.705 & 0.689 \\
+U-Net alone & 0.698 & 0.604 & 0.599 & 0.695 & 0.605 & 0.760 & 0.753 \\
+Transformer alone (400) & 0.668 & 0.572 & 0.570 & 0.648 & 0.563 & 0.699 & 0.705 \\
+Released default (table blend) & 0.610 & 0.504 & 0.504 & 0.587 & 0.505 & 0.645 & 0.631 \\
+With HBCD reference (table blend) & 0.578 & 0.480 & 0.478 & 0.559 & 0.481 & 0.610 & 0.594 \\
+\midrule
+\multicolumn{8}{l}{\textit{Whole family missing (tensor: FA--AD; NODDI: NDI--FWF)}} \\
+PPCA alone & 0.757 & 0.648 & 0.639 & 0.741 & 0.758 & 0.832 & 0.803 \\
+U-Net alone & 0.523 & 0.512 & 0.502 & 0.585 & 0.729 & 0.680 & 0.700 \\
+Transformer alone (400) & 0.490 & 0.374 & 0.379 & 0.456 & 0.681 & 0.616 & 0.573 \\
+Released default (table blend) & 0.490 & 0.374 & 0.379 & 0.455 & 0.678 & 0.615 & 0.574 \\
+\bottomrule
+\end{tabular}

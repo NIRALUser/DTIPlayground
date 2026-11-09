@@ -1,0 +1,36 @@
+\begin{tabular}{llcccc}
+\toprule
+Contrast (compared vs reference) & Ratio & 95\% CI (pairs) & 95\% CI (subjects) & $p_\mathrm{Holm}$ (pairs / subjects) & Better \\
+\midrule
+\multicolumn{6}{l}{\textit{Population model}} \\
+\quad PPCA + SIREN vs PPCA alone & 0.834 & 0.827--0.841 & 0.827--0.842 & $<10^{-26}$ / $<10^{-15}$ & 100\% \\
+\quad PPCA + kNN vs PPCA + SIREN & 1.082 & 1.075--1.088 & 1.074--1.089 & $<10^{-26}$ / $<10^{-15}$ & 1\% \\
+\quad $q=40$ vs $q=80$ (+ SIREN) & 1.008 & 1.002--1.014 & 1.002--1.014 & 0.036 / 0.008 & 42\% \\
+\quad $q=120$ vs $q=80$ (+ SIREN) & 1.010 & 1.003--1.017 & 1.002--1.017 & $<10^{-4}$ / 4.3$\times10^{-4}$ & 36\% \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Graph U-Net}} \\
+\quad U-Net alone vs PPCA + SIREN & 1.085 & 1.075--1.095 & 1.074--1.096 & $<10^{-23}$ / $<10^{-14}$ & 7\% \\
+\quad U-Net beyond 4\,mm vs PPCA beyond & 0.993 & 0.990--0.995 & 0.990--0.996 & $<10^{-7}$ / $<10^{-5}$ & 70\% \\
+\quad U-Net blend 0.25/0.75 vs PPCA + SIREN & 0.966 & 0.963--0.970 & 0.962--0.970 & $<10^{-25}$ / $<10^{-15}$ & 95\% \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Transformer}} \\
+\quad Transformer alone vs PPCA + SIREN & 1.059 & 1.050--1.069 & 1.050--1.069 & $<10^{-20}$ / $<10^{-14}$ & 13\% \\
+\quad Transformer alone vs U-Net alone & 0.976 & 0.970--0.983 & 0.970--0.983 & $<10^{-9}$ / $<10^{-6}$ & 74\% \\
+\quad Transformer blend 0.25/0.75 vs PPCA + SIREN & 0.947 & 0.944--0.950 & 0.943--0.950 & $<10^{-26}$ / $<10^{-15}$ & 100\% \\
+\quad Transformer blend vs U-Net blend (0.25/0.75) & 0.980 & 0.978--0.982 & 0.977--0.982 & $<10^{-24}$ / $<10^{-15}$ & 94\% \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Blending}} \\
+\quad Precision weights vs fixed 0.25/0.75 & 1.012 & 1.010--1.015 & 1.010--1.015 & $<10^{-12}$ / $<10^{-9}$ & 24\% \\
+\quad 400 vs 200 epochs (fixed blend) & 0.988 & 0.986--0.990 & 0.986--0.990 & $<10^{-22}$ / $<10^{-12}$ & 88\% \\
+\quad Weight table vs fixed (400 epochs) & 0.987 & 0.984--0.989 & 0.984--0.989 & $<10^{-19}$ / $<10^{-11}$ & 87\% \\
+\quad Released default vs PPCA + SIREN & 0.923 & 0.918--0.928 & 0.917--0.928 & $<10^{-26}$ / $<10^{-15}$ & 99\% \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Not helpful}} \\
+\quad Acquisition correction vs none & 1.001 & 0.999--1.004 & 0.999--1.004 & 0.45 / 0.15 & 48\% \\
+\addlinespace[2pt]
+\multicolumn{6}{l}{\textit{Second cohort}} \\
+\quad Pooled PPCA + SIREN vs BCP alone & 1.029 & 1.015--1.043 & 1.014--1.044 & $<10^{-5}$ / $<10^{-5}$ & 31\% \\
+\quad Reference transformer vs BCP transformer (alone) & 0.923 & 0.913--0.933 & 0.911--0.934 & $<10^{-22}$ / $<10^{-13}$ & 93\% \\
+\quad Reference vs BCP transformer (table blend) & 0.952 & 0.945--0.959 & 0.943--0.960 & $<10^{-22}$ / $<10^{-12}$ & 92\% \\
+\bottomrule
+\end{tabular}

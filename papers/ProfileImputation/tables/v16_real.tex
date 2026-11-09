@@ -1,0 +1,16 @@
+\begin{tabular}{lccc}
+\toprule
+Setting & BCP, untouched subjects (E1) & BCP, seeds 0--2 (E5i) & HBCD (E3) \\
+\midrule
+age-bin mean & 1.000 & -- & 1.000 \\
+PPCA alone & 0.801 & 0.751 & 1.097 \\
+PPCA + kNN & 0.758 & 0.742 & 1.083 \\
+PPCA + SIREN & 0.777 & 0.753 & 1.086 \\
+Transformer alone & 0.757 & -- & 0.767 \\
+Fixed blend (SIREN base) & 0.723 & -- & 0.816 \\
+Fixed blend (kNN base) & 0.718 & -- & 0.818 \\
+Precision blend & 0.724 & -- & 0.901 \\
+Shipped table (SIREN base; released default) & 0.713 & -- & 0.799 \\
+Shipped table (kNN base) & 0.716 & -- & 0.805 \\
+\bottomrule
+\end{tabular}

@@ -1,0 +1,19 @@
+\begin{tabular}{lccccccc}
+\toprule
+ & \multicolumn{3}{c}{vs age-bin mean} & \multicolumn{3}{c}{vs kernel age norm} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Setting & Whole & Region & Real-weighted & Overall & Whole & Region \\
+\midrule
+Age-bin mean & 1.000 & 1.000 & 1.000 & 1.100 & 1.108 & 1.087 \\
+Kernel age norm (alone) & 0.912 & 0.927 & 0.912 & 1.000 & 1.000 & 1.000 \\
+Phase 2: SIREN on deviations & 0.814 & 0.952 & 0.814 & 0.749 & 0.893 & 1.028 \\
+PPCA alone & 0.713 & 0.759 & 0.713 & 0.799 & 0.783 & 0.819 \\
+PPCA + kNN & 0.675 & 0.752 & 0.675 & 0.722 & 0.740 & 0.811 \\
+PPCA + SIREN & 0.697 & 0.766 & 0.697 & 0.668 & 0.765 & 0.826 \\
+Graph U-Net alone & 0.676 & 0.735 & 0.676 & 0.732 & 0.742 & 0.793 \\
+Transformer alone (400) & 0.694 & 0.737 & 0.693 & 0.688 & 0.761 & 0.795 \\
+Blend, fixed (400) & 0.654 & 0.726 & 0.654 & 0.626 & 0.718 & 0.783 \\
+Released default (table) & 0.639 & 0.715 & 0.639 & 0.619 & 0.701 & 0.771 \\
+HBCD-trained transformer, table & 0.603 & 0.678 & 0.603 & 0.587 & 0.661 & 0.731 \\
+\bottomrule
+\end{tabular}

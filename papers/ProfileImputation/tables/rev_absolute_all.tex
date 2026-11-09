@@ -1,0 +1,17 @@
+\begin{tabular}{lccccccc}
+\toprule
+Setting & FA & MD & RD & AD & NDI & ODI & FWF \\
+\midrule
+Age-bin mean & 46.3 & 102.6 & 101.6 & 125.8 & 65.5 & 51.8 & 56.2 \\
+Kernel age norm (alone) & 40.7 & 90.4 & 86.4 & 120.1 & 57.3 & 50.4 & 55.3 \\
+Phase 2: SIREN on deviations & 31.5 & 64.9 & 63.0 & 89.7 & 40.1 & 38.7 & 43.5 \\
+PPCA alone & 36.1 & 67.2 & 65.7 & 95.1 & 43.2 & 41.9 & 45.7 \\
+PPCA + kNN & 32.2 & 60.5 & 59.4 & 87.0 & 37.9 & 38.5 & 41.9 \\
+PPCA + SIREN & 30.5 & 54.4 & 53.7 & 80.4 & 35.1 & 35.9 & 39.0 \\
+Graph U-Net alone & 32.2 & 61.6 & 60.3 & 87.6 & 39.7 & 39.0 & 42.5 \\
+Transformer alone (400) & 30.7 & 58.4 & 57.3 & 81.4 & 36.9 & 35.6 & 39.9 \\
+Blend, fixed (400) & 28.3 & 51.7 & 50.9 & 75.1 & 33.3 & 33.3 & 36.4 \\
+Released default (table) & 28.0 & 51.5 & 50.7 & 73.9 & 33.1 & 32.8 & 35.7 \\
+HBCD-trained transformer, table & 26.5 & 48.8 & 47.8 & 70.3 & 31.6 & 30.8 & 33.5 \\
+\bottomrule
+\end{tabular}

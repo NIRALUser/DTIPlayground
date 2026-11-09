@@ -1,0 +1,16 @@
+\begin{tabular}{lcccc}
+\toprule
+ & \multicolumn{2}{c}{BCP, untouched subjects (E1)} & \multicolumn{2}{c}{HBCD (E3)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Setting & all donors & donors $\leq$50\% tracts missing & all donors & donors $\leq$50\% tracts missing \\
+\midrule
+Age-bin mean & 1.000 & 1.000 & 1.000 & 1.000 \\
+PPCA + $k$NN & 0.758 & 0.752 & 1.083 & 0.973 \\
+PPCA + SIREN & 0.777 & 0.771 & 1.086 & 0.975 \\
+Transformer alone & 0.757 & 0.754 & 0.767 & 0.743 \\
+Fixed blend (SIREN base) & 0.723 & 0.718 & 0.816 & 0.786 \\
+Shipped table (released default) & 0.713 & 0.708 & 0.799 & 0.768 \\
+Shipped table ($k$NN base) & 0.716 & 0.712 & 0.805 & 0.775 \\
+Table refitted on the cohort (cross-fitted) & 0.712 & 0.707 & 0.764 & 0.737 \\
+\bottomrule
+\end{tabular}

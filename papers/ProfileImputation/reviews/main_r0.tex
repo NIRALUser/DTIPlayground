@@ -1,0 +1,883 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage[authoryear,round]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{caption}
+\usepackage{setspace}
+\usepackage{enumitem}
+\captionsetup{font=small,labelfont=bf}
+\setlist{itemsep=1pt,topsep=3pt}
+\setstretch{1.08}
+
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\input{tables/macros.tex}
+\input{tables/descriptives_macros.tex}
+\newcommand{\ratio}{\ensuremath{\rho}}
+
+\title{Imputing diffusion profiles of white matter fiber tracts in early brain development:\\
+\large an extensive evaluation of normative, local, graph and transformer models}
+\author{Martin Styner$^{1}$, \todo{coauthors}$^{2}$\\[4pt]
+\parbox{0.9\textwidth}{\centering\small $^{1}$Department of Psychiatry and Department of Computer Science, University
+of North Carolina at Chapel Hill, NC, USA \todo{verify affiliation wording}\\ $^{2}$\todo{affiliations}}}
+\date{\todo{date / corresponding author e-mail}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent Along-tract diffusion profiles are a common summary of white matter microstructure, but in infant and
+toddler cohorts many profile values are missing: quality control rejects tracts that run through a regional
+artifact, tracts are truncated at their ends, and a whole model fit (e.g.\ NODDI) can be unavailable for a scan.
+Analyses that require complete data either drop these scans or fill the gaps ad hoc. We report an extensive
+evaluation of imputation methods for such profiles, carried out while developing the \texttt{impute-profiles}
+command of the open-source DTIPlayground package. On \bcpscans{} scans of \bcpsubjects{} children aged 0--65 months
+from the Baby Connectome Project (\bcptracts{} atlas tracts, \bcppositions{} profile locations, FA, MD, RD, AD, NDI, ODI and FWF), we hid
+measured values in five patterns (interior gaps, end gaps, whole profiles, all tracts through a spherical region,
+and a whole family of measures) and compared several dozen settings of six method families on identical hidden values,
+with 3 random draws of 54 validation scans and folds by subject. Imputation from a scan's own values beat the
+age-bin mean only for gaps and missing ends along a profile; whole profiles and regions were 1.8 to 2.4 times as far
+off. Imputing deviations
+from the age-bin norm made every pattern better than the norm (overall RMSE \rPtwoSiren{} of the age-bin mean's). A
+population model (probabilistic PCA of all tracts and measures) with a sine-activated network (SIREN) imputing its
+residuals within 4\,mm reached \rDefault{}, and could impute a missing measure family (\rDefaultWdti{} for the tensor
+measures, \rDefaultWnoddi{} for NODDI). Amortized networks that read a scan's observed values directly (a graph U-Net
+and a transformer, both correcting the population prediction) were worse alone (\rUnet{}, \rTfFour{}) but much
+better for a missing family (transformer \rTfFourWdti{} and \rTfFourWnoddi{}); blending them with the population
+model plus SIREN, with weights per measure and distance to the nearest observed value, gave \rFinal{} (paired per-scan
+ratio \cORatio{} against population model plus SIREN, better on \cOBetter\% of scan draws), and \rRefFinal{} when the
+transformer was also trained on \hbcdscans{} scans of the HBCD study. Functa, a partial VAE, age-dependent PCA, acquisition
+correction, context inputs and seed ensembles did not help, and pooling the second cohort into the population model
+made it worse. Errors were lowest for MD, RD and NDI and highest for ODI, FWF and FA, and grew with the distance to the
+nearest observed value. We give practical recommendations for imputing tract profiles in developmental cohorts.
+\end{abstract}
+
+\noindent\textbf{Keywords:} diffusion MRI; tractometry; fiber tract profiles; missing data; imputation; normative
+modeling; infant brain development; transformer; graph neural network; probabilistic PCA
+
+\section{Introduction}
+
+Along-tract profiles sample diffusion measures such as fractional anisotropy (FA) or mean diffusivity (MD) at
+regular arc-length positions along a fiber tract, and compare those profiles across subjects
+\citep{goodlett2009group,colby2012alongtract,yeatman2012afq,verde2014unc}. They are widely used in studies of white matter development, where the
+measures change fast and non-linearly over the first years of life \citep{geng2012tract,dubois2014early}, and they
+increasingly include multi-compartment measures such as the neurite density (NDI), orientation dispersion (ODI) and
+isotropic free water fraction (FWF) of NODDI \citep{zhang2012noddi}. Infant and toddler data are, however, incomplete:
+motion, susceptibility and signal dropout corrupt local regions; quality control (QC) then rejects all tracts that
+pass through such a region; tracts are truncated where the tractography or the atlas mapping misses their ends; and
+some scans lack a model fit altogether. Many statistical tools for profiles (functional data analysis, mixed models
+over locations, multivariate and machine-learning analyses of all tracts jointly,
+\citealp{chamberland2019dimensionality,richiehalford2021afqinsight}) assume complete profiles, so that a scan
+missing a few profile values is either discarded in full or patched by ad-hoc interpolation.
+
+Imputation of missing values is a well studied problem \citep{rubin1976inference,little2019missing}, with general
+methods ranging from nearest-neighbour \citep{troyanskaya2001knn} and chained-equation \citep{vanbuuren2011mice}
+imputation to deep generative models \citep{mattei2019miwae,ma2019eddi}. Tract profiles have structure that generic
+methods do not exploit: values vary smoothly along a tract; neighbouring tracts are dense in the brain; the
+measures of one scan are strongly coupled; and, in a developmental cohort, the expected value at each location
+depends strongly on age. It is not obvious which of these sources of information matters for which kind of missing
+value, how much a normative reference adds, and whether modern neural architectures (implicit neural representations,
+graph networks, transformers) bring anything beyond a well-specified linear population model.
+
+This paper reports an extensive empirical evaluation of imputation methods for tract profiles in a normative infant
+and toddler cohort, the Baby Connectome Project \citep[BCP;][]{howell2019bcp}. The evaluation was carried out in six
+phases while developing the \texttt{impute-profiles} command of the open-source DTIPlayground package
+\citep{dtiplayground}, and every phase set or confirmed the defaults of the released tool. The emphasis of this paper
+is not methodological novelty but the knowledge the evaluation yields. We ask:
+(i) which approaches work for which missingness patterns (interior gaps, end gaps, whole profiles, all tracts through a
+region, a whole family of measures);
+(ii) how much a normative model helps;
+(iii) what population models, local three-dimensional (3-D) methods, graph networks and transformers each contribute;
+(iv) what did not help (functa, a partial variational autoencoder, age-dependent population models, acquisition
+correction, extra context inputs, seed ensembles);
+(v) whether pooling a second, larger cohort (the HEALthy Brain and Child Development study, HBCD;
+\citealp{volkow2021hbcd,dean2024hbcdmri}) helps, and how it should be done;
+(vi) how the error varies by measure, age and pattern; and
+(vii) what practitioners should do.
+All methods were compared on identical hidden values, with three random draws of the validation scans, folds by
+subject, and paired per-scan statistics.
+
+\section{Related work}
+
+\paragraph{Tract profiles.} Along-tract analysis was introduced for DTI by sampling diffusion tensor measures along
+atlas or subject fiber bundles \citep{goodlett2009group,colby2012alongtract}, and popularized by automated pipelines
+such as AFQ \citep{yeatman2012afq} and the UNC-Utah NA-MIC framework \citep{verde2014unc}, with tract segmentation by
+learned models in recent pipelines \citep{wasserthal2018tractseg}. Tractometry has been extended to many measures at once
+\citep{chamberland2019dimensionality}, and to multivariate and machine-learning analyses of all profiles of a scan
+\citep{richiehalford2021afqinsight}. Its reliability has been studied \citep{kruper2021reliability}, but to our knowledge
+the imputation of missing profile values has not been systematically evaluated.
+
+\paragraph{Missing-data imputation.} Classical results distinguish missing completely at random, at random and not at
+random \citep{rubin1976inference,little2019missing}. Practical imputation methods include $k$-nearest neighbours
+\citep{troyanskaya2001knn}, multiple imputation by chained equations \citep{vanbuuren2011mice}, random forests
+\citep{stekhoven2012missforest} and low-rank models; probabilistic principal component analysis (PPCA) handles missing
+values in a principled way through the EM algorithm \citep{tipping1999ppca,ilin2010pca}. Deep generative models
+amortize inference over incomplete data: the partial VAE of EDDI \citep{ma2019eddi} and MIWAE
+\citep{mattei2019miwae}. Masked autoencoders \citep{he2022mae} learn to reconstruct hidden parts of an input with
+transformers \citep{vaswani2017attention} and are, in effect, amortized imputers. For a broader review in pattern
+recognition see \citet{garcialaencina2010pattern}.
+
+\paragraph{Normative models.} Normative modeling characterizes the distribution of a brain measure in a reference
+population as a function of covariates such as age, and expresses an individual as deviations from it
+\citep{marquand2016normative,rutherford2022charting,bethlehem2022brainchart}. Our phase 2 imputes such deviations
+instead of raw values; phase 3 adds a joint low-rank model of the deviations across all locations and measures.
+
+\paragraph{Neural fields and functa.} Sine-activated networks (SIREN) represent signals as continuous functions of
+coordinates \citep{sitzmann2020siren}. Functa \citep{dupont2022functa} and its medical variant MedFuncta
+\citep{friedrich2025medfuncta} share one network across a dataset and fit a per-instance latent modulation, so that the
+shared network acts as a prior; we test both a per-scan SIREN and a functa model.
+
+\paragraph{Graph networks.} Graph convolutional networks \citep{kipf2017gcn} and graph U-Nets \citep{gao2019graphunet}
+operate on irregular structures such as the locations of fiber tracts. CONFETTI \citep{confetti} builds a
+multi-resolution neighbourhood graph over tract profile locations for scan classification; we adapt it to
+imputation.
+
+\paragraph{Harmonization.} Multi-site pooling of diffusion measures requires correcting site or acquisition effects,
+classically by location-and-scale models such as ComBat \citep{johnson2007combat,fortin2017dti}; our batch correction
+is an age-aware location-and-scale model of this kind.
+
+\section{Materials and methods}
+
+\subsection{Data}\label{sec:data}
+
+\paragraph{Cohorts.} The normative cohort is the BCP \citep{howell2019bcp}: \bcpscans{} scans of \bcpsubjects{}
+children, aged \bcpagemin{} to \bcpagemax{} months (median \bcpagemedian{}, quartiles \bcpageQOne{} and
+\bcpageQThree{}; Table~\ref{tab:data}, Fig.~\ref{fig:data}a). \bcpsubjTwoPlus{} children contributed two or more scans
+(up to \bcpsessmax{}). Scans fall in three age bins used throughout: 0--3 months (\bcpbinA{} scans), 4--9 months
+(\bcpbinB{}) and 10--60 months (\bcpbinC{}). The scan names carry three acquisition labels
+(\texttt{\bcpAcqAName}, \bcpAcqAN{} scans; \texttt{\bcpAcqBName}, \bcpAcqBN{}; \texttt{\bcpAcqCName}, \bcpAcqCN{}).
+\todo{BCP acquisition details (scanner, b-values, directions, resolution), preprocessing pipeline, tensor and NODDI
+fitting, ethics approval and consent statements.} The second cohort is the HBCD study
+\citep{volkow2021hbcd,dean2024hbcdmri}: \hbcdscans{} scans of \hbcdsubjects{} children, median age \hbcdagemedian{}
+months (range \hbcdagemin{} to \hbcdagemax{}; \hbcdbinA{}, \hbcdbinB{} and \hbcdbinC{} scans in the three bins, and
+\hbcdbinnone{} outside them). \todo{HBCD release, age definition (the negative ages suggest age relative to a reference
+date such as term-equivalent age), acquisition, processing and data use agreement.}
+
+\paragraph{Profiles.} Profiles were extracted on the 69 tracts of the DTI\_IBISEP\_Feb26 atlas
+\todo{atlas reference}, sampled every 1\,mm of arc length: 5,388 profile locations per measure. Each location has a
+3-D position in atlas space, the point of the tract's axis (computed from the atlas fibers with
+\texttt{dmrifiberprofile compute-axis}) at that arc length. Tract axes are dense: the median distance from a tract's
+locations to the nearest other tract's axis is \axisTractMedian{}\,mm for the median tract, and \axisWithinTwo\% of all
+locations are within 2\,mm (\axisWithinFour\% within 4\,mm) of another tract. Seven measures were analysed: FA, MD,
+radial and axial diffusivity (RD, AD) of the diffusion tensor, and NDI, ODI and FWF of NODDI \citep{zhang2012noddi}
+(FWF is the isotropic fraction of the NODDI fit). The free-water tensor measures
+\citep{pasternak2009freewater}, imputed in the early phases, were left out after the free-water fits failed in many
+HBCD scans (Section~\ref{sec:pooling}). The profiles were cleaned by the QC of DTIPlayground (\texttt{qc-profiles}:
+outlier profiles removed, diffusivities above $3.6\times10^{-3}$\,mm$^2$/s removed as single values)
+\todo{describe the QC criteria in more detail}.
+
+\paragraph{Missingness of the real profiles.} After QC, \missCellShare\% of the BCP cells (\missCells{} of
+\allCells{} scan $\times$ location $\times$ measure values) are missing. Nearly all
+(\missWholeCellShare\%) belong to whole missing profiles: \missWholeN{} of \missProfilesN{} scan $\times$ tract
+$\times$ measure profiles (\missWholeShare\%), always all measures of a tract at once (\missRejectedTracts{} rejected
+scan $\times$ tract combinations). Only \missPartialN{} profiles are partly missing: \missPartialEnds{} miss their start
+or end (median \missEndLenMedian{}, at most \missEndLenMax{} locations) and \missPartialInner{} have an interior gap.
+\missScansAny{} of the \bcpscans{} scans miss at least one profile value; \missScansHalf{} scans miss more than half of
+their tracts and are excluded by default. The share of scans with a given tract rejected ranges up to
+\missTractMax\% (\missTractMaxName; median over tracts \missTractMedian\%; Fig.~\ref{fig:data}b). No BCP scan lacks
+a whole measure family after QC, but this pattern is the norm in cohorts where one model fit fails or is not computed.
+
+\begin{table}[t]
+\centering\small
+\caption{The two cohorts (computed from the profile tables).}\label{tab:data}
+\input{tables/tab_data.tex}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_data.pdf}
+\caption{Data. (a) Ages at scan of BCP (normative cohort) and HBCD (reference cohort); dashed lines: the age bins.
+(b) Real missingness of BCP after QC: share of scans with a tract rejected (all measures missing), against the
+median distance from the tract's axis to the nearest other tract.}\label{fig:data}
+\end{figure}
+
+\subsection{Notation and the age-bin norm}
+
+For scan $s$, location $p$ (tract, arc length) and measure $m$, $y_{spm}$ is the profile value. The age-bin norm is the
+mean $\mu_{bpm}$ and SD $\sigma_{bpm}$ of the cohort's scans of age bin $b$; the deviation of a scan is
+$z_{spm}=(y_{spm}-\mu_{b(s)pm})/\sigma_{b(s)pm}$. Methods ``on the deviations'' impute $z$ and return
+$\hat y=\mu+\sigma\hat z$ with the norm of the missing location. In validation, the norm is always computed
+without every scan of the validated scan's subject.
+
+\subsection{Imputation methods}\label{sec:methods}
+
+Table~\ref{tab:methods} summarizes the methods, grouped by the six phases of the evaluation. All are implemented in
+\texttt{dtiplayground/dmri/fiberprofile/analysis/impute\_profiles.py} (with \texttt{graph\_unet.py},
+\texttt{amortized.py} and \texttt{functa.py}).
+
+\begin{table}[t]
+\centering\small
+\caption{Methods and what they use. Patterns: G interior gap, E end gap, W whole profile, R region, F whole measure
+family. ``Own'': values of the scan itself; ``norm'': age-bin norm; ``cohort'': models fitted on the normative
+cohort (without the validated subject).}\label{tab:methods}
+\begin{tabular}{@{}p{3.3cm}p{2.0cm}p{7.6cm}l@{}}
+\toprule
+Method & Information & Description & Patterns \\
+\midrule
+Arc-linear & own & linear interpolation along the arc length of the same profile; ends left, repeated (constant)
+or extrapolated & G, E \\
+Linear (3-D) & own & barycentric interpolation in the Delaunay tetrahedra of the scan's observed locations of the
+same measure in all tracts & G, E, W, R \\
+$k$NN & own & inverse-distance-weighted mean of the $k$ nearest observed locations in 3-D & G, E, W, R \\
+SIREN & own & per-scan sine network, inputs 3-D position (xyz), plus arc length or one-hot tract; all measures jointly
+& G, E, W, R \\
+Phase 2: any of the above on $z$ & own + norm & imputes deviations from the age-bin norm & as above \\
+Population model (PPCA) & own + cohort & probabilistic PCA of the deviations of all locations and measures jointly;
+posterior mean and SD of the missing cells & all \\
+PPCA + local & own + cohort & SIREN or $k$NN imputes the residuals from the PPCA prediction within 4\,mm of an observed
+value; PPCA beyond & all \\
+Graph U-Net (hybrid) & own + cohort & multi-resolution graph convolutional U-Net over the locations; corrects the PPCA
+prediction & all \\
+Transformer (hybrid) & own + cohort & masked autoencoder over patches of 8 locations; corrects the PPCA prediction &
+all \\
+Blend & own + cohort & $(1-w)\,\hat y_{\mathrm{PPCA+SIREN}}+w\,\hat y_{\mathrm{model}}$, $w$ fixed, by precision, or per
+measure and distance band & all \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Explored, not adopted}} \\
+Functa & own + cohort & shared SIREN, per-scan latent fitted by meta-learned gradient steps & all \\
+Partial VAE & own + cohort & set encoder of the observed cells, per-location decoder (EDDI/MIWAE-style) & all \\
+Age-dependent PPCA & own + cohort & PPCA per age, scans weighted by a kernel of log age & all \\
+Acquisition correction & own + cohort & random-intercept offset per acquisition label, removed before imputation &
+all \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Phase 1: the scan's own values.} \emph{Arc-linear} interpolates linearly along the arc length between the
+observed values at both ends of a gap (gaps up to 15\,mm); missing ends are left, filled with the nearest observed
+value (\emph{constant}) or extrapolated from the three nearest. \emph{Linear} interpolates barycentrically within the
+Delaunay tetrahedra of the observed 3-D positions of the same measure in all tracts. \emph{$k$NN} averages the $k$
+nearest observed positions with inverse-distance weights. \emph{SIREN} \citep{sitzmann2020siren} fits, per scan, a sine
+network (3 hidden layers of 256 units, Adam, learning rate $10^{-4}$; \citealp{kingma2015adam}) to all observed values
+of all measures jointly, each standardized within the scan; its inputs are the 3-D position scaled to $[-1,1]$
+(\emph{xyz}), optionally with the arc length (\emph{xyz+arc}) or a one-hot tract code (\emph{xyz+tract}); we varied
+$\omega_0\in\{5,10,20,30\}$ and 100--1000 epochs.
+
+\paragraph{Phase 2: deviations from the age-bin norm.} The same methods applied to $z$ instead of $y$. Values farther
+than a distance limit from any observed value of the same measure (20\,mm on the deviations) are left to the age-bin
+mean.
+
+\paragraph{Phase 3: population model.} The deviations of the normative scans, over all locations and measures jointly
+($5{,}388\times7$ cells observed in at least 10 scans), are modelled by PPCA \citep{tipping1999ppca},
+$\mathbf z=\boldsymbol\mu+W\mathbf x+\boldsymbol\epsilon$, $\mathbf x\sim\mathcal N(0,I_q)$,
+$\boldsymbol\epsilon\sim\mathcal N(0,\psi I)$, fitted by EM on the observed cells with the exact posterior of every row
+\citep{ilin2010pca}, a ridge prior on the rows of $W$, and $q=80$ components by default (5--160 tested; isotropic,
+per-measure and per-cell noise tested). A scan's observed deviations give the posterior mean and SD of every missing
+cell, including all cells of a measure family the scan lacks. The posterior SDs are rescaled per measure so that
+errors on held-out whole profiles (5 folds by subject) have unit root-mean-square $z$. The \emph{PPCA + local}
+combination uses the PPCA prediction as the scan's own norm and imputes the residuals with SIREN (xyz, $\omega_0=10$,
+500 epochs) or $k$NN ($k=20$) within 4\,mm of an observed value; beyond, the PPCA prediction is used. This combination
+(PPCA + SIREN) was the default of DTIPlayground up to version 0.9.5.
+
+\paragraph{Phase 3b: continuous age norms and pooling.} Instead of age bins, the mean and SD of every cell can be smooth
+functions of $\log(\text{age}+1\,\text{month})$: a natural cubic spline or a local-linear kernel regression with
+leave-one-out bandwidth. To pool cohorts, each batch is mapped to the reference batch by an age-aware shift and scale
+per cell and measure (one spline age curve for all batches plus a shift per batch, fitted jointly; the scale as the
+ratio of residual SDs over the common age range), and imputed values are mapped back.
+
+\paragraph{Phase 4: graph U-Net.} After CONFETTI \citep{confetti}, a multi-resolution graph keeps every $2^L$-th
+location of each tract at level $L$ (4 levels); nodes are linked along the tract and to the closest node of each
+other tract within 1.5 times the median distance to the nearest other tract's axis, with Gaussian edge weights. A
+U-Net \citep{gao2019graphunet} of graph convolutions \citep{kipf2017gcn} (128 features, one convolution per level,
+batch normalization, dropout 0.1, skip connections) receives per location the observed deviations (0 where missing),
+the observation mask, the 3-D position and arc length, and, in the \emph{hybrid} variant, the PPCA prediction and its
+log SD; a scan-wide summary (mean and max at the coarsest level) is added there. It outputs a mean and log variance per
+location and measure and is trained (AdamW, \citealp{loshchilov2019adamw}; cosine schedule; batches of 16 scans; up to
+60 epochs) with the validation patterns of Section~\ref{sec:protocol} hidden anew in every epoch (a region in half of
+the scans, a whole family in a quarter), on the Gaussian negative log-likelihood of the hidden values
+\citep{kendall2017uncertainties} (visible values with weight 0.1). Ten percent of the training subjects select the
+epoch and calibrate the SDs. The PPCA input of a training scan comes from a model fitted without its subject (5-fold
+cross-fitting). We also evaluated CONFETTI's original configuration (graph threshold from the dense atlas fibers, 64
+features, no scan-wide summary).
+
+\paragraph{Phase 6: transformer.} A masked-autoencoder transformer \citep{vaswani2017attention,he2022mae}: each tract
+is cut into patches of 8 consecutive locations (about 700 tokens per scan); a token embeds the per-location inputs of
+its patch (as for the U-Net) plus a learned tract embedding; 6 pre-norm self-attention layers of width 192 (6 heads,
+dropout 0.1) relate every token to every other, and a linear head returns a mean and log variance for every location of
+the patch. Training is as for the graph U-Net (AdamW, learning rate $10^{-3}$, weight decay $10^{-4}$, cosine schedule,
+200 or 400 epochs with the best held-out epoch kept), in the hybrid variant correcting a cross-fitted PPCA prediction.
+
+\paragraph{Phase 6: blends.} The PPCA + SIREN prediction $b$ and a model prediction $g$ (U-Net or transformer) are
+combined as $(1-w)b+wg$, with (i) fixed weights $w_{\text{near}}$ for cells within 4\,mm (those SIREN fills) and
+$w_{\text{beyond}}$ for the others; (ii) precision weights $w=\sigma_b^{-2}/(\sigma_b^{-2}+\sigma_g^{-2})$; or (iii) a
+\emph{weight table} per measure $m$ and band $k$ of the distance to the nearest observed value of the measure (0--0.5,
+0.5--1, 1--2, 2--3, 3--4\,mm for SIREN cells; 4--6, 6--10, 10--20, $>$20\,mm for fallback cells; and a measure the scan
+has no observed value of). The table is the weighted least-squares solution in deviation units,
+\begin{equation}
+w_{mk}=\operatorname{clip}_{[0,1]}\frac{\sum_{i\in(m,k)}c_i\,(t_i-b_i)(g_i-b_i)}{\sum_{i\in(m,k)}c_i\,(g_i-b_i)^2},
+\end{equation}
+over hidden cells $i$ with true deviation $t_i$, where $c_i$ is the inverse mean squared error of the age-bin mean
+in the cell's (pattern, measure, age bin) group, so that each group counts as in the score. This is a constrained form
+of stacking \citep{wolpert1992stacked,breiman1996stacked}. The table shipped with DTIPlayground 0.9.8 was fitted on
+all validation cells of the three draws; all scores reported for it here are cross-fitted (weights for a scan fitted
+without its subject, 5 folds). We also tested a gradient-boosted weight per cell and calibrated precision weights.
+
+\paragraph{Reference cohort.} With \texttt{--transformer-reference-dir}, a second cohort (HBCD) is batch-corrected to
+BCP at the same age and added to the training of the transformer only; the norm, PPCA and SIREN remain those of BCP.
+We compared this with pooling BCP and HBCD for the norm, the PPCA and the transformer.
+
+\paragraph{Explored alternatives.} \emph{Functa} \citep{dupont2022functa,friedrich2025medfuncta}: one SIREN shared
+by the normative scans, modulated per scan by shifts from a latent vector fitted by a few meta-learned gradient steps
+on the scan's observed values, meta-trained on the hidden values of the validation patterns; we varied inner steps and
+step sizes, test-time refinement, an encoder initialization, depth (2--8), width (64--512), latent size (16--512), age
+and tract inputs, and graph variants (Laplacian-eigenvector inputs, a learned vector per location, a graph-convolution
+decoder), each on the deviations and as a hybrid correcting PPCA. \emph{Partial VAE}
+\citep{ma2019eddi,mattei2019miwae}: a set encoder of the observed cells (per-location MLP pooled by mean and max), a
+latent (32--128), a decoder with weights per location, importance-weighted training. \emph{Age-dependent PPCA}: a PPCA
+per age, the scans weighted by a Gaussian kernel of log age. \emph{Acquisition correction}: an offset per acquisition
+label and cell fitted on the deviations with a random intercept per subject, removed before imputation. \emph{Context
+inputs} to the transformer: distance to the nearest observed value, age and acquisition. \emph{Seed ensembles}: three
+transformers averaged \citep{lakshminarayanan2017ensembles}.
+
+\subsection{Evaluation protocol}\label{sec:protocol}
+
+\paragraph{Hiding patterns.} Measured values are hidden, imputed, and compared with the truth (Fig.~\ref{fig:patterns}).
+Each validated scan goes through three rounds; each round has three passes on the complete scan:
+(1) whole profiles (all measures) of 10\% of the tracts with at least three observed locations; of the remaining tracts,
+an interior gap of 3--15\,mm in 20\% (\emph{gap}) and the first or last 1--8\,mm of the observed part in another 20\%
+(\emph{end gap}; at least three observed locations kept); (2) every tract with an observed location inside a sphere of
+radius 10--25\,mm around a random observed location loses its whole profile (\emph{region}; spheres reaching more than
+half of the tracts are redrawn), mimicking QC rejection after a regional artifact; (3) all values of one measure family
+the scan has, the tensor family (FA, MD, RD, AD) or the NODDI family (NDI, ODI, FWF), chosen at random (\emph{whole
+family}). The hiding is identical for all settings of a run and across runs with the same random seed; whole profiles
+and regions mirror the dominant real missingness (Section~\ref{sec:data}), end gaps its most common partial pattern.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_patterns.pdf}
+\caption{Missingness patterns and evaluation protocol. (a, b) One round of hidden values on a 12-month BCP scan, the
+profile locations projected on axial and sagittal planes (grey: observed). (a) Pass 1 hides whole profiles of random
+tracts, interior gaps and end gaps; (b) pass 2 hides all tracts through a sphere (this draw: 13 of 69 tracts). Pass 3
+(not shown) hides a whole measure family. (c) The protocol.}\label{fig:patterns}
+\end{figure}
+
+\paragraph{Sampling and folds.} Per random seed (0, 1, 2), 20 scans per age bin were drawn, at most half of a bin
+(\nScansBinA{}, \nScansBinB{} and \nScansBinC{}: \nScansSeed{} scans), \nScansDistinct{} distinct scans of
+\nSubjDistinct{} subjects over the three seeds, \nPairs{} scan $\times$ seed pairs. Every model fitted on the cohort
+(norm, PPCA, continuous norms, batch correction, networks, blend weights) is fitted without the validated subjects:
+the validated scans are split by subject into 5 folds and each fold's models are fitted on all other subjects.
+
+\paragraph{Score.} For a setting, pattern $P$, measure $m$ and age bin $b$, the RMSE over the hidden values is divided by
+the RMSE of the age-bin mean on the same values,
+\begin{equation}
+\ratio_{Pmb}=\mathrm{RMSE}_{Pmb}(\text{setting})/\mathrm{RMSE}_{Pmb}(\text{age-bin mean}),
+\end{equation}
+so that $\ratio<1$ means better than the norm. Values a setting leaves unfilled (e.g.\ whole profiles for arc-linear,
+cells beyond a distance limit, a whole family for same-scan methods) are counted with the age-bin mean, as an imputation
+with that fallback would do. The pattern score is the mean of $\ratio$ over measures and age bins; the \emph{overall}
+score is the mean over the four patterns gap, end gap, whole profile and region; the whole-family pattern is reported
+separately for the tensor and the NODDI family. Scores are averaged over the three seeds (SD between seeds in
+parentheses). Absolute RMSEs are reported in the units of each measure.
+
+\paragraph{Paired statistics.} Seed-to-seed variation of a score (SD up to about 0.01 overall and more within an age
+bin) is as large as many differences between settings, so settings are compared on the same scans. The per-scan score
+is the mean over pattern $\times$ measure of $\sqrt{\mathrm{MSE}/\mathrm{MSE}_{\text{age-bin mean}}}$ for that scan; for
+two settings A (reference) and B, we report the geometric mean over scan $\times$ seed pairs of the ratio of their
+per-scan scores, its 95\% confidence interval from the normal approximation of the log ratios, the Wilcoxon signed-rank
+test \citep{wilcoxon1945} of the log ratios, and the share of pairs in which B is better. The \nPairs{} pairs are not
+independent: the same scan can be drawn by several seeds, and several scans come from one subject. We therefore also
+report a cluster bootstrap CI that resamples the \nSubjPairs{} subjects (4,000 resamples; \citealp{field2007bootstrap})
+and a Wilcoxon test on per-subject mean log ratios, and we Holm-adjust \citep{holm1979} the $p$ values over the
+\nContrasts{} pre-specified contrasts of Table~\ref{tab:paired}. Paired tests are only reported between settings that
+fill every hidden value.
+
+\paragraph{Quick screens.} Model families that failed to justify a full validation (functa, partial VAE,
+age-dependent PPCA) and transformer variants were screened on one fixed held-out split: 30 test subjects, two rounds
+of the same hiding patterns, models fitted on the other subjects, and the same score on the 7 measures. Screen numbers
+are comparable within the screen but not directly with the 3-seed validation.
+
+\paragraph{Earlier protocols.} Phases 1--3 were first run on 30 scans, one seed and 11 measures (including the
+free-water tensor measures), and phase 3b on the 11 measures with three seeds. All phases 1--4 were later re-run with
+the protocol above; we report those results throughout, and use the earlier runs only where no re-run exists (the
+SIREN hyperparameter grid, the distance limit of the PPCA residuals and the pooling experiment; Appendix).
+
+\subsection{Implementation and reproducibility}
+
+All methods are part of DTIPlayground 0.9.8 \citep{dtiplayground} (PyTorch, \citealp{paszke2019pytorch}). Each
+validation run is a single \texttt{dmrifiberprofile impute-profiles --validate} call, with \texttt{--validate-seed}
+selecting the sample and the hidden values; its outputs include per-scan, per-age-bin and per-distance error tables
+and, with \texttt{--validate-dump-}\allowbreak\texttt{dir}, every hidden cell with all predictions, from which the blends were fitted
+offline. A run with the population model, SIREN and one network took about 2 hours on one NVIDIA RTX A6000 GPU.
+Every number, table and figure of this paper is produced from those result files by the scripts accompanying the
+paper (Data and code availability).
+
+\section{Results}
+
+\subsection{Overview: from the scan's own values to blended models}
+
+Table~\ref{tab:main} and Fig.~\ref{fig:progression} give the error of representative settings of every phase on the
+same hidden values.
+
+\begin{table}[p]
+\centering\footnotesize
+\caption{Error relative to the age-bin mean (RMSE ratio $\ratio$; below 1: better) on identical hidden values,
+mean over 3 seeds $\times$ 54 BCP scans, 7 measures and 3 age bins. Overall: mean of the four patterns (SD between
+seeds). $^{\dagger}$Leaves some hidden values, counted with the age-bin mean (a whole family is never filled by
+phases 1--2). $^{\ast}$Weights cross-fitted by subject; the mean of the per-seed scores (pooled over seeds, as in the
+software documentation: 0.567 and 0.538).}\label{tab:main}
+\setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{\input{tables/tab_main.tex}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_progression.pdf}
+\caption{Phase-wise progression. (a) Error relative to the age-bin mean per pattern (markers) and overall (bars). (b)
+A whole measure family hidden; methods of phases 1--2 cannot impute it (1.0 by construction). P1--P6: phases;
+``released'': the default of DTIPlayground 0.9.8 (scored cross-fitted).}\label{fig:progression}
+\end{figure}
+
+\paragraph{Phase 1: the scan alone is not enough.} Imputed from the scan's own values, only interior gaps were better
+than the age-bin mean (arc-linear \rPoneArcGap{}, SIREN xyz \rPoneSirenGap{}); with constant ends, arc-linear also
+improved end gaps (\rPoneArcEnd{}). Whole profiles and regions were imputed far worse than the norm by every 3-D
+method (SIREN xyz \rPoneSirenWhole{} and \rPoneSirenRegion{}, linear \rPoneLinearWhole{} and \rPoneLinearRegion{}).
+Neighbouring tracts differ systematically in their measures, by orientation and organization, so a missing tract
+cannot be read off its neighbours' values. The best phase-1 setting overall, arc-linear with constant ends
+(\rPoneArc{}), owes this to filling nothing beyond gaps and ends.
+
+\paragraph{Phase 2: the norm makes every pattern imputable.} On the deviations from the age-bin norm, every 3-D method
+was better than the age-bin mean for whole profiles, and all but $k$NN with $k=1$ for regions. The best single setting was SIREN
+with the 3-D position only (\rPtwoSiren{} overall; gaps \rPtwoSirenGap{}, end gaps \rPtwoSirenEnd{}, whole profiles
+\rPtwoSirenWhole{}, regions \rPtwoSirenRegion{}). A scan that deviates from the norm in one tract tends to deviate
+the same way in its neighbours, while the norm carries the tract-specific level that the neighbours cannot. The gain
+shrank as more was missing: regions remained close to the norm.
+
+\paragraph{Phase 3: a population model.} PPCA alone (\rPpca{}) was better than phase-2 SIREN for whole profiles
+(\rPpcaWhole{} vs \rPtwoSirenWhole) and regions (\rPpcaRegion{} vs \rPtwoSirenRegion), but worse for gaps and ends,
+where neighbours along the same profile carry more. Imputing the PPCA residuals locally combined both: PPCA + SIREN
+(\rDefault{}; gaps \rDefaultGap{}, end gaps \rDefaultEnd{}, whole profiles \rDefaultWhole{}, regions
+\rDefaultRegion{}) was better than PPCA alone on every scan draw (paired ratio \cARatio{}, Table~\ref{tab:paired}) and
+better than PPCA + $k$NN (\rPpcaKnn{}; $k$NN was \cBRatio{} times SIREN's error, although slightly better for whole
+profiles and regions). PPCA is also the first method that imputes a missing measure family (tensor \rPpcaWdti{},
+NODDI \rPpcaWnoddi{}).
+
+\paragraph{Phase 4: graph U-Net.} In CONFETTI's original configuration the graph U-Net imputed poorly (0.90 of the
+age-bin mean's error overall in a development run on one seed and 11 measures, against 0.69 for PPCA alone; software
+documentation). Three changes made it competitive: a graph built from the tract axes rather than the
+dense fibers (fewer edges to other tracts), a scan-wide context at the coarsest level, and correcting the PPCA
+prediction (hybrid). The hybrid U-Net alone (\rUnet{}) was better than PPCA alone for every pattern but worse than
+PPCA + SIREN for gaps and ends (\rUnetGap{} vs \rDefaultGap{}); adding SIREN on its residuals did not close the gap
+(\rUnetSiren{}). Its strength was a missing family: \rUnetWdti{} for the tensor and \rUnetWnoddi{} for the NODDI
+family, against \rPpcaWdti{} and \rPpcaWnoddi{} for PPCA. Used only beyond 4\,mm (PPCA + SIREN near, U-Net beyond)
+it changed the four patterns little (\rUnetBeyond{}; paired \cFRatio{}).
+
+\paragraph{Phase 6: transformer and blends.} The transformer alone (\rTfTwo{} with 200 epochs, \rTfFour{} with 400)
+was better than the U-Net alone (paired \cIRatio{}) and better still for a missing family (tensor \rTfFourWdti{},
+NODDI \rTfFourWnoddi{} with 400 epochs). Neither network alone reached PPCA + SIREN on the four patterns (transformer
+\cHRatio{}, U-Net \cERatio{} times its error), because SIREN on the PPCA residuals is better close to observed values.
+Blending did: a fixed blend with weight 0.25 near and 0.75 beyond 4\,mm reduced the error to \rUnetBlend{} with the
+U-Net and \rTfBlend{} with the transformer (\rTfBlendFour{} with 400 epochs), and the learned weight table to
+\rFinal{} (cross-fitted). Against PPCA + SIREN, the released default (transformer of 400 epochs, weight table) had a
+paired ratio of \cORatio{} and was better on \cOBetter\% of scan draws; it improved every pattern (gaps
+\rFinalGap{}, end gaps \rFinalEnd{}, whole profiles \rFinalWhole{}, regions \rFinalRegion{}) and a missing family by
+far (tensor \rFinalWdti{}, NODDI \rFinalWnoddi{}).
+
+\subsection{Which approach works for which pattern}
+
+\paragraph{Interior gaps and end gaps.} Gaps are the easiest pattern: \shareFourGap\% of the hidden values are within 4\,mm of an observed
+value (\shareFourEnd\% for end gaps, \shareFourWhole\% for whole profiles, \shareFourRegion\% for regions;
+Fig.~\ref{fig:distance}d), and local methods on deviations or PPCA residuals win. Without a norm, arc-linear
+interpolation along the profile is a reasonable choice for interior gaps (\rPoneArcGap{}); with a norm, arc-linear
+on the deviations reached \rPtwoArcGap{} and SIREN on the PPCA residuals \rDefaultGap{}. End gaps behave like gaps
+with one-sided support and were consistently about 0.1 worse. Amortized networks alone were clearly worse here
+(transformer \rTfFourGap{}), but contributed in the blend (\rFinalGap{}).
+
+\paragraph{Whole profiles and regions.} A whole profile is imputed from neighbouring tracts and from the scan's other
+tracts and measures; a region also removes the neighbours. Here the population model and the amortized networks
+mattered: PPCA alone \rPpcaWhole{} and \rPpcaRegion{}, phase-2 SIREN \rPtwoSirenWhole{} and \rPtwoSirenRegion{}, the
+transformer alone \rTfFourWhole{} and \rTfFourRegion{}, the released blend \rFinalWhole{} and \rFinalRegion{}. Regions
+remain the hardest of the four patterns for every method.
+
+\paragraph{A whole measure family.} Only cohort models can impute a measure the scan lacks entirely, from the
+scan's other measures. The amortized networks were much better than PPCA (tensor family: transformer \rTfFourWdti{},
+U-Net \rUnetWdti{}, PPCA \rPpcaWdti{}; NODDI family: \rTfFourWnoddi{}, \rUnetWnoddi{}, \rPpcaWnoddi{}); paired over
+scans, the transformer's error for a missing family was \wCRatio{} of PPCA's (400 epochs, better on \wCBetter\% of scan
+draws). The tensor family was easier to recover from NODDI than the reverse, and MD and RD were recovered best (per
+measure: Table~\ref{tab:metric}).
+
+\paragraph{Distance to the nearest observed value.} Within each pattern, the error grew with the distance to the nearest
+observed value of the same measure (Fig.~\ref{fig:distance}). The deviations of a far neighbour still carried
+information on the deviations scale (phase-2 SIREN stayed below 1 up to its 20\,mm limit for regions), but the PPCA residuals
+are local: SIREN on them helped within a few millimetres and hurt beyond, which is why it is limited to 4\,mm
+(Appendix Fig.~\ref{fig:cap}). Beyond 4\,mm the amortized networks were better than PPCA, which is what the blend
+exploits (Fig.~\ref{fig:weights}c).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_distance.pdf}
+\caption{Error by the distance from a hidden value to the nearest observed value of the same measure, per pattern
+(3 seeds; bins with fewer than 600 hidden values omitted; vertical line: 4\,mm). (d) The distribution of these distances
+per pattern. Interior gaps are omitted from (a)--(c): \shareFourGap\% of their values lie within 4\,mm.}\label{fig:distance}
+\end{figure}
+
+\subsection{How much does the normative model help?}
+
+The normative information enters at three levels. The age-bin norm alone turned SIREN's whole profiles from \rPoneSirenWhole{} (phase 1, on
+values) into \rPtwoSirenWhole{} (phase 2, on deviations), its regions from \rPoneSirenRegion{} into
+\rPtwoSirenRegion{}, and its overall score from \rPoneSiren{} to \rPtwoSiren{}. The population model, which captures how deviations co-vary across all tracts and
+measures, took the overall error from \rPtwoSiren{} to \rDefault{} and made a missing family imputable. Learned
+amortized models of the deviations took it to \rFinal{} (or \rRefFinal{} with a larger training cohort). In absolute
+terms (Table~\ref{tab:absolute}), the released default roughly halved the RMSE of the age-bin mean for the
+diffusivities.
+
+A continuous age norm (spline or kernel regression of log age) was a better predictor than the age-bin mean on its own
+(paired \vpKernNormRatio{}, 95\% CI \vpKernNormCi{}; score \vNormKernelA{} in 0--3 months, where the norm
+changes fastest within a bin; Appendix Table~\ref{tab:pooling}), but under PPCA + SIREN it made no difference (\vpKernRatio{}, CI \vpKernCi{}): the
+population model and the scan's own values absorb the within-bin age trend.
+
+\subsection{Population model components and local methods}
+
+The PPCA error fell up to 80 components and was flat beyond (overall alone: \rPpcaTen{} with 10, \rPpcaForty{} with
+40, \rPpca{} with 80, \rPpcaTwelve{} with 120). Combined with SIREN, 40 and 120 components were slightly but
+consistently worse than 80 (paired \cCRatio{} and \cDRatio{}). The three noise models differed by less than 0.01 in
+the earlier 30-scan runs (software documentation), so the isotropic model was kept. Within SIREN, the trade-off between
+patterns was clear in the hyperparameter grid (Appendix Fig.~\ref{fig:sirengrid}): gaps and ends need long training and
+a high $\omega_0$ or a tract code, whereas whole profiles and regions are best after 100 epochs and get worse as the
+network fits the observed tracts more closely; xyz with $\omega_0=10$ and 500 epochs balanced them best on the
+deviations.
+
+\subsection{Blend weights}
+
+The learned weight of the transformer rose with the distance to the nearest observed value
+(Fig.~\ref{fig:weights}): \wtCNearMin--\wtCNearMax{} next to an observed value (where SIREN on the PPCA residuals
+dominates), about 0.6 from 3--4\,mm, \wtCFarMin--\wtCFarMax{} for fallback cells, and \wtCFamMin--\wtCFamMax{} for a
+missing family (BCP-trained transformer). The transformer trained with HBCD received more weight next to observed values
+(\wtRNearMin--\wtRNearMax). Refitting the weight table from the validation dumps reproduced the table shipped in
+DTIPlayground 0.9.8 to two decimals (largest difference \weightTableMaxDiff). Cross-fitted, the table was better than
+the fixed 0.25/0.75 weights with the same transformer (paired \cNRatio{}, better on \cNBetter\%), and 400 training
+epochs were better than 200 (\cMRatio{}). Precision weights from the predicted SDs were worse than fixed weights
+(\rPrecisionBlend{} vs \rTfBlend{}; paired \cLRatio{}), because the SD attached to a SIREN value is that of the
+population model, an upper bound next to an observed value; a gradient-boosted weight per cell and calibrated
+precision weights were about as good as the table (software documentation). Among fixed weights,
+0.25/0.75 (\rTfBlend{}) and 0.25/0.5 (\rTfBlendQuarterHalf{}) were best; weight 0 near observed values was clearly worse
+(\rTfBlendZeroThree{}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_weights.pdf}
+\caption{Blend weights. (a, b) Weight $w$ of the transformer per measure and distance band (SIREN cells within
+4\,mm, fallback cells beyond, ``none'': the scan has no observed value of the measure), fitted on all validation cells;
+(a) transformer trained on BCP (the default table), (b) trained on BCP and HBCD. (c) Error relative to the age-bin
+mean against distance, four patterns pooled, for PPCA + SIREN, the BCP transformer alone and the cross-fitted table
+blends.}\label{fig:weights}
+\end{figure}
+
+\subsection{What did not help}
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Quick held-out screen (one split, 30 test subjects, 2 rounds; 7 measures): best result per model family and
+target; ``Runs'': number of configurations and test-time variants screened. Not directly comparable with
+Table~\ref{tab:main}.}\label{tab:screens}
+\setlength{\tabcolsep}{4pt}
+\input{tables/tab_screens.tex}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/fig_screens.pdf}
+\caption{Quick held-out screen: overall error of every screened configuration (dots; bar: best) of the model
+families that were not adopted and of the transformer, with PPCA alone and the hybrid graph U-Net on the same
+split.}\label{fig:screens}
+\end{figure}
+
+\paragraph{Functa.} Over \nFunctaConfigs{} screened runs (configurations and test-time variants), the best functa
+model reached \sFunctaHyb{} as a hybrid correcting PPCA and \sFunctaDev{} on the deviations, against \sPpca{} for PPCA
+alone and \sUnet{} for the hybrid U-Net on the same split (Table~\ref{tab:screens}, Fig.~\ref{fig:screens}). The
+inner gradient steps initially fitted none of a scan's visible values; more steps and test-time refinement helped, but
+the error then fell only slowly with network size, and the largest networks overfitted the deviations. As a hybrid,
+functa added little to the PPCA prediction and nothing for regions or a missing family. Graph variants (Laplacian
+coordinates, a learned vector per location, a graph-convolution decoder) did not help either. A learned vector per
+location could in principle reproduce the linear PPCA, but fitting the latent by a few gradient steps did much worse
+than PPCA's exact posterior.
+
+\paragraph{Partial VAE.} The best partial VAE reached \sVaeHyb{} as a hybrid and \sVaeDev{} on the deviations, no
+better than PPCA alone.
+
+\paragraph{Age-dependent PPCA.} A population model per age, with kernel weights of log age, was worse than one model of
+all ages at every bandwidth (\sAgePpca--\sAgePpcaMax{} against \sPpca{}): the deviations from the age-bin norm already
+remove most of the age effect, and the local models lose scans.
+
+\paragraph{Acquisition correction.} BCP scans of the two main acquisitions differed systematically in their deviations
+(e.g.\ FA +0.42 SD and ODI $-0.27$ SD for \texttt{\bcpAcqBName} against \texttt{\bcpAcqAName}; software
+documentation), but removing these offsets before imputation changed nothing (\rAcq{} vs \rDefault{}; paired
+\cPRatio{}, Holm-adjusted $p=\cPPholm$). An offset that is constant within a scan is already carried by the scan's own
+observed values and by the population prediction.
+
+\paragraph{Context inputs and seed ensembles.} On seed 0 (54 scans), giving the transformer the distance to the nearest
+observed value (blend \xDistBlend{} vs \rSeedZeroBlend; paired \xDistRatioBlend, $p=\xDistPBlend$) or the age and
+acquisition (\xCtxBlend{}; paired \xCtxRatioBlend, $p=\xCtxPBlend$) did not help, nor did averaging three transformers
+trained with different seeds (\xMembersBlend{}; paired \xMembersRatioBlend, $p=\xMembersPBlend$).
+
+\subsection{A second cohort: pool the training of the networks, not the population model}\label{sec:pooling}
+
+Pooling HBCD into the norm and the population model did not improve the BCP scans. In the 11-measure phase-3b
+experiment (Appendix Table~\ref{tab:pooling}), pooling with the tensor and NODDI measures of HBCD left the error
+unchanged (paired \vpTNRatio{}, CI \vpTNCi{}, $p=\vpTNP$), and pooling all measures including the free-water tensor
+made it worse (\vpAllRatio{}, CI \vpAllCi{}), because HBCD's free-water fits differed from BCP's by more than a shift
+and a scale; failed free-water fits with diffusivities far above that of free water had to be removed first. On the 7
+measures, pooling the norm, PPCA and transformer made PPCA + SIREN worse (\rPooledDefault{} vs \rDefault{}; paired
+\cQRatio{}), mostly for regions (\rPooledDefaultRegion) and a missing NODDI family (\rPooledDefaultWnoddi).
+
+Training only the transformer on both cohorts, with the norm, PPCA and SIREN of BCP, helped: the transformer alone
+improved from \rTfFour{} (400 epochs, BCP) to \rRefTf{} (paired \cRRatio{}, better on \cRBetter\%), and the
+table blend from \rFinal{} to \rRefFinal{} (paired \cSRatio{}, better on \cSBetter\%). The HBCD-trained transformer was
+not better for a missing NODDI family (\rRefFinalWnoddi{} vs \rFinalWnoddi{} for the blend).
+
+\subsection{Error by measure and age}
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Error relative to the age-bin mean per measure (four patterns, mean over age bins and seeds), and for a
+whole missing family. $^{\ddagger}$First row: absolute RMSE of the age-bin mean (FA, NDI, ODI, FWF $\times10^{3}$;
+MD, RD, AD $\times10^{6}$\,mm$^2$/s).}\label{tab:metric}
+\setlength{\tabcolsep}{5pt}
+\input{tables/tab_metric.tex}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_metric_heat.pdf}
+\caption{Error relative to the age-bin mean per measure and pattern (mean over age bins and 3 seeds) for four
+settings. ``Family'': the measure's family hidden (1.00 for phase 2, which cannot impute it).}\label{fig:metricheat}
+\end{figure}
+
+\paragraph{Measures.} The measures fell into two groups (Table~\ref{tab:metric}, Fig.~\ref{fig:metricheat}). The
+diffusivities MD and RD and NDI vary smoothly in space and between neighbouring tracts and were imputed best (released
+default \mMDFinal, \mRDFinal{} and \mNDIFinal{}); FA, AD, ODI and FWF depend more on the orientation and organization of
+a tract and were imputed worst (FA \mFAFinal, AD \mADFinal, ODI \mODIFinal, FWF \mFWFFinal). For ODI and FWF in regions,
+even the best methods remained near 0.8. For a missing family, the tensor measures were recovered well from NODDI
+(released default: MD \mMDWmFinal, RD \mRDWmFinal, FA \mFAWmFinal), the NODDI measures less well from the tensor
+(NDI \mNDIWmFinal, ODI \mODIWmFinal, FWF \mFWFWmFinal).
+
+\paragraph{Age.} Relative to the age-bin mean, the error of the models varied little between age bins
+(PPCA + SIREN \rDefaultBinA, \rDefaultBinB{} and \rDefaultBinC{} in 0--3, 4--9 and 10--60 months; fixed transformer
+blend \rTfBlendFourBinA, \rTfBlendFourBinB{} and \rTfBlendFourBinC; Fig.~\ref{fig:age}a, b), and the ranking of the
+methods was the same at every age. The per-age curves are noisy where few scans were validated (the youngest and
+oldest ages). In absolute terms
+(Table~\ref{tab:absolute}, Fig.~\ref{fig:age}c), the age-bin mean had its largest diffusivity errors in 0--3 months,
+where values change fastest, and the released default reduced them most there.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_age.pdf}
+\caption{Error by age. (a, b) Error relative to the age-bin mean per age in months (dots, area $\propto$ number of hidden
+values; lines: Gaussian kernel smooth over log age) for PPCA alone, PPCA + SIREN, the transformer alone and the fixed
+blend (400 epochs, 3 seeds). (c) Absolute RMSE of FA and MD for the age-bin mean and the released default per age
+bin.}\label{fig:age}
+\end{figure}
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Absolute RMSE (four patterns, mean over patterns and seeds) per age bin; FA, NDI, ODI, FWF $\times10^{3}$, MD,
+RD, AD $\times10^{6}$\,mm$^2$/s. Released default and HBCD-reference blend cross-fitted.}\label{tab:absolute}
+\setlength{\tabcolsep}{4pt}
+\input{tables/tab_absolute.tex}
+\end{table}
+
+\subsection{Uncertainty}
+
+All model-based methods attach an SD to each imputed value. Calibrated per measure on held-out subjects, the SDs of
+PPCA alone, the U-Net and the transformer were close to right for whole profiles and regions (root-mean-square of
+error/SD \kPpcaWholeRms, \kUnetWholeRms{} and \kTfWholeRms; \kPpcaWholeIn\%, \kUnetWholeIn\% and \kTfWholeIn\% of
+errors within 1.96 SD; Appendix Table~\ref{tab:calibration}), slightly too small for a missing family
+(transformer \kTfFamilyRms). The SD of a value imputed by SIREN on the PPCA residuals is that of PPCA, an upper bound:
+for gaps the errors were only \kDefGapRms{} of it on average. The SDs of the blend inherited this conservatism near
+observed values (\kBlendGapRms{} for gaps) and were about right for regions (\kBlendRegionRms).
+
+\subsection{Statistical summary}
+
+Table~\ref{tab:paired} and Fig.~\ref{fig:paired} collect the pre-specified paired contrasts. All conclusions held
+under the subject-level cluster bootstrap and the subject-level Wilcoxon test after Holm adjustment; the bootstrap CIs
+were nearly identical to the normal-theory CIs, so the dependence between seeds and sessions inflated the precision of
+the per-pair analysis only slightly. Differences of about 1\% (e.g.\ 40 or 120 vs 80 components) were detectable
+because all settings saw the same hidden values; their practical relevance is small.
+
+\begin{table}[t]
+\centering\footnotesize
+\caption{Paired per-scan comparisons over \nPairs{} scan $\times$ seed pairs (\nSubjPairs{} subjects): geometric mean of
+the ratio of per-scan errors (compared / reference; below 1: compared is better), 95\% CI from the pairs and from a
+subject-level cluster bootstrap, Holm-adjusted Wilcoxon $p$ over the \nContrasts{} contrasts (on the pairs / on subject
+means), and the share of pairs where the compared setting is better.}\label{tab:paired}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{\input{tables/tab_paired.tex}}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/fig_paired.pdf}
+\caption{Paired per-scan comparisons of Table~\ref{tab:paired}: geometric mean ratio (dot), 95\% CI over scan
+$\times$ seed pairs (coloured line) and subject-level cluster bootstrap CI (grey bar).}\label{fig:paired}
+\end{figure}
+
+\section{Discussion}
+
+\subsection{Principal findings}
+
+The evaluation yields a simple picture. First, \emph{the scan alone does not identify a missing tract}: neighbouring
+tracts differ systematically, and same-scan methods are only useful for short gaps along a profile. Second, \emph{the
+normative reference is the main source of information}: imputing deviations from an age-specific norm, rather than
+values, made all patterns imputable; modelling how deviations co-vary across all tracts and measures (PPCA) improved
+whole profiles and regions further and made a whole missing measure family imputable. Third, \emph{local and global
+information are complementary}: SIREN on the PPCA residuals within 4\,mm was the best near observed values, the
+population model and amortized networks beyond. Fourth, \emph{amortized networks that read the observed values directly
+add to the linear population model}, especially for a missing measure family, but only when they correct the PPCA
+prediction and are blended with the local method; alone they were worse than PPCA + SIREN for the four patterns. The
+transformer, with global attention over all tracts, was better than the graph U-Net with its local neighbourhoods.
+Fifth, \emph{more data helps the networks but not the linear model}: training the transformer on a second, larger
+cohort reduced the error by about 5\%, whereas pooling the second cohort into the norm and population model, after an
+age-aware batch correction, made it worse.
+
+\subsection{Interpretation}
+
+Why does a linear population model of the deviations work so well, and why does functa fail where the transformer
+succeeds? The PPCA posterior is the exact conditional expectation under a Gaussian model with one loading per cell;
+with 80 components it captures the main modes of covariation of 37,716 cells from a few hundred scans. Functa and
+the partial VAE replace this exact inference by a latent fitted with a few gradient steps or an encoder; with
+hundreds of scans they did not learn a better prior than PPCA. The graph U-Net and the transformer, in contrast, read
+each location's observed value directly and only need to learn a correction to the PPCA prediction; this is a much
+easier learning problem, and their benefit was largest exactly where PPCA has least local information (beyond a few
+millimetres and for a missing family). The blend weights quantify this division of labour: the transformer received
+weight \wtCNearMin--\wtCNearMax{} next to observed values and \wtCFarMin--\wtCFarMax{} beyond 4\,mm.
+
+The negative results are informative too. Correcting acquisition offsets did not help imputation because a
+scan-wide offset is visible in the scan's observed values; this does not mean the offsets are irrelevant for group
+analyses. Extra context (age, acquisition, distance) did not help the transformer because the observed values already
+encode them. Averaging seeds did not help because the transformer's variance between seeds is small compared with
+its bias relative to the truth on held-out subjects.
+
+\subsection{Limitations}
+
+\begin{itemize}
+\item \emph{One normative cohort and internal validation.} All methods were developed and compared on BCP, with folds by
+subject but with the hiding patterns, hyperparameters and defaults chosen on the same three seeds of validation
+scans. The blend weights were cross-fitted for the reported scores, but the choice among blend variants was made on the
+same data, so the final numbers may be slightly optimistic. An evaluation on an independent normative cohort is
+needed \todo{e.g.\ HBCD scans as a test cohort, see experiments/requests.md}.
+\item \emph{Synthetic missingness.} Values were hidden completely at random within each pattern. Real missingness is
+not random: QC rejects tracts in scans with artifacts, more often in some tracts (Fig.~\ref{fig:data}b) and possibly in
+some ages or subjects; the true values of rejected profiles may differ systematically from those of similar observed
+profiles (missing not at random). The validation measures how well a method recovers plausible values, not whether it
+corrects such biases.
+\item \emph{Reference of the score.} Errors are relative to the age-bin mean, which favours methods on the age-bin norm
+less in age bins where the norm is poor (0--3 months, where a continuous norm alone was 13\% better). The absolute RMSEs
+(Table~\ref{tab:absolute}) complement the ratios.
+\item \emph{Sample sizes.} The 0--3 month bin has only \bcpbinA{} BCP scans; 14 of them were validated per seed, and the
+norm and models of that bin rest on few scans.
+\item \emph{Dependence.} The 162 scan $\times$ seed pairs come from \nScansDistinct{} scans of \nSubjDistinct{}
+subjects. We addressed this with a subject-level bootstrap and subject-level tests; the screens of extra inputs and
+members used one seed only, and the functa/VAE screens one split.
+\item \emph{Measures and atlas.} Results are for 7 measures of one atlas with dense tract axes; sparser tract sets give
+fewer close neighbours, and the free-water tensor measures were left out after failed fits in HBCD.
+\item \emph{Downstream impact.} We did not evaluate how imputation affects downstream statistical analyses (e.g.\ group
+differences or age trajectories); imputed values are drawn towards the norm where the scan's own information is weak,
+which can attenuate effects. Imputed values should be flagged (DTIPlayground writes masks and SDs) and sensitivity
+analyses should exclude them.
+\end{itemize}
+
+\subsection{Practical recommendations}
+
+\begin{enumerate}
+\item \emph{Without a normative reference}, fill only short interior gaps (arc-linear along the profile, up to about
+15\,mm); do not impute whole profiles or regions from the scan's own neighbours.
+\item \emph{With a normative reference}, always impute deviations from an age-appropriate norm rather than values.
+\item \emph{With a normative cohort of a few hundred scans}, fit a population model (PPCA, about 80 components) of the
+deviations over all tracts and measures, impute its residuals locally within about 4\,mm (SIREN, or $k$NN without a
+GPU at about 8\% more error), and use the PPCA prediction beyond. This needs no network training and was within 8\% of
+the best setting.
+\item \emph{If a GPU is available}, blend this with a transformer trained to correct the PPCA prediction, with weights
+increasing with the distance to the nearest observed value (the default of DTIPlayground 0.9.8). This is most valuable
+when whole measure families are missing.
+\item \emph{If a larger external cohort on the same tracts exists}, use it to train the transformer (after a batch
+correction), but keep the norm and population model of the target cohort.
+\item \emph{Report} the share of imputed values per tract and measure, keep the imputation masks and SDs, and check
+that conclusions hold without imputed values. Do not rely on imputed values for group differences between normative
+and clinical scans, since imputed values are drawn towards the norm.
+\end{enumerate}
+
+\section{Conclusion}
+
+In a developmental cohort with dense atlas tracts, missing diffusion profile values are best imputed as deviations
+from an age-specific norm, using a joint population model of all tracts and measures, refined locally near observed
+values and blended with an amortized transformer beyond them. This reduced the error to \rFinal{} of the age-bin
+mean's overall (\rRefFinal{} with a second cohort for training), and to \rFinalWdti{} and \rFinalWnoddi{} when a whole
+tensor or NODDI fit is missing. Several more complex alternatives did not help. All methods, the validation protocol
+and the defaults are available in DTIPlayground.
+
+\section*{Data and code availability}
+
+DTIPlayground (including \texttt{dmrifiberprofile impute-profiles} and its \texttt{--validate} protocol) is open source
+at \url{https://github.com/NIRALUser/DTIPlayground}, on PyPI (\texttt{dtiplayground}, version 0.9.8) and on Docker Hub
+\todo{Docker image name}. The validation of every phase is documented in the package documentation
+(\texttt{docs/ImputeValidation.rst}). The scripts that compute every number, table and figure of this paper from the
+validation result files are in \texttt{papers/ProfileImputation/scripts} of the repository \todo{confirm that the paper
+folder will be public}. BCP data are available through \todo{NDA collection / BCP data access}; HBCD data through
+\todo{HBCD data release / NBDC}. \todo{Whether derived profile tables can be shared.}
+
+\section*{Acknowledgements}
+\todo{Funding (BCP, HBCD, grants), data use acknowledgements required by BCP and HBCD.}
+
+\section*{Author contributions}
+\todo{CRediT statement.}
+
+\section*{Declaration of competing interests}
+\todo{Competing interests.}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\clearpage
+\appendix
+\section{Supplementary material}
+\setcounter{figure}{0}\renewcommand{\thefigure}{A\arabic{figure}}
+\setcounter{table}{0}\renewcommand{\thetable}{A\arabic{table}}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_siren_grid.pdf}
+\caption{SIREN on the deviations from the age-bin norm: error relative to the age-bin mean against the training epochs,
+per input (rows), $\omega_0$ (colours) and pattern (columns). Earlier protocol: 30 scans (10 per age bin), one seed, 11
+measures (file \texttt{docs/\_static/impute\_validation/phase2/stratified\_overall.csv} of the
+repository).}\label{fig:sirengrid}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_cap.pdf}
+\caption{Distance limit of the local methods: error relative to the age-bin mean when the local method fills cells up to
+the limit and the PPCA prediction (or, for $k$NN on the deviations, the age-bin mean) beyond. Earlier protocol: 30 scans,
+one seed, 11 measures (\texttt{docs/\_static/impute\_validation/phase3/grid\_caps\_long.csv}).}\label{fig:cap}
+\end{figure}
+
+\begin{table}[h]
+\centering\footnotesize
+\caption{Pooling HBCD and continuous age norms (phase-3b protocol: 3 seeds $\times$ 54 BCP scans, 11 measures including
+the free-water tensor measures; BCP scans scored in BCP units against the BCP-alone age-bin mean). ``Pooled
+tensor+NODDI'': HBCD's free-water tensor measures left out. All settings with norm except ``Age norm alone'' are PPCA
++ SIREN.}\label{tab:pooling}
+\input{tables/tab_pooling.tex}
+\end{table}
+
+\begin{table}[h]
+\centering\footnotesize
+\caption{Calibration of the predicted SDs: root-mean-square of error/SD (1: right; below 1: SDs too large) and share of
+errors within 1.96 SD (95\%: right), mean over measures, 3 seeds.}\label{tab:calibration}
+\input{tables/tab_calibration.tex}
+\end{table}
+
+\begin{table}[h]
+\centering\footnotesize
+\caption{Blend weight tables (weight $w$ of the transformer) refitted from the validation dumps; identical to the
+tables shipped in DTIPlayground 0.9.8 (\texttt{ENSEMBLE\_TABLES}).}\label{tab:weights}
+\setlength{\tabcolsep}{3pt}
+\resizebox{\textwidth}{!}{\input{tables/tab_weights.tex}}
+\end{table}
+
+\end{document}

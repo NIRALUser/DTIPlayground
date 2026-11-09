@@ -82,6 +82,30 @@ class TestDetection(unittest.TestCase):
         self.assertEqual(Path(row['Deformation field']).name, 'sub-2_ses-006m_dwi_DTI_DisplacementField.nrrd')
         self.assertEqual(Path(row['NDI']).name, 'sub-2_ses-006m_dwi_NODDI_NDI.nii.gz')
 
+    def test_processing_tags_between_dwi_and_tensor(self):
+        # VSA-CVD names: processing tags after _dwi; a _CMRR acquisition before _dwi is a case of its own
+        vsa = '_dwi_APPA_topupEddy_corr_noNeg'
+        touch(self.root, f'vsa/999434_VSA-CVD{vsa}_tensor.nrrd',
+              f'vsa/999434_VSA-CVD{vsa}_tensor_DTI_DisplacementField.nrrd',
+              f'vsa/999434_VSA-CVD_CMRR{vsa}_tensor.nrrd',
+              f'vsa/999434_VSA-CVD_CMRR{vsa}_tensor_DTI_DisplacementField.nrrd',
+              f'vsa/999434_VSA-CVD{vsa}_tensor_DTI_Registered.nrrd',  # not native tensors
+              f'vsa/999434_VSA-CVD{vsa}_DeformedDTI.nrrd',
+              f'vsa/999434_VSA-CVD{vsa}_LinearTrans_DTI.nrrd',
+              f'vsa/999434_VSA-CVD{vsa}_FWtensor.nrrd')
+        _, rows, _, skipped, _ = ds.detect(self.root, PROTOCOL)
+        self.assertEqual(skipped, [])
+        dti = {r['id']: Path(r['DTI']).name for r in rows}
+        self.assertEqual(dti['999434_VSA-CVD'], f'999434_VSA-CVD{vsa}_tensor.nrrd')
+        self.assertEqual(dti['999434_VSA-CVD_CMRR'], f'999434_VSA-CVD_CMRR{vsa}_tensor.nrrd')
+        ## one acquisition only, selected with --id-regex (group 1 ends right before _dwi)
+        _, rows, _, _, _ = ds.detect(self.root, PROTOCOL, r'^(?!.*_CMRR_)(.+?)_dwi(?=[_.])')
+        self.assertNotIn('999434_VSA-CVD_CMRR', [r['id'] for r in rows])
+        self.assertEqual(Path({r['id']: r for r in rows}['999434_VSA-CVD']['DTI']).name, f'999434_VSA-CVD{vsa}_tensor.nrrd')
+        _, rows, _, _, _ = ds.detect(self.root / 'vsa', PROTOCOL, r'^(.+?_CMRR)_dwi(?=[_.])')
+        self.assertEqual([(r['id'], Path(r['DTI']).name) for r in rows],
+                         [('999434_VSA-CVD_CMRR', f'999434_VSA-CVD_CMRR{vsa}_tensor.nrrd')])
+
     def test_ambiguous_and_missing(self):
         touch(self.root, f'copy/{SCAN}_dwi_QCed_tensor.nrrd',  # a second tensor of the scan
               'sub-3/sub-3_ses-001m_dwi_QCed_tensor.nrrd')      # no displacement field

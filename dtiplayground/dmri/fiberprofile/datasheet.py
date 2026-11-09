@@ -4,7 +4,8 @@
 #   (e.g. sub-100619_ses-017m_acq-dir79select_dir_run-004). Known names, after <id>_dwi[...]:
 #
 #     native space (useDisplacementField: true; the atlas fibers are mapped to the scan with the displacement field)
-#       tensor              _dwi[_QCed]_tensor.nrrd, _dwi[_QCed]_DTI.nrrd                  (IBIS mask/, dmriprep)
+#       tensor              ..._tensor.nrrd, ..._DTI.nrrd (not registered, deformed or      (IBIS mask/, dmriprep)
+#                           LinearTrans; e.g. _dwi_QCed_tensor, _dwi_APPA_topupEddy_corr_noNeg_tensor)
 #       displacement field  ..._GlobalDisplacementField.nrrd, ..._DTI_DisplacementField.nrrd  (DTI-Reg, dmriprep
 #                           DTI_Register; never an inverse field)
 #       free-water tensor   ..._FWtensor.nrrd, ..._FWDTI.nrrd
@@ -46,7 +47,7 @@ def role_pattern(role, space):
     """Regex on the rest of a file name after the case id (e.g. '_dwi_QCed_tensor.nrrd') for a role: 'dti', 'field',
     'tensor:<prefix>' or 'scalar:<property>'."""
     if role == 'dti':
-        return r'^_dwi(?:_QCed)?_(?:tensor|DTI)\.nrrd$' if space == 'native' else r'^_dwi.*_(?:DeformedDTI|DTI_Registered)\.nrrd$'
+        return r'^_dwi(?!.*(?:Registered|Deformed|LinearTrans|Warped))(?:_[^.]*)?_(?:tensor|DTI)\.nrrd$' if space == 'native' else r'^_dwi.*_(?:DeformedDTI|DTI_Registered)\.nrrd$'
     if role == 'field':
         return r'^_dwi(?!.*Inverse).*_(?:GlobalDisplacementField|DTI_DisplacementField)\.nrrd$'
     kind, _, name = role.partition(':')
@@ -61,7 +62,7 @@ def role_pattern(role, space):
 def role_description(role, space):
     """Readable file names of a role, as in the error messages."""
     if role == 'dti':
-        return '<id>_dwi[_QCed]_tensor.nrrd, <id>_dwi[_QCed]_DTI.nrrd' if space == 'native' else \
+        return '<id>_dwi*_tensor.nrrd, <id>_dwi*_DTI.nrrd (not Registered/Deformed/LinearTrans)' if space == 'native' else \
                '<id>_dwi*_DeformedDTI.nrrd, <id>_dwi*_DTI_Registered.nrrd'
     if role == 'field':
         return '<id>_dwi*_GlobalDisplacementField.nrrd, <id>_dwi*_DTI_DisplacementField.nrrd (not inverse)'

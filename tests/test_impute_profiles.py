@@ -799,6 +799,30 @@ class TestEnsemble(unittest.TestCase):
                                              ensemble_weights='0.5', **self.T)), 1)
 
 
+class TestValidationOptions(unittest.TestCase):
+
+    def test_real_masks_and_excluded_subjects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prof, axes = aged_dataset(tmp)
+            for k in (1, 7):  # donors: scans with a missing profile
+                drop(prof / 'T_b' / 'T_b_fa.csv', AGED[k])
+            out = Path(tmp) / 'v'
+            with self.assertLogs('impute', level='INFO') as logs:
+                ip.run(args_for(prof, axes, out, validate=True, validate_scans=6,
+                                validate_methods='prior-mean,population',
+                                validate_components='1', validate_noise='isotropic', validate_folds=2,
+                                validate_population_local='knn', validate_k='1', validate_real_masks='yes',
+                                validate_exclude_subjects=ip.subject_of(AGED[0]), min_scans=3, device='cpu',
+                                no_plots=True))
+            text = '\n'.join(logs.output)
+            self.assertIn('1 subjects excluded', text)
+            s = pd.read_csv(Path(str(out) + '_report') / 'validation' / 'validation_by_scan.csv')
+            self.assertIn('real mask', set(s['pattern']))
+            self.assertNotIn(AGED[0], set(s['scan']))
+            real = s[(s.pattern == 'real mask') & (s.setting == 'prior-mean')]
+            self.assertTrue((real.metric == 'fa').all())  # the donors miss fa of T_b only
+
+
 class TestEnsembleWeights(unittest.TestCase):
 
     def test_table_bands_fixed_and_csv(self):

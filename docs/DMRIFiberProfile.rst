@@ -902,6 +902,19 @@ and on the same scans (``validation_by_scan.csv``). ``arc-linear`` fills every h
 length. The other limits (``--max-distance``, ``--min-observed``) apply as in an imputation. With the default grid a
 scan takes about a minute on a GPU.
 
+Further validation options, for an evaluation beyond the patterns of hidden values above:
+
+- ``--validate-real-masks yes``: a fourth pass per scan hides exactly the real missing cells of another scan of the
+  cohort (of the same age bin, another subject), as the profile QC left them (pattern ``real mask``), so the error is
+  that of the missingness the imputation actually meets
+- ``--validate-exclude-subjects FILE|LIST``: subjects whose scans are not validated (they still train the models),
+  e.g. those validated before, for an untouched test of settings chosen on earlier validations
+- ``--validate-batches``, ``--validate-norm-batches``, ``--validate-model-batches``: with several ``--profiles-dir``,
+  validate only the scans of these batches, fit the age bin norm only on these batches, and fit the models of the
+  deviations only on these batches, to tell what pooling a second cohort does to the norm and to the models
+- ``--validate-dump-dir DIR``: the hidden cells of every scan with the default's and each model's prediction and SD,
+  the distance and the truth (npz), to fit blend weights or other analyses offline
+
 See the `README <https://github.com/NIRALUser/DTIPlayground/blob/master/README.md>`_ for the remaining options.
 
 

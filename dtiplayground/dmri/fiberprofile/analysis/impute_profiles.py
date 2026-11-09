@@ -97,8 +97,9 @@ DEFAULT_BINS = "0-3,4-9,10-60"  # as qc-profiles --bins
 SIREN_INPUTS = ("xyz", "xyz+arc", "xyz+tract")
 METRIC_ORDER = ["fa", "md", "rd", "ad", "NDI", "ODI", "FWF", "FW_FA", "FW_MD", "FW_RD", "FW_AD"]
 GAP, END, WHOLE, REGION, MEASURE = "gap", "end gap", "whole profile", "region", "whole measure"
-PATTERNS = (GAP, END, WHOLE, REGION, MEASURE)
-SHORT = {GAP: "gap", END: "end", WHOLE: "whole", REGION: "region", MEASURE: "measure"}
+REAL_MASK = "real mask"  # --validate-real-masks: the pattern of the missing cells of another scan
+PATTERNS = (GAP, END, WHOLE, REGION, MEASURE, REAL_MASK)
+SHORT = {GAP: "gap", END: "end", WHOLE: "whole", REGION: "region", MEASURE: "measure", REAL_MASK: "real"}
 NOISE = ("isotropic", "metric", "diagonal")  # population: noise model of the probabilistic PCA
 NORMS = ("population", "age-bin")  # what the deviations of --relative-to-prior are from
 POPULATION_DEFAULTS = {"components": 80, "noise": "isotropic"}
@@ -2169,6 +2170,17 @@ def age_norm_specs(args):
     return out
 
 
+def batch_set(cohort, spec):
+    """The batch indices of a comma-separated list of batch names (None: all)."""
+    if not spec:
+        return None
+    names = {x.strip() for x in spec.split(",") if x.strip()}
+    bad = names - set(cohort.batches)
+    if bad:
+        raise ValueError("unknown batch(es) {} ({})".format(", ".join(sorted(bad)), ", ".join(cohort.batches)))
+    return {i for i, b in enumerate(cohort.batches) if b in names}
+
+
 def fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev):
     """The norms and population models of the validation: the sampled scans split by subject into --validate-folds
     folds; for each fold, age norm (*specs*) and population setting, a model fitted on the other subjects (their norm
@@ -2190,13 +2202,20 @@ def fold_variants(cohort, args, sample, prior, bins, scan_bin, pops, specs, dev)
     for f in range(n_folds):
         held = {subj for subj, i in fold_of.items() if i == f}
         train = [s for s in usable if subject_of(cohort.scans[s]) not in held]
+        mb = batch_set(cohort, getattr(args, "validate_model_batches", None))
+        if mb is not None:
+            train = [s for s in train if cohort.scan_batch[s] in mb]
         mine = [s for s in sample if fold_of[subject_of(cohort.scans[s])] == f]
         for suffix, kind, opts in specs:
             if kind == "bins":
                 if not pops:
                     continue  # the norm of the scans is Prior.norm
+                nb = batch_set(cohort, getattr(args, "validate_norm_batches", None))
                 fprior = prior if args.validate_prior == "files" else Prior.from_cohort(
-                    cohort, bins, [a if subject_of(sc) not in held else None for a, sc in zip(ages, cohort.scans)])
+                    cohort, bins, [a if subject_of(sc) not in held and (nb is None or cohort.scan_batch[i] in nb)
+                                   else None for i, (a, sc) in enumerate(zip(ages, cohort.scans))])
+                if nb is not None and args.validate_prior != "files":  # every scan in its bin of that norm
+                    fprior.scan_bin = scan_bins(ages, bins)
                 norms = {s: prior.norm(s) if args.validate_prior == "files" else
                          (fprior.bin_norm(scan_bin[s]) if scan_bin[s] >= 0 else None) for s in mine}
             else:
@@ -2350,8 +2369,9 @@ def dump_cells(out, scan, age_bin, pattern, truth, norm, dist, lname, gname, bas
 
 def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev, args, loc_sd, acc, by_loc, by_dist,
                   totals=None, norm=None, age_bin="", metrics=None, models=(), calib=None, local=(), variants=None,
-                  age=None, by_age=None, scan=None, by_scan=None):
-    """Hide the positions *hidden* ({position: pattern}) of one scan (the metrics *metrics*, default all), impute
+                  age=None, by_age=None, scan=None, by_scan=None, cells=None):
+    """Hide the positions *hidden* ({position: pattern}) of one scan (*cells*: instead, exactly these cells, positions
+    x metrics, e.g. the real missing cells of another scan) (the metrics *metrics*, default all), impute
     them with every setting and add the errors to the accumulators (per tract and the scan's *age_bin*; *by_age*:
     per its *age*; *by_scan*: per its name *scan*). *norm*: the age bin norm of the scan, the reference of the
     errors. *variants*: (label suffix, norm, models) of each age norm the settings on a norm are run with (default:
@@ -2366,8 +2386,9 @@ def validate_pass(cohort, Y, hidden, configs, siren, epochs, features, cfg, dev,
     hm[slice(None) if metrics is None else list(metrics)] = True
     pattern = np.array([hidden.get(p, "") for p in range(cohort.n_positions)])
     Ym = Y.copy()
-    Ym[np.ix_(hp, hm)] = np.nan
-    truth = np.where(hp[:, None] & hm[None, :] & ~np.isnan(Y) & cohort.valid, Y, np.nan)
+    mask = hp[:, None] & hm[None, :] if cells is None else cells
+    Ym[mask] = np.nan
+    truth = np.where(mask & ~np.isnan(Y) & cohort.valid, Y, np.nan)
     # a whole measure hidden: the methods on the scan's own values (or deviations) have nothing to impute it from
     own_only = metrics is not None
     none = np.full(Y.shape, np.nan)
@@ -2684,6 +2705,14 @@ def validate(cohort, args):
     for s in np.flatnonzero(eligible):  # scans the imputation leaves (--max-missing-tracts) are not validated either
         eligible[s] = not too_many_missing(cohort, cohort.scan(s), args.max_missing_tracts, s)
     eligible = np.flatnonzero(eligible)
+    if getattr(args, "validate_exclude_subjects", None):  # e.g. the subjects validated before: an untouched test
+        spec = args.validate_exclude_subjects
+        names = open(spec).read().split() if os.path.isfile(spec) else spec.split(",")
+        excluded = {x.strip() for x in names if x.strip()}
+        before = len(eligible)
+        eligible = np.asarray([s for s in eligible if subject_of(cohort.scans[s]) not in excluded], dtype=np.int64)
+        log.info("--validate-exclude-subjects: %d subjects excluded, %d of %d eligible scans left", len(excluded),
+                 len(eligible), before)
     prior = validation_prior(cohort, args, configs, siren)
     bins, scan_bin = report_bins(cohort, args, prior)
     pops = population_configs(args, cohort)
@@ -2806,6 +2835,12 @@ def validate(cohort, args):
     by_scan = defaultdict(lambda: np.zeros(5))
     calib = defaultdict(lambda: np.zeros(3))  # (method, setting, pattern, metric) -> n, sum z^2, n |z| <= 1.96
     measure_rng = np.random.default_rng(args.validate_seed + 2)  # own stream: the other hidden values stay the same
+    mask_rng = np.random.default_rng(args.validate_seed + 3)  # --validate-real-masks: own stream too
+    donors = None
+    if getattr(args, "validate_real_masks", "no") == "yes":
+        donors = [d for d in range(len(cohort.scans)) if (np.isnan(cohort.values[d]) & cohort.valid_of(d)).any()]
+        log.info("--validate-real-masks: the missing cells of %d scans with missing values as a fourth pass",
+                 len(donors))
     t0 = time.time()
     rounds = [(s, r) for s in sample for r in range(args.validate_rounds)]
     for n, (s, r) in enumerate(rounds, 1):
@@ -2826,6 +2861,15 @@ def validate(cohort, args):
         passes = [(hidden, None) for hidden in passes]
         if families:  # pass 3: a whole measure (a family of metrics), the other metrics all observed
             passes.append(hide_measure(cohort, Y, measure_rng, families))
+        real = None
+        if donors is not None:  # pass 4: the real missing cells of another scan (of the same age bin if it has one)
+            pool = [d for d in donors if scan_bin is not None and scan_bin[d] == scan_bin[s] and
+                    subject_of(cohort.scans[d]) != subject_of(cohort.scans[s])] or \
+                [d for d in donors if subject_of(cohort.scans[d]) != subject_of(cohort.scans[s])]
+            d = pool[mask_rng.integers(len(pool))]
+            cells = np.isnan(cohort.values[d]) & cohort.valid_of(d) & ~np.isnan(Y) & cohort.valid
+            if cells.any():
+                real = ({p: REAL_MASK for p in np.flatnonzero(cells.any(axis=1))}, cells)
         fitted = {e[0]: e for e in models.get(s, ())}
         variants = [(sfx, norm if kind == "bins" else fitted[sfx][1], fitted[sfx][2] if sfx in fitted else [])
                     for sfx, kind, _ in specs]
@@ -2835,6 +2879,10 @@ def validate(cohort, args):
                               by_loc, by_dist, tot, norm, label(s), metrics, calib=calib, local=local,
                               variants=variants, age=ages[s], by_age=by_age, scan=cohort.scans[s],
                               by_scan=by_scan)
+        if real is not None:
+            validate_pass(cohort, Y, real[0], configs, siren, epochs, features, cfg, dev, args, loc_sd, acc,
+                          by_loc, by_dist, tot, norm, label(s), None, calib=calib, local=local, variants=variants,
+                          age=ages[s], by_age=by_age, scan=cohort.scans[s], by_scan=by_scan, cells=real[1])
         log.info("  ... %d/%d scans%s validated (%.0f s)", n, len(rounds),
                  "" if args.validate_rounds == 1 else " x rounds", time.time() - t0)
 
@@ -3391,6 +3439,18 @@ def add_parser(subparsers):
     v.add_argument("--validate-scans-per-bin", type=int, default=0,
                    help="Instead of --validate-scans: number of scans of each age bin (of the prior or --bins), so "
                         "every age is represented; 0: off (default: 0)")
+    v.add_argument("--validate-exclude-subjects", default=None, metavar="FILE|LIST",
+                   help="Subjects (a file of names, or comma-separated) whose scans are not validated, e.g. those "
+                        "validated before, for an untouched test (default: none)")
+    v.add_argument("--validate-real-masks", default="no", choices=("no", "yes"),
+                   help="yes: a fourth pass per scan hiding the real missing cells of another scan of the cohort (of "
+                        "the same age bin, another subject), pattern 'real mask' (default: no)")
+    v.add_argument("--validate-norm-batches", default=None,
+                   help="With several --profiles-dir: fit the age bin norm of the models on these batches only "
+                        "(default: all)")
+    v.add_argument("--validate-model-batches", default=None,
+                   help="With several --profiles-dir: fit the models of the deviations on the scans of these batches "
+                        "only (default: all)")
     v.add_argument("--validate-batches", default=None,
                    help="With several --profiles-dir: validate only the scans of these batches (comma-separated "
                         "names); the others still train the models (default: all)")

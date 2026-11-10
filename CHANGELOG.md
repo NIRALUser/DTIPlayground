@@ -3,7 +3,7 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
-##### Unreleased
+##### 2026-11-10 (v0.9.12)
 - Residual rotation of the tensor frame: `dmrifiberprofile detect-tensor-flip` (with `--reference`), DTI_Register (tensorFlip none, auto, axes or voxel, with an initial affine; `tensor_frame_residual_deg` in the output; with none, the module first warns when a flip fits the reference better, `tensor_flip_suggested`) and `qc-registration` (per subject, column `TENSOR_frame_residual_deg`, and on the mean directions of the normative model) measure the rotation of the frame left after the flip correction and warn when it is above 5 deg and removing it lowers the mean angle to the reference by more than 1 deg. No flip corrects it; DTI_Register `tensorFlip: rotation` does. In 139 scans of ABCD, BCP, HBCD and VSA the auto correction (flips, voxel frame of oblique acquisitions) left 1-3 deg (median), and the warning flags 2 scans (11.5 and 31.5 deg)
 - Alignment guard of the tensor frame checks: `detect-tensor-flip --reference` stops with an error, asking for `--transform`, when the input is not aligned with the reference (correlation of their FA at the same positions below 0.25; in 24 test scans -0.03-0.18 unregistered, 0.30-0.61 after the initial affine, 0.45-0.85 registered), as a head position would otherwise be taken for a rotation of the tensor frame. In DTI_Register, an initial affine that doesn't align the DTI with the reference makes tensorFlip auto fall back to the coherence along the tracts and tensorFlip rotation leave the frame as is, with a warning
 

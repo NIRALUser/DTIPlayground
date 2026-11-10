@@ -150,6 +150,7 @@ import nrrd
 from scipy import ndimage, stats
 
 from dtiplayground.dmri.fiberprofile.analysis.detect_flip import candidate_corrections, correction_matrix
+from dtiplayground.dmri.fiberprofile.analysis import frame_align
 from dtiplayground.dmri.fiberprofile.analysis.flip_tensor import COMPONENTS, parse_correction, correction_name, tensor_axis
 
 log = logging.getLogger("reg_qc")
@@ -743,6 +744,12 @@ def build_normative(sessions, atlas_scalars, atlas_fa, bins, scalar_metrics, do_
                         log.warning("%s: tensor frame correction '%s' fits the atlas better than '%s' (%.1f vs %.1f deg); "
                                     "check its tensor orientation before using it in the normative model",
                                     s["id"], best, flip_name, best_deg, applied_deg)
+                    else:
+                        core = atlas_fa[wm] > max(angular_fa_min, 0.3)
+                        res = frame_align.residual_rotation(pd[core], atlas_pd[wm][core], w=atlas_fa[wm][core])
+                        if res["warn"]:
+                            log.warning("%s: %s; it biases the mean directions of the normative model",
+                                        s["id"], frame_align.residual_message(res, flip_name))
                 ii = np.where(wm)
                 T[0][ii] += pd[:, 0] * pd[:, 0]; T[1][ii] += pd[:, 0] * pd[:, 1]
                 T[2][ii] += pd[:, 0] * pd[:, 2]; T[3][ii] += pd[:, 1] * pd[:, 1]
@@ -825,7 +832,7 @@ def check_normative_frame(normative_dir, bins, atlas_pd, atlas_fa, angular_fa_mi
     the same anatomy, and must agree to within a few degrees over core WM.
     """
     core = atlas_fa > max(angular_fa_min, 0.3)
-    meds = {}
+    meds, rots = {}, {}
     for _, _, label in bins:
         na = load_normative_angular(normative_dir, label)
         if na is None:
@@ -836,6 +843,14 @@ def check_normative_frame(normative_dir, bins, atlas_pd, atlas_fa, angular_fa_mi
             continue
         dot = np.clip(np.abs(np.sum(mu[v] * atlas_pd[v], axis=-1)), 0, 1)
         meds[label] = float(np.median(np.degrees(np.arccos(dot))))
+        mu_v = mu[v] / np.linalg.norm(mu[v], axis=-1, keepdims=True)
+        res = frame_align.residual_rotation(mu_v, atlas_pd[v], w=atlas_fa[v])
+        rots[label] = res["rotation_deg"]
+        if res["warn"]:
+            log.warning("normative angular model, bin %s: its mean directions are rotated by %.1f deg against the "
+                        "atlas (mean angle %.1f -> %.1f deg after that rotation): its reference scans were registered "
+                        "without DTI_Register tensorFlip: rotation; the ANG_*Z of scans registered with it are biased",
+                        label, res["rotation_deg"], res["angle_before"], res["angle_after"])
     if not meds:
         return
     worst = max(meds.values())
@@ -849,8 +864,9 @@ def check_normative_frame(normative_dir, bins, atlas_pd, atlas_fa, angular_fa_mi
                     "angle %s); rebuild it with --tensor-flip %s or the ANG_*Z are meaningless",
                     ", ".join(f"{k} {v:.0f}deg" for k, v in meds.items()), flip_name)
     else:
-        log.info("normative angular frame matches the atlas (median mu-vs-atlas angle %s)",
-                 ", ".join(f"{k} {v:.0f}deg" for k, v in meds.items()))
+        log.info("normative angular frame matches the atlas (median mu-vs-atlas angle %s; residual rotation %s)",
+                 ", ".join(f"{k} {v:.0f}deg" for k, v in meds.items()),
+                 ", ".join(f"{k} {v:.1f}deg" for k, v in rots.items()))
         if nf is not None and nf != flip_name:
             log.info("  (manifest says tensor_flip='%s' and QC detected '%s', but the stored "
                      "directions are consistent -- the manifest label is stale)", nf, flip_name)
@@ -1033,6 +1049,11 @@ def qc_subject(s, atlas, bins, normative_dir, cfg, out_dir=None):
                 log.warning("%s: tensor frame correction '%s' fits the atlas better than the applied '%s' "
                             "(%.1f vs %.1f deg): its tensor orientation differs from the other subjects",
                             s["id"], best, cfg["flip"], best_deg, applied_deg)
+            else:
+                res = frame_align.residual_rotation(pd[core], atlas_pd[core], w=atlas_fa[core])
+                row["TENSOR_frame_residual_deg"] = res["rotation_deg"]
+                if res["warn"]:
+                    log.warning("%s: %s", s["id"], frame_align.residual_message(res, cfg["flip"]))
         ang = angular_error_deg(pd, atlas_pd, wm)
         row["ANG_meanDeg"] = float(np.mean(ang[wm])) if wm.any() else np.nan
         st, ang_blobs = blob_stats(ang > cfg["ang_blob_deg"], wm, cfg["blob_top_k"])

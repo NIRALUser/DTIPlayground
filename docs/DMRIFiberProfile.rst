@@ -232,7 +232,13 @@ lists all the options of each.
 
 ``detect-tensor-flip``
     Find the correction of the tensor frame that orients a DTI correctly, by the coherence of the principal
-    directions along the tracts and, with ``--reference``, their agreement with an atlas tensor.
+    directions along the tracts and, with ``--reference``, their agreement with an atlas tensor. With a reference it
+    also measures the rotation of the frame left after the best correction, and warns when it is larger than 5 degrees
+    and removing it lowers the mean angle to the reference by more than 1 degree: no flip corrects such a rotation,
+    DTI_Register ``tensorFlip: rotation`` does. The input has to be registered to the reference, or ``--transform``
+    gives the affine from the reference to the input (e.g. ``initialAffine.txt`` of DTI_Register): otherwise the head
+    position would be taken for a rotation of the frame, and the command stops when the FA of the input and of the
+    reference don't correlate at the same positions.
 
 ``parametrize-fibers``
     Resample fiber tracts on the arc length grid and store the arc lengths in the fibers, so that the atlas defines
@@ -257,6 +263,10 @@ lists all the options of each.
     QC of the registration of the subjects to the atlas: similarity of the deformed metric maps, angular error, CSF
     check and an age conditional normative model, with a combined outlier flag. ``--build-normative`` builds that
     model from a reference cohort, including the mean tensor of each age bin that DTI_Register can register to.
+    The tensor frame of every subject is checked against the atlas: another flip correction that fits better
+    (``TENSOR_frame_best``, ``TENSOR_frame_gain_deg``) and the rotation left after the applied correction
+    (``TENSOR_frame_residual_deg``, with a warning as ``detect-tensor-flip``); the mean directions of the normative
+    model are checked the same way.
     ``--batch-correct`` and ``--batch-column`` correct for sites and scanners (`Batches: sites and scanners`_).
 
 ``qc-profiles``

@@ -25,11 +25,11 @@ def tensor_field(shape=(24, 24, 24)):
     return T
 
 
-def write_tensor_nrrd(path, T, scale=1e-3):
+def write_tensor_nrrd(path, T, scale=1e-3, origin=(0.0, 0.0, 0.0)):
     import nrrd
     data = np.stack([T[..., 0, 0], T[..., 0, 1], T[..., 0, 2], T[..., 1, 1], T[..., 1, 2], T[..., 2, 2]], 0) * scale
     header = {'kinds': ['3D-symmetric-matrix', 'space', 'space', 'space'], 'space': 'left-posterior-superior',
-              'space directions': [[np.nan] * 3, [1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]], 'space origin': [0.0, 0.0, 0.0],
+              'space directions': [[np.nan] * 3, [1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]], 'space origin': [float(x) for x in origin],
               'measurement frame': np.eye(3)}
     nrrd.write(str(path), data.astype(np.float32), header)
 
@@ -58,6 +58,48 @@ class TestFrameAlign(unittest.TestCase):
             frame_align.rotate_tensor_file(sub, fixed, R)
             T_fixed, _ = tr.read_tensor_nrrd(fixed)
             self.assertTrue(np.allclose(T_fixed, T, atol=2e-3))
+
+    def test_residual_rotation_after_a_flip(self):
+        """The rotation a flip leaves (here 9 deg after the z flip) is measured and warned about; none when aligned."""
+        T = tensor_field()
+        R_true = rotation([1, 0, 0], 9) @ np.diag([-1.0, -1.0, 1.0])
+        with tempfile.TemporaryDirectory() as d:
+            ref, sub = os.path.join(d, 'ref.nrrd'), os.path.join(d, 'sub.nrrd')
+            write_tensor_nrrd(ref, T)
+            write_tensor_nrrd(sub, R_true.T @ T @ R_true)
+            r = frame_align.residual_rotation_file(sub, ref, None, 'z')  # 180 deg about z: the z flip
+            self.assertAlmostEqual(r['rotation_deg'], 9.0, delta=1.0)
+            self.assertTrue(r['warn'])
+            self.assertLess(r['angle_after'], r['angle_before'])
+            self.assertIn('tensorFlip: rotation', frame_align.residual_message(r, 'z'))
+            r = frame_align.residual_rotation_file(ref, ref, None, 'none')
+            self.assertLess(r['rotation_deg'], 0.5)
+            self.assertFalse(r['warn'])
+
+
+class TestAlignmentGuard(unittest.TestCase):
+    """The frame checks refuse an image that is not aligned with the reference (a head position would be taken for a
+    rotation of the tensor frame), and accept it with the transform that aligns it."""
+
+    def test_unregistered_image_needs_its_transform(self):
+        from dtiplayground.dmri.fiberprofile.analysis import detect_flip
+        T = tensor_field()
+        with tempfile.TemporaryDirectory() as d:
+            ref, sub = os.path.join(d, 'ref.nrrd'), os.path.join(d, 'sub.nrrd')
+            write_tensor_nrrd(ref, T)
+            write_tensor_nrrd(sub, T, origin=(40.0, 0.0, 0.0))  # the same head, 40 mm further along x
+            with self.assertRaises(detect_flip.NotAlignedError) as ctx:
+                detect_flip.detect_flip(sub, ref)
+            self.assertIn('--transform', str(ctx.exception))
+            with self.assertRaises(detect_flip.NotAlignedError):
+                frame_align.residual_rotation_file(sub, ref, None, 'none')
+            with self.assertRaises(detect_flip.NotAlignedError):  # a transform that doesn't align them
+                frame_align.estimate(sub, ref, (np.eye(3), np.array([5.0, 0, 0])))
+            A = (np.eye(3), np.array([40.0, 0, 0]))  # reference -> image
+            rows, best, _ = detect_flip.detect_flip(sub, ref, 0.3, A)
+            self.assertEqual(best, 'none')
+            self.assertLess(frame_align.residual_rotation_file(sub, ref, A, 'none')['rotation_deg'], 0.5)
+            self.assertLess(frame_align.estimate(sub, ref, A)['total_deg'], 0.5)
 
 
 class TestTensorRegistration(unittest.TestCase):

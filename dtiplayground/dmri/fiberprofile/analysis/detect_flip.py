@@ -114,6 +114,7 @@ class TensorField:
         with np.errstate(invalid="ignore", divide="ignore"):
             fa = np.sqrt(1.5 * ((w - md[..., None]) ** 2).sum(-1)) / norm
         self.fa = np.nan_to_num(fa).astype(np.float32)
+        self.brain = np.isfinite(md) & (md > 0)  # voxels with a tensor
         self.e1 = v[..., :, -1]  # principal direction in the stored (measurement) frame
         self.mask = self.fa > fa_min
 
@@ -176,6 +177,52 @@ def read_itk_affine(path):
     return A, params[9:12] + center - A @ center
 
 
+MIN_ALIGNMENT_NCC = 0.25  # FA correlation of an image aligned with the reference, over the reference brain (24 scans of
+# ABCD, BCP, HBCD and VSA against the age bin mean tensors: raw scans -0.03-0.18 or outside the reference; after the
+# initial affine 0.30-0.61; registered 0.45-0.85)
+
+
+class NotAlignedError(ValueError):
+    """The image and the reference are not aligned (no transform for an unregistered image, or a failed one): the
+    directions can't be compared, a head rotation would be taken for a rotation of the tensor frame."""
+
+
+def alignment(field, reference, transform=None):
+    """(correlation of the FA of the reference and of the image at the same positions, over the reference brain (the
+    voxels with a tensor), the image taken as 0 outside its grid; fraction of those positions inside the image);
+    transform: (A, b) from the reference to the image, else the identity (image registered to the reference)."""
+    ridx = np.nonzero(reference.brain)
+    pts = reference.to_physical(np.stack(ridx, axis=1).astype(np.float64))
+    if transform is not None:
+        A, b = transform
+        pts = pts @ A.T + b
+    q = np.rint(field.to_index(pts)).astype(int)
+    inside = np.all((q >= 0) & (q < np.array(field.shape)), axis=1)
+    v = np.zeros(len(q))
+    v[inside] = field.fa[tuple(q[inside].T)]
+    r = reference.fa[ridx].astype(np.float64)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ncc = float(np.corrcoef(v, r)[0, 1]) if len(v) > 1 and v.std() > 0 and r.std() > 0 else float("nan")
+    return ncc, float(inside.mean()) if len(inside) else 0.0
+
+
+def check_alignment(field, reference, transform=None):
+    """Raise NotAlignedError unless the image (TensorField) is aligned with the reference (TensorField) through the
+    transform (or registered to it without one); returns the FA correlation."""
+    ncc, inside = alignment(field, reference, transform)
+    if np.isfinite(ncc) and ncc >= MIN_ALIGNMENT_NCC and inside >= 0.5:
+        return ncc
+    detail = "FA correlation {} at the same positions, aligned images {} or more".format(
+        "undefined" if not np.isfinite(ncc) else "{:.2f}".format(ncc), MIN_ALIGNMENT_NCC)
+    if inside < 0.5:
+        detail += ", {:.0f}% of the reference brain inside the image".format(100 * inside)
+    if transform is None:
+        raise NotAlignedError("the image is not registered to the reference ({}): give the affine transform from the "
+                              "reference to the image (--transform, e.g. initialAffine.txt of DTI_Register) or register "
+                              "it first; otherwise the head position is taken for a rotation of the tensor frame".format(detail))
+    raise NotAlignedError("the affine transform doesn't align the image with the reference ({})".format(detail))
+
+
 def atlas_agreement(field, signs, reference, fa_min, transform=None, frame="header"):
     """Median angle (degrees) between the principal directions of the reference and the flipped ones of the image,
     over the reference voxels with FA > fa_min whose position in the image (identity, or the affine transform (A, b)
@@ -201,7 +248,7 @@ def atlas_agreement(field, signs, reference, fa_min, transform=None, frame="head
 def detect_flip(image, reference=None, fa_min=0.3, transform=None):
     """Score all corrections of the tensor frame of the tensor NRRD image (flip combinations, in the header frame and in
     the voxel frame), optionally against a reference tensor NRRD with the affine transform from the reference to the
-    image (an ITK text file or (A, b)).
+    image (an ITK text file or (A, b)); raises NotAlignedError when the image and the reference are not aligned.
     Returns (rows, best, by_coherence): one row per candidate with 'correction', 'frame', 'flip', 'same_as',
     'coherence', 'angle' (deg), 'voxels'; the name of the best correction (smallest angle to the reference when there is
     one, else highest coherence; e.g. 'x' or 'voxel,x', usable with DTI_Register tensorFlip) and the one of the highest
@@ -212,6 +259,8 @@ def detect_flip(image, reference=None, fa_min=0.3, transform=None):
         transform = read_itk_affine(transform)
     if (field.fa > fa_min).sum() < 100:
         raise ValueError("fewer than 100 voxels with FA > {} in {}".format(fa_min, image))
+    if ref is not None:
+        check_alignment(field, ref, transform)
     rows, scores, first = [], {}, {}
     for frame in ("header", "voxel"):
         for axes in FLIPS:
@@ -244,7 +293,10 @@ def add_parser(subparsers):
                                           "the principal directions along the tracts and, with --reference, by their "
                                           "agreement with a reference tensor (atlas or normative mean tensor; the image "
                                           "registered to it, or --transform). The correction found can be applied with "
-                                          "'flip-tensor' or DTI_Register tensorFlip.")
+                                          "'flip-tensor' or DTI_Register tensorFlip. With --reference, the "
+                                          "rotation of the frame left after the best correction is also measured, and "
+                                          "a warning given above 5 deg when it lowers the mean angle by more than 1 "
+                                          "deg (no flip corrects it: DTI_Register tensorFlip rotation does).")
     p.add_argument("input", help="Tensor NRRD to check")
     p.add_argument("--reference", help="Reference tensor NRRD (atlas) in the same physical space as the input")
     p.add_argument("--transform", help="Affine ITK text transform from the reference to the input (e.g. initialAffine.txt "
@@ -258,7 +310,11 @@ def add_parser(subparsers):
 def run(args):
     from dtiplayground.dmri.fiberprofile.analysis import setup_logging
     setup_logging(args.verbose)
-    rows, best, by_coh = detect_flip(args.input, args.reference, args.fa_min, args.transform)
+    try:
+        rows, best, by_coh = detect_flip(args.input, args.reference, args.fa_min, args.transform)
+    except NotAlignedError as e:
+        log.error("%s: %s", args.input, e)
+        return 1
     has_ref = args.reference is not None
     log.info("%-14s %-10s %10s %s", "correction", "same as", "coherence", "atlas angle (deg)" if has_ref else "")
     for r in rows:
@@ -267,6 +323,18 @@ def run(args):
     if has_ref:
         log.info("Best correction by atlas agreement: %s ; by coherence: %s%s", best, by_coh,
                  "" if best == by_coh else "  (the criteria disagree, check the registration to the reference)")
+        from dtiplayground.dmri.fiberprofile.analysis import frame_align
+        transform = read_itk_affine(args.transform) if args.transform else None
+        try:
+            r = frame_align.residual_rotation_file(args.input, args.reference, transform, best, fa_ref=args.fa_min)
+        except ValueError as e:
+            log.warning("Residual rotation of the tensor frame not measured: %s", e)
+        else:
+            if r["warn"]:
+                log.warning(frame_align.residual_message(r, best))
+            else:
+                log.info("Residual rotation of the tensor frame after '%s': %.1f deg (mean angle %.1f -> %.1f deg)",
+                         best, r["rotation_deg"], r["angle_before"], r["angle_after"])
     else:
         log.info("Best correction by coherence: %s", best)
     if best != "none":

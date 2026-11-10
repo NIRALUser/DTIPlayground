@@ -308,6 +308,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
         for stale in list(Path(self.output_dir).glob('input_flipped*')) + list(Path(self.output_dir).glob('flipped_*')):  # files of a previous corrected run
             stale.unlink()
         if mode == 'none':
+            self.checkResidualRotation(inputImagePath, refImagePath, initialAffinePath, 'none')
             return inputImagePath
         if mode == 'rotation':
             return self.rotateTensorFrame(inputImagePath, refImagePath, initialAffinePath)
@@ -321,7 +322,12 @@ class DTI_Register(prep.modules.DTIPrepModule):
                     logger("Initial affine not usable for the flip detection ({}), using the coherence only".format(e),prep.Color.WARNING)
             logger("Detecting the correction of the tensor frame ({})".format(
                 "agreement with the reference after the initial affine" if transform is not None else "coherence along the tracts"),prep.Color.PROCESS)
-            rows, best, by_coherence = detect_flip.detect_flip(inputImagePath, refImagePath if transform is not None else None, fa_min, transform)
+            try:
+                rows, best, by_coherence = detect_flip.detect_flip(inputImagePath, refImagePath if transform is not None else None, fa_min, transform)
+            except detect_flip.NotAlignedError as e:
+                logger("The initial affine doesn't align the DTI with the reference ({}); using the coherence only".format(e),prep.Color.WARNING)
+                transform = None
+                rows, best, by_coherence = detect_flip.detect_flip(inputImagePath, None, fa_min, None)
             for r in rows:
                 if r['same_as'] == '':
                     logger("  {:12s} coherence {:.4f}{}".format(r['correction'], r['coherence'],
@@ -333,6 +339,7 @@ class DTI_Register(prep.modules.DTIPrepModule):
             correction = flip_tensor.correction_name(*flip_tensor.parse_correction(mode))
         self.result['output']['tensor_flip'] = correction
         self.addGlobalVariable('tensor_flip_applied', correction)
+        self.checkResidualRotation(inputImagePath, refImagePath, initialAffinePath, correction)
         if correction == 'none':
             logger("Tensor frame not corrected",prep.Color.OK)
             return inputImagePath
@@ -342,6 +349,35 @@ class DTI_Register(prep.modules.DTIPrepModule):
         logger("Corrected the tensor frame ({}) before the registration: {}".format(correction, flipped),prep.Color.OK)
         self.addOutputFile(flipped, 'DTI_Flipped')
         return flipped
+
+    def checkResidualRotation(self, inputImagePath, refImagePath, initialAffinePath, correction):
+        """Warn when the tensor frame, after the flip correction, is still rotated against the reference (by more than
+        frame_align.RESIDUAL_WARN_DEG): a rotation no flip corrects, which tensorFlip 'rotation' removes. Needs the
+        initial affine; never stops the registration."""
+        from dtiplayground.dmri.fiberprofile.analysis import detect_flip, frame_align
+        if initialAffinePath is None:
+            return None
+        fa_min = float(self.protocol.get('tensorFlipFAThreshold', 0.3))
+        try:
+            transform = detect_flip.read_itk_affine(initialAffinePath)
+            if correction == 'none':  # not corrected: a flip may fit better, and a rotation is only measured from the right flip
+                rows, best, _ = detect_flip.detect_flip(inputImagePath, refImagePath, fa_min, transform)
+                if best != 'none':
+                    angle = {row['correction']: row['angle'] for row in rows}
+                    logger("The tensor frame correction '{}' fits the reference better than none ({:.1f} vs {:.1f} deg): "
+                           "set tensorFlip auto, {} or rotation".format(best, angle[best], angle['none'], best),prep.Color.WARNING)
+                    self.result['output']['tensor_flip_suggested'] = best
+                    return None
+            r = frame_align.residual_rotation_file(inputImagePath, refImagePath, transform, correction, fa_ref=fa_min)
+        except Exception as e:
+            logger("Residual rotation of the tensor frame not measured ({})".format(e),prep.Color.WARNING)
+            return None
+        self.result['output']['tensor_frame_residual_deg'] = r['rotation_deg']
+        if r['warn']:
+            logger(frame_align.residual_message(r, correction),prep.Color.WARNING)
+        else:
+            logger("Residual rotation of the tensor frame: {:.1f} deg".format(r['rotation_deg']),prep.Color.OK)
+        return r
 
     def rotateTensorFrame(self, inputImagePath, refImagePath, initialAffinePath):
         """tensorFlip 'rotation': the rotation of the tensor frame (any rotation, flips included) that best aligns the
@@ -356,7 +392,13 @@ class DTI_Register(prep.modules.DTIPrepModule):
             raise Exception("No initial affine for the tensor frame rotation")
         fa_min = float(self.protocol.get('tensorFlipFAThreshold', 0.3))
         logger("Estimating the rotation of the tensor frame (agreement with the reference after the initial affine)",prep.Color.PROCESS)
-        r = frame_align.estimate(inputImagePath, refImagePath, detect_flip.read_itk_affine(initialAffinePath), fa_ref=fa_min)
+        try:
+            r = frame_align.estimate(inputImagePath, refImagePath, detect_flip.read_itk_affine(initialAffinePath), fa_ref=fa_min)
+        except detect_flip.NotAlignedError as e:
+            logger("Tensor frame not rotated: {}".format(e),prep.Color.WARNING)
+            self.result['output']['tensor_flip'] = 'none'
+            self.addGlobalVariable('tensor_flip_applied', 'none')
+            return inputImagePath
         json.dump(r, open(Path(self.output_dir).joinpath('tensor_frame_rotation.json'), 'w'), indent=1)
         logger("  angle to the reference {:.1f} deg as is, {:.1f} deg after the best flip/axis swap, {:.1f} deg after the "
                "rotation ({:.1f} deg from the flip, {:.1f} deg in total)".format(r['angle_identity'], r['angle_discrete'],

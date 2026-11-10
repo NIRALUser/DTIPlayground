@@ -3,6 +3,8 @@ import dtiplayground.dmri.preprocessing as prep
 import yaml, os, re
 from pathlib import Path
 
+import numpy as np
+
 import dtiplayground.dmri.common.tools as tools 
 
 class DTI_Register(prep.modules.DTIPrepModule):
@@ -61,6 +63,9 @@ class DTI_Register(prep.modules.DTIPrepModule):
         if protocol['method'] == 'ANTs':
             logger("ANTS is selected for the method",prep.Color.INFO)
             self.registerWithANTs(**protocol)
+        elif protocol['method'] == 'TensorSVF':
+            logger("TensorSVF (diffeomorphic tensor registration) is selected for the method",prep.Color.INFO)
+            self.registerWithTensorSVF(**protocol)
         else:
             logger("No method was selected, skipping the registration",prep.Color.WARNING)
         return True
@@ -128,6 +133,13 @@ class DTI_Register(prep.modules.DTIPrepModule):
         dtireg=tools.DTIReg(self.softwares['DTI-Reg']['path'])
         dtireg.dev_mode=True
         dtireg.execute_with_args(args)
+        self.finishRegistration(sourceImagePath, inputImagePath, refImagePath, registeredImagePath, displacementFieldPath,
+                                inv_displacementFieldPath, tensorCorrection, nbThreads)
+        return True
+
+    def finishRegistration(self, sourceImagePath, inputImagePath, refImagePath, registeredImagePath, displacementFieldPath,
+                           inv_displacementFieldPath, tensorCorrection, nbThreads):
+        """Outputs, global variables and the registration of the diffusion metrics (both methods)."""
         self.result['output']['displacement_field_path'] = displacementFieldPath
         self.result['output']['inverse_displacement_field_path'] = inv_displacementFieldPath
         self.result['output']['registered_dti_image'] = registeredImagePath
@@ -147,6 +159,94 @@ class DTI_Register(prep.modules.DTIPrepModule):
 
         #self.writeImageWithOriginalSpace(outputImagePath,'nrrd',dtype='float')
         return True
+
+    def registerWithTensorSVF(self,**protocol):
+        """Diffeomorphic registration of the tensors (common/tensor_registration.py): initial affine, correction of the
+        tensor frame (tensorFlip, 'rotation' recommended), then a stationary velocity field optimised on the orientation
+        and shape of the tensors (normalised deviatoric part of the log tensors, finite strain reorientation), plus a
+        free water term when a free water fraction map of the DTI and a reference mean map are available
+        (multi-shell data); PyTorch on the GPU when available, otherwise on the CPU."""
+        from dtiplayground.dmri.common import tensor_registration
+        output_dir = Path(self.output_dir)
+        refImagePath = self.referenceImage()
+        inputImagePath = output_dir.joinpath('input.nrrd').__str__()
+        nbThreads = self.num_threads
+        scalarMeasurement = self.protocol.get('scalarMeasurement', 'FA')
+        tensorCorrection = self.protocol.get('tensorCorrection', 'abs')
+        if self.dtiImagePath is not None:
+            inputImagePath = self.dtiImagePath
+        else:
+            self.writeImageWithOriginalSpace(inputImagePath,'nrrd',dtype='float')
+        os.environ['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = str(nbThreads)
+        sourceImagePath = inputImagePath
+        initialAffinePath = self.initialAffine(refImagePath, inputImagePath, scalarMeasurement, tensorCorrection, nbThreads)
+        if initialAffinePath is None:
+            logger("TensorSVF without an initial affine transform: the DTI must already be roughly aligned with the reference",prep.Color.WARNING)
+        inputImagePath = self.flipTensor(inputImagePath, refImagePath, initialAffinePath)
+
+        movingFW, referenceFW = self.freeWaterMaps(sourceImagePath, refImagePath)
+        params = dict(w_reg=float(self.protocol.get('tensorRegRegularization', 0.15)),
+                      smooth=float(self.protocol.get('tensorRegSmoothing', 0.5)),
+                      levels=self.intList(self.protocol.get('tensorRegLevels', '4x2x1')),
+                      iters=self.intList(self.protocol.get('tensorRegIterations', '200x150x100')),
+                      w_fw=float(self.protocol.get('freeWaterWeight', 1.0)) if movingFW else 0.0)
+        if len(params['levels']) != len(params['iters']):
+            raise Exception("tensorRegLevels ({}) and tensorRegIterations ({}) need the same number of levels".format(
+                self.protocol.get('tensorRegLevels'), self.protocol.get('tensorRegIterations')))
+        referenceFA = Path(refImagePath).parent.joinpath('FA_mean.nii.gz')
+        result = tensor_registration.register(
+            refImagePath, inputImagePath, initialAffinePath, output_dir, self.softwares['ResampleDTIlogEuclidean']['path'],
+            reference_fa=str(referenceFA) if referenceFA.exists() else None, reference_fw=referenceFW, moving_fw=movingFW,
+            params=params, device=self.protocol.get('tensorRegDevice', 'auto'), threads=nbThreads,
+            correction=tensorCorrection, log=lambda m: logger(m, prep.Color.PROCESS))
+        self.result['output']['tensor_registration'] = result['summary']
+        if result['summary']['jacobian_nonpositive'] > 0:
+            logger("The deformation folds in {} voxels (Jacobian <= 0); consider a larger tensorRegRegularization".format(
+                result['summary']['jacobian_nonpositive']),prep.Color.WARNING)
+        self.finishRegistration(sourceImagePath, inputImagePath, refImagePath, result['registered_dti'],
+                                result['displacement_field'], result['inverse_displacement_field'], tensorCorrection, nbThreads)
+        return True
+
+    @staticmethod
+    def intList(value):
+        return [int(x) for x in re.split(r'[x,\s]+', str(value).strip()) if x != '']
+
+    FREE_WATER_MAPS = {'FWf': 'FWF_mean', 'NODDI_FWF': 'NODDI_FWF_mean'}  # map of the DTI -> reference mean map
+
+    def freeWaterMaps(self, sourceImagePath, refImagePath):
+        """(free water map of the DTI, reference mean map) of the free water term, or (None, None) for a registration
+        of the tensors only. freeWater: auto (the FW-tensor fraction <prefix>FWf, else the NODDI fraction
+        <prefix>NODDI_FWF, in the folder of the input DTI, each with its reference mean map FWF_mean / NODDI_FWF_mean in
+        the folder of the reference tensor, i.e. the age bin of the normative model), FWf, NODDI_FWF, or none;
+        freeWaterImage and referenceFreeWater give the maps explicitly."""
+        mode = str(self.protocol.get('freeWater') or 'auto').strip()
+        if mode.lower() == 'none':
+            logger("Free water term off (freeWater none): registering the tensors only",prep.Color.INFO)
+            return None, None
+        explicit, explicit_ref = self.protocol.get('freeWaterImage'), self.protocol.get('referenceFreeWater')
+        source = Path(sourceImagePath)
+        prefix = source.name[:-len('tensor.nrrd')] if source.name.endswith('tensor.nrrd') else source.name.split('.')[0] + '_'
+        kinds = list(self.FREE_WATER_MAPS) if mode.lower() == 'auto' else [mode]
+        for kind in kinds:
+            if kind not in self.FREE_WATER_MAPS:
+                raise Exception("Unknown freeWater {} (auto, FWf, NODDI_FWF or none)".format(mode))
+            moving = explicit or next((str(source.parent.joinpath(prefix + kind + ext)) for ext in ('.nii.gz', '.nii', '.nrrd')
+                                       if source.parent.joinpath(prefix + kind + ext).exists()), None)
+            reference = explicit_ref or next((str(Path(refImagePath).parent.joinpath(self.FREE_WATER_MAPS[kind] + ext))
+                                              for ext in ('.nii.gz', '.nii', '.nrrd')
+                                              if Path(refImagePath).parent.joinpath(self.FREE_WATER_MAPS[kind] + ext).exists()), None)
+            for path in (explicit, explicit_ref):
+                if path and not Path(path).exists():
+                    raise Exception("Free water map {} doesn't exist".format(path))
+            if moving and reference:
+                logger("Free water term: {} with the reference {}".format(moving, reference),prep.Color.INFO)
+                self.result['output']['free_water_map'] = moving
+                return moving, reference
+            if mode.lower() != 'auto':
+                raise Exception("freeWater {}: no {} (map of the DTI: {}, reference map: {})".format(
+                    mode, kind, moving or 'not found', reference or 'not found'))
+        logger("No free water fraction map of the DTI with a reference mean map (single shell data?): registering the tensors only",prep.Color.INFO)
+        return None, None
 
     def initialAffine(self, refImagePath, inputImagePath, scalarMeasurement, tensorCorrection, nbThreads):
         """Initial affine transform (fixed = reference, moving = DTI) given by the protocol: computed with BRAINSFit from
@@ -204,10 +304,13 @@ class DTI_Register(prep.modules.DTIPrepModule):
         from dtiplayground.dmri.fiberprofile.analysis import detect_flip, flip_tensor
         mode = str(self.protocol.get('tensorFlip') or self.global_variables.get('tensor_flip') or 'none').strip().lower()
         self.tensorCorrection = None
+        self.tensorRotation = None
         for stale in list(Path(self.output_dir).glob('input_flipped*')) + list(Path(self.output_dir).glob('flipped_*')):  # files of a previous corrected run
             stale.unlink()
         if mode == 'none':
             return inputImagePath
+        if mode == 'rotation':
+            return self.rotateTensorFrame(inputImagePath, refImagePath, initialAffinePath)
         if mode == 'auto':
             fa_min = float(self.protocol.get('tensorFlipFAThreshold', 0.3))
             transform = None
@@ -237,6 +340,38 @@ class DTI_Register(prep.modules.DTIPrepModule):
         flipped = Path(self.output_dir).joinpath('input_flipped.nrrd').__str__()
         flip_tensor.reorient_tensor_file(inputImagePath, flipped, correction)
         logger("Corrected the tensor frame ({}) before the registration: {}".format(correction, flipped),prep.Color.OK)
+        self.addOutputFile(flipped, 'DTI_Flipped')
+        return flipped
+
+    def rotateTensorFrame(self, inputImagePath, refImagePath, initialAffinePath):
+        """tensorFlip 'rotation': the rotation of the tensor frame (any rotation, flips included) that best aligns the
+        principal directions of the DTI with those of the reference in white matter after the initial affine transform
+        (frame_align.py: the 24 axis permutations and flips, then a continuous refinement). Written as
+        input_flipped.nrrd when it differs from the identity by more than 1 degree."""
+        import json
+        from scipy.spatial.transform import Rotation
+        from dtiplayground.dmri.fiberprofile.analysis import detect_flip, frame_align
+        if initialAffinePath is None:
+            logger("tensorFlip 'rotation' needs an initial affine transform (initialAffine BRAINSFit or file)",prep.Color.ERROR)
+            raise Exception("No initial affine for the tensor frame rotation")
+        fa_min = float(self.protocol.get('tensorFlipFAThreshold', 0.3))
+        logger("Estimating the rotation of the tensor frame (agreement with the reference after the initial affine)",prep.Color.PROCESS)
+        r = frame_align.estimate(inputImagePath, refImagePath, detect_flip.read_itk_affine(initialAffinePath), fa_ref=fa_min)
+        json.dump(r, open(Path(self.output_dir).joinpath('tensor_frame_rotation.json'), 'w'), indent=1)
+        logger("  angle to the reference {:.1f} deg as is, {:.1f} deg after the best flip/axis swap, {:.1f} deg after the "
+               "rotation ({:.1f} deg from the flip, {:.1f} deg in total)".format(r['angle_identity'], r['angle_discrete'],
+               r['angle_rotation'], r['refine_deg'], r['total_deg']),prep.Color.INFO)
+        R = np.asarray(r['R'])
+        self.result['output']['tensor_flip'] = 'rotation'
+        self.result['output']['tensor_frame_rotation'] = r['R']
+        self.addGlobalVariable('tensor_flip_applied', 'rotation')
+        if np.degrees(Rotation.from_matrix(R).magnitude()) < 1.0 or r['angle_identity'] - r['angle_rotation'] < 0.1:
+            logger("Tensor frame not corrected (rotation below 1 deg or no gain)",prep.Color.OK)
+            return inputImagePath
+        self.tensorRotation = R
+        flipped = Path(self.output_dir).joinpath('input_flipped.nrrd').__str__()
+        frame_align.rotate_tensor_file(inputImagePath, flipped, R)
+        logger("Rotated the tensor frame before the registration: {}".format(flipped),prep.Color.OK)
         self.addOutputFile(flipped, 'DTI_Flipped')
         return flipped
 
@@ -282,6 +417,10 @@ class DTI_Register(prep.modules.DTIPrepModule):
                     from dtiplayground.dmri.fiberprofile.analysis import flip_tensor
                     tensor_path = output_dir.joinpath('flipped_' + name).__str__()
                     flip_tensor.reorient_tensor_file(str(f), tensor_path, self.tensorCorrection)
+                elif getattr(self, 'tensorRotation', None) is not None:
+                    from dtiplayground.dmri.fiberprofile.analysis import frame_align
+                    tensor_path = output_dir.joinpath('flipped_' + name).__str__()
+                    frame_align.rotate_tensor_file(str(f), tensor_path, self.tensorRotation)
                 resample = tools.ResampleDTIlogEuclidean(self.softwares['ResampleDTIlogEuclidean']['path'])
                 resample.dev_mode = True
                 resample.execute([tensor_path, output, '-R', refImagePath, '--correctionType', tensorCorrection,

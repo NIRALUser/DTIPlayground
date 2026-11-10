@@ -1,6 +1,6 @@
 name: DTI_Register
 caption: DTI Register
-description: Register DTI to the fixed volume using DTIReg
+description: Register DTI to the fixed volume using DTI-Reg (ANTs) or the diffeomorphic tensor registration TensorSVF
 version: "0.1"
 dependency: []
 result: null
@@ -31,8 +31,11 @@ protocol:
         candidates:
           - value: ANTs
             caption: ANTs
-            description: Use ANTs to register
-        description: Method to register DTI (ANTs)
+            description: DTI-Reg - diffeomorphic ANTS registration of the scalar images (FA), tensors resampled with reorientation
+          - value: TensorSVF
+            caption: Tensor SVF
+            description: Diffeomorphic registration of the tensors (orientation and shape) with a free water term when a free water fraction map is available (multi-shell); GPU when available, otherwise CPU (about 1.5 min on a GPU, 12 min on 4 CPU cores)
+        description: "Method to register the DTI: ANTs (DTI-Reg) or TensorSVF. TensorSVF aligns the principal directions better (white matter angle 7.2 vs 10.5 deg on 139 scans of 0-12 years) and, with the free water term, the ventricles (Dice 0.81 vs 0.70); use it with tensorFlip rotation and a referenceNormativeModel"
       referenceImage:
         type: string
         caption: Reference Image Path 
@@ -220,7 +223,83 @@ protocol:
         type: string
         caption: Tensor Flip
         default_value: null
-        description: "Flip of the tensor frame applied to the DTI before the registration: none (also if empty and the global variable tensor_flip isn't set), auto (detected: agreement of the principal directions with the reference after the initial affine, or their coherence along the tracts without an initial affine), the axes to flip (e.g. x or x,z), or voxel for components in the frame of the voxel axes (rotated into the space of the header; with flips e.g. voxel,x)"
+        description: "Flip of the tensor frame applied to the DTI before the registration: none (also if empty and the global variable tensor_flip isn't set), auto (detected: agreement of the principal directions with the reference after the initial affine, or their coherence along the tracts without an initial affine), the axes to flip (e.g. x or x,z), voxel for components in the frame of the voxel axes (rotated into the space of the header; with flips e.g. voxel,x), or rotation (any rotation of the frame, flips and axis swaps included, that best aligns the principal directions with the reference after the initial affine; recommended with TensorSVF)"
+      freeWater:
+        type: list
+        caption: Free Water Term
+        default_value: auto
+        candidates:
+          - value: auto
+            caption: Auto
+            description: The FW-tensor free water fraction (<prefix>FWf) of the DTI folder, else the NODDI fraction (<prefix>NODDI_FWF), each when the folder of the reference tensor has its mean map (FWF_mean, NODDI_FWF_mean - the age bins of the normative model have them); otherwise the tensors only (single shell data)
+          - value: FWf
+            caption: FW-tensor fraction
+            description: Free water fraction of the FW-tensor fit (<prefix>FWf, reference FWF_mean); an error when missing
+          - value: NODDI_FWF
+            caption: NODDI fraction
+            description: Free water fraction of NODDI (<prefix>NODDI_FWF, reference NODDI_FWF_mean); an error when missing
+          - value: none
+            caption: None
+            description: Register the tensors only
+        description: Free water term of TensorSVF (aligns the ventricles; for multi-shell data with a free water fraction map)
+        tag:
+          - TensorSVF
+      freeWaterImage:
+        type: filepath-remote
+        caption: Free Water Map
+        default_value: null
+        description: Free water fraction map of the DTI (default - found in the folder of the input DTI, see freeWater)
+        tag:
+          - TensorSVF
+      referenceFreeWater:
+        type: filepath-remote
+        caption: Reference Free Water Map
+        default_value: null
+        description: Mean free water fraction map of the reference (default - FWF_mean / NODDI_FWF_mean in the folder of the reference tensor)
+        tag:
+          - TensorSVF
+      freeWaterWeight:
+        type: number
+        caption: Free Water Weight
+        default_value: 1.0
+        description: Weight of the free water term (1 - larger weights overlap the ventricles slightly more but align the white matter of small ventricles worse)
+        tag:
+          - TensorSVF
+      tensorRegRegularization:
+        type: number
+        caption: Regularization
+        default_value: 0.15
+        description: Weight of the smoothness of the velocity field (0.15; below 0.1 the deformation may fold)
+        tag:
+          - TensorSVF
+      tensorRegSmoothing:
+        type: number
+        caption: Velocity Smoothing
+        default_value: 0.5
+        description: Gaussian sigma (voxels) of the velocity field at each level
+        tag:
+          - TensorSVF
+      tensorRegLevels:
+        type: string
+        caption: Resolution Levels
+        default_value: 4x2x1
+        description: Downsampling factors of the resolution levels, coarse to fine
+        tag:
+          - TensorSVF
+      tensorRegIterations:
+        type: string
+        caption: Iterations
+        default_value: 200x150x100
+        description: Iterations at each resolution level
+        tag:
+          - TensorSVF
+      tensorRegDevice:
+        type: string
+        caption: Device
+        default_value: auto
+        description: PyTorch device - auto (the GPU when available, otherwise the CPU), cpu, cuda or cuda:<n>
+        tag:
+          - TensorSVF
       tensorFlipFAThreshold:
         type: number
         caption: Tensor Flip FA Threshold

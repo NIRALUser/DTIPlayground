@@ -142,8 +142,8 @@ options:
           caption: Estimate Various Types of DWI
           description: Estimation of DWI using DIPY, MRTRIX3, or AMICCO
         - value: DTI_Register
-          caption: Register DTI (ANTs) 
-          description: Register DTI Image using DTI-Reg with ANTs libs
+          caption: Register DTI (DTI-Reg or TensorSVF)
+          description: Register DTI Image using DTI-Reg (ANTs) or the diffeomorphic tensor registration TensorSVF
         - value: MANUAL_Exclude
           caption: Exclude Gradients
           description: Manual Exclusion of Gradient volume

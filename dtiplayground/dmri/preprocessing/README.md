@@ -14,7 +14,7 @@ The Preprocessing module contains a lot of modules that are used to preprocess t
 [ReadMe about the module DWI_Denoise](modules/DWI_Denoise/README.md)
 - DTI_Estimate : will run DTI by several methods like : runDTI, runDTI_DIPY, runDTI_dtiestim.
 [ReadMe about the module DTI_Estimate](modules/DTI_Estimate/README.md)
-- DTI_Register :  will allow to register the DTI images. It is based on the ANTs software.
+- DTI_Register :  will allow to register the DTI images: TensorSVF, a diffeomorphic registration of the tensors (default), or DTI-Reg (ANTs, FA).
 [ReadMe about the module DTI_Register](modules/DTI_Register/README.md)
 - EDDYMOTION_Correc : will correct the eddy current distortion in the DTI images.
 [ReadMe about the module EDDYMOTION_Correct](modules/EDDYMOTION_Correct/README.md)

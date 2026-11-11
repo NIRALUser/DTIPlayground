@@ -191,6 +191,28 @@ class TestFreeWaterMaps(unittest.TestCase):
             with self.assertRaises(Exception):
                 m.freeWaterMaps(self.source, self.ref)
 
+    def test_default_method_and_frame_correction(self):
+        """The defaults are the recommended registration: TensorSVF and, for an empty tensorFlip, rotation (auto
+        without an initial affine); the global variable tensor_flip and an explicit tensorFlip override it."""
+        import yaml
+        yml = os.path.join(os.path.dirname(dti_register.__file__), 'DTI_Register.yml')
+        protocol = yaml.safe_load(open(yml))['protocol']
+        self.assertEqual(protocol['method']['default_value'], 'TensorSVF')
+        self.assertIsNone(protocol['tensorFlip']['default_value'])
+        with tempfile.TemporaryDirectory() as d:
+            m = self._module({'tensorFlip': None}, d)
+            m.output_dir = d
+            calls = []
+            m.rotateTensorFrame = lambda *a: calls.append('rotation') or a[0]
+            m.checkResidualRotation = lambda *a: calls.append(a[3])
+            m.flipTensor(self.source, self.ref, os.path.join(d, 'initialAffine.txt'))
+            m.global_variables = {'tensor_flip': 'none'}
+            m.flipTensor(self.source, self.ref, os.path.join(d, 'initialAffine.txt'))
+            m.global_variables = {}
+            m.protocol = {'tensorFlip': 'none'}
+            m.flipTensor(self.source, self.ref, os.path.join(d, 'initialAffine.txt'))
+            self.assertEqual(calls, ['rotation', 'none', 'none'])
+
     def test_iteration_lists(self):
         self.assertEqual(dti_register.DTI_Register.intList('200x150x100'), [200, 150, 100])
         self.assertEqual(dti_register.DTI_Register.intList('4, 2, 1'), [4, 2, 1])

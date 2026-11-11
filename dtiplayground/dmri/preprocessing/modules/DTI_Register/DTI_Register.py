@@ -296,13 +296,17 @@ class DTI_Register(prep.modules.DTIPrepModule):
 
     def flipTensor(self, inputImagePath, refImagePath, initialAffinePath):
         """Correction of the tensor frame applied before the registration (tensorFlip, or the global variable
-        tensor_flip): none, explicit axes to flip (e.g. 'x' or 'x,z'), 'voxel' (components in the frame of the voxel
+        tensor_flip; when neither is set, rotation, or auto without an initial affine): rotation (see
+        rotateTensorFrame), none, explicit axes to flip (e.g. 'x' or 'x,z'), 'voxel' (components in the frame of the voxel
         axes, rotated into the space of the header; with flips e.g. 'voxel,x'), or auto: the correction with the best
         agreement of the principal directions with the reference after the initial affine transform (computed from the
         scalar image, which the correction doesn't change), or with the best coherence of the principal directions along
         the tracts without an initial affine. Returns the path of the DTI to register (input_flipped.nrrd if corrected)."""
         from dtiplayground.dmri.fiberprofile.analysis import detect_flip, flip_tensor
-        mode = str(self.protocol.get('tensorFlip') or self.global_variables.get('tensor_flip') or 'none').strip().lower()
+        mode = str(self.protocol.get('tensorFlip') or self.global_variables.get('tensor_flip') or '').strip().lower()
+        if mode == '':  # default: rotation, which needs the initial affine; auto (coherence along the tracts) without one
+            mode = 'rotation' if initialAffinePath is not None else 'auto'
+            logger("tensorFlip not set: using {}".format(mode),prep.Color.INFO)
         self.tensorCorrection = None
         self.tensorRotation = None
         for stale in list(Path(self.output_dir).glob('input_flipped*')) + list(Path(self.output_dir).glob('flipped_*')):  # files of a previous corrected run

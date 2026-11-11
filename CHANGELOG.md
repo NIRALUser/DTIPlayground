@@ -3,6 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
+##### Unreleased
+- Documentation: new page "DTI registration study" (`docs/RegistrationStudy.rst`): the study behind TensorSVF and its defaults (139 scans of ABCD, BCP, HBCD and VSA against DTI-Reg, DTI-TK, multichannel ANTs and a hybrid; the free water term, the regularization, tract channels; the synthetic ventricle test; the tensor frame residuals)
+
 ##### 2026-11-11 (v0.9.13)
 - DTI_Register defaults to the recommended registration: `method: TensorSVF` (was ANTs) and, when `tensorFlip` is empty and the global variable `tensor_flip` isn't set, `rotation` of the tensor frame (was none; auto when `initialAffine` is none, as rotation needs the initial affine). The other TensorSVF defaults (freeWater auto, weight 1, regularization 0.15, 4x2x1 levels, 200x150x100 iterations) were already those of the study. Protocols that set `method: ANTs` or a tensorFlip are unchanged; for the earlier behaviour set `method: ANTs` and `tensorFlip: none`
 

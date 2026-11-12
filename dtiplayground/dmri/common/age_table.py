@@ -56,7 +56,7 @@ def age_fallback_months(age, units="months"):
 
 
 def bids_key(value):
-    """'sub-1007170889' / 'SUB-1007170889' -> '1007170889' (entity value, lowercased)."""
+    """'sub-1000000001' / 'SUB-1000000001' -> '1000000001' (entity value, lowercased)."""
     v = str(value).strip().lower()
     for pre in ("sub-", "ses-"):
         if v.startswith(pre):

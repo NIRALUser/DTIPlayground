@@ -33,7 +33,7 @@ profiles FA, MD, AD, RD for these scans, and their cells stay empty in the gathe
 ## Other requirements
 
 - **Case ids** contain the age as `ses-<months>m`; `qc-profiles` bins the profiles by age with it. The ids here are the
-  scan names (`sub-011228_ses-012m_acq-dir79select_dir_run-001`), so a session with two scans gives two profiles.
+  scan names (`sub-000101_ses-012m_acq-dir79select_dir_run-001`), so a session with two scans gives two profiles.
 - **Parametrized fibers**: `atlas` is the folder written by `parametrize-fibers`; with `arcLength: stored` all profiles
   use the arc lengths stored in the fibers.
 

@@ -1,7 +1,7 @@
 #   Datasheet of EXTRACT_Profile detected from a folder (dmrifiberprofile run -i <folder>, make-datasheet)
 #
 #   The files are found anywhere below the folder and grouped by case id, the part of the file name before '_dwi'
-#   (e.g. sub-100619_ses-017m_acq-dir79select_dir_run-004). Known names, after <id>_dwi[...]:
+#   (e.g. sub-000104_ses-017m_acq-dir79select_dir_run-004). Known names, after <id>_dwi[...]:
 #
 #     native space (useDisplacementField: true; the atlas fibers are mapped to the scan with the displacement field)
 #       tensor              ..._tensor.nrrd, ..._DTI.nrrd (not registered, deformed or      (IBIS mask/, dmriprep)

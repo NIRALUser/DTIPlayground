@@ -15,7 +15,7 @@ def _write(path, text):
     return str(path)
 
 
-COLUMNS = ['sub-100619_ses-017m_acq-dir79select_dir_run-004', 'sub-105040_ses-012m_acq-dir79select_dir_run-001']
+COLUMNS = ['sub-000104_ses-017m_acq-dir79select_dir_run-004', 'sub-000105_ses-012m_acq-dir79select_dir_run-001']
 CASE_ROWS = 'case_id,-28,-14,0\n{},0.1,0.2,0.3\n{},0.4,0.5,0.6\n'.format(*COLUMNS)
 ARC_ROWS = 'Arc Length,{},{}\n-28,0.1,0.4\n-14,0.2,0.5\n0,0.3,0.6\n'.format(*COLUMNS)
 

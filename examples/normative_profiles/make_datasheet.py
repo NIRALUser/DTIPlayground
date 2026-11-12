@@ -5,7 +5,7 @@
 #   Datasheet (CSV) for EXTRACT_Profile from a reference dataset organized as <subject>/<session>/...: one row per scan,
 #   with the case id and one column per image. Each --column is NAME=PATTERN, the pattern a glob relative to the session
 #   folder. The first column defines the scans: the case id is taken from its file name with --id-regex (default: the
-#   part before '_dwi', e.g. sub-011228_ses-012m_acq-dir79select_dir_run-001). The patterns of the other columns can use
+#   part before '_dwi', e.g. sub-000101_ses-012m_acq-dir79select_dir_run-001). The patterns of the other columns can use
 #   {id}; scans without exactly one file for a --column are left out (reported). --optional-column cells are left empty
 #   when there is no file (e.g. free water / NODDI maps of single-shell scans); EXTRACT_Profile then doesn't profile that
 #   property for the scan.

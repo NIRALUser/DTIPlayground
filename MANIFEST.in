@@ -2,3 +2,7 @@
 include README.md
 ## the manuscripts in papers/ are not part of the package
 prune papers
+## documentation, examples and tests are not part of the package
+prune docs
+prune examples
+prune tests

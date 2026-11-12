@@ -3,7 +3,9 @@
 All notable changes to DTI Playground. The versions are those of `dtiplayground` on PyPI and of the
 `niraluser/dtiplayground` Docker image; `dmriprep`, `dmrifiberprofile` and `dmriplayground` share them.
 
-##### Unreleased
+##### 2026-11-12 (v0.9.14)
+- Removed participant identifiers from the repository and the package: the example scan names in the documentation, the code comments, the tests and the normative-profile example datasheet (`examples/normative_profiles/reference.csv`) now use synthetic identifiers (`sub-000101`, ...), and the file names in the two viewer screenshots of the documentation were replaced by synthetic ones. Nothing changes for users
+- The sdist no longer contains `docs/`, `examples/` and `tests/` (the package never installed them)
 - Documentation: new page "DTI registration study" (`docs/RegistrationStudy.rst`): the study behind TensorSVF and its defaults (139 scans of ABCD, BCP, HBCD and VSA against DTI-Reg, DTI-TK, multichannel ANTs and a hybrid; the free water term, the regularization, tract channels; the synthetic ventricle test; the tensor frame residuals)
 
 ##### 2026-11-11 (v0.9.13)
@@ -19,10 +21,6 @@ All notable changes to DTI Playground. The versions are those of `dtiplayground`
 
 ##### 2026-11-09 (v0.9.10)
 - dmrifiberprofile run / make-datasheet with a folder input: the tensor of a scan (native space) is now any `<id>_dwi*_tensor.nrrd` or `<id>_dwi*_DTI.nrrd` that is not registered, deformed or LinearTrans, instead of only `<id>_dwi[_QCed]_tensor.nrrd` / `_DTI.nrrd`, so tensors with processing tags after `_dwi` are found (e.g. `999434_VSA-CVD_dwi_APPA_topupEddy_corr_noNeg_tensor.nrrd`). A scan with two such tensors is skipped with the names of both. An acquisition tag before `_dwi` (e.g. `_CMRR_dwi`) is part of the case id, so both acquisitions of a session are profiled as separate cases; `--id-regex '^(.+?_CMRR)_dwi(?=[_.])'` or `'^(?!.*_CMRR_)(.+?)_dwi(?=[_.])'` keeps only one of them
-
-##### 2026-11-12 (v0.9.10)
-- Removed participant identifiers from the repository and the package: the example scan names in the documentation, the code comments, the tests and the normative-profile example datasheet (`examples/normative_profiles/reference.csv`) now use synthetic identifiers (`sub-000101`, ...), and the file names in the two viewer screenshots of the documentation were replaced by synthetic ones. Nothing changes for users
-- The sdist no longer contains `docs/`, `examples/` and `tests/` (the package never installed them)
 
 ##### 2026-11-09 (v0.9.9)
 - dmrifiberprofile impute-profiles `--validate`: new options for the evaluation of the imputation paper (`papers/ProfileImputation`): `--validate-real-masks yes` hides the real missing cells of another scan of the same age bin as a fourth pass (pattern `real mask`); `--validate-exclude-subjects` leaves subjects out of the validated scans for an untouched test; `--validate-norm-batches` / `--validate-model-batches` fit the age bin norm and the models of the deviations on some batches only, to separate what pooling a second cohort does to each. The other hidden values of a validation stay the same with these options (own random streams). The imputation itself is unchanged

@@ -31,4 +31,21 @@ Figure, table and section numbers are unchanged (43 pages).
 3. **`\pending`.** The unused macro definition is removed from the preamble. The PDF compiles cleanly: no errors, no
    undefined references, no overfull lines.
 
-**Author placeholders still open:** these are unchanged from round 2 and are listed in the reply to the editor.
+4. **Versions and release (author input).**
+   - Processing versions: model fitting used DTIPlayground 0.5.10; registration, profile extraction and QC used 0.9.0.
+     Both are now in Section 3.1 and Appendix A.1.
+   - Release: the new `--validate-*` options are in DTIPlayground 0.9.9 (PyPI `dtiplayground==0.9.9`, GitHub tag v0.9.9,
+     Docker image `niraluser/dtiplayground:0.9.9`).
+   - The paper scripts are in the repository under `papers/ProfileImputation`.
+
+**Data availability (author input).**
+- Only aggregate data are shared, for both cohorts. Participant-level profiles and per-scan results of neither cohort
+  are redistributed.
+- The aggregate dataset is on Zenodo: https://doi.org/10.5281/zenodo.24110365.
+- Whether the trained models can be shared is being clarified with the data providers.
+
+**Author placeholders still open:**
+- the Zenodo DOI of the software release;
+- the NDA collection ID and the HBCD DUA;
+- model sharing;
+- CRediT and competing interests.

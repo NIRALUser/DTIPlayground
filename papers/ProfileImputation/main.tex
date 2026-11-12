@@ -183,7 +183,7 @@ at 0--3 months, \ageMedBcpC{} vs \ageMedHbcdC{} at 10--60 months).
 
 \paragraph{Processing.} After their respective preprocessing (BCP: \path{dmriprep}; HBCD: QSIPrep), both cohorts
 went through the same steps, run with DTIPlayground (model fitting with version 0.5.10; registration, profile extraction and QC with
-\todo{exact version(s)}) and the scripts that will be shared with the paper: the diffusion tensor (DIPY, weighted least squares, $b \le
+version 0.9.0) and the scripts that will be shared with the paper: the diffusion tensor (DIPY, weighted least squares, $b \le
 1600$\,s/mm$^2$) and NODDI (AMICO, default settings) were fitted; each tensor image was registered to the age-appropriate
 mean tensor of a normative model of the DTI\_IBISEP\_Feb26 atlas \citep{short2022atlas} (DTI-Reg, affine and greedy
 diffeomorphic ANTs registration) and checked by an automatic registration QC; and the profiles of the 69 atlas tracts were
@@ -1062,15 +1062,18 @@ transferred, the amortized transformer gained most, and blend weights refitted o
 
 DTIPlayground (including \path{dmrifiberprofile impute-profiles} and its \path{--validate} protocol) is open source
 at \url{https://github.com/NIRALUser/DTIPlayground}, on PyPI (\texttt{dtiplayground}; this paper: version 0.9.9, GitHub tag v0.9.9) and on Docker Hub
-(\texttt{niraluser/dtiplayground:0.9.9}) \todo{Zenodo DOI of the release}. The processing scripts (model fitting, registration, registration QC, profile extraction and profile QC) and the
-\path{dmriprep} protocol will be shared with the paper \todo{author: where}. The scripts that compute every number, table and figure from the
-validation result files, together with the manuscript sources, are in the same repository under
-\path{papers/ProfileImputation} (\path{scripts/run_all.sh}); the validation
-result files (per-scan, per-age-bin and per-distance tables and the per-cell dumps) will be released \todo{repository and
-DOI}. BCP data are publicly available through the NIMH Data Archive (NDA) \todo{author: NDA collection ID, if cited}; the profiles
-used here were processed by the BCP imaging core from the study's imaging data; HBCD data (release v2.0) are available through the NIH Brain Development Cohorts (NBDC) Data Sharing Platform
-\todo{author: DUA or study number, if required}. \todo{Whether
-derived profile tables can be shared.}
+(\texttt{niraluser/dtiplayground:0.9.9}) \todo{Zenodo DOI of the release}. The scripts that compute every number, table and figure, together with the manuscript sources, are in the same
+repository under \path{papers/ProfileImputation} (\path{scripts/run_all.sh}). A Zenodo dataset \citep{styner2026aggregate}
+(\url{https://doi.org/10.5281/zenodo.24110365}) contains aggregate data only: the normative age-bin statistics (mean, SD, N and quartiles) of BCP and HBCD, the
+aggregated validation results of all runs (by pattern, measure, age bin, tract and distance), the aggregate tables behind
+the paper's tables and figures, and the processing code (model fitting, registration, registration QC, profile
+extraction and profile QC, and the \path{dmriprep} protocol). Participant-level profiles and per-scan results of neither cohort
+are redistributed; the paired per-scan statistics can be recomputed only with access to the cohorts. Whether the
+trained models (population model, transformer) can be shared is being clarified with the data providers
+\todo{author: model sharing}. BCP data are available through the NIMH Data Archive (NDA) \todo{author: NDA collection
+ID, if cited}; the profiles used here were processed by the BCP imaging core from the study's imaging data. HBCD data (release v2.0) are
+available through the NIH Brain Development Cohorts (NBDC) Data Sharing Platform under its data use agreement
+\todo{author: DUA or study number, if required}.
 
 \section*{Acknowledgements}
 This work was supported by NIH grants U01-MH110274 (W.L., J.T.E., M.A.S.), R01-MH104324 and P50-HD103573 (J.T.E.,
@@ -1142,7 +1145,8 @@ with FSL's topup and eddy followed by a second distortion correction with DRBUDD
 SynthStrip on the T2-weighted image, and resampling to an AC-PC space aligned with the T2-weighted image. The derived
 maps of QSIRecon were not used; the diffusion models were fitted to the QSIPrep outputs as described below.
 
-\paragraph{Processing.} Both cohorts then went through the same steps. (i)~\emph{Models.} Within the brain mask (for HBCD that of QSIPrep), the diffusion tensor was fitted by weighted
+\paragraph{Processing.} Both cohorts then went through the same steps. Model fitting used DTIPlayground 0.5.10; registration, registration QC, profile extraction and profile QC used
+DTIPlayground 0.9.0. (i)~\emph{Models.} Within the brain mask (for HBCD that of QSIPrep), the diffusion tensor was fitted by weighted
 least squares with DIPY \citep{garyfallidis2014dipy} on the volumes with $b \le 1600$\,s/mm$^2$: for HBCD the shells
 of 500 and 1000\,s/mm$^2$, for the BCP 6-shell sequence those of 500 to 1500\,s/mm$^2$ and for the 79-direction sequence
 the shell of 1500\,s/mm$^2$; NODDI
